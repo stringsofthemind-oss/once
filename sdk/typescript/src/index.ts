@@ -1,5 +1,11 @@
 import { Buffer } from "node:buffer";
 ﻿import { createHash } from "node:crypto";
+import {
+  createOnceFetchInterceptor,
+  type OnceFetchInstallation,
+  type OnceFetchInterceptorOptions,
+  type OnceProtectedFetchHandler
+} from "./runtime/fetch-interceptor.js";
 
 const DEFAULT_BASE_URL =
   "https://once-q18-cloud.pennywatch.workers.dev";
@@ -35,6 +41,20 @@ export interface ExecuteResponse {
   provider_executed_at?: string | null;
   [key: string]: unknown;
 }
+
+export interface OnceRuntimeHttpReplay {
+  status: number;
+  body_text: string;
+  headers: Record<string, string>;
+  recorded_at?: string;
+}
+
+export type OnceRuntimeFetchOptions =
+  Omit<
+    OnceFetchInterceptorOptions,
+    "protect" | "fetchImpl"
+  > &
+  OnceOptions;
 
 export interface TruthResponse {
   operation_id: string;
@@ -74,6 +94,26 @@ export class OnceError extends Error {
     this.code = options.code;
     this.body = options.body;
     this.retryAfter = options.retryAfter;
+  }
+}
+
+export class OnceRuntimeHttpShapeError
+  extends OnceError {
+
+  constructor(
+    message: string,
+    code =
+      "unsupported_runtime_http_shape"
+  ) {
+    super(
+      message,
+      {
+        code
+      }
+    );
+
+    this.name =
+      "OnceRuntimeHttpShapeError";
   }
 }
 
@@ -469,10 +509,511 @@ export class Once {
   }
 }
 
+function runtimeJsonContentType(
+  request: Request
+): boolean {
+
+  const contentType =
+    request.headers
+      .get("content-type")
+      ?.toLowerCase() ??
+    "";
+
+  return contentType.includes(
+    "application/json"
+  );
+}
+
+
+function assertRuntimeHeaderShape(
+  request: Request
+): void {
+
+  const allowed =
+    new Set([
+      "content-type",
+      "idempotency-key",
+      "x-idempotency-key"
+    ]);
+
+  for (
+    const [name]
+    of request.headers
+  ) {
+
+    if (
+      !allowed.has(
+        name.toLowerCase()
+      )
+    ) {
+      throw new OnceRuntimeHttpShapeError(
+        `Once Runtime HTTP v0.1 cannot safely preserve target header "${name}".`
+      );
+    }
+  }
+}
+
+
+function parseRuntimeReplay(
+  value: unknown
+): OnceRuntimeHttpReplay {
+
+  if (
+    value === null ||
+    typeof value !== "object" ||
+    Array.isArray(value)
+  ) {
+    throw new OnceError(
+      "Once confirmed the operation but did not return a replayable HTTP response.",
+      {
+        code:
+          "runtime_http_response_missing",
+        body:
+          value
+      }
+    );
+  }
+
+  const candidate =
+    value as Record<
+      string,
+      unknown
+    >;
+
+  const status =
+    Number(
+      candidate.status
+    );
+
+  /*
+   * Fetch Response constructors cannot represent
+   * informational 1xx responses.
+   */
+  if (
+    !Number.isInteger(status) ||
+    status < 200 ||
+    status > 599
+  ) {
+    throw new OnceError(
+      "Once returned an HTTP replay with an unsupported status.",
+      {
+        code:
+          "runtime_http_response_invalid_status",
+        body:
+          value
+      }
+    );
+  }
+
+  if (
+    typeof candidate.body_text !==
+    "string"
+  ) {
+    throw new OnceError(
+      "Once returned an HTTP replay without a valid text body.",
+      {
+        code:
+          "runtime_http_response_invalid_body",
+        body:
+          value
+      }
+    );
+  }
+
+  if (
+    candidate.headers === null ||
+    typeof candidate.headers !==
+      "object" ||
+    Array.isArray(
+      candidate.headers
+    )
+  ) {
+    throw new OnceError(
+      "Once returned an HTTP replay without valid headers.",
+      {
+        code:
+          "runtime_http_response_invalid_headers",
+        body:
+          value
+      }
+    );
+  }
+
+  const headers:
+    Record<
+      string,
+      string
+    > = {};
+
+  for (
+    const [name, headerValue]
+    of Object.entries(
+      candidate.headers
+    )
+  ) {
+
+    if (
+      typeof headerValue !==
+      "string"
+    ) {
+      throw new OnceError(
+        "Once returned a non-string HTTP replay header.",
+        {
+          code:
+            "runtime_http_response_invalid_headers",
+          body:
+            value
+        }
+      );
+    }
+
+    headers[name] =
+      headerValue;
+  }
+
+  const nullBody =
+    status === 204 ||
+    status === 205 ||
+    status === 304;
+
+  if (
+    nullBody &&
+    candidate.body_text.length > 0
+  ) {
+    throw new OnceError(
+      "Once returned a body for an HTTP status that cannot carry one.",
+      {
+        code:
+          "runtime_http_response_invalid_body",
+        body:
+          value
+      }
+    );
+  }
+
+  return {
+    status,
+
+    body_text:
+      candidate.body_text,
+
+    headers,
+
+    ...(
+      typeof candidate.recorded_at ===
+        "string"
+        ? {
+            recorded_at:
+              candidate.recorded_at
+          }
+        : {}
+    )
+  };
+}
+
+
+function createRuntimeCloudProtector(
+  once: Once
+): OnceProtectedFetchHandler {
+
+  return async ({
+    request,
+    decision,
+    provider
+  }): Promise<Response> => {
+
+    if (
+      decision.decision !==
+      "PROTECT"
+    ) {
+      throw new OnceError(
+        "Runtime protector received a non-protected operation.",
+        {
+          code:
+            "runtime_invalid_protect_state"
+        }
+      );
+    }
+
+    if (!decision.operationId) {
+      throw new OnceError(
+        "Runtime protected operation is missing its resolved operation ID.",
+        {
+          code:
+            "runtime_operation_id_missing"
+        }
+      );
+    }
+
+    if (
+      typeof provider !==
+        "string" ||
+      provider.trim().length ===
+        0
+    ) {
+      throw new OnceError(
+        "Runtime protected operation is missing its resolved provider.",
+        {
+          code:
+            "runtime_provider_missing"
+        }
+      );
+    }
+
+    const method =
+      request.method
+        .trim()
+        .toUpperCase();
+
+    /*
+     * Classification recognizes POST/PUT/PATCH/DELETE as
+     * consequential. Execution v0.1 intentionally proves
+     * only POST + JSON.
+     */
+    if (method !== "POST") {
+      throw new OnceRuntimeHttpShapeError(
+        `Once Runtime HTTP v0.1 only has a proven protected execution contract for POST, not ${method || "(empty)"}.`
+      );
+    }
+
+    if (
+      !runtimeJsonContentType(
+        request
+      )
+    ) {
+      throw new OnceRuntimeHttpShapeError(
+        "Once Runtime HTTP v0.1 only protects application/json POST bodies."
+      );
+    }
+
+    assertRuntimeHeaderShape(
+      request
+    );
+
+    const bodyText =
+      await request
+        .clone()
+        .text();
+
+    if (
+      bodyText.trim().length ===
+      0
+    ) {
+      throw new OnceRuntimeHttpShapeError(
+        "Once Runtime HTTP v0.1 requires a non-empty JSON body."
+      );
+    }
+
+    try {
+      JSON.parse(
+        bodyText
+      );
+    } catch {
+      throw new OnceRuntimeHttpShapeError(
+        "Once Runtime HTTP v0.1 requires a valid JSON body."
+      );
+    }
+
+    const result =
+      await once.execute({
+        operationId:
+          decision.operationId,
+
+        provider:
+          provider.trim(),
+
+        action: {
+          type:
+            "http_write_v1",
+
+          method:
+            "POST",
+
+          url:
+            request.url,
+
+          body_json:
+            bodyText
+        }
+      });
+
+    const replay =
+      parseRuntimeReplay(
+        result.http_response
+      );
+
+    const nullBody =
+      replay.status === 204 ||
+      replay.status === 205 ||
+      replay.status === 304;
+
+    return new Response(
+      nullBody
+        ? null
+        : replay.body_text,
+      {
+        status:
+          replay.status,
+
+        headers:
+          replay.headers
+      }
+    );
+  };
+}
+
+
+/**
+ * Create a fetch-compatible Once Runtime.
+ *
+ * v0.1 proven protected execution shape:
+ * POST + application/json + stable identity.
+ */
+export function createOnceRuntimeFetch(
+  options:
+    OnceRuntimeFetchOptions = {}
+): typeof fetch {
+
+  const originalFetch =
+    options.fetchImpl ??
+    globalThis.fetch;
+
+  if (
+    typeof originalFetch !==
+    "function"
+  ) {
+    throw new OnceError(
+      "Once Runtime requires a native fetch implementation.",
+      {
+        code:
+          "runtime_fetch_missing"
+      }
+    );
+  }
+
+  /*
+   * Once Cloud requests use the captured native fetch.
+   * They cannot recursively enter this interceptor.
+   */
+  const once =
+    new Once({
+      apiKey:
+        options.apiKey,
+
+      baseUrl:
+        options.baseUrl,
+
+      timeoutMs:
+        options.timeoutMs,
+
+      networkRetries:
+        options.networkRetries,
+
+      fetchImpl:
+        originalFetch
+    });
+
+  return createOnceFetchInterceptor({
+    provider:
+      options.provider,
+
+    resolveProvider:
+      options.resolveProvider,
+
+    resolveOperationId:
+      options.resolveOperationId,
+
+    fetchImpl:
+      originalFetch,
+
+    protect:
+      createRuntimeCloudProtector(
+        once
+      )
+  });
+}
+
+
+/**
+ * Explicit reversible global fetch installation.
+ */
+export function installOnceRuntimeFetch(
+  options:
+    OnceRuntimeFetchOptions = {}
+): OnceFetchInstallation {
+
+  const previous =
+    globalThis.fetch;
+
+  const intercepted =
+    createOnceRuntimeFetch({
+      ...options,
+
+      fetchImpl:
+        options.fetchImpl ??
+        previous
+    });
+
+  globalThis.fetch =
+    intercepted;
+
+  let restored =
+    false;
+
+  return {
+    fetch:
+      intercepted,
+
+    restore:
+      () => {
+
+        if (restored) {
+          return;
+        }
+
+        if (
+          globalThis.fetch ===
+          intercepted
+        ) {
+          globalThis.fetch =
+            previous;
+        }
+
+        restored =
+          true;
+      }
+  };
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve =>
     setTimeout(resolve, ms)
   );
 }
+
+export {
+  createOnceFetchInterceptor,
+  installOnceFetchInterceptor,
+  OnceRuntimeBlockedError
+} from "./runtime/fetch-interceptor.js";
+
+export type {
+  OnceFetchInstallation,
+  OnceFetchInterceptorOptions,
+  OnceProtectedFetchContext,
+  OnceProtectedFetchHandler
+} from "./runtime/fetch-interceptor.js";
+
+export {
+  prepareHttpExecution
+} from "./runtime/pipeline.js";
+
+export {
+  decideHttpExecution
+} from "./runtime/decision.js";
+
+export {
+  resolveHttpOperationIdentity
+} from "./runtime/identity.js";
 
 export default Once;

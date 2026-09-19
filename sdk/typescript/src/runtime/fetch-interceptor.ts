@@ -36,6 +36,9 @@ export type OnceProtectedFetchContext = {
   decision:
     OnceRuntimePipelineResult;
 
+  provider:
+    string | undefined;
+
   /**
    * Native fetch captured before interception.
    *
@@ -322,6 +325,7 @@ export function createOnceFetchInterceptor(
       return await options.protect({
         request,
         decision,
+        provider,
         originalFetch
       });
     };
