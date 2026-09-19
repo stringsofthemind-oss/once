@@ -759,3 +759,215 @@ window.addEventListener(
   }
 
 })();
+
+// ==========================================================
+// ONCE PRODUCT CONVERSION ANALYTICS
+//
+// Privacy-minimal aggregate events.
+// Sends only:
+//   event
+//   source = "website"
+//
+// Analytics failure must never interfere with the product UI.
+// ==========================================================
+
+(() => {
+
+  "use strict";
+
+
+  const ENDPOINT =
+    "https://once-sandbox-playground.pennywatch.workers.dev/analytics/event";
+
+
+  const sent =
+    new Set();
+
+
+  function sendOnce(eventName) {
+
+    if (
+      sent.has(
+        eventName
+      )
+    ) {
+      return;
+    }
+
+
+    sent.add(
+      eventName
+    );
+
+
+    fetch(
+      ENDPOINT,
+      {
+        method:
+          "POST",
+
+        headers: {
+          "content-type":
+            "application/json"
+        },
+
+        body:
+          JSON.stringify({
+            event:
+              eventName,
+
+            source:
+              "website"
+          }),
+
+        keepalive:
+          true
+      }
+    )
+      .catch(
+        () => {
+          // Analytics is deliberately non-critical.
+        }
+      );
+  }
+
+
+  // --------------------------------------------------------
+  // TESTER ENGAGEMENT
+  // --------------------------------------------------------
+
+  const testerIds =
+    new Set([
+      "onceOps",
+      "onceRetry",
+      "onceCoverage"
+    ]);
+
+
+  function testerInteraction(event) {
+
+    const target =
+      event.target;
+
+    if (
+      !target ||
+      !testerIds.has(
+        target.id
+      )
+    ) {
+      return;
+    }
+
+
+    sendOnce(
+      "tester_used"
+    );
+  }
+
+
+  document.addEventListener(
+    "input",
+    testerInteraction,
+    true
+  );
+
+  document.addEventListener(
+    "change",
+    testerInteraction,
+    true
+  );
+
+
+  // --------------------------------------------------------
+  // OUTBOUND CONVERSION INTENT
+  // --------------------------------------------------------
+
+  document.addEventListener(
+    "click",
+    (event) => {
+
+      const target =
+        event.target instanceof Element
+          ? event.target
+          : null;
+
+      if (!target) {
+        return;
+      }
+
+
+      const anchor =
+        target.closest(
+          "a[href]"
+        );
+
+      if (!anchor) {
+        return;
+      }
+
+
+      let url;
+
+      try {
+        url =
+          new URL(
+            anchor.href,
+            window.location.href
+          );
+      }
+      catch {
+        return;
+      }
+
+
+      if (
+        url.hostname ===
+          "once-sandbox-playground.pennywatch.workers.dev"
+      ) {
+
+        sendOnce(
+          "playground_clicked"
+        );
+
+        return;
+      }
+
+
+      if (
+        url.hostname ===
+          "www.npmjs.com" &&
+        url.pathname.startsWith(
+          "/package/@once-agent/sdk"
+        )
+      ) {
+
+        sendOnce(
+          "npm_clicked"
+        );
+
+        return;
+      }
+
+
+      if (
+        url.hostname ===
+          "github.com" &&
+        url.pathname
+          .replace(
+            /\/+$/,
+            ""
+          )
+          .toLowerCase() ===
+            "/stringsofthemind-oss/once"
+      ) {
+
+        sendOnce(
+          "github_clicked"
+        );
+      }
+
+    },
+    true
+  );
+
+})();
