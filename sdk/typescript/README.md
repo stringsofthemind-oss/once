@@ -1,4 +1,4 @@
-﻿# @once-agent/sdk
+# @once-agent/sdk
 
 
 <!-- ONCE_STRIPE_SANDBOX_NOTICE -->
@@ -61,6 +61,49 @@ ONCE_API_KEY=your_api_key
 Do not commit API keys to source control.
 
 ## 60-second quick start
+
+### Runtime HTTP protection
+
+For supported POST + JSON HTTP writes, configure the exact protected HTTPS target:
+
+```bash
+npx once setup . --runtime-http=https://api.example.com/v1/action
+```
+
+This setup pins that exact target in the provider allowlist and opts the immutable provider version into durable HTTP response replay.
+
+```ts
+import { createOnceRuntimeFetch } from "@once-agent/sdk";
+
+const onceFetch = createOnceRuntimeFetch({
+  provider: "my-provider"
+});
+
+async function main() {
+  const response = await onceFetch(
+    "https://api.example.com/v1/action",
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "idempotency-key": "order_123"
+      },
+      body: JSON.stringify({ example: true })
+    }
+  );
+
+  console.log(response.status);
+  console.log(await response.text());
+}
+
+main().catch(console.error);
+```
+
+Retry the same logical real-world action with the same stable identity. In this Runtime HTTP example, that identity is carried by the `idempotency-key`.
+
+The Runtime fails closed rather than silently falling back to a direct target write when an operation cannot be safely protected.
+
+### Direct SDK execution
 
 First configure a provider with `once setup .`, or use a provider alias already registered with your Once account.
 
@@ -235,6 +278,18 @@ npx once setup .
 
 Setup can install/configure the SDK, verify your API key, register a supported provider, and prepare local Once configuration.
 
+For Runtime HTTP protection, provide the exact target URL:
+
+```bash
+npx once setup . --runtime-http=https://api.example.com/v1/action
+```
+
+Runtime HTTP setup registers that exact URL in `allowed_urls` and requests `response_replay="required"` for that immutable provider version.
+
+Only non-secret provider metadata is written to `.once/config.json`; the provider bearer token is not stored there.
+
+Plain `npx once setup .` preserves the existing provider-registration behavior and does not opt that provider version into HTTP response replay.
+
 Preview setup without making changes:
 
 ```bash
@@ -335,11 +390,15 @@ Its safety properties depend on:
 - sufficiently authoritative provider truth
 - the failure mode being within that provider integration's supported model
 
-For supported provider integrations, Once is designed to prevent duplicate side effects across retries and ambiguous transport failures by reconciling provider truth before permitting re-execution.
+For supported provider integrations, Once is designed to suppress duplicate execution across retries and ambiguous transport failures by reconciling provider truth before permitting re-execution.
 
-When Once cannot determine whether an external side effect occurred, it may preserve the operation as uncertain rather than assume another execution is safe.
+For Runtime HTTP providers registered with `response_replay="required"`, Once also requires a durable, sanitized application-visible HTTP response replay before the local operation can become `CONFIRMED`. Confirmed retries can return that stored response without executing the provider again.
+
+When Once cannot determine whether an external side effect occurred, or when required replay evidence is missing after an effect may have happened, it preserves the operation as uncertain rather than assume another execution is safe.
 
 This means Once may sacrifice availability temporarily in order to avoid an unsafe duplicate side effect.
+
+The external effect itself is not atomically committed with Once's local ledger. The supported claim is duplicate suppression on confirmed/replay paths plus fail-closed handling of ambiguous outcomes, not generic exactly-once execution.
 
 ## Provider truth
 
