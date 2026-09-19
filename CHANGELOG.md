@@ -1,5 +1,16 @@
 ﻿# Changelog
 
+## 0.1.4 - 2026-09-19
+
+Metadata-only patch release.
+
+### Changed
+
+- Added the verified public GitHub repository URL to npm package metadata.
+- Added the public project homepage.
+- Added the GitHub issues URL for package support and bug reports.
+- No SDK execution logic changed in this release.
+
 All notable changes to Once are documented here.
 
 ## 0.1.3 - 2026-09-19
@@ -88,6 +99,7 @@ The 0.1.1 release-candidate baseline passed:
 - Customer Zero duplicate-prevention regression
 - live sandbox contract checks
 - production core status checks
+
 
 
 

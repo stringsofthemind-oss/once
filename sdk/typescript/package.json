@@ -1,6 +1,6 @@
 {
   "name": "@once-agent/sdk",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Execution safety for side-effecting AI agent tools.",
   "type": "module",
   "main": "./dist/index.js",
@@ -53,9 +53,17 @@
     "@types/node": "^26.6.1"
   },
   "bin": {
-    "once": "./dist/cli.js"
+    "once": "dist/cli.js"
   },
   "dependencies": {
     "typescript": "^5.9.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stringsofthemind-oss/once.git"
+  },
+  "homepage": "https://github.com/stringsofthemind-oss/once#readme",
+  "bugs": {
+    "url": "https://github.com/stringsofthemind-oss/once/issues"
   }
 }
