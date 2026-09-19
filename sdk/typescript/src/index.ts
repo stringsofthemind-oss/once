@@ -15,6 +15,7 @@ export interface OnceOptions {
   baseUrl?: string;
   timeoutMs?: number;
   networkRetries?: number;
+  fetchImpl?: typeof fetch;
 }
 
 export interface ExecuteInput {
@@ -103,6 +104,7 @@ export class Once {
   readonly baseUrl: string;
   readonly timeoutMs: number;
   readonly networkRetries: number;
+  readonly fetchImpl: typeof fetch;
 
   constructor(options: OnceOptions = {}) {
     const apiKey =
@@ -131,6 +133,10 @@ export class Once {
 
     this.networkRetries =
       options.networkRetries ?? 2;
+
+    this.fetchImpl =
+      options.fetchImpl ??
+      globalThis.fetch;
   }
 
   /**
@@ -345,7 +351,7 @@ export class Once {
       );
 
       try {
-        const response = await fetch(
+        const response = await this.fetchImpl(
           `${this.baseUrl}${path}`,
           {
             ...init,
