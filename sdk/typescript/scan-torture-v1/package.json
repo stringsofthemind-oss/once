@@ -1,0 +1,8 @@
+﻿{
+  "name": "once-scan-torture-test",
+  "version": "1.0.0",
+  "dependencies": {
+    "openai": "^5.0.0",
+    "express": "^5.0.0"
+  }
+}

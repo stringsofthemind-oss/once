@@ -1,0 +1,17 @@
+﻿{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": true,
+    "outDir": "dist-cjs"
+  },
+  "include": [
+    "src/index.ts"
+  ],
+  "exclude": [
+    "src/**/*.before-*.ts"
+  ]
+}

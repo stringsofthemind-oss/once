@@ -1,0 +1,11 @@
+﻿{
+  "name": "once-scan-torture-v2",
+  "version": "1.0.0",
+  "dependencies": {
+    "openai": "^5.0.0",
+    "@anthropic-ai/sdk": "^0.60.0",
+    "axios": "^1.0.0",
+    "@prisma/client": "^6.0.0",
+    "@supabase/supabase-js": "^2.0.0"
+  }
+}

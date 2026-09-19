@@ -1,0 +1,61 @@
+{
+  "name": "@once-agent/sdk",
+  "version": "0.1.3",
+  "description": "Execution safety for side-effecting AI agent tools.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist-cjs/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "dist-cjs"
+  ],
+  "scripts": {
+    "build": "npm run build:esm && npm run build:cjs",
+    "typecheck": "tsc --noEmit",
+    "benchmark:scan": "npm run build && node ./scripts/scan-benchmark.mjs",
+    "test:contract": "npm run build && tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --strict --types node ./scripts/sdk-contract-types.ts && node ./scripts/sdk-contract-runtime.mjs",
+    "test:release": "npm run benchmark:scan && npm run test:scanner-declarations && npm run test:contract && npm run test:protect && npm run test:capabilities && npm run test:transformer && npm run test:binding && npm run test:patch-planner && npm run test:transformer-protect && npm run test:apply && npm run test:id-conformance && npm run test:consumer && npm run test:activation && npm run test:package",
+    "test:protect": "npm run build && node ./scripts/protect-regression.mjs",
+    "test:capabilities": "npm run build && node ./scripts/capability-regression.mjs",
+    "test:transformer": "npm run build && node ./scripts/http-transformer-regression.mjs",
+    "test:scanner-declarations": "npm run build && node ./scripts/scanner-declaration-regression.mjs",
+    "test:transformer-protect": "npm run build && node ./scripts/transformer-protect-regression.mjs",
+    "test:binding": "npm run build && node ./scripts/once-binding-regression.mjs",
+    "test:patch-planner": "npm run build && node ./scripts/http-patch-planner-regression.mjs",
+    "test:apply": "npm run build && node ./scripts/apply-engine-regression.mjs && node ./scripts/apply-regression.mjs",
+    "test:package": "npm run build && node ./scripts/package-isolation-regression.mjs",
+    "test:consumer": "npm run build && node ./scripts/consumer-package-regression.mjs",
+    "test:id-conformance": "npm run build && node ./scripts/id-conformance-regression.mjs",
+    "build:esm": "tsc -p tsconfig.json",
+    "build:cjs": "tsc -p tsconfig.cjs.json && node ./scripts/write-cjs-package.mjs",
+    "test:activation": "npm run build && node ./scripts/activation-regression.mjs"
+  },
+  "keywords": [
+    "ai",
+    "agents",
+    "idempotency",
+    "reliability",
+    "execution-safety"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.1"
+  },
+  "bin": {
+    "once": "./dist/cli.js"
+  },
+  "dependencies": {
+    "typescript": "^5.9.0"
+  }
+}

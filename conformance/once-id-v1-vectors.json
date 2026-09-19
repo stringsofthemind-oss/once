@@ -1,0 +1,194 @@
+{
+  "spec": "once-id-v1",
+  "encoding": "once-id-v1 NUL prefix; uint32be part count; for each part uint32be UTF-8 byte length followed by UTF-8 bytes",
+  "digest": "SHA-256, first 32 lowercase hex characters",
+  "valid": [
+    {
+      "name": "simple strings",
+      "parts": [
+        "order",
+        "123"
+      ],
+      "expected_id": "order:811f7fc3e6463f1ebe36518adfb37345"
+    },
+    {
+      "name": "spaces and case",
+      "parts": [
+        "Order Created",
+        "ABC"
+      ],
+      "expected_id": "order-created:f54fb3f736237d6e895b356232cf456b"
+    },
+    {
+      "name": "ascii punctuation",
+      "parts": [
+        "A_B:C.D",
+        "x"
+      ],
+      "expected_id": "a_b:c.d:b24f61b1533977c4bfc293b66c8f9b24"
+    },
+    {
+      "name": "empty prefix",
+      "parts": [
+        "",
+        "x"
+      ],
+      "expected_id": "operation:402968a23cb9dd331b38822dd0348b08"
+    },
+    {
+      "name": "symbols only prefix",
+      "parts": [
+        "---",
+        "x"
+      ],
+      "expected_id": "operation:df6f7e99aac74567ff0b4b09e2001824"
+    },
+    {
+      "name": "accented latin",
+      "parts": [
+        "caf?",
+        "x"
+      ],
+      "expected_id": "caf:b3c0d0d25800fccf0cd828982a45110e"
+    },
+    {
+      "name": "japanese",
+      "parts": [
+        "??",
+        "x"
+      ],
+      "expected_id": "operation:198f504e5c933c55348048be6fead611"
+    },
+    {
+      "name": "emoji",
+      "parts": [
+        "payment??",
+        "x"
+      ],
+      "expected_id": "payment:f1e1962357142e11a86a867e34f1f9c3"
+    },
+    {
+      "name": "integer",
+      "parts": [
+        "order",
+        42
+      ],
+      "expected_id": "order:40ffb083c1b146b4786b631bcbf0b5c2"
+    },
+    {
+      "name": "negative integer",
+      "parts": [
+        "order",
+        -42
+      ],
+      "expected_id": "order:6f4d68e952c5a5e9f3221ddaaa124c0d"
+    },
+    {
+      "name": "integral float",
+      "parts": [
+        "order",
+        1.0
+      ],
+      "expected_id": "order:ca8e7362cb5104119ffaa645b67cf288"
+    },
+    {
+      "name": "maximum safe integer",
+      "parts": [
+        "order",
+        9007199254740991
+      ],
+      "expected_id": "order:ea7cdbf2fd1d794c96066c87ba588150"
+    },
+    {
+      "name": "leading punctuation",
+      "parts": [
+        "_A_",
+        "x"
+      ],
+      "expected_id": "a_:ab4285d26b0f7c6930bbcf081f6bebfe"
+    },
+    {
+      "name": "leading dot",
+      "parts": [
+        ".job",
+        "x"
+      ],
+      "expected_id": "job:e4da5078c4e4c6b7109e90dd31bb95bf"
+    },
+    {
+      "name": "embedded unit separator",
+      "parts": [
+        "order",
+        "a\u001fb"
+      ],
+      "expected_id": "order:19b7b298bd5f427cb4691002ec317a29"
+    },
+    {
+      "name": "three separate parts",
+      "parts": [
+        "order",
+        "a",
+        "b"
+      ],
+      "expected_id": "order:fe7b2a9defc040f049846746be087b08"
+    },
+    {
+      "name": "embedded null",
+      "parts": [
+        "order",
+        "a\u0000b"
+      ],
+      "expected_id": "order:1a991c8b48e8ee2ca36692ea3b124c0f"
+    },
+    {
+      "name": "long readable prefix",
+      "parts": [
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890",
+        "x"
+      ],
+      "expected_id": "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuv:d74f814e3718740f55aac734e199cb04"
+    }
+  ],
+  "invalid": [
+    {
+      "name": "boolean",
+      "parts": [
+        "order",
+        true
+      ],
+      "expected_error_code": "invalid_operation_id"
+    },
+    {
+      "name": "null",
+      "parts": [
+        "order",
+        null
+      ],
+      "expected_error_code": "invalid_operation_id"
+    },
+    {
+      "name": "fractional number",
+      "parts": [
+        "order",
+        1.5
+      ],
+      "expected_error_code": "invalid_operation_id"
+    },
+    {
+      "name": "small fractional exponent",
+      "parts": [
+        "order",
+        1e-07
+      ],
+      "expected_error_code": "invalid_operation_id"
+    },
+    {
+      "name": "above maximum safe integer",
+      "parts": [
+        "order",
+        9007199254740992
+      ],
+      "expected_error_code": "invalid_operation_id"
+    }
+  ]
+}
