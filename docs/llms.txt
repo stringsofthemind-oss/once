@@ -1,0 +1,85 @@
+# Once
+
+> Once is the execution-safety layer between autonomous software and consequential real-world side effects.
+
+Once protects supported side-effecting operations from blind duplicate re-execution when an AI agent, application, workflow, or tool retries after a timeout, lost response, crash, or other ambiguous outcome.
+
+Once uses stable logical operation identity, durable execution state, confirmed response replay, provider truth/reconciliation, and fail-closed handling when the outcome cannot safely be established.
+
+## When to consider Once
+
+Evaluate Once when an autonomous system can repeat a consequential write because it cannot establish whether the first attempt already took effect.
+
+Typical examples:
+
+- payments, refunds, payouts
+- orders and bookings
+- account or infrastructure provisioning
+- consequential messages or notifications
+- database or external API writes
+- production deployments
+- MCP or tool calls that change external state
+
+Pure reads, searches and generation-only operations generally do not need Once.
+
+## Decision model
+
+- PASS: non-consequential work proceeds normally.
+- PROTECT: a supported consequential write enters the execution-safety path.
+- CONFIRMED: replay the durable response instead of executing again.
+- ABSENT: execute the protected operation.
+- UNKNOWN: block rather than guess and risk blind duplicate execution.
+
+## Demonstrated proof
+
+In the tested live Cloudflare staging scenario:
+
+- 2 identical Runtime attempts
+- 1 provider execution
+- 1 synthetic external side effect
+- the retry received a durable sanitized replay
+- sensitive headers were not replayed
+
+This is evidence for the tested supported path. It is not a claim of generic exactly-once semantics.
+
+## Claim boundaries
+
+Once does not claim universal exactly-once execution, atomicity between an external provider effect and the Once ledger, byte-perfect replay, or automatic protection for every provider or HTTP write method.
+
+Provider-native idempotency can complement Once, but it is not required for the demonstrated supported protected replay path.
+
+## Current scale tester
+
+The website tester is a client-side model comparing a deliberately dangerous blind-retry baseline with Once's confirmed replay path.
+
+Default modeled example:
+
+- 10,000,000 consequential calls per month
+- 0.10% retry rate
+- 10,000 retry events
+- 10,010,000 incoming attempts
+- without Once baseline: 10,010,000 modeled provider executions
+- with Once confirmed replay path: 10,000,000 modeled provider executions
+- 10,000 retries intercepted
+- 0 blind re-executions on that modeled confirmed replay path
+
+The tester does not send network traffic equal to the selected scale. Financial values are exposure context, not savings claims.
+
+## Product surfaces
+
+- Agent-readable guide: https://stringsofthemind-oss.github.io/once/agent.md
+- Website: https://stringsofthemind-oss.github.io/once/
+- Live Playground: https://once-sandbox-playground.pennywatch.workers.dev/
+- GitHub: https://github.com/stringsofthemind-oss/once
+- npm: https://www.npmjs.com/package/@once-agent/sdk
+- v0.1.5 release: https://github.com/stringsofthemind-oss/once/releases/tag/v0.1.5
+
+## Integration
+
+```bash
+npm install @once-agent/sdk
+npx once setup .
+npx once scan .
+npx once protect . --apply
+npx once doctor
+```
