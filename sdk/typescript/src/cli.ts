@@ -23,6 +23,10 @@ import {
   applyProtectionPlan
 } from "./apply.js";
 
+import {
+  runBenchmark
+} from "./benchmark.js";
+
 async function runDoctor(): Promise<void> {
 
   console.log("");
@@ -155,7 +159,6 @@ function printHelp(): void {
     "      Use --snippets to generate per-callsite integration guidance."
   );
 
-
   console.log(
     "      Use --apply to transactionally apply exactly one PATCHABLE candidate."
   );
@@ -185,6 +188,15 @@ function printHelp(): void {
 
   console.log("");
   console.log(
+    "  once benchmark <trace.jsonl>"
+  );
+
+  console.log(
+    "      Measure repeated-observation avoidance, change recall and EAR from an agent trace."
+  );
+
+  console.log("");
+  console.log(
     "  once doctor"
   );
 
@@ -207,7 +219,6 @@ function printHelp(): void {
     "  once protect . --all --patch"
   );
 
-
   console.log(
     "  once protect . --apply"
   );
@@ -218,6 +229,10 @@ function printHelp(): void {
 
   console.log(
     "  once scan ."
+  );
+
+  console.log(
+    "  once benchmark .once/agent-trace.jsonl"
   );
 
   console.log(
@@ -241,6 +256,23 @@ async function main(): Promise<void> {
     case "doctor":
       await runDoctor();
       return;
+
+    case "benchmark": {
+      const tracePath =
+        args.find(
+          value =>
+            !value.startsWith("--")
+        );
+
+      if (!tracePath) {
+        throw new Error(
+          "benchmark requires a JSONL trace path. Example: once benchmark .once/agent-trace.jsonl"
+        );
+      }
+
+      await runBenchmark(tracePath);
+      return;
+    }
 
     case "scan": {
       const noEstimate =
