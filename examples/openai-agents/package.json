@@ -1,0 +1,15 @@
+{
+  "name": "once-openai-agents-example",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Safe retries for consequential OpenAI Agents tool calls with Once.",
+  "scripts": {
+    "start": "node --env-file=.env index.mjs"
+  },
+  "dependencies": {
+    "@once-agent/sdk": "^0.1.5",
+    "@openai/agents": "latest",
+    "zod": "^4.0.0"
+  }
+}
