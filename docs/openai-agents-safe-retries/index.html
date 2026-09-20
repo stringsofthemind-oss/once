@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1">
+<meta name="description" content="Safe retries and idempotency for consequential OpenAI Agents tool calls. Prevent duplicate refunds, payments, bookings and other side effects after ambiguous failures.">
+<link rel="canonical" href="https://onceexec.pages.dev/openai-agents-safe-retries/">
+<link rel="describedby" type="text/plain" href="../llms.txt">
+<link rel="alternate" type="text/markdown" href="../agent.md" title="Once agent-readable guide">
+<meta property="og:type" content="article">
+<meta property="og:title" content="OpenAI Agents Safe Retries and Idempotency | Once">
+<meta property="og:description" content="Protect consequential OpenAI Agents tool calls from unsafe duplicate execution after timeouts and lost responses.">
+<meta property="og:url" content="https://onceexec.pages.dev/openai-agents-safe-retries/">
+<title>OpenAI Agents Safe Retries and Idempotency | Once</title>
+<link rel="stylesheet" href="../discovery.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Safe retries for OpenAI Agents tool calls","description":"Safe retries and idempotency for consequential OpenAI Agents tool calls.","mainEntityOfPage":"https://onceexec.pages.dev/openai-agents-safe-retries/","about":["OpenAI Agents","AI agent idempotency","safe retries","duplicate tool calls","AI agent execution safety"],"publisher":{"@type":"Organization","name":"Once","url":"https://onceexec.pages.dev/"}}</script>
+</head>
+<body>
+<header class="topbar"><a class="brand" href="../">Once<span>.</span></a><nav><a href="../mcp-idempotency/">MCP idempotency</a><a href="../ai-agent-retry-safety/">Retry safety</a><a href="../ambiguous-timeout/">Timeouts</a><a href="https://github.com/stringsofthemind-oss/once">GitHub</a></nav></header>
+<main class="wrap">
+<section class="hero">
+<div class="eyebrow">OPENAI AGENTS / SAFE TOOL EXECUTION</div>
+<h1>Make consequential OpenAI Agents tool calls safe to retry.</h1>
+<p>An agent may retry a tool after a timeout, lost response or crash. If that tool causes a refund, payment, booking or other external write, a blind retry can repeat the real-world side effect.</p>
+</section>
+<article>
+<div class="answer"><strong>Short answer:</strong> Give the logical operation a stable identity and route supported consequential execution through durable state and provider reconciliation instead of treating every tool invocation as a new operation.</div>
+<h2>The duplicate-tool-call failure</h2>
+<ol>
+<li>An OpenAI Agent invokes a consequential tool.</li>
+<li>The external provider performs the action.</li>
+<li>The response is lost or times out.</li>
+<li>The application cannot prove whether the action happened.</li>
+<li>The agent retries the tool.</li>
+<li>A blind retry can duplicate the side effect.</li>
+</ol>
+<h2>The Once pattern</h2>
+<pre><code>const operationId = Once.id("refund", orderId);
+
+await once.execute({
+  operationId,
+  provider,
+  action: {
+    type: "refund",
+    order_id: orderId
+  }
+});</code></pre>
+<p>The same logical refund receives the same operation ID on every retry. A retry is therefore not automatically treated as permission to perform a new external action.</p>
+<h2>OpenAI Agents example</h2>
+<p>The Once repository includes a working JavaScript example using the OpenAI Agents SDK function-tool pattern with <code>@once-agent/sdk</code>.</p>
+<p><a href="https://github.com/stringsofthemind-oss/once/tree/main/examples/openai-agents">View the Once + OpenAI Agents example on GitHub</a></p>
+<div class="claim"><strong>Claim boundary:</strong> Once does not claim universal exactly-once execution. Safety depends on stable operation identity, durable Once state, the provider integration and sufficiently authoritative provider truth. When the outcome cannot be established safely, Once can preserve uncertainty instead of blindly repeating the action.</div>
+<div class="cta">
+<h2>Add execution safety to agent writes</h2>
+<pre><code>npm install @once-agent/sdk</code></pre>
+<p><a href="../#tester">Try the Once tester</a> · <a href="https://www.npmjs.com/package/@once-agent/sdk">SDK package</a> · <a href="https://github.com/stringsofthemind-oss/once/tree/main/examples/openai-agents">OpenAI Agents example</a></p>
+</div>
+</article>
+</main>
+<footer class="footer"><div class="wrap"><a href="../">Once</a><a href="../llms.txt">llms.txt</a><a href="../agent.md">Agent guide</a><span>AI agent execution safety · safe retries · idempotency</span></div></footer>
+</body>
+</html>
