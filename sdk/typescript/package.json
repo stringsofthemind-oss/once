@@ -42,9 +42,19 @@
   "keywords": [
     "ai",
     "agents",
+    "ai-agents",
+    "mcp",
+    "model-context-protocol",
     "idempotency",
     "reliability",
-    "execution-safety"
+    "execution-safety",
+    "safe-retries",
+    "retry-safety",
+    "agent-safety",
+    "distributed-systems",
+    "ambiguous-timeout",
+    "duplicate-side-effects",
+    "provider-reconciliation"
   ],
   "license": "MIT",
   "engines": {
@@ -63,7 +73,7 @@
     "type": "git",
     "url": "git+https://github.com/stringsofthemind-oss/once.git"
   },
-  "homepage": "https://github.com/stringsofthemind-oss/once#readme",
+  "homepage": "https://onceexec.pages.dev/",
   "bugs": {
     "url": "https://github.com/stringsofthemind-oss/once/issues"
   }
