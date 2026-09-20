@@ -19,19 +19,46 @@ npx -y @once-agent/mcp
 
 > If an agent can change external state and may retry after an ambiguous outcome, evaluate Once.
 
-## Why Once exists — reproducible crash test
+## Reproduced across frameworks
 
-The [LangGraph hostile-retry lab](./examples/langgraph-retry-lab/) reproduces the failure boundary with real `StateGraph` execution, `SqliteSaver`, hard process termination and fresh-process recovery.
+**Different framework. Different retry machinery. Same recovery protocol. Same one-effect invariant.**
 
-It demonstrates five outcomes:
+Once's framework-neutral recovery core has been exercised against two independent execution models using hard process termination after an external effect becomes durable.
 
-- a random per-attempt UUID can produce **2 external effects** after crash/restart;
-- stable business identity plus provider idempotency produces **1 external effect**;
-- a durable claim can recover by reconciling authoritative provider truth;
-- unresolved provider truth is preserved as **UNKNOWN** and execution fails closed instead of blindly writing again;
-- when provider truth later returns, the same suspended workflow can move **UNKNOWN → CONFIRMED** without a second external effect.
+| Evidence lab | Failure boundary | Without protection | With Once |
+| --- | --- | --- | --- |
+| [LangGraph hostile-retry lab](./examples/langgraph-retry-lab/) | `StateGraph` + `SqliteSaver`, hard process death, fresh-process resume | naive retry can produce **2 external effects** | **1 external effect**, reconciliation to `CONFIRMED` |
+| [CrewAI hostile-retry lab](./examples/crewai-retry-lab/) | native `BaseTool` → structured-tool execution, hard process death, fresh-process redispatch | control produces **2 external effects** | **1 external effect**, reconciliation to `CONFIRMED` |
+
+Both labs also exercise the ambiguous-outcome path:
+
+```text
+external effect commits
+        ↓
+acknowledgement / process is lost
+        ↓
+provider truth unavailable
+        ↓
+UNKNOWN
+        ↓
+execution fails closed
+        ↓
+provider truth later returns
+        ↓
+UNKNOWN → CONFIRMED
+        ↓
+no second external effect
+```
+
+The recovery core used by both experiments is the same framework-neutral implementation under [`sdk/python/src/once_agent/`](./sdk/python/src/once_agent/).
 
 > **Checkpoint state tells you what the workflow remembers. Reconciliation tells you what reality did.**
+
+### What this demonstrates
+
+The same recovery protocol preserved the one-effect invariant under the tested LangGraph and CrewAI failure models without changing the core between frameworks.
+
+This is not a claim of universal "exactly once" execution. Safe recovery still depends on durable operation identity, durable local state, and authoritative provider reconciliation or equivalent downstream guarantees.
 
 ## Framework integrations
 
@@ -511,5 +538,4 @@ That is the failure mode Once is built to address.
 ## License
 
 MIT
-
 
