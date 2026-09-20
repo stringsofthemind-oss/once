@@ -8,6 +8,7 @@ on:
   push:
     branches:
       - main
+      - benchmark/phase1-instrumentation
     paths:
       - "sdk/typescript/**"
       - ".github/workflows/sdk-ci.yml"
