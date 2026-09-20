@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { runDatasetSeal } from "./dataset.js";
+import { runDatasetProgress } from "./dataset-progress.js";
 
 function argumentValue(
   args: string[],
@@ -14,9 +15,26 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const command = (args.shift() ?? "").toLowerCase();
 
+  if (command === "progress") {
+    const tracePath = args.find(value => !value.startsWith("--"));
+    if (!tracePath) {
+      throw new Error("dataset progress requires a source JSONL trace path.");
+    }
+
+    const preregistrationPath = argumentValue(args, "--prereg=");
+    if (!preregistrationPath) {
+      throw new Error(
+        "dataset progress requires --prereg=<path>; stopping criteria must come from the preregistered protocol."
+      );
+    }
+
+    await runDatasetProgress(tracePath, preregistrationPath);
+    return;
+  }
+
   if (command !== "seal") {
     throw new Error(
-      "Usage: once-dataset seal <trace.jsonl> --collector-commit=<git-sha> [--id=001] [--out=.once/datasets]"
+      "Usage:\n  once-dataset progress <trace.jsonl> --prereg=<preregistration.json>\n  once-dataset seal <trace.jsonl> --collector-commit=<git-sha> [--id=001] [--out=.once/datasets]"
     );
   }
 
