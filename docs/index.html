@@ -70,6 +70,178 @@
   href="./styles.css"
 >
 
+<style>
+.cross-proof{
+  max-width:var(--max);
+  margin:28px auto;
+  padding:58px 44px 44px;
+  border:1px solid var(--line);
+  border-radius:31px;
+  background:
+    radial-gradient(700px 340px at 15% 0%,rgba(57,240,160,.07),transparent 60%),
+    radial-gradient(700px 340px at 90% 15%,rgba(67,215,255,.055),transparent 62%),
+    rgba(6,11,17,.86);
+  box-shadow:0 30px 90px rgba(0,0,0,.22);
+}
+
+.cross-proof-head{
+  display:grid;
+  grid-template-columns:190px 1fr;
+  gap:30px;
+  align-items:start;
+}
+
+.cross-proof-kicker{
+  color:var(--green);
+  font:750 10px ui-monospace,SFMono-Regular,Menlo,monospace;
+  letter-spacing:.16em;
+}
+
+.cross-proof-head h2{
+  max-width:980px;
+  margin:0;
+  font-size:clamp(37px,4.8vw,64px);
+  line-height:.98;
+  letter-spacing:-.052em;
+}
+
+.cross-proof-head h2 em{
+  color:var(--green);
+  font-style:normal;
+}
+
+.cross-proof-head p{
+  max-width:850px;
+  margin:18px 0 0;
+  color:#8fa2b1;
+  line-height:1.65;
+  font-size:14px;
+}
+
+.cross-proof-grid{
+  margin-top:42px;
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+}
+
+.cross-proof-card{
+  min-height:150px;
+  padding:19px 20px;
+  border:1px solid var(--line);
+  border-radius:17px;
+  background:rgba(8,14,22,.78);
+  display:flex;
+  flex-direction:column;
+  transition:.2s ease;
+}
+
+a.cross-proof-card:hover{
+  transform:translateY(-2px);
+  border-color:rgba(67,215,255,.32);
+}
+
+.cross-proof-card-top{
+  display:flex;
+  justify-content:space-between;
+  gap:16px;
+  align-items:flex-start;
+  color:#8195a4;
+  font:750 9px ui-monospace,SFMono-Regular,Menlo,monospace;
+  letter-spacing:.1em;
+}
+
+.cross-proof-state{
+  color:var(--green);
+  text-align:right;
+}
+
+.cross-proof-state.bad{
+  color:var(--red);
+}
+
+.cross-proof-state.warn{
+  color:var(--amber);
+}
+
+.cross-proof-card strong{
+  margin-top:auto;
+  padding-top:26px;
+  color:#edf5f8;
+  font-size:20px;
+  letter-spacing:-.025em;
+}
+
+.cross-proof-card small{
+  margin-top:6px;
+  color:#708392;
+  line-height:1.45;
+}
+
+.cross-proof-cta{
+  margin-top:14px;
+  padding:17px;
+  border:1px solid var(--line);
+  border-radius:17px;
+  background:rgba(10,17,26,.76);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:24px;
+}
+
+.cross-proof-cta strong{
+  display:block;
+  font-size:14px;
+}
+
+.cross-proof-cta p{
+  margin:4px 0 0;
+  color:#7f93a2;
+  font-size:12px;
+}
+
+.cross-proof-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:9px;
+  justify-content:flex-end;
+}
+
+.cross-proof-scope{
+  margin:16px 0 0;
+  color:#627684;
+  font-size:10px;
+  line-height:1.55;
+}
+
+@media(max-width:780px){
+  .cross-proof{
+    margin:20px 14px;
+    padding:42px 20px 24px;
+    border-radius:24px;
+  }
+
+  .cross-proof-head{
+    grid-template-columns:1fr;
+    gap:14px;
+  }
+
+  .cross-proof-grid{
+    grid-template-columns:1fr;
+  }
+
+  .cross-proof-cta{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  .cross-proof-actions{
+    justify-content:flex-start;
+  }
+}
+</style>
+
 <script src="./page-analytics.js" defer data-once-page-analytics></script>
 </head>
 
@@ -323,6 +495,113 @@ HERO
 
 </section>
 
+
+<!-- ============================================
+CROSS-FRAMEWORK EVIDENCE
+============================================= -->
+
+<section class="cross-proof" id="cross-framework-proof">
+
+  <div class="cross-proof-head reveal">
+
+    <span class="cross-proof-kicker">
+      REPRODUCIBLE EVIDENCE
+    </span>
+
+    <div>
+      <h2>
+        Different framework. Different retry machinery.
+        <br>
+        <em>Same recovery protocol.</em>
+      </h2>
+
+      <p>
+        The same frozen Once V4 recovery core has been exercised under hard process termination
+        across independent execution models. The control duplicates the external effect; the protected
+        paths reconcile or fail closed instead of blindly executing again.
+      </p>
+    </div>
+
+  </div>
+
+  <div class="cross-proof-grid reveal">
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>CONTROL / NAIVE RETRY</span>
+        <span class="cross-proof-state bad">DUPLICATED</span>
+      </div>
+      <strong>2 external effects</strong>
+      <small>Fresh-process replay without an execution-safety boundary.</small>
+    </article>
+
+    <a
+      class="cross-proof-card"
+      href="https://github.com/stringsofthemind-oss/once/tree/main/examples/langgraph-retry-lab"
+      target="_blank"
+      rel="noopener"
+    >
+      <div class="cross-proof-card-top">
+        <span>LANGGRAPH LAB</span>
+        <span class="cross-proof-state">CONFIRMED</span>
+      </div>
+      <strong>1 external effect</strong>
+      <small>Real StateGraph + SqliteSaver crash/resume path with reconciliation.</small>
+    </a>
+
+    <a
+      class="cross-proof-card"
+      href="https://github.com/stringsofthemind-oss/once/tree/main/examples/crewai-retry-lab"
+      target="_blank"
+      rel="noopener"
+    >
+      <div class="cross-proof-card-top">
+        <span>CREWAI LAB</span>
+        <span class="cross-proof-state">CONFIRMED</span>
+      </div>
+      <strong>1 external effect</strong>
+      <small>Native BaseTool boundary + explicit fresh-process redispatch.</small>
+    </a>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>UNKNOWN OUTCOME</span>
+        <span class="cross-proof-state warn">BLOCKED → CONFIRMED</span>
+      </div>
+      <strong>1 effect, zero blind replay</strong>
+      <small>Provider truth unavailable → fail closed → reconcile when truth returns.</small>
+    </article>
+
+  </div>
+
+  <div class="cross-proof-cta reveal">
+    <div>
+      <strong>Audit the architecture yourself.</strong>
+      <p>Install Once in a project or inspect the hard-crash labs line by line.</p>
+    </div>
+
+    <div class="cross-proof-actions">
+      <a class="button button-primary" href="#developers">
+        Run 60s quickstart
+      </a>
+
+      <a
+        class="button"
+        href="https://github.com/stringsofthemind-oss/once#reproduced-across-frameworks"
+        target="_blank"
+        rel="noopener"
+      >
+        View evidence labs ↗
+      </a>
+    </div>
+  </div>
+
+  <p class="cross-proof-scope reveal">
+    Scope: reproducible framework-level evidence using simulated provider ledgers and the SQLite
+    reference backend. This is not a claim of universal exactly-once execution.
+  </p>
+
+</section>
 
 
 <!-- ============================================
