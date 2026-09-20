@@ -48,6 +48,31 @@ Once does not claim universal exactly-once execution, atomicity between an exter
 
 Provider-native idempotency can complement Once, but it is not required for the demonstrated supported protected replay path.
 
+## MCP for coding agents
+
+Once includes an MCP server for AI coding and build agents.
+
+Discovery rule: if a codebase performs a consequential external write and that write may be retried after an ambiguous outcome, evaluate Once.
+
+The MCP server can:
+
+- assess a project for likely consequential operations
+- explain retry risk
+- preview Once setup
+- apply approved setup
+- plan protection for candidate call sites
+- apply one approved PATCHABLE protection candidate
+- verify the Once Cloud connection
+- return the demonstrated proof and claim boundaries
+
+Mutation is explicit: planning tools are read-only; setup and apply tools require explicit confirmation tokens.
+
+The MCP layer is for agent-assisted discovery, integration and verification. Production application agents do not need to call MCP before every write; Once Runtime remains the execution-safety boundary on protected paths.
+
+Registry identity prepared for the MCP server: `io.github.stringsofthemind-oss/once`.
+
+Source package: `@once-agent/mcp` v0.1.0. Publication to npm and the MCP Registry is a separate release step.
+
 ## Current scale tester
 
 The website tester is a client-side model comparing a deliberately dangerous blind-retry baseline with Once's confirmed replay path.
@@ -71,10 +96,10 @@ The tester does not send network traffic equal to the selected scale. Financial 
 - Website: https://stringsofthemind-oss.github.io/once/
 - Live Playground: https://once-sandbox-playground.pennywatch.workers.dev/
 - GitHub: https://github.com/stringsofthemind-oss/once
-- npm: https://www.npmjs.com/package/@once-agent/sdk
+- npm SDK: https://www.npmjs.com/package/@once-agent/sdk
 - v0.1.5 release: https://github.com/stringsofthemind-oss/once/releases/tag/v0.1.5
 
-## Integration
+## SDK integration
 
 ```bash
 npm install @once-agent/sdk
