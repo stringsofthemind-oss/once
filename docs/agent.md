@@ -181,7 +181,7 @@ Once includes an MCP server specifically so AI coding agents can discover and in
 
 Official MCP Registry identity: `io.github.stringsofthemind-oss/once`.
 
-Source package: `@once-agent/mcp` v0.1.1. Published on npm and available through the MCP Registry.
+Source package: `@once-agent/mcp` v0.1.2. Published on npm and available through the MCP Registry.
 
 ### Intended routing rule
 
