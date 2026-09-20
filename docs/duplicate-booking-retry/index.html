@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1">
+<meta name="description" content="Prevent duplicate bookings and reservations when an AI agent retries after a timeout, lost response or unknown outcome.">
+<link rel="canonical" href="https://onceexec.pages.dev/duplicate-booking-retry/">
+<link rel="describedby" type="text/plain" href="../llms.txt">
+<link rel="alternate" type="text/markdown" href="../agent.md" title="Once agent-readable guide">
+<meta property="og:type" content="article"><meta property="og:title" content="Prevent Duplicate Bookings After an AI Agent Retry | Once"><meta property="og:description" content="Prevent duplicate bookings and reservations when an AI agent retries after a timeout, lost response or unknown outcome."><meta property="og:url" content="https://onceexec.pages.dev/duplicate-booking-retry/">
+<title>Prevent Duplicate Bookings After an AI Agent Retry | Once</title>
+<link rel="stylesheet" href="../discovery.css">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "Prevent a booking retry from becoming a second reservation.", "description": "Prevent duplicate bookings and reservations when an AI agent retries after a timeout, lost response or unknown outcome.", "mainEntityOfPage": "https://onceexec.pages.dev/duplicate-booking-retry/", "about": ["AI agent execution safety", "MCP idempotency", "safe retries", "ambiguous timeouts", "duplicate side effects"], "publisher": {"@type": "Organization", "name": "Once", "url": "https://onceexec.pages.dev/"}}</script>
+</head>
+<body>
+<header class="topbar"><a class="brand" href="../">Once<span>.</span></a><nav><a href="../mcp-idempotency/">MCP idempotency</a><a href="../ai-agent-retry-safety/">Retry safety</a><a href="../ambiguous-timeout/">Timeouts</a><a href="https://github.com/stringsofthemind-oss/once">GitHub</a></nav></header>
+<main class="wrap"><section class="hero"><div class="eyebrow">BOOKING RETRY SAFETY / RESERVATIONS</div><h1>Prevent a booking retry from becoming a second reservation.</h1><p>A lost booking response creates the same ambiguity as a financial write: the reservation may already exist even though the agent never received confirmation.</p></section><article>
+<div class="answer"><strong>Short answer:</strong> A lost booking response creates the same ambiguity as a financial write: the reservation may already exist even though the agent never received confirmation.</div>
+<h2>The booking failure mode</h2>
+<p>The provider accepts the reservation, but the response times out. The agent retries and can create another reservation for the same traveller, slot, room or resource.</p><h2>Provider truth matters</h2>
+<p>Where the booking system exposes authoritative lookup or reconciliation, use it to determine whether the original reservation exists before permitting another creation call.</p>
+<div class="claim"><strong>Claim boundary:</strong> Once does not claim universal exactly-once execution. Safety depends on stable operation identity, durable Once state, the provider integration and sufficiently authoritative provider truth. When the outcome cannot be established safely, Once can preserve uncertainty rather than assume another external execution is safe.</div>
+<div class="cta"><h2>Use Once for this failure mode</h2><p>Once is the execution-safety layer between autonomous software and supported consequential real-world side effects.</p><pre><code>npx -y @once-agent/mcp</code></pre><p>Official MCP Registry identity: <code>io.github.stringsofthemind-oss/once</code></p><p><a href="../#tester">Try the Once tester</a> · <a href="https://www.npmjs.com/package/@once-agent/mcp">MCP package</a> · <a href="https://github.com/stringsofthemind-oss/once">Source</a></p></div>
+</article></main><footer class="footer"><div class="wrap"><a href="../">Once</a><a href="../llms.txt">llms.txt</a><a href="../agent.md">Agent guide</a><span>AI agent execution safety · MCP idempotency · safe retries</span></div></footer></body></html>

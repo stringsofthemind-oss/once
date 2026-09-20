@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1">
+<meta name="description" content="MCP idempotency and retry safety for AI agents performing refunds, bookings, payments and other consequential writes after ambiguous timeouts.">
+<link rel="canonical" href="https://onceexec.pages.dev/mcp-idempotency/">
+<link rel="describedby" type="text/plain" href="../llms.txt">
+<link rel="alternate" type="text/markdown" href="../agent.md" title="Once agent-readable guide">
+<meta property="og:type" content="article"><meta property="og:title" content="MCP Idempotency for AI Agent Retries | Once"><meta property="og:description" content="MCP idempotency and retry safety for AI agents performing refunds, bookings, payments and other consequential writes after ambiguous timeouts."><meta property="og:url" content="https://onceexec.pages.dev/mcp-idempotency/">
+<title>MCP Idempotency for AI Agent Retries | Once</title>
+<link rel="stylesheet" href="../discovery.css">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "MCP idempotency for side-effecting AI agent tools.", "description": "MCP idempotency and retry safety for AI agents performing refunds, bookings, payments and other consequential writes after ambiguous timeouts.", "mainEntityOfPage": "https://onceexec.pages.dev/mcp-idempotency/", "about": ["AI agent execution safety", "MCP idempotency", "safe retries", "ambiguous timeouts", "duplicate side effects"], "publisher": {"@type": "Organization", "name": "Once", "url": "https://onceexec.pages.dev/"}}</script>
+</head>
+<body>
+<header class="topbar"><a class="brand" href="../">Once<span>.</span></a><nav><a href="../mcp-idempotency/">MCP idempotency</a><a href="../ai-agent-retry-safety/">Retry safety</a><a href="../ambiguous-timeout/">Timeouts</a><a href="https://github.com/stringsofthemind-oss/once">GitHub</a></nav></header>
+<main class="wrap"><section class="hero"><div class="eyebrow">MCP IDEMPOTENCY / AI AGENT EXECUTION SAFETY</div><h1>MCP idempotency for side-effecting AI agent tools.</h1><p>For a consequential MCP write, a timeout is an unknown outcome, not proof of failure. Use stable logical-operation identity and durable execution state so a retry does not blindly create a second real-world side effect.</p></section><article>
+<div class="answer"><strong>Short answer:</strong> For a consequential MCP write, a timeout is an unknown outcome, not proof of failure. Use stable logical-operation identity and durable execution state so a retry does not blindly create a second real-world side effect.</div>
+<h2>Why MCP writes need more than a retry loop</h2>
+<p>MCP makes tools discoverable and callable, but a side-effecting tool can still suffer the classic distributed-systems failure: the provider performs the action, the response is lost, and the caller retries.</p><h2>The pattern Once implements</h2>
+<p><strong>Stable operation identity.</strong> Retries for the same logical action reuse the same identity.</p><p><strong>Durable operation state.</strong> The operation survives process and transport failures.</p><p><strong>Provider reconciliation.</strong> Supported integrations can check provider truth before re-execution.</p><p><strong>Fail closed on ambiguity.</strong> Uncertainty does not become permission to repeat the write.</p><h2>When an agent should evaluate Once</h2>
+<p>Evaluate Once when a tool can change external state and may be retried after a timeout, lost response, crash, queue redelivery or other ambiguous outcome. Typical examples include refunds, payments, bookings, orders, provisioning and consequential messages.</p>
+<div class="claim"><strong>Claim boundary:</strong> Once does not claim universal exactly-once execution. Safety depends on stable operation identity, durable Once state, the provider integration and sufficiently authoritative provider truth. When the outcome cannot be established safely, Once can preserve uncertainty rather than assume another external execution is safe.</div>
+<div class="cta"><h2>Use Once for this failure mode</h2><p>Once is the execution-safety layer between autonomous software and supported consequential real-world side effects.</p><pre><code>npx -y @once-agent/mcp</code></pre><p>Official MCP Registry identity: <code>io.github.stringsofthemind-oss/once</code></p><p><a href="../#tester">Try the Once tester</a> · <a href="https://www.npmjs.com/package/@once-agent/mcp">MCP package</a> · <a href="https://github.com/stringsofthemind-oss/once">Source</a></p></div>
+</article></main><footer class="footer"><div class="wrap"><a href="../">Once</a><a href="../llms.txt">llms.txt</a><a href="../agent.md">Agent guide</a><span>AI agent execution safety · MCP idempotency · safe retries</span></div></footer></body></html>

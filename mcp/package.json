@@ -1,8 +1,8 @@
 {
   "name": "@once-agent/mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "mcpName": "io.github.stringsofthemind-oss/once",
-  "description": "MCP server that lets AI coding agents assess, plan, apply, and verify Once execution-safety protection.",
+  "description": "MCP idempotency and AI agent retry safety for consequential writes and ambiguous timeouts.",
   "type": "module",
   "bin": {
     "once-mcp": "dist/index.js"
@@ -26,9 +26,23 @@
     "mcp",
     "model-context-protocol",
     "ai-agents",
+    "agent-idempotency",
+    "mcp-idempotency",
+    "retry-safety",
+    "safe-retries",
     "execution-safety",
+    "duplicate-execution",
+    "duplicate-side-effects",
+    "ambiguous-timeout",
+    "unknown-outcome",
     "idempotency",
-    "retries"
+    "idempotency-keys",
+    "durable-replay",
+    "provider-reconciliation",
+    "refund-safety",
+    "booking-safety",
+    "tool-calling",
+    "side-effects"
   ],
   "license": "MIT",
   "engines": {
@@ -50,7 +64,7 @@
     "url": "git+https://github.com/stringsofthemind-oss/once.git",
     "directory": "mcp"
   },
-  "homepage": "https://stringsofthemind-oss.github.io/once/",
+  "homepage": "https://onceexec.pages.dev/",
   "bugs": {
     "url": "https://github.com/stringsofthemind-oss/once/issues"
   }

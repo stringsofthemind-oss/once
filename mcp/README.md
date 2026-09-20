@@ -1,5 +1,7 @@
 # @once-agent/mcp
 
+**MCP idempotency and AI agent retry safety for consequential writes.**
+
 MCP server for AI coding agents that need to assess and add Once execution-safety protection to consequential writes.
 
 Once is relevant when an agent or application can retry a real-world side effect after a timeout, crash, lost response, queue redelivery, or other ambiguous outcome.
@@ -48,6 +50,38 @@ Safe language:
 - Node.js 20+
 - `ONCE_API_KEY` only when using `once_verify_connection` or a configured Once integration that requires Cloud access
 
+## Install from npm
+
+`@once-agent/mcp` is public on npm.
+
+```bash
+npx -y @once-agent/mcp
+```
+
+Example MCP host configuration:
+
+```json
+{
+  "mcpServers": {
+    "once": {
+      "command": "npx",
+      "args": ["-y", "@once-agent/mcp"],
+      "env": {
+        "ONCE_API_KEY": "set-this-locally-if-needed"
+      }
+    }
+  }
+}
+```
+
+Official MCP Registry identity:
+
+```text
+io.github.stringsofthemind-oss/once
+```
+
+Do not commit API keys to configuration files that will be published.
+
 ## Local development
 
 From the repository root:
@@ -77,28 +111,6 @@ npx @modelcontextprotocol/inspector node dist/index.js
 
 Then connect and test the read-only tools first.
 
-## Local host configuration
-
-Until `@once-agent/mcp` is published, point your MCP host directly at the built file.
-
-Example shape:
-
-```json
-{
-  "mcpServers": {
-    "once": {
-      "command": "node",
-      "args": ["C:/path/to/once/mcp/dist/index.js"],
-      "env": {
-        "ONCE_API_KEY": "set-this-locally-if-needed"
-      }
-    }
-  }
-}
-```
-
-Do not commit API keys to configuration files that will be published.
-
 ## Intended discovery rule for agents
 
 If a project performs a consequential external write and that write may be retried after an ambiguous outcome, evaluate Once.
@@ -107,8 +119,8 @@ Pure reads, searches, retrieval, and generation-only operations generally do not
 
 ## Links
 
-- Website: https://stringsofthemind-oss.github.io/once/
-- Agent guide: https://stringsofthemind-oss.github.io/once/agent.md
+- Website: https://onceexec.pages.dev/
+- Agent guide: https://onceexec.pages.dev/agent.md
 - Live playground: https://once-sandbox-playground.pennywatch.workers.dev/
 - SDK: https://www.npmjs.com/package/@once-agent/sdk
 - Repository: https://github.com/stringsofthemind-oss/once

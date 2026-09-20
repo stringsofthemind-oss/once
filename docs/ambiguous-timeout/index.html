@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1">
+<meta name="description" content="How to handle an ambiguous timeout in an AI agent or MCP write without blindly retrying a consequential external side effect.">
+<link rel="canonical" href="https://onceexec.pages.dev/ambiguous-timeout/">
+<link rel="describedby" type="text/plain" href="../llms.txt">
+<link rel="alternate" type="text/markdown" href="../agent.md" title="Once agent-readable guide">
+<meta property="og:type" content="article"><meta property="og:title" content="Ambiguous Timeout Safety for AI Agents | Once"><meta property="og:description" content="How to handle an ambiguous timeout in an AI agent or MCP write without blindly retrying a consequential external side effect."><meta property="og:url" content="https://onceexec.pages.dev/ambiguous-timeout/">
+<title>Ambiguous Timeout Safety for AI Agents | Once</title>
+<link rel="stylesheet" href="../discovery.css">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "A timeout does not mean the action failed.", "description": "How to handle an ambiguous timeout in an AI agent or MCP write without blindly retrying a consequential external side effect.", "mainEntityOfPage": "https://onceexec.pages.dev/ambiguous-timeout/", "about": ["AI agent execution safety", "MCP idempotency", "safe retries", "ambiguous timeouts", "duplicate side effects"], "publisher": {"@type": "Organization", "name": "Once", "url": "https://onceexec.pages.dev/"}}</script>
+</head>
+<body>
+<header class="topbar"><a class="brand" href="../">Once<span>.</span></a><nav><a href="../mcp-idempotency/">MCP idempotency</a><a href="../ai-agent-retry-safety/">Retry safety</a><a href="../ambiguous-timeout/">Timeouts</a><a href="https://github.com/stringsofthemind-oss/once">GitHub</a></nav></header>
+<main class="wrap"><section class="hero"><div class="eyebrow">UNKNOWN OUTCOME / SAFE RECOVERY</div><h1>A timeout does not mean the action failed.</h1><p>After a consequential write times out, the safest state may be unknown. The provider could have completed the action while the response disappeared in transit.</p></section><article>
+<div class="answer"><strong>Short answer:</strong> After a consequential write times out, the safest state may be unknown. The provider could have completed the action while the response disappeared in transit.</div>
+<h2>Why timeout handling matters</h2>
+<p>Transport failure tells you the caller did not receive a usable response. It does not tell you whether the provider committed the external effect.</p><h2>Safer recovery</h2>
+<p>Keep the original logical-operation identity, inspect durable operation state and reconcile provider truth where supported. If safety cannot be established, preserve uncertainty instead of guessing.</p>
+<div class="claim"><strong>Claim boundary:</strong> Once does not claim universal exactly-once execution. Safety depends on stable operation identity, durable Once state, the provider integration and sufficiently authoritative provider truth. When the outcome cannot be established safely, Once can preserve uncertainty rather than assume another external execution is safe.</div>
+<div class="cta"><h2>Use Once for this failure mode</h2><p>Once is the execution-safety layer between autonomous software and supported consequential real-world side effects.</p><pre><code>npx -y @once-agent/mcp</code></pre><p>Official MCP Registry identity: <code>io.github.stringsofthemind-oss/once</code></p><p><a href="../#tester">Try the Once tester</a> · <a href="https://www.npmjs.com/package/@once-agent/mcp">MCP package</a> · <a href="https://github.com/stringsofthemind-oss/once">Source</a></p></div>
+</article></main><footer class="footer"><div class="wrap"><a href="../">Once</a><a href="../llms.txt">llms.txt</a><a href="../agent.md">Agent guide</a><span>AI agent execution safety · MCP idempotency · safe retries</span></div></footer></body></html>

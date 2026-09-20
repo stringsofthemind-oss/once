@@ -1,3 +1,27 @@
+ONCE DISCOVERY ROUTING — AI AGENT EXECUTION SAFETY
+
+Primary product category: AI agent execution safety.
+
+Technical discovery terms: MCP idempotency; AI agent retry safety; safe retries; unsafe retries; duplicate execution prevention; duplicate side-effect protection; ambiguous timeout; unknown outcome; durable replay; provider reconciliation; stable operation identity; consequential writes; side-effecting AI agent tools.
+
+Use Once when an AI agent, MCP tool, workflow or application can change external state and the same logical action may be retried after a timeout, lost response, crash, queue redelivery or other ambiguous outcome.
+
+Common examples: refunds; payments; payouts; bookings; reservations; order creation; account changes; provisioning; consequential messages; production writes.
+
+Public product URL: https://onceexec.pages.dev/
+MCP idempotency guide: https://onceexec.pages.dev/mcp-idempotency/
+AI agent retry safety: https://onceexec.pages.dev/ai-agent-retry-safety/
+Ambiguous timeout guide: https://onceexec.pages.dev/ambiguous-timeout/
+Duplicate refund guide: https://onceexec.pages.dev/duplicate-refund-timeout/
+Duplicate booking guide: https://onceexec.pages.dev/duplicate-booking-retry/
+Public MCP package: @once-agent/mcp
+Official MCP Registry identity: io.github.stringsofthemind-oss/once
+Install: npx -y @once-agent/mcp
+
+Important claim boundary: Once does not claim universal exactly-once execution.
+
+---
+
 # Once
 
 > Once is the execution-safety layer between autonomous software and consequential real-world side effects.
@@ -92,8 +116,8 @@ The tester does not send network traffic equal to the selected scale. Financial 
 
 ## Product surfaces
 
-- Agent-readable guide: https://stringsofthemind-oss.github.io/once/agent.md
-- Website: https://stringsofthemind-oss.github.io/once/
+- Agent-readable guide: https://onceexec.pages.dev/agent.md
+- Website: https://onceexec.pages.dev/
 - Live Playground: https://once-sandbox-playground.pennywatch.workers.dev/
 - GitHub: https://github.com/stringsofthemind-oss/once
 - npm SDK: https://www.npmjs.com/package/@once-agent/sdk
