@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "sdk/typescript/**"
+      - "conformance/**"
       - ".github/workflows/sdk-ci.yml"
   push:
     branches:
@@ -11,6 +12,7 @@ on:
       - benchmark/phase1-instrumentation
     paths:
       - "sdk/typescript/**"
+      - "conformance/**"
       - ".github/workflows/sdk-ci.yml"
 
 permissions:
@@ -38,19 +40,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Frozen vector hash diagnostics
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          import hashlib
-
-          path = Path('../../conformance/once-id-v1-vectors.json')
-          data = path.read_bytes()
-          print('actual-lf:', hashlib.sha256(data).hexdigest())
-          print('as-crlf:', hashlib.sha256(data.replace(b'\n', b'\r\n')).hexdigest())
-          print('expected:', Path('../../conformance/once-id-v1-vectors.json.sha256').read_text().split()[0])
-          PY
 
       - name: Run release suite
         run: npm run test:release
