@@ -17,8 +17,40 @@
 
 <meta
   name="description"
-  content="Once makes side-effecting AI agent tools safe to retry."
+  content="Once is execution-safety infrastructure for consequential AI-agent side effects. It uses stable operation identity, durable state, replay, reconciliation and fail-closed decisions to make retries safer."
 >
+
+<link
+  rel="canonical"
+  href="https://stringsofthemind-oss.github.io/once/"
+>
+
+<link
+  rel="describedby"
+  type="text/plain"
+  href="./llms.txt"
+>
+
+<link
+  rel="alternate"
+  type="text/markdown"
+  href="./agent.md"
+  title="Once agent-readable product guide"
+>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Once",
+  "applicationCategory": "DeveloperApplication",
+  "softwareVersion": "0.1.5",
+  "url": "https://stringsofthemind-oss.github.io/once/",
+  "downloadUrl": "https://www.npmjs.com/package/@once-agent/sdk",
+  "codeRepository": "https://github.com/stringsofthemind-oss/once",
+  "description": "Execution-safety infrastructure for supported consequential AI-agent and application side effects."
+}
+</script>
 
 <title>Once — Agent Execution Safety</title>
 
@@ -1092,226 +1124,257 @@ HERO
 
   <div class="scene-content">
 
-    <div class="chapter-head reveal">
+    <div class="once-scale-tester">
 
-      <span class="chapter-number">
-        05 · TESTER
-      </span>
-
-      <div>
-
-        <h2>
-          Model the exposure.
-          <br>
-          Change the assumptions yourself.
-        </h2>
-
-        <p>
-          Estimate how many consequential operations may encounter
-          retry exposure, then see how coverage changes the residual
-          workload. These are calculated model outputs, not measured
-          production results.
-        </p>
-
-      </div>
-
-    </div>
-
-
-    <div class="tester-ui reveal">
-
-      <div class="tester-top">
-
+      <div class="once-scale-intro reveal visible">
         <div>
-
-          <span class="tiny-label">
-            ONCE TESTER
-          </span>
-
-          <strong>
-            Retry exposure model
-          </strong>
-
+          <span class="once-scale-kicker">05 · TESTER / SCALE COMPARISON</span>
+          <h2>
+            Put your own traffic through the model.<br>
+            See the retry problem at your scale.
+          </h2>
+          <p>
+            Feed the same consequential traffic into both sides. The left models blind retry execution.
+            The right models Once on the confirmed replay path. Use your own call volume — from one action to ten billion.
+          </p>
         </div>
 
-        <span class="pill">
-          INTERACTIVE
-        </span>
-
+        <div class="once-scale-promise">
+          <small>THE POINT</small>
+          <strong>Once doesn't stop your agents retrying. It makes retries safe.</strong>
+        </div>
       </div>
 
+      <div class="once-scale-shell reveal visible">
 
-      <div class="tester-live-grid">
+        <div class="once-scale-toolbar">
+          <div>
+            <small>ONCE / CUSTOMER SCALE TESTER</small>
+            <strong>Without Once vs With Once</strong>
+          </div>
+          <span class="once-scale-badge">SCALE SIMULATION</span>
+        </div>
 
-        <div class="tester-controls">
+        <div class="once-scale-controls">
 
-
-          <label class="tester-field">
-
-            <span>
-              CONSEQUENTIAL OPERATIONS / MONTH
-            </span>
-
+          <label class="once-scale-field">
+            <span>CONSEQUENTIAL CALLS</span>
             <input
+              class="once-scale-input"
               id="onceOps"
               type="number"
               min="1"
-              max="1000000000"
+              max="10000000000"
               step="1000"
-              value="100000"
+              value="10000000"
               inputmode="numeric"
             >
-
-            <small>
-              INPUT
-            </small>
-
           </label>
 
+          <label class="once-scale-field">
+            <span>PERIOD</span>
+            <select class="once-scale-select" id="oncePeriod">
+              <option value="month" selected>PER MONTH</option>
+              <option value="day">PER DAY</option>
+            </select>
+          </label>
 
-          <label class="tester-field">
-
-            <span>
-              RETRY EXPOSURE
-            </span>
-
-            <div class="tester-input-suffix">
-
+          <label class="once-scale-field">
+            <span>RETRY / DUPLICATE RATE</span>
+            <div class="once-scale-input-wrap">
               <input
+                class="once-scale-input"
                 id="onceRetry"
                 type="number"
                 min="0"
                 max="100"
                 step="0.01"
-                value="1"
+                value="0.10"
                 inputmode="decimal"
               >
-
-              <b>%</b>
-
+              <b class="once-scale-suffix">%</b>
             </div>
-
-            <small>
-              INPUT / ESTIMATE
+            <small class="once-scale-helper" id="onceRetryTranslation">
+              = 10,000 retry events / month
             </small>
-
           </label>
 
-
-          <label class="tester-field">
-
-            <span>
-              ONCE COVERAGE
-            </span>
-
-            <div class="tester-input-suffix">
-
+          <label class="once-scale-field">
+            <span>AVG VALUE / ACTION</span>
+            <div class="once-scale-input-wrap">
               <input
-                id="onceCoverage"
+                class="once-scale-input"
+                id="onceValue"
                 type="number"
                 min="0"
-                max="100"
+                max="1000000000"
                 step="1"
-                value="70"
+                value="75"
                 inputmode="decimal"
               >
-
-              <b>%</b>
-
+              <b class="once-scale-suffix">£</b>
             </div>
+          </label>
 
-            <small>
-              INPUT / ESTIMATE
-            </small>
-
+          <label class="once-scale-field">
+            <span>ACTION TYPE</span>
+            <select class="once-scale-select" id="onceScenario">
+              <option value="payment" selected>PAYMENT</option>
+              <option value="booking">BOOKING</option>
+              <option value="order">ORDER</option>
+              <option value="email">EMAIL</option>
+              <option value="provision">PROVISION ACCOUNT</option>
+              <option value="deploy">PRODUCTION DEPLOYMENT</option>
+            </select>
           </label>
 
         </div>
 
+        <div class="once-scale-presets" aria-label="Traffic presets">
+          <span>TRAFFIC PRESETS</span>
+          <button class="once-scale-preset" type="button" data-once-scale="10000">10K</button>
+          <button class="once-scale-preset" type="button" data-once-scale="100000">100K</button>
+          <button class="once-scale-preset" type="button" data-once-scale="1000000">1M</button>
+          <button class="once-scale-preset active" type="button" data-once-scale="10000000">10M</button>
+          <button class="once-scale-preset" type="button" data-once-scale="100000000">100M</button>
+          <button class="once-scale-preset" type="button" data-once-scale="1000000000">1B</button>
+          <button class="once-scale-preset" type="button" data-once-scale="10000000000">10B</button>
+        </div>
 
-        <div class="tester-results">
+        <div class="once-scale-presets" aria-label="Retry rate presets">
+          <span>RETRY RATE</span>
+          <button class="once-scale-preset" type="button" data-once-retry="0.01">0.01%</button>
+          <button class="once-scale-preset active" type="button" data-once-retry="0.10">0.10%</button>
+          <button class="once-scale-preset" type="button" data-once-retry="0.50">0.50%</button>
+          <button class="once-scale-preset" type="button" data-once-retry="1">1.00%</button>
+          <button class="once-scale-preset" type="button" data-once-retry="5">5.00%</button>
+        </div>
 
-          <div class="model-stat">
+        <div class="once-scale-runbar">
+          <p>
+            This is a client-side scale model. Enter 10B and the browser performs arithmetic — it does not send 10B requests.
+            The live proof environment is linked below.
+          </p>
+          <button class="once-scale-run button-primary" id="onceScaleRun" type="button">RUN COMPARISON</button>
+        </div>
 
-            <small>
-              EXPOSED RETRIES / MONTH
-            </small>
+        <div class="once-scale-comparison" id="onceScaleComparison">
 
-            <strong id="onceExposed">
-              1,000
-            </strong>
-
-            <span>
-              CALCULATED
-            </span>
-
-          </div>
-
-
-          <div class="model-stat">
-
-            <small>
-              COVERED BY ONCE
-            </small>
-
-            <strong
-              id="onceProtected"
-              class="green"
-            >
-              700
-            </strong>
-
-            <span>
-              CALCULATED
-            </span>
-
-          </div>
-
-
-          <div class="model-stat">
-
-            <small>
-              RESIDUAL EXPOSURE
-            </small>
-
-            <strong id="onceResidual">
-              300
-            </strong>
-
-            <span>
-              CALCULATED
-            </span>
-
-          </div>
-
-
-          <div class="model-summary">
-
-            <div>
-
-              <small>
-                MODEL COVERAGE
-              </small>
-
-              <strong id="onceCoverageReadout">
-                70%
-              </strong>
-
+          <section class="once-scale-side without">
+            <div class="once-scale-side-head">
+              <div>
+                <small>WITHOUT ONCE</small>
+                <strong>Blind retry</strong>
+              </div>
+              <span class="once-scale-state">RE-EXECUTE</span>
             </div>
 
-            <div class="meter">
-              <i id="onceCoverageMeter"></i>
+            <div class="once-scale-metrics">
+              <div class="once-scale-metric">
+                <small>INCOMING ATTEMPTS / <span data-once-period-label>MONTH</span></small>
+                <strong id="onceWithoutAttempts">10,010,000</strong>
+                <span>original calls + retries</span>
+              </div>
+
+              <div class="once-scale-metric">
+                <small>PROVIDER EXECUTIONS / <span data-once-period-label>MONTH</span></small>
+                <strong id="onceWithoutExec">10,010,000</strong>
+                <span>modeled · if every retry is executed again</span>
+              </div>
+
+              <div class="once-scale-metric">
+                <small>RETRY EXECUTION OPPORTUNITIES</small>
+                <strong class="once-scale-danger" id="onceWithoutDupes">10,000</strong>
+                <span>same logical work arrives again</span>
+              </div>
+
+              <div class="once-scale-metric">
+                <small>VALUE THROUGH RETRY AMBIGUITY</small>
+                <strong class="once-scale-danger" id="onceWithoutValue">£750,000</strong>
+                <span>not a savings claim</span>
+              </div>
             </div>
 
-            <p>
-              Replace these assumptions with measured project data
-              as your Once integration matures.
-            </p>
+            <div class="once-scale-verdict">
+              <small>DECISION</small>
+              <strong>Retry the call and hope the first attempt did not already take effect.</strong>
+            </div>
+          </section>
 
-          </div>
+          <section class="once-scale-side with">
+            <div class="once-scale-side-head">
+              <div>
+                <small>WITH ONCE</small>
+                <strong>Safe retry path</strong>
+              </div>
+              <span class="once-scale-state">REPLAY / BLOCK</span>
+            </div>
+
+            <div class="once-scale-metrics">
+              <div class="once-scale-metric">
+                <small>INCOMING ATTEMPTS / <span data-once-period-label>MONTH</span></small>
+                <strong id="onceWithAttempts">10,010,000</strong>
+                <span>same traffic, same retry pressure</span>
+              </div>
+
+              <div class="once-scale-metric">
+                <small>PROVIDER EXECUTIONS / <span data-once-period-label>MONTH</span></small>
+                <strong class="once-scale-safe" id="onceWithExec">10,000,000</strong>
+                <span>modeled · confirmed replay path</span>
+              </div>
+
+              <div class="once-scale-metric">
+                <small>RETRIES INTERCEPTED</small>
+                <strong class="once-scale-safe" id="onceWithReplays">10,000</strong>
+                <span>replay instead of execute again</span>
+              </div>
+
+              <div class="once-scale-metric">
+                <small>BLIND RE-EXECUTIONS</small>
+                <strong class="once-scale-safe" id="onceWithBlind">0</strong>
+                <span>on confirmed replay path</span>
+              </div>
+            </div>
+
+            <div class="once-scale-verdict">
+              <small>DECISION</small>
+              <strong>CONFIRMED → replay. ABSENT → execute. UNKNOWN → block rather than guess.</strong>
+            </div>
+          </section>
 
         </div>
 
+        <div class="once-scale-impact" id="onceScaleImpact">
+          <div>
+            <small>AT YOUR SCALE</small>
+            <strong id="onceImpactHeadline">10,000 modeled blind retry executions removed.</strong>
+            <span id="onceImpactDetail">
+              £750,000 of payment value passes through those retry events. This is exposure context, not a claim that every retry becomes a duplicate charge.
+            </span>
+            <span class="once-scale-annual" id="onceAnnualized">
+              Annualized exposure context: 120,000 retry events; £9,000,000 of payment value passes through retry-exposed operations.
+            </span>
+          </div>
+
+          <a
+            class="once-scale-proof-link"
+            href="https://once-sandbox-playground.pennywatch.workers.dev/"
+            target="_blank"
+            rel="noopener"
+          >
+            OPEN LIVE PROOF ↗
+          </a>
+        </div>
+
+      </div>
+
+      <div class="once-scale-footnotes">
+        <div class="once-scale-note">
+          <b>What the left side means:</b> it deliberately models the dangerous baseline where a retry is blindly sent to a non-idempotent provider and executes again. Real providers may have their own protections.
+        </div>
+        <div class="once-scale-note">
+          <b>What the right side means:</b> the execution count reflects Once's confirmed/replay path. Once does not claim generic exactly-once execution; uncertain outcomes are designed to fail closed rather than be blindly retried.
+        </div>
       </div>
 
     </div>
@@ -1319,7 +1382,6 @@ HERO
   </div>
 
 </section>
-
 
 
 <!-- ============================================
@@ -1709,6 +1771,14 @@ FINAL CTA
         View GitHub
       </a>
 
+      <a
+        class="button"
+        href="./agent.md"
+        type="text/markdown"
+      >
+        AI / Agent Guide
+      </a>
+
     </div>
 
   </div>
@@ -1741,7 +1811,7 @@ FINAL CTA
 
 
   <span>
-    SDK 0.1.4
+    SDK 0.1.5
   </span>
 
 </footer>
