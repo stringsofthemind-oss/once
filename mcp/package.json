@@ -1,6 +1,7 @@
 {
   "name": "@once-agent/mcp",
   "version": "0.1.0",
+  "mcpName": "io.github.stringsofthemind-oss/once",
   "description": "MCP server that lets AI coding agents assess, plan, apply, and verify Once execution-safety protection.",
   "type": "module",
   "bin": {
