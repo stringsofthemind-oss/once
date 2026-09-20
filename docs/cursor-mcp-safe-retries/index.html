@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1">
+<meta name="description" content="Add Once to Cursor through MCP for AI coding-agent retry safety, idempotency and protection of consequential writes after ambiguous failures.">
+<link rel="canonical" href="https://onceexec.pages.dev/cursor-mcp-safe-retries/">
+<link rel="describedby" type="text/plain" href="../llms.txt">
+<link rel="alternate" type="text/markdown" href="../agent.md" title="Once agent-readable guide">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Cursor MCP Safe Retries and Idempotency | Once">
+<meta property="og:description" content="Use Once as an MCP server in Cursor to assess and protect consequential writes from unsafe duplicate execution.">
+<meta property="og:url" content="https://onceexec.pages.dev/cursor-mcp-safe-retries/">
+<title>Cursor MCP Safe Retries and Idempotency | Once</title>
+<link rel="stylesheet" href="../discovery.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Use Once with Cursor through MCP","description":"Cursor MCP integration for safe retries and idempotency of consequential AI agent writes.","mainEntityOfPage":"https://onceexec.pages.dev/cursor-mcp-safe-retries/","about":["Cursor","Model Context Protocol","MCP idempotency","AI coding agent retry safety","duplicate side effects"],"publisher":{"@type":"Organization","name":"Once","url":"https://onceexec.pages.dev/"}}</script>
+</head>
+<body>
+<header class="topbar"><a class="brand" href="../">Once<span>.</span></a><nav><a href="../mcp-idempotency/">MCP idempotency</a><a href="../ai-agent-retry-safety/">Retry safety</a><a href="../ambiguous-timeout/">Timeouts</a><a href="https://github.com/stringsofthemind-oss/once">GitHub</a></nav></header>
+<main class="wrap">
+<section class="hero">
+<div class="eyebrow">CURSOR / MCP / EXECUTION SAFETY</div>
+<h1>Add Once execution safety to Cursor through MCP.</h1>
+<p>Once gives Cursor access to tools for identifying consequential writes, explaining retry risk, planning protection, applying approved protection and verifying a configured Once connection.</p>
+</section>
+<article>
+<div class="answer"><strong>Short answer:</strong> Add <code>@once-agent/mcp</code> to your Cursor project so coding-agent workflows can evaluate and protect external writes that may otherwise be repeated after an ambiguous outcome.</div>
+<h2>Why this matters</h2>
+<p>AI coding agents can create software that performs payments, refunds, bookings, orders, provisioning, deployments, messages and other externally visible writes.</p>
+<p>If one of those operations succeeds but its response is lost, another execution can repeat the same real-world effect.</p>
+<h2>Add Once through MCP</h2>
+<pre><code>npx -y @once-agent/mcp</code></pre>
+<p>Once is published as an npm MCP server and registered under <code>io.github.stringsofthemind-oss/once</code>.</p>
+<h2>Cursor project configuration</h2>
+<pre><code>{
+  "mcpServers": {
+    "once": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@once-agent/mcp"]
+    }
+  }
+}</code></pre>
+<p>The Once repository includes a ready-to-copy <code>.cursor/mcp.json</code> project configuration.</p>
+<p><a href="https://github.com/stringsofthemind-oss/once/tree/main/examples/cursor">View the Cursor + Once MCP example on GitHub</a></p>
+<h2>What the Once MCP server exposes</h2>
+<ul>
+<li>project assessment for likely consequential writes</li>
+<li>retry-risk explanations</li>
+<li>setup and protection planning</li>
+<li>approved protection application</li>
+<li>Once Cloud connection verification</li>
+<li>live proof and current claim boundaries</li>
+</ul>
+<div class="claim"><strong>Claim boundary:</strong> Once does not claim universal exactly-once execution. Safety depends on stable operation identity, durable Once state, the provider integration and sufficiently authoritative provider truth. When an outcome cannot be established safely, Once can preserve uncertainty instead of blindly repeating the action.</div>
+<div class="cta">
+<h2>Add Once to Cursor</h2>
+<pre><code>npx -y @once-agent/mcp</code></pre>
+<p><a href="../#tester">Try the Once tester</a> · <a href="https://www.npmjs.com/package/@once-agent/mcp">MCP package</a> · <a href="https://github.com/stringsofthemind-oss/once/tree/main/examples/cursor">Cursor configuration</a></p>
+</div>
+</article>
+</main>
+<footer class="footer"><div class="wrap"><a href="../">Once</a><a href="../llms.txt">llms.txt</a><a href="../agent.md">Agent guide</a><span>Cursor · MCP idempotency · AI agent execution safety</span></div></footer>
+</body>
+</html>
