@@ -477,6 +477,106 @@
         100% { transform: translateY(0); opacity: 1; }
       }
 
+      .once-scale-stage {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 15px;
+        align-items: start;
+        padding: 18px 20px;
+        border-top: 1px solid rgba(255,255,255,.08);
+        border-bottom: 1px solid rgba(255,255,255,.08);
+        background: linear-gradient(
+          90deg,
+          rgba(141,255,159,.045),
+          rgba(255,255,255,.012)
+        );
+      }
+
+      .once-scale-stage-number {
+        width: 34px;
+        height: 34px;
+        display: grid;
+        place-items: center;
+        border: 1px solid rgba(141,255,159,.34);
+        color: #a8ffb6;
+        font: 800 10px/1 var(--mono, monospace);
+        letter-spacing: .08em;
+      }
+
+      .once-scale-stage-copy small {
+        display: block;
+        margin-bottom: 5px;
+        color: rgba(255,255,255,.4);
+        font: 800 9px/1 var(--mono, monospace);
+        letter-spacing: .15em;
+        text-transform: uppercase;
+      }
+
+      .once-scale-stage-copy strong {
+        display: block;
+        color: #eef7f1;
+        font-size: 17px;
+        line-height: 1.2;
+      }
+
+      .once-scale-stage-copy p {
+        max-width: 820px;
+        margin: 6px 0 0;
+        color: rgba(255,255,255,.48);
+        font-size: 12px;
+        line-height: 1.55;
+      }
+
+      .once-scale-close {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 24px;
+        align-items: center;
+        padding: 25px 22px;
+        border: 1px solid rgba(141,255,159,.25);
+        background:
+          linear-gradient(
+            120deg,
+            rgba(19,64,36,.22),
+            rgba(5,8,10,.82)
+          );
+      }
+
+      .once-scale-close small {
+        display: block;
+        margin-bottom: 8px;
+        color: #9ffaad;
+        font: 800 9px/1 var(--mono, monospace);
+        letter-spacing: .15em;
+      }
+
+      .once-scale-close strong {
+        display: block;
+        max-width: 760px;
+        color: #e8ffec;
+        font-size: clamp(22px, 3vw, 38px);
+        line-height: 1.05;
+      }
+
+      .once-scale-close p {
+        max-width: 720px;
+        margin: 10px 0 0;
+        color: rgba(255,255,255,.52);
+        font-size: 12px;
+        line-height: 1.6;
+      }
+
+      .once-scale-close-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+        min-width: 205px;
+      }
+
+      .once-scale-close-actions .once-scale-proof-link {
+        width: 100%;
+      }
+
       @media (max-width: 1000px) {
         .once-scale-intro,
         .once-scale-controls {
@@ -493,6 +593,7 @@
         .once-scale-controls,
         .once-scale-comparison,
         .once-scale-impact,
+        .once-scale-close,
         .once-scale-footnotes,
         .once-scale-runbar {
           grid-template-columns: 1fr;
@@ -556,6 +657,17 @@
           <span class="once-scale-badge">SCALE SIMULATION</span>
         </div>
 
+        <div class="once-scale-stage">
+          <span class="once-scale-stage-number">01</span>
+          <div class="once-scale-stage-copy">
+            <small>YOUR SYSTEM</small>
+            <strong>Start with the traffic you actually run.</strong>
+            <p>
+              Enter your consequential call volume, period and a realistic retry rate.
+              Use conservative assumptions — the point is to expose the retry path, not inflate it.
+            </p>
+          </div>
+        </div>
         <div class="once-scale-controls">
 
           <label class="once-scale-field">
@@ -659,6 +771,17 @@
           <button class="once-scale-run button-primary" id="onceScaleRun" type="button">RUN COMPARISON</button>
         </div>
 
+        <div class="once-scale-stage">
+          <span class="once-scale-stage-number">02</span>
+          <div class="once-scale-stage-copy">
+            <small>THE RETRY DECISION</small>
+            <strong>Now give the same retry pressure two different paths.</strong>
+            <p>
+              The left models blind re-execution. The right models Once on the confirmed
+              replay path: replay known success, execute known absence, and block uncertainty.
+            </p>
+          </div>
+        </div>
         <div class="once-scale-comparison" id="onceScaleComparison">
 
           <section class="once-scale-side without">
@@ -747,7 +870,7 @@
 
         <div class="once-scale-impact" id="onceScaleImpact">
           <div>
-            <small>AT YOUR SCALE</small>
+            <small>03 · WHAT THAT MEANS AT YOUR SCALE</small>
             <strong id="onceImpactHeadline">10,000 modeled blind retry executions removed.</strong>
             <span id="onceImpactDetail">
               £750,000 of payment value passes through those retry events. This is exposure context, not a claim that every retry becomes a duplicate charge.
@@ -769,6 +892,34 @@
 
       </div>
 
+      <div class="once-scale-close">
+        <div>
+          <small>04 · VERIFY IT FOR YOURSELF</small>
+          <strong>The model gives you the scale. The sandbox gives you the proof.</strong>
+          <p>
+            Trigger an ambiguous outcome, retry the same stable operation and inspect
+            the result yourself. If the mechanism makes sense, the install path is immediately below.
+          </p>
+        </div>
+
+        <div class="once-scale-close-actions">
+          <a
+            class="once-scale-proof-link"
+            href="https://once-sandbox-playground.pennywatch.workers.dev/"
+            target="_blank"
+            rel="noopener"
+          >
+            RUN LIVE RETRY PROOF ↗
+          </a>
+
+          <a
+            class="once-scale-proof-link"
+            href="#developers"
+          >
+            VIEW INSTALL PATH ↓
+          </a>
+        </div>
+      </div>
       <div class="once-scale-footnotes">
         <div class="once-scale-note">
           <b>What the left side means:</b> it deliberately models the dangerous baseline where a retry is blindly sent to a non-idempotent provider and executes again. Real providers may have their own protections.
