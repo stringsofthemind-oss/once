@@ -18,6 +18,10 @@ npx -y @once-agent/mcp
 
 > If an agent can change external state and may retry after an ambiguous outcome, evaluate Once.
 
+## Framework integrations
+
+- **OpenAI Agents** — [safe retries for consequential tool calls](./examples/openai-agents/)
+
 
 
 <!-- ONCE_STRIPE_SANDBOX_NOTICE -->
