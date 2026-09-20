@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1">
+<meta name="description" content="Add Once to Claude Code through MCP for AI agent retry safety, idempotency and protection of consequential writes after ambiguous failures.">
+<link rel="canonical" href="https://onceexec.pages.dev/claude-code-mcp-safe-retries/">
+<link rel="describedby" type="text/plain" href="../llms.txt">
+<link rel="alternate" type="text/markdown" href="../agent.md" title="Once agent-readable guide">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Claude Code MCP Safe Retries and Idempotency | Once">
+<meta property="og:description" content="Use Once as an MCP server in Claude Code to assess and protect consequential writes from unsafe duplicate execution.">
+<meta property="og:url" content="https://onceexec.pages.dev/claude-code-mcp-safe-retries/">
+<title>Claude Code MCP Safe Retries and Idempotency | Once</title>
+<link rel="stylesheet" href="../discovery.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Use Once with Claude Code through MCP","description":"Claude Code MCP integration for safe retries and idempotency of consequential AI agent writes.","mainEntityOfPage":"https://onceexec.pages.dev/claude-code-mcp-safe-retries/","about":["Claude Code","Model Context Protocol","MCP idempotency","AI agent retry safety","duplicate side effects"],"publisher":{"@type":"Organization","name":"Once","url":"https://onceexec.pages.dev/"}}</script>
+</head>
+<body>
+<header class="topbar"><a class="brand" href="../">Once<span>.</span></a><nav><a href="../mcp-idempotency/">MCP idempotency</a><a href="../ai-agent-retry-safety/">Retry safety</a><a href="../ambiguous-timeout/">Timeouts</a><a href="https://github.com/stringsofthemind-oss/once">GitHub</a></nav></header>
+<main class="wrap">
+<section class="hero">
+<div class="eyebrow">CLAUDE CODE / MCP / EXECUTION SAFETY</div>
+<h1>Add Once execution safety to Claude Code through MCP.</h1>
+<p>Once gives Claude Code access to tools for identifying consequential writes, explaining retry risk, planning protection, applying approved protection and verifying a configured Once connection.</p>
+</section>
+<article>
+<div class="answer"><strong>Short answer:</strong> Run <code>@once-agent/mcp</code> as a Claude Code MCP server so coding-agent workflows can evaluate and protect external writes that may otherwise be repeated after an ambiguous outcome.</div>
+<h2>Why this matters</h2>
+<p>A coding agent can create or modify software that performs payments, refunds, bookings, orders, provisioning, deployments, messages and other externally visible writes.</p>
+<p>If one of those operations succeeds but its response is lost, a blind retry can perform the same real-world effect again.</p>
+<h2>Add Once through MCP</h2>
+<pre><code>npx -y @once-agent/mcp</code></pre>
+<p>Once is published as an npm MCP server and registered under <code>io.github.stringsofthemind-oss/once</code>.</p>
+<h2>Project configuration</h2>
+<p>The Once repository includes ready-to-copy Claude Code MCP configuration examples for Windows and macOS/Linux.</p>
+<p><a href="https://github.com/stringsofthemind-oss/once/tree/main/examples/claude-code">View the Claude Code + Once configuration examples on GitHub</a></p>
+<h2>What the Once MCP server exposes</h2>
+<ul>
+<li>project assessment for likely consequential writes</li>
+<li>retry-risk explanations</li>
+<li>setup and protection planning</li>
+<li>approved protection application</li>
+<li>Once Cloud connection verification</li>
+<li>live proof and current claim boundaries</li>
+</ul>
+<div class="claim"><strong>Claim boundary:</strong> Once does not claim universal exactly-once execution. Safety depends on stable operation identity, durable Once state, the provider integration and sufficiently authoritative provider truth. When an outcome cannot be established safely, Once can preserve uncertainty instead of blindly repeating the action.</div>
+<div class="cta">
+<h2>Add Once to Claude Code</h2>
+<pre><code>npx -y @once-agent/mcp</code></pre>
+<p><a href="../#tester">Try the Once tester</a> · <a href="https://www.npmjs.com/package/@once-agent/mcp">MCP package</a> · <a href="https://github.com/stringsofthemind-oss/once/tree/main/examples/claude-code">Claude Code configuration</a></p>
+</div>
+</article>
+</main>
+<footer class="footer"><div class="wrap"><a href="../">Once</a><a href="../llms.txt">llms.txt</a><a href="../agent.md">Agent guide</a><span>Claude Code · MCP idempotency · AI agent execution safety</span></div></footer>
+</body>
+</html>
