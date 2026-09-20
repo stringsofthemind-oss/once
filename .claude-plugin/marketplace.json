@@ -10,7 +10,6 @@
     {
       "name": "once",
       "description": "Adds Once execution-safety tools for consequential writes, ambiguous outcomes and safe retries.",
-      "version": "0.1.0",
       "source": "./plugins/claude-code/once",
       "category": "security"
     }
