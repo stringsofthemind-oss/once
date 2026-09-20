@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "once": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@once-agent/mcp"]
+    }
+  }
+}
