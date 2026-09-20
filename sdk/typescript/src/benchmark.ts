@@ -27,9 +27,11 @@ export interface BenchmarkMetrics {
   eligible_repeated_observations: number;
   unchanged_repeats: number;
   changed_repeats: number;
-  safely_avoidable_observations: number;
-  avoidance_rate: number;
+  hindsight_repeat_opportunities: number;
+  hindsight_avoidance_upper_bound: number;
   evaluated_once_decisions: number;
+  safely_avoidable_observations: number;
+  avoidance_rate: number | null;
   real_changes_with_once_decision: number;
   real_changes_correctly_detected: number;
   change_recall: number | null;
@@ -113,8 +115,8 @@ export function calculateBenchmarkMetrics(
   let eligibleRepeatedObservations = 0;
   let unchangedRepeats = 0;
   let changedRepeats = 0;
-  let safelyAvoidableObservations = 0;
   let evaluatedOnceDecisions = 0;
+  let safelyAvoidableObservations = 0;
   let realChangesWithOnceDecision = 0;
   let realChangesCorrectlyDetected = 0;
   let staleStateErrors = 0;
@@ -148,9 +150,11 @@ export function calculateBenchmarkMetrics(
 
       if (actuallyChanged) {
         realChangesWithOnceDecision += 1;
+
         if (observation.once_decision === "CHANGED") {
           realChangesCorrectlyDetected += 1;
         }
+
         if (observation.once_decision === "UNCHANGED") {
           staleStateErrors += 1;
         }
@@ -160,20 +164,20 @@ export function calculateBenchmarkMetrics(
         responseBytesAvoidable += finiteNumber(observation.response_bytes);
         upstreamCostAvoidable += finiteNumber(observation.upstream_cost);
       }
-    } else if (!actuallyChanged) {
-      // Ground-truth upper bound when a shadow Once decision was not recorded.
-      safelyAvoidableObservations += 1;
-      latencyAvoidableMs += finiteNumber(observation.latency_ms);
-      responseBytesAvoidable += finiteNumber(observation.response_bytes);
-      upstreamCostAvoidable += finiteNumber(observation.upstream_cost);
     }
 
     previousByResource.set(observation.resource, observation);
   }
 
-  const avoidanceRate = eligibleRepeatedObservations === 0
+  const hindsightRepeatOpportunities = unchangedRepeats;
+
+  const hindsightAvoidanceUpperBound = eligibleRepeatedObservations === 0
     ? 0
-    : safelyAvoidableObservations / eligibleRepeatedObservations;
+    : hindsightRepeatOpportunities / eligibleRepeatedObservations;
+
+  const avoidanceRate = evaluatedOnceDecisions === 0
+    ? null
+    : safelyAvoidableObservations / evaluatedOnceDecisions;
 
   const changeRecall = realChangesWithOnceDecision === 0
     ? null
@@ -194,9 +198,11 @@ export function calculateBenchmarkMetrics(
     eligible_repeated_observations: eligibleRepeatedObservations,
     unchanged_repeats: unchangedRepeats,
     changed_repeats: changedRepeats,
+    hindsight_repeat_opportunities: hindsightRepeatOpportunities,
+    hindsight_avoidance_upper_bound: hindsightAvoidanceUpperBound,
+    evaluated_once_decisions: evaluatedOnceDecisions,
     safely_avoidable_observations: safelyAvoidableObservations,
     avoidance_rate: avoidanceRate,
-    evaluated_once_decisions: evaluatedOnceDecisions,
     real_changes_with_once_decision: realChangesWithOnceDecision,
     real_changes_correctly_detected: realChangesCorrectlyDetected,
     change_recall: changeRecall,
@@ -225,8 +231,11 @@ export async function runBenchmark(tracePath: string): Promise<BenchmarkMetrics>
   console.log(`Observations: ${metrics.observations}`);
   console.log(`Unique resources: ${metrics.unique_resources}`);
   console.log(`Eligible repeated observations: ${metrics.eligible_repeated_observations}`);
-  console.log(`Safely avoidable: ${metrics.safely_avoidable_observations}`);
-  console.log(`Avoidance rate: ${percent(metrics.avoidance_rate)}`);
+  console.log(`Hindsight repeat opportunities: ${metrics.hindsight_repeat_opportunities}`);
+  console.log(`Hindsight avoidance upper bound: ${percent(metrics.hindsight_avoidance_upper_bound)}`);
+  console.log(`Shadow Once decisions evaluated: ${metrics.evaluated_once_decisions}`);
+  console.log(`Safely avoided by Once: ${metrics.safely_avoidable_observations}`);
+  console.log(`Measured avoidance rate: ${percent(metrics.avoidance_rate)}`);
   console.log(`Change recall: ${percent(metrics.change_recall)}`);
   console.log(`Stale-state errors: ${metrics.stale_state_errors}`);
   console.log(`Avoidable upstream latency: ${metrics.latency_avoidable_ms.toFixed(0)} ms`);
