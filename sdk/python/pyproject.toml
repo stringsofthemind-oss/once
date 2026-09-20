@@ -15,9 +15,19 @@ authors = [
 keywords = [
   "ai",
   "agents",
+  "ai-agents",
+  "mcp",
+  "model-context-protocol",
   "idempotency",
   "reliability",
-  "execution-safety"
+  "execution-safety",
+  "safe-retries",
+  "retry-safety",
+  "agent-safety",
+  "distributed-systems",
+  "ambiguous-timeout",
+  "duplicate-side-effects",
+  "provider-reconciliation"
 ]
 
 classifiers = [
