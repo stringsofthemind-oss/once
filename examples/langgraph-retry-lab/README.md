@@ -277,3 +277,50 @@ operation and returned the original receipt instead of creating another effect.
 
 This result demonstrates the tested failure boundary. It is not a claim that
 all LangGraph retries duplicate side effects.
+
+## Verified reconciliation run
+
+The reconciliation edition was executed successfully with real LangGraph
+process restart and three independent SQLite durability boundaries:
+
+```text
+langgraph.sqlite  = workflow checkpoint truth
+operations.sqlite = logical operation truth
+provider.sqlite   = external-world truth
+```
+
+Observed framework-level results:
+
+```text
+CASE 1  NAIVE
+external_effects=2
+verdict=DUPLICATED
+
+CASE 2  STABLE
+external_effects=1
+verdict=ONE_EXTERNAL_EFFECT
+
+CASE 3  RECONCILE
+external_effects=1
+recovery=RECONCILED
+state=CONFIRMED
+
+CASE 4  UNKNOWN
+external_effects=1
+state=UNKNOWN
+verdict=BLOCKED
+
+CASE 4B  RECOVERY
+external_effects=1
+transition=UNKNOWN->CONFIRMED
+recovery=RECONCILED
+```
+
+Case 4 demonstrates fail-closed execution when provider truth is insufficient.
+Case 4B demonstrates that availability can later recover without repeating the
+external side effect.
+
+The key distinction is:
+
+> Checkpoint state tells you what the workflow remembers.
+> Reconciliation tells you what reality did.
