@@ -1,4 +1,23 @@
-﻿# @once-agent/sdk
+# @once-agent/sdk
+
+## Once — AI Agent Execution Safety
+
+**MCP idempotency and safe retries for consequential AI agent writes.**
+
+Once helps protect supported refunds, bookings, payments and other externally visible side effects from unsafe duplicate execution after ambiguous timeouts, lost responses and retries.
+
+- Website: https://onceexec.pages.dev/
+- MCP idempotency guide: https://onceexec.pages.dev/mcp-idempotency/
+- AI agent retry safety: https://onceexec.pages.dev/ai-agent-retry-safety/
+- MCP package: `@once-agent/mcp`
+- MCP Registry: `io.github.stringsofthemind-oss/once`
+
+```bash
+npx -y @once-agent/mcp
+```
+
+> If an agent can change external state and may retry after an ambiguous outcome, evaluate Once.
+
 
 
 <!-- ONCE_STRIPE_SANDBOX_NOTICE -->

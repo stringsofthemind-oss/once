@@ -10,7 +10,7 @@ import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import * as z from "zod/v4";
 
 const SERVER_NAME = "once-agent";
-const SERVER_VERSION = "0.1.0";
+const SERVER_VERSION = "0.1.1";
 const MAX_OUTPUT_CHARS = 250_000;
 const DEFAULT_TIMEOUT_MS = 120_000;
 

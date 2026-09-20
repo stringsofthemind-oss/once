@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1">
+<meta name="description" content="AI agent retry safety for consequential writes: prevent unsafe duplicate side effects after timeouts, lost responses, crashes and ambiguous outcomes.">
+<link rel="canonical" href="https://onceexec.pages.dev/ai-agent-retry-safety/">
+<link rel="describedby" type="text/plain" href="../llms.txt">
+<link rel="alternate" type="text/markdown" href="../agent.md" title="Once agent-readable guide">
+<meta property="og:type" content="article"><meta property="og:title" content="AI Agent Retry Safety for Consequential Writes | Once"><meta property="og:description" content="AI agent retry safety for consequential writes: prevent unsafe duplicate side effects after timeouts, lost responses, crashes and ambiguous outcomes."><meta property="og:url" content="https://onceexec.pages.dev/ai-agent-retry-safety/">
+<title>AI Agent Retry Safety for Consequential Writes | Once</title>
+<link rel="stylesheet" href="../discovery.css">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "Make AI agent retries safe at the execution boundary.", "description": "AI agent retry safety for consequential writes: prevent unsafe duplicate side effects after timeouts, lost responses, crashes and ambiguous outcomes.", "mainEntityOfPage": "https://onceexec.pages.dev/ai-agent-retry-safety/", "about": ["AI agent execution safety", "MCP idempotency", "safe retries", "ambiguous timeouts", "duplicate side effects"], "publisher": {"@type": "Organization", "name": "Once", "url": "https://onceexec.pages.dev/"}}</script>
+</head>
+<body>
+<header class="topbar"><a class="brand" href="../">Once<span>.</span></a><nav><a href="../mcp-idempotency/">MCP idempotency</a><a href="../ai-agent-retry-safety/">Retry safety</a><a href="../ambiguous-timeout/">Timeouts</a><a href="https://github.com/stringsofthemind-oss/once">GitHub</a></nav></header>
+<main class="wrap"><section class="hero"><div class="eyebrow">SAFE RETRIES / AUTONOMOUS SOFTWARE</div><h1>Make AI agent retries safe at the execution boundary.</h1><p>Retries are useful for reads and transient failures, but become dangerous when an AI agent can cause an irreversible or externally visible side effect. The safety boundary should distinguish a new logical action from another attempt at the same action.</p></section><article>
+<div class="answer"><strong>Short answer:</strong> Retries are useful for reads and transient failures, but become dangerous when an AI agent can cause an irreversible or externally visible side effect. The safety boundary should distinguish a new logical action from another attempt at the same action.</div>
+<h2>The dangerous retry sequence</h2>
+<ol><li>The agent requests a consequential write.</li><li>The provider performs it.</li><li>The response is lost.</li><li>The agent cannot tell whether it happened.</li><li>A blind retry risks performing it again.</li></ol><h2>Once's role</h2>
+<p>Once combines stable operation identity, durable state, replay and provider-specific reconciliation so supported operations can be resolved without blindly repeating the external side effect.</p>
+<div class="claim"><strong>Claim boundary:</strong> Once does not claim universal exactly-once execution. Safety depends on stable operation identity, durable Once state, the provider integration and sufficiently authoritative provider truth. When the outcome cannot be established safely, Once can preserve uncertainty rather than assume another external execution is safe.</div>
+<div class="cta"><h2>Use Once for this failure mode</h2><p>Once is the execution-safety layer between autonomous software and supported consequential real-world side effects.</p><pre><code>npx -y @once-agent/mcp</code></pre><p>Official MCP Registry identity: <code>io.github.stringsofthemind-oss/once</code></p><p><a href="../#tester">Try the Once tester</a> · <a href="https://www.npmjs.com/package/@once-agent/mcp">MCP package</a> · <a href="https://github.com/stringsofthemind-oss/once">Source</a></p></div>
+</article></main><footer class="footer"><div class="wrap"><a href="../">Once</a><a href="../llms.txt">llms.txt</a><a href="../agent.md">Agent guide</a><span>AI agent execution safety · MCP idempotency · safe retries</span></div></footer></body></html>

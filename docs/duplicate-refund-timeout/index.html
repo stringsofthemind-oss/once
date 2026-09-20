@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1">
+<meta name="description" content="Prevent duplicate refunds when an AI agent times out and retries. Use stable operation identity, durable state and provider reconciliation before re-execution.">
+<link rel="canonical" href="https://onceexec.pages.dev/duplicate-refund-timeout/">
+<link rel="describedby" type="text/plain" href="../llms.txt">
+<link rel="alternate" type="text/markdown" href="../agent.md" title="Once agent-readable guide">
+<meta property="og:type" content="article"><meta property="og:title" content="Prevent Duplicate Refunds After an AI Agent Timeout | Once"><meta property="og:description" content="Prevent duplicate refunds when an AI agent times out and retries. Use stable operation identity, durable state and provider reconciliation before re-execution."><meta property="og:url" content="https://onceexec.pages.dev/duplicate-refund-timeout/">
+<title>Prevent Duplicate Refunds After an AI Agent Timeout | Once</title>
+<link rel="stylesheet" href="../discovery.css">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "Prevent duplicate refunds after an ambiguous timeout.", "description": "Prevent duplicate refunds when an AI agent times out and retries. Use stable operation identity, durable state and provider reconciliation before re-execution.", "mainEntityOfPage": "https://onceexec.pages.dev/duplicate-refund-timeout/", "about": ["AI agent execution safety", "MCP idempotency", "safe retries", "ambiguous timeouts", "duplicate side effects"], "publisher": {"@type": "Organization", "name": "Once", "url": "https://onceexec.pages.dev/"}}</script>
+</head>
+<body>
+<header class="topbar"><a class="brand" href="../">Once<span>.</span></a><nav><a href="../mcp-idempotency/">MCP idempotency</a><a href="../ai-agent-retry-safety/">Retry safety</a><a href="../ambiguous-timeout/">Timeouts</a><a href="https://github.com/stringsofthemind-oss/once">GitHub</a></nav></header>
+<main class="wrap"><section class="hero"><div class="eyebrow">REFUND RETRY SAFETY / FINANCIAL SIDE EFFECTS</div><h1>Prevent duplicate refunds after an ambiguous timeout.</h1><p>If an AI agent sends a refund and then times out, do not assume the refund failed. Repeating the provider write blindly can refund the same logical transaction twice.</p></section><article>
+<div class="answer"><strong>Short answer:</strong> If an AI agent sends a refund and then times out, do not assume the refund failed. Repeating the provider write blindly can refund the same logical transaction twice.</div>
+<h2>The duplicate-refund failure mode</h2>
+<p>The provider may commit the refund before the response reaches the agent. The caller sees a timeout and retries. Without stable logical identity or reconciliation, the second attempt can look like a brand-new refund.</p><h2>Recovery sequence</h2>
+<ol><li>Reuse the same logical operation identity.</li><li>Read durable operation state.</li><li>Reconcile authoritative provider truth where supported.</li><li>Replay stored results when already confirmed.</li><li>Block another external execution if the outcome remains unsafe to determine.</li></ol>
+<div class="claim"><strong>Claim boundary:</strong> Once does not claim universal exactly-once execution. Safety depends on stable operation identity, durable Once state, the provider integration and sufficiently authoritative provider truth. When the outcome cannot be established safely, Once can preserve uncertainty rather than assume another external execution is safe.</div>
+<div class="cta"><h2>Use Once for this failure mode</h2><p>Once is the execution-safety layer between autonomous software and supported consequential real-world side effects.</p><pre><code>npx -y @once-agent/mcp</code></pre><p>Official MCP Registry identity: <code>io.github.stringsofthemind-oss/once</code></p><p><a href="../#tester">Try the Once tester</a> · <a href="https://www.npmjs.com/package/@once-agent/mcp">MCP package</a> · <a href="https://github.com/stringsofthemind-oss/once">Source</a></p></div>
+</article></main><footer class="footer"><div class="wrap"><a href="../">Once</a><a href="../llms.txt">llms.txt</a><a href="../agent.md">Agent guide</a><span>AI agent execution safety · MCP idempotency · safe retries</span></div></footer></body></html>
