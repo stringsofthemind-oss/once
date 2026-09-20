@@ -27,6 +27,10 @@ npx -y @once-agent/mcp
 - **CrewAI** — [safe retries for consequential agent tools](./examples/crewai/)
 - **Microsoft Agent Framework** — [safe retries for consequential agent tools](./examples/microsoft-agent-framework/)
 
+## MCP host integrations
+
+- **Claude Code** — [add Once as a project-scoped MCP server](./examples/claude-code/)
+
 
 
 <!-- ONCE_STRIPE_SANDBOX_NOTICE -->
