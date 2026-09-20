@@ -1,0 +1,11 @@
+{
+  "name": "once",
+  "version": "0.1.0",
+  "description": "Adds Once execution-safety tools for consequential AI-agent writes, ambiguous outcomes and safe retries.",
+  "author": {
+    "name": "Once"
+  },
+  "homepage": "https://onceexec.pages.dev/claude-code-mcp-safe-retries/",
+  "repository": "https://github.com/stringsofthemind-oss/once",
+  "license": "MIT"
+}
