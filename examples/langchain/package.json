@@ -1,0 +1,16 @@
+{
+  "name": "once-langchain-example",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Safe retries for consequential LangChain and LangGraph agent tool calls with Once.",
+  "scripts": {
+    "start": "node --env-file=.env index.mjs"
+  },
+  "dependencies": {
+    "@langchain/openai": "^1.5.13",
+    "@once-agent/sdk": "^0.1.5",
+    "langchain": "^1.5.11",
+    "zod": "^4.6.5"
+  }
+}
