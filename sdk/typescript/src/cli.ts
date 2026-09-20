@@ -163,7 +163,7 @@ function printHelp(): void {
   console.log("");
 
   console.log(
-    "  once setup [directory]"
+    "  once setup [directory] [--runtime-http=<target-url>]"
   );
 
   console.log(
@@ -171,7 +171,7 @@ function printHelp(): void {
   );
 
   console.log(
-    "      Use --plan to preview without changes."
+    "      Use --plan to preview; --runtime-http=<https-url> enables Runtime HTTP replay protection."
   );
 
   console.log("");
@@ -402,6 +402,31 @@ async function main(): Promise<void> {
           "--skip-install"
         );
 
+      const runtimeHttpArgument =
+        args.find(
+          value =>
+            value.startsWith(
+              "--runtime-http="
+            )
+        );
+
+      const runtimeHttp =
+        args.includes(
+          "--runtime-http"
+        ) ||
+        Boolean(
+          runtimeHttpArgument
+        );
+
+      const runtimeHttpTargetUrl =
+        runtimeHttpArgument
+          ? runtimeHttpArgument
+              .substring(
+                "--runtime-http=".length
+              )
+              .trim()
+          : undefined;
+
       const requestedPath =
         args.find(
           value =>
@@ -413,7 +438,9 @@ async function main(): Promise<void> {
         {
           autoConfirm,
           planOnly,
-          skipInstall
+          skipInstall,
+          runtimeHttp,
+          runtimeHttpTargetUrl
         }
       );
 

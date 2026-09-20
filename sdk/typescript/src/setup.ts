@@ -20,6 +20,8 @@ type SetupOptions = {
   autoConfirm?: boolean;
   planOnly?: boolean;
   skipInstall?: boolean;
+  runtimeHttp?: boolean;
+  runtimeHttpTargetUrl?: string;
 };
 
 type ProviderRegistration = {
@@ -923,7 +925,8 @@ async function registerProvider(
   apiKey: string,
   name: string,
   providerUrl: string,
-  token: string
+  token: string,
+  runtimeHttpTargetUrl?: string
 ): Promise<ProviderRegistration> {
 
   const response =
@@ -942,7 +945,18 @@ async function registerProvider(
           type: "http_v1",
           base_url:
             providerUrl,
-          token
+          token,
+          ...(
+            runtimeHttpTargetUrl
+              ? {
+                  response_replay:
+                    "required",
+                  allowed_urls: [
+                    runtimeHttpTargetUrl
+                  ]
+                }
+              : {}
+          )
         })
       }
     );
@@ -978,6 +992,16 @@ async function registerProvider(
   if (!versionId) {
     throw new Error(
       "Provider registration did not return a version ID."
+    );
+  }
+
+  if (
+    runtimeHttpTargetUrl &&
+    body.response_replay !==
+      "required"
+  ) {
+    throw new Error(
+      "Provider registration did not confirm required HTTP response replay capability."
     );
   }
 
@@ -1095,7 +1119,8 @@ async function writeOnceConfig(
   baseUrl: string,
   providerName: string,
   providerUrl: string,
-  versionId: string
+  versionId: string,
+  runtimeHttpTargetUrl?: string
 ): Promise<void> {
 
   const onceDirectory =
@@ -1118,7 +1143,18 @@ async function writeOnceConfig(
       name: providerName,
       type: "http_v1",
       base_url: providerUrl,
-      version_id: versionId
+      version_id: versionId,
+      ...(
+        runtimeHttpTargetUrl
+          ? {
+              response_replay:
+                "required",
+              allowed_urls: [
+                runtimeHttpTargetUrl
+              ]
+            }
+          : {}
+      )
     }
   };
 
@@ -1137,8 +1173,97 @@ async function writeOnceConfig(
 }
 
 function printQuickstart(
-  providerName: string
+  providerName: string,
+  runtimeHttpTargetUrl?: string
 ): void {
+  if (runtimeHttpTargetUrl) {
+    console.log("");
+    console.log(
+      "YOUR FIRST RUNTIME-PROTECTED FETCH"
+    );
+    console.log(
+      "----------------------------------"
+    );
+    console.log("");
+    console.log(
+      "Save this as app.mjs:"
+    );
+    console.log("");
+    console.log(
+      'import { createOnceRuntimeFetch } from "@once-agent/sdk";'
+    );
+    console.log("");
+    console.log(
+      "const onceFetch = createOnceRuntimeFetch({"
+    );
+    console.log(
+      `  provider: ${JSON.stringify(providerName)}`
+    );
+    console.log(
+      "});"
+    );
+    console.log("");
+    console.log(
+      "async function main() {"
+    );
+    console.log(
+      `  const response = await onceFetch(${JSON.stringify(runtimeHttpTargetUrl)}, {`
+    );
+    console.log(
+      '    method: "POST",'
+    );
+    console.log(
+      "    headers: {"
+    );
+    console.log(
+      '      "content-type": "application/json",'
+    );
+    console.log(
+      '      "idempotency-key": "your-stable-business-id"'
+    );
+    console.log(
+      "    },"
+    );
+    console.log(
+      "    body: JSON.stringify({"
+    );
+    console.log(
+      "      example: true"
+    );
+    console.log(
+      "    })"
+    );
+    console.log(
+      "  });"
+    );
+    console.log("");
+    console.log(
+      "  console.log(response.status);"
+    );
+    console.log(
+      "  console.log(await response.text());"
+    );
+    console.log(
+      "}"
+    );
+    console.log("");
+    console.log(
+      "main().catch(console.error);"
+    );
+    console.log("");
+    console.log(
+      "For vanilla Node with the .env created by setup:"
+    );
+    console.log(
+      "  node --env-file=.env app.mjs"
+    );
+    console.log("");
+    console.log(
+      "Rule: retry the same real-world action with the same idempotency key."
+    );
+    return;
+  }
+
 
   console.log("");
   console.log(
@@ -1688,6 +1813,82 @@ export async function runSetup(
       );
     }
 
+    let runtimeHttpTargetUrl =
+      "";
+
+
+    if (options.runtimeHttp) {
+      runtimeHttpTargetUrl =
+        String(
+          options.runtimeHttpTargetUrl ||
+          process.env.ONCE_SETUP_RUNTIME_TARGET_URL ||
+          (
+            rl
+              ? await rl.question(
+                  "Protected target HTTPS URL: "
+                )
+              : ""
+          )
+        ).trim();
+
+
+      if (!runtimeHttpTargetUrl) {
+        throw new Error(
+          "Runtime HTTP setup requires an exact protected target URL. Use --runtime-http=<https-url> or ONCE_SETUP_RUNTIME_TARGET_URL."
+        );
+      }
+
+
+      let parsedRuntimeTarget:
+        URL;
+
+      try {
+        parsedRuntimeTarget =
+          new URL(
+            runtimeHttpTargetUrl
+          );
+      }
+      catch {
+        throw new Error(
+          "Runtime HTTP target URL is invalid."
+        );
+      }
+
+
+      if (
+        parsedRuntimeTarget.protocol !==
+          "https:"
+      ) {
+        throw new Error(
+          "Runtime HTTP target URL must use HTTPS."
+        );
+      }
+
+
+      if (
+        parsedRuntimeTarget.username ||
+        parsedRuntimeTarget.password ||
+        parsedRuntimeTarget.hash
+      ) {
+        throw new Error(
+          "Runtime HTTP target URL cannot contain credentials or a fragment."
+        );
+      }
+
+
+      parsedRuntimeTarget.searchParams.sort();
+
+      runtimeHttpTargetUrl =
+        parsedRuntimeTarget
+          .toString();
+
+      console.log("");
+      console.log(
+        `Runtime HTTP replay target: ${runtimeHttpTargetUrl}`
+      );
+    }
+
+
     let providerToken =
       String(
         process.env.ONCE_SETUP_PROVIDER_TOKEN ||
@@ -1723,7 +1924,8 @@ export async function runSetup(
         apiKey,
         providerName,
         providerUrl,
-        providerToken
+        providerToken,
+        runtimeHttpTargetUrl || undefined
       );
 
     providerToken = "";
@@ -1737,7 +1939,8 @@ export async function runSetup(
       baseUrl,
       providerName,
       providerUrl,
-      provider.version_id
+      provider.version_id,
+      runtimeHttpTargetUrl || undefined
     );
 
     console.log(
@@ -1763,7 +1966,8 @@ export async function runSetup(
     );
 
     printQuickstart(
-      providerName
+      providerName,
+      runtimeHttpTargetUrl || undefined
     );
 
     if (
