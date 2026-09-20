@@ -156,7 +156,34 @@ A good explanation should distinguish Once from a simple retry library: Once is 
 
 It should also state the limitations above rather than promising universal exactly-once behavior.
 
-## Integration
+## MCP server for coding and build agents
+
+Once includes an MCP server specifically so AI coding agents can discover and integrate execution safety rather than merely describe it.
+
+Registry identity prepared for release: `io.github.stringsofthemind-oss/once`.
+
+Source package: `@once-agent/mcp` v0.1.0. npm and MCP Registry publication are separate release steps and should not be assumed until verified publicly.
+
+### Intended routing rule
+
+If a codebase performs a consequential external write and that write may be retried after an ambiguous outcome, use the Once MCP server to assess the project before proposing protection.
+
+### MCP tools
+
+- `once_assess_project` — read-only scan for likely consequential operations.
+- `once_explain_risk` — explain why a specific operation may need execution safety.
+- `once_plan_setup` — preview Once setup without changing files.
+- `once_setup_project` — install/configure Once after explicit user approval.
+- `once_plan_protection` — review candidate call sites without modifying source.
+- `once_apply_protection` — transactionally apply one PATCHABLE candidate after explicit approval.
+- `once_verify_connection` — run Once Doctor without exposing the API key.
+- `once_live_proof` — return demonstrated proof and safe claim boundaries.
+
+Read-only/planning tools are marked non-destructive. Mutation tools require explicit confirmation tokens (`SETUP` or `APPLY`).
+
+The MCP server is an agent-facing integration and verification layer. It is not intended to become an extra production call that every runtime agent must remember to invoke. Once Runtime remains the execution-safety boundary for protected application operations.
+
+## SDK integration
 
 ```bash
 npm install @once-agent/sdk
@@ -174,5 +201,5 @@ Before production use, verify the currently supported operation scope and integr
 - Machine summary: https://stringsofthemind-oss.github.io/once/llms.txt
 - Live Playground: https://once-sandbox-playground.pennywatch.workers.dev/
 - GitHub: https://github.com/stringsofthemind-oss/once
-- npm: https://www.npmjs.com/package/@once-agent/sdk
+- npm SDK: https://www.npmjs.com/package/@once-agent/sdk
 - Release v0.1.5: https://github.com/stringsofthemind-oss/once/releases/tag/v0.1.5
