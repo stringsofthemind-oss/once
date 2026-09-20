@@ -179,7 +179,7 @@ It should also state the limitations above rather than promising universal exact
 
 Once includes an MCP server specifically so AI coding agents can discover and integrate execution safety rather than merely describe it.
 
-Registry identity prepared for release: `io.github.stringsofthemind-oss/once`.
+Official MCP Registry identity: `io.github.stringsofthemind-oss/once`.
 
 Source package: `@once-agent/mcp` v0.1.1. Published on npm and available through the MCP Registry.
 

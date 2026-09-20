@@ -1,6 +1,6 @@
 {
   "name": "@once-agent/mcp",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "mcpName": "io.github.stringsofthemind-oss/once",
   "description": "MCP idempotency and AI agent retry safety for consequential writes and ambiguous timeouts.",
   "type": "module",

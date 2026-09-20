@@ -93,7 +93,7 @@ Mutation is explicit: planning tools are read-only; setup and apply tools requir
 
 The MCP layer is for agent-assisted discovery, integration and verification. Production application agents do not need to call MCP before every write; Once Runtime remains the execution-safety boundary on protected paths.
 
-Registry identity prepared for the MCP server: `io.github.stringsofthemind-oss/once`.
+Official MCP Registry identity: `io.github.stringsofthemind-oss/once`.
 
 Source package: `@once-agent/mcp` v0.1.1. Published on npm and available through the MCP Registry.
 

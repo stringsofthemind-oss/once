@@ -10,7 +10,7 @@ import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import * as z from "zod/v4";
 
 const SERVER_NAME = "once-agent";
-const SERVER_VERSION = "0.1.1";
+const SERVER_VERSION = "0.1.2";
 const MAX_OUTPUT_CHARS = 250_000;
 const DEFAULT_TIMEOUT_MS = 120_000;
 
@@ -482,8 +482,8 @@ function createServer(): McpServer {
         links: {
           playground: "https://once-sandbox-playground.pennywatch.workers.dev/",
           release: "https://github.com/stringsofthemind-oss/once/releases/tag/v0.1.5",
-          agentGuide: "https://stringsofthemind-oss.github.io/once/agent.md",
-          website: "https://stringsofthemind-oss.github.io/once/"
+          agentGuide: "https://onceexec.pages.dev/agent.md",
+          website: "https://onceexec.pages.dev/"
         }
       };
 
