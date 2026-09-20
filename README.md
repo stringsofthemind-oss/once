@@ -19,6 +19,20 @@ npx -y @once-agent/mcp
 
 > If an agent can change external state and may retry after an ambiguous outcome, evaluate Once.
 
+## Why Once exists — reproducible crash test
+
+The [LangGraph hostile-retry lab](./examples/langgraph-retry-lab/) reproduces the failure boundary with real `StateGraph` execution, `SqliteSaver`, hard process termination and fresh-process recovery.
+
+It demonstrates five outcomes:
+
+- a random per-attempt UUID can produce **2 external effects** after crash/restart;
+- stable business identity plus provider idempotency produces **1 external effect**;
+- a durable claim can recover by reconciling authoritative provider truth;
+- unresolved provider truth is preserved as **UNKNOWN** and execution fails closed instead of blindly writing again;
+- when provider truth later returns, the same suspended workflow can move **UNKNOWN → CONFIRMED** without a second external effect.
+
+> **Checkpoint state tells you what the workflow remembers. Reconciliation tells you what reality did.**
+
 ## Framework integrations
 
 - **OpenAI Agents** — [safe retries for consequential tool calls](./examples/openai-agents/)
