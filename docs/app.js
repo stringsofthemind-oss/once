@@ -971,3 +971,6 @@ window.addEventListener(
   );
 
 })();
+
+// ONCE SCALE COMPARISON TESTER
+import("./tester-v2.js?v=scale-1").catch((error) => console.error("Once tester v2 failed", error));
