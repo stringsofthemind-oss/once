@@ -779,6 +779,24 @@ window.addEventListener(
       }
 
 
+      if (
+        anchor.getAttribute(
+          "href"
+        ) ===
+          "#developers" &&
+        anchor.closest(
+          ".once-scale-close-actions"
+        )
+      ) {
+
+        sendOnce(
+          "install_path_clicked"
+        );
+
+        return;
+      }
+
+
       let url;
 
       try {

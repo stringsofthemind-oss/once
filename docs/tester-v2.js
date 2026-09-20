@@ -898,7 +898,7 @@
           <strong>The model gives you the scale. The sandbox gives you the proof.</strong>
           <p>
             Trigger an ambiguous outcome, retry the same stable operation and inspect
-            the result yourself. If the mechanism makes sense, the install path is immediately below.
+            the result yourself. If the mechanism makes sense, the install path is one click away.
           </p>
         </div>
 
