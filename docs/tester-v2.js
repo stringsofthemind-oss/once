@@ -145,6 +145,21 @@
         color: rgba(255,255,255,.5);
       }
 
+      .once-scale-helper {
+        display: block;
+        margin-top: 1px;
+        font: 700 10px/1.35 var(--mono, monospace);
+        letter-spacing: .035em;
+        color: rgba(141,255,159,.72);
+      }
+
+      .once-scale-annual {
+        display: block;
+        margin-top: 8px;
+        font: 700 11px/1.5 var(--mono, monospace);
+        color: rgba(199,255,207,.72);
+      }
+
       .once-scale-input,
       .once-scale-select {
         width: 100%;
@@ -580,6 +595,9 @@
               >
               <b class="once-scale-suffix">%</b>
             </div>
+            <small class="once-scale-helper" id="onceRetryTranslation">
+              = 10,000 retry events / month
+            </small>
           </label>
 
           <label class="once-scale-field">
@@ -660,9 +678,9 @@
               </div>
 
               <div class="once-scale-metric">
-                <small>MODELED PROVIDER EXECUTIONS</small>
+                <small>PROVIDER EXECUTIONS / <span data-once-period-label>MONTH</span></small>
                 <strong id="onceWithoutExec">10,010,000</strong>
-                <span>if every retry is executed again</span>
+                <span>modeled · if every retry is executed again</span>
               </div>
 
               <div class="once-scale-metric">
@@ -701,9 +719,9 @@
               </div>
 
               <div class="once-scale-metric">
-                <small>MODELED PROVIDER EXECUTIONS</small>
+                <small>PROVIDER EXECUTIONS / <span data-once-period-label>MONTH</span></small>
                 <strong class="once-scale-safe" id="onceWithExec">10,000,000</strong>
-                <span>confirmed replay path</span>
+                <span>modeled · confirmed replay path</span>
               </div>
 
               <div class="once-scale-metric">
@@ -733,6 +751,9 @@
             <strong id="onceImpactHeadline">10,000 modeled blind retry executions removed.</strong>
             <span id="onceImpactDetail">
               £750,000 of payment value passes through those retry events. This is exposure context, not a claim that every retry becomes a duplicate charge.
+            </span>
+            <span class="once-scale-annual" id="onceAnnualized">
+              Annualized exposure context: 120,000 retry events; £9,000,000 of payment value passes through retry-exposed operations.
             </span>
           </div>
 
@@ -779,6 +800,8 @@
   const withBlind = document.getElementById("onceWithBlind");
   const impactHeadline = document.getElementById("onceImpactHeadline");
   const impactDetail = document.getElementById("onceImpactDetail");
+  const retryTranslation = document.getElementById("onceRetryTranslation");
+  const annualized = document.getElementById("onceAnnualized");
 
   const numberFormat = new Intl.NumberFormat("en-GB", {
     maximumFractionDigits: 0
@@ -819,11 +842,18 @@
     const onceExecutions = logicalCalls;
     const ambiguousValue = retryEvents * averageValue;
     const periodLabel = period.value === "day" ? "DAY" : "MONTH";
+    const periodWord = period.value === "day" ? "day" : "month";
+    const annualMultiplier = period.value === "day" ? 365 : 12;
+    const annualRetryEvents = retryEvents * annualMultiplier;
+    const annualAmbiguousValue = ambiguousValue * annualMultiplier;
     const action = scenarioNames[scenario.value] || "action";
 
     document.querySelectorAll("[data-once-period-label]").forEach((node) => {
       node.textContent = periodLabel;
     });
+
+    retryTranslation.textContent =
+      `= ${numberFormat.format(Math.round(retryEvents))} retry events / ${periodWord}`;
 
     withoutAttempts.textContent = numberFormat.format(Math.round(incomingAttempts));
     withoutExec.textContent = numberFormat.format(Math.round(blindExecutions));
@@ -835,8 +865,11 @@
     withReplays.textContent = numberFormat.format(Math.round(retryEvents));
     withBlind.textContent = "0";
 
+    const retryCountText =
+      numberFormat.format(Math.round(retryEvents));
+
     impactHeadline.textContent =
-      `${numberFormat.format(Math.round(retryEvents))} modeled blind retry executions removed.`;
+      `${retryCountText} retries. ${retryCountText} opportunities not to blindly re-execute the same protected action.`;
 
     if (averageValue > 0) {
       impactDetail.textContent =
@@ -845,6 +878,15 @@
     } else {
       impactDetail.textContent =
         `${numberFormat.format(Math.round(retryEvents))} ${action} retry events are routed away from blind re-execution on the confirmed replay path.`;
+    }
+
+    if (averageValue > 0) {
+      annualized.textContent =
+        `Annualized exposure context: ${numberFormat.format(Math.round(annualRetryEvents))} retry events; ` +
+        `${currencyFormat.format(Math.round(annualAmbiguousValue))} of ${action} value passes through retry-exposed operations.`;
+    } else {
+      annualized.textContent =
+        `Annualized: ${numberFormat.format(Math.round(annualRetryEvents))} ${action} retry events at the assumptions above.`;
     }
 
     document.querySelectorAll("[data-once-scale]").forEach((button) => {
@@ -891,8 +933,27 @@
     });
   });
 
+  let runTimer = null;
+
   run.addEventListener("click", () => {
-    render(true);
+    if (runTimer) {
+      clearTimeout(runTimer);
+    }
+
+    run.disabled = true;
+    run.textContent = "CALCULATING YOUR SCALE...";
+
+    window.setTimeout(() => {
+      render(true);
+
+      run.textContent = "COMPARISON COMPLETE";
+
+      runTimer = window.setTimeout(() => {
+        run.textContent = "RUN COMPARISON";
+        run.disabled = false;
+        runTimer = null;
+      }, 1100);
+    }, 320);
   });
 
   render(false);
