@@ -738,6 +738,20 @@ window.addEventListener(
       }
 
 
+      if (
+        copyButton &&
+        copyButton.getAttribute(
+          "data-copy"
+        ) ===
+          "npm install @once-agent/sdk"
+      ) {
+
+        sendOnce(
+          "sdk_copy_clicked"
+        );
+      }
+
+
       // Customer scale comparison executed.
 
       if (
