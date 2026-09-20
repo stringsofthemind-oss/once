@@ -2,7 +2,6 @@
 
 **MCP idempotency and AI agent retry safety for consequential writes.**
 
-
 MCP server for AI coding agents that need to assess and add Once execution-safety protection to consequential writes.
 
 Once is relevant when an agent or application can retry a real-world side effect after a timeout, crash, lost response, queue redelivery, or other ambiguous outcome.
@@ -51,6 +50,38 @@ Safe language:
 - Node.js 20+
 - `ONCE_API_KEY` only when using `once_verify_connection` or a configured Once integration that requires Cloud access
 
+## Install from npm
+
+`@once-agent/mcp` is public on npm.
+
+```bash
+npx -y @once-agent/mcp
+```
+
+Example MCP host configuration:
+
+```json
+{
+  "mcpServers": {
+    "once": {
+      "command": "npx",
+      "args": ["-y", "@once-agent/mcp"],
+      "env": {
+        "ONCE_API_KEY": "set-this-locally-if-needed"
+      }
+    }
+  }
+}
+```
+
+Official MCP Registry identity:
+
+```text
+io.github.stringsofthemind-oss/once
+```
+
+Do not commit API keys to configuration files that will be published.
+
 ## Local development
 
 From the repository root:
@@ -79,28 +110,6 @@ npx @modelcontextprotocol/inspector node dist/index.js
 ```
 
 Then connect and test the read-only tools first.
-
-## Local host configuration
-
-`@once-agent/mcp` is public on npm. Install or run it with `npx -y @once-agent/mcp`. Official MCP Registry identity: `io.github.stringsofthemind-oss/once`.
-
-Example shape:
-
-```json
-{
-  "mcpServers": {
-    "once": {
-      "command": "node",
-      "args": ["C:/path/to/once/mcp/dist/index.js"],
-      "env": {
-        "ONCE_API_KEY": "set-this-locally-if-needed"
-      }
-    }
-  }
-}
-```
-
-Do not commit API keys to configuration files that will be published.
 
 ## Intended discovery rule for agents
 
