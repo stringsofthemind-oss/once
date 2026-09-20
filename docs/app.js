@@ -90,189 +90,6 @@ window.addEventListener(
 
 
 // ==========================================================
-// ONCE TESTER — INTERACTIVE EXPOSURE MODEL
-// ==========================================================
-
-(() => {
-
-  const ops =
-    document.getElementById("onceOps");
-
-  const retry =
-    document.getElementById("onceRetry");
-
-  const coverage =
-    document.getElementById("onceCoverage");
-
-  const exposed =
-    document.getElementById("onceExposed");
-
-  const protectedOutput =
-    document.getElementById("onceProtected");
-
-  const residual =
-    document.getElementById("onceResidual");
-
-  const coverageReadout =
-    document.getElementById("onceCoverageReadout");
-
-  const coverageMeter =
-    document.getElementById("onceCoverageMeter");
-
-
-  if (
-    !ops ||
-    !retry ||
-    !coverage ||
-    !exposed ||
-    !protectedOutput ||
-    !residual ||
-    !coverageReadout ||
-    !coverageMeter
-  ) {
-    return;
-  }
-
-
-  const clamp =
-    (value, minimum, maximum) =>
-      Math.min(
-        maximum,
-        Math.max(
-          minimum,
-          value
-        )
-      );
-
-
-  const number =
-    (element, fallback) => {
-
-      const value =
-        Number(
-          element.value
-        );
-
-      return Number.isFinite(value)
-        ? value
-        : fallback;
-    };
-
-
-  const integerFormatter =
-    new Intl.NumberFormat(
-      "en-GB",
-      {
-        maximumFractionDigits: 0
-      }
-    );
-
-
-  function calculate() {
-
-    const monthlyOps =
-      clamp(
-        number(ops, 0),
-        0,
-        1_000_000_000
-      );
-
-    const retryPercent =
-      clamp(
-        number(retry, 0),
-        0,
-        100
-      );
-
-    const coveragePercent =
-      clamp(
-        number(coverage, 0),
-        0,
-        100
-      );
-
-
-    const exposedCount =
-      monthlyOps *
-      (
-        retryPercent /
-        100
-      );
-
-
-    const protectedCount =
-      exposedCount *
-      (
-        coveragePercent /
-        100
-      );
-
-
-    const residualCount =
-      exposedCount -
-      protectedCount;
-
-
-    exposed.textContent =
-      integerFormatter.format(
-        Math.round(
-          exposedCount
-        )
-      );
-
-
-    protectedOutput.textContent =
-      integerFormatter.format(
-        Math.round(
-          protectedCount
-        )
-      );
-
-
-    residual.textContent =
-      integerFormatter.format(
-        Math.round(
-          residualCount
-        )
-      );
-
-
-    coverageReadout.textContent =
-      coveragePercent.toFixed(
-        coveragePercent % 1 === 0
-          ? 0
-          : 1
-      ) + "%";
-
-
-    coverageMeter.style.width =
-      coveragePercent + "%";
-  }
-
-
-  for (
-    const input of
-    [ops, retry, coverage]
-  ) {
-
-    input.addEventListener(
-      "input",
-      calculate
-    );
-
-    input.addEventListener(
-      "change",
-      calculate
-    );
-  }
-
-
-  calculate();
-
-})();
-
-
-// ==========================================================
 // ONCE INTERACTION AUDIO
 // ==========================================================
 
@@ -730,8 +547,10 @@ window.addEventListener(
 
   const testerInputs = [
     "onceOps",
+    "oncePeriod",
     "onceRetry",
-    "onceCoverage"
+    "onceValue",
+    "onceScenario"
   ];
 
 
@@ -839,8 +658,10 @@ window.addEventListener(
   const testerIds =
     new Set([
       "onceOps",
+      "oncePeriod",
       "onceRetry",
-      "onceCoverage"
+      "onceValue",
+      "onceScenario"
     ]);
 
 
@@ -879,7 +700,7 @@ window.addEventListener(
 
 
   // --------------------------------------------------------
-  // OUTBOUND CONVERSION INTENT
+  // CONVERSION INTENT
   // --------------------------------------------------------
 
   document.addEventListener(
@@ -896,6 +717,41 @@ window.addEventListener(
       }
 
 
+      // MCP command copied from the hero.
+
+      const copyButton =
+        target.closest(
+          "[data-copy]"
+        );
+
+      if (
+        copyButton &&
+        copyButton.getAttribute(
+          "data-copy"
+        ) ===
+          "npx -y @once-agent/mcp"
+      ) {
+
+        sendOnce(
+          "mcp_copy_clicked"
+        );
+      }
+
+
+      // Customer scale comparison executed.
+
+      if (
+        target.closest(
+          "#onceScaleRun"
+        )
+      ) {
+
+        sendOnce(
+          "tester_run"
+        );
+      }
+
+
       const anchor =
         target.closest(
           "a[href]"
@@ -906,14 +762,33 @@ window.addEventListener(
       }
 
 
+      // Hero / navigation intent to reach the tester.
+
+      if (
+        anchor.getAttribute(
+          "href"
+        ) ===
+          "#tester"
+      ) {
+
+        sendOnce(
+          "tester_cta_clicked"
+        );
+
+        return;
+      }
+
+
       let url;
 
       try {
+
         url =
           new URL(
             anchor.href,
             window.location.href
           );
+
       }
       catch {
         return;
@@ -951,6 +826,22 @@ window.addEventListener(
 
       if (
         url.hostname ===
+          "www.npmjs.com" &&
+        url.pathname.startsWith(
+          "/package/@once-agent/mcp"
+        )
+      ) {
+
+        sendOnce(
+          "mcp_npm_clicked"
+        );
+
+        return;
+      }
+
+
+      if (
+        url.hostname ===
           "github.com" &&
         url.pathname
           .replace(
@@ -963,6 +854,22 @@ window.addEventListener(
 
         sendOnce(
           "github_clicked"
+        );
+
+        return;
+      }
+
+
+      if (
+        url.hostname ===
+          window.location.hostname &&
+        url.pathname.endsWith(
+          "/agent.md"
+        )
+      ) {
+
+        sendOnce(
+          "agent_guide_clicked"
         );
       }
 
