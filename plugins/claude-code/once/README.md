@@ -22,7 +22,7 @@ Once MCP tools include:
 The plugin launches:
 
 ```text
-npx -y @once-agent/mcp
+npx -y @once-agent/mcp@0.1.2
 ```
 
 A small cross-platform launcher selects `npx.cmd` on Windows and `npx` on macOS/Linux.
