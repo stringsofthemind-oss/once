@@ -30,6 +30,7 @@ npx -y @once-agent/mcp
 ## MCP host integrations
 
 - **Claude Code** — [add Once as a project-scoped MCP server](./examples/claude-code/)
+- **Cursor** — [add Once as a project-scoped MCP server](./examples/cursor/)
 
 
 
