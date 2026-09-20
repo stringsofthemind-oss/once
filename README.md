@@ -25,6 +25,7 @@ npx -y @once-agent/mcp
 - **Vercel AI SDK** — [safe retries for consequential tool calls](./examples/vercel-ai-sdk/)
 - **LangChain / LangGraph** — [safe retries for consequential agent tools](./examples/langchain/)
 - **CrewAI** — [safe retries for consequential agent tools](./examples/crewai/)
+- **Microsoft Agent Framework** — [safe retries for consequential agent tools](./examples/microsoft-agent-framework/)
 
 
 
