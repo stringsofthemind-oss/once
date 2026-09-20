@@ -23,6 +23,7 @@ npx -y @once-agent/mcp
 - **OpenAI Agents** — [safe retries for consequential tool calls](./examples/openai-agents/)
 - **Vercel AI SDK** — [safe retries for consequential tool calls](./examples/vercel-ai-sdk/)
 - **LangChain / LangGraph** — [safe retries for consequential agent tools](./examples/langchain/)
+- **CrewAI** — [safe retries for consequential agent tools](./examples/crewai/)
 
 
 
