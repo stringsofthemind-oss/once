@@ -25,16 +25,21 @@
 <p>Once gives Claude Code access to tools for identifying consequential writes, explaining retry risk, planning protection, applying approved protection and verifying a configured Once connection.</p>
 </section>
 <article>
-<div class="answer"><strong>Short answer:</strong> Run <code>@once-agent/mcp</code> as a Claude Code MCP server so coding-agent workflows can evaluate and protect external writes that may otherwise be repeated after an ambiguous outcome.</div>
+<div class="answer"><strong>Short answer:</strong> Install the Once Claude Code plugin from the Once marketplace. The plugin exposes <code>@once-agent/mcp</code> automatically so coding-agent workflows can evaluate and protect external writes that may otherwise be repeated after an ambiguous outcome.</div>
 <h2>Why this matters</h2>
 <p>A coding agent can create or modify software that performs payments, refunds, bookings, orders, provisioning, deployments, messages and other externally visible writes.</p>
 <p>If one of those operations succeeds but its response is lost, a blind retry can perform the same real-world effect again.</p>
-<h2>Add Once through MCP</h2>
+<h2>Install the Claude Code plugin</h2>
+<p>Add the Once marketplace, then install the plugin:</p>
+<pre><code>claude plugin marketplace add stringsofthemind-oss/once
+claude plugin install once@once-agent</code></pre>
+<p>The plugin exposes the public <code>@once-agent/mcp</code> server to Claude Code.</p>
+<p>Once is also registered in the MCP Registry as <code>io.github.stringsofthemind-oss/once</code>.</p>
+<h2>Manual MCP configuration</h2>
+<p>If you prefer direct MCP configuration instead of the plugin, run:</p>
 <pre><code>npx -y @once-agent/mcp</code></pre>
-<p>Once is published as an npm MCP server and registered under <code>io.github.stringsofthemind-oss/once</code>.</p>
-<h2>Project configuration</h2>
 <p>The Once repository includes ready-to-copy Claude Code MCP configuration examples for Windows and macOS/Linux.</p>
-<p><a href="https://github.com/stringsofthemind-oss/once/tree/main/examples/claude-code">View the Claude Code + Once configuration examples on GitHub</a></p>
+<p><a href="https://github.com/stringsofthemind-oss/once/tree/main/examples/claude-code">View the manual Claude Code + Once configuration examples on GitHub</a></p>
 <h2>What the Once MCP server exposes</h2>
 <ul>
 <li>project assessment for likely consequential writes</li>
@@ -46,9 +51,10 @@
 </ul>
 <div class="claim"><strong>Claim boundary:</strong> Once does not claim universal exactly-once execution. Safety depends on stable operation identity, durable Once state, the provider integration and sufficiently authoritative provider truth. When an outcome cannot be established safely, Once can preserve uncertainty instead of blindly repeating the action.</div>
 <div class="cta">
-<h2>Add Once to Claude Code</h2>
-<pre><code>npx -y @once-agent/mcp</code></pre>
-<p><a href="../#tester">Try the Once tester</a> · <a href="https://www.npmjs.com/package/@once-agent/mcp">MCP package</a> · <a href="https://github.com/stringsofthemind-oss/once/tree/main/examples/claude-code">Claude Code configuration</a></p>
+<h2>Install Once for Claude Code</h2>
+<pre><code>claude plugin marketplace add stringsofthemind-oss/once
+claude plugin install once@once-agent</code></pre>
+<p><a href="../#tester">Try the Once tester</a> · <a href="https://github.com/stringsofthemind-oss/once/tree/main/plugins/claude-code/once">Plugin source</a> · <a href="https://www.npmjs.com/package/@once-agent/mcp">MCP package</a></p>
 </div>
 </article>
 </main>
