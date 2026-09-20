@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1">
+<meta name="description" content="Safe retries and idempotency for consequential CrewAI agent tool calls. Prevent duplicate refunds, payments, bookings and other side effects after ambiguous failures.">
+<link rel="canonical" href="https://onceexec.pages.dev/crewai-safe-retries/">
+<link rel="describedby" type="text/plain" href="../llms.txt">
+<link rel="alternate" type="text/markdown" href="../agent.md" title="Once agent-readable guide">
+<meta property="og:type" content="article">
+<meta property="og:title" content="CrewAI Safe Retries and Idempotency | Once">
+<meta property="og:description" content="Protect consequential CrewAI agent tool calls from duplicate execution after timeouts and lost responses.">
+<meta property="og:url" content="https://onceexec.pages.dev/crewai-safe-retries/">
+<title>CrewAI Safe Retries and Idempotency | Once</title>
+<link rel="stylesheet" href="../discovery.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Safe retries for CrewAI agent tools","description":"Safe retries and idempotency for consequential CrewAI agent tool calls.","mainEntityOfPage":"https://onceexec.pages.dev/crewai-safe-retries/","about":["CrewAI","AI agent idempotency","safe retries","duplicate tool calls","AI agent execution safety"],"publisher":{"@type":"Organization","name":"Once","url":"https://onceexec.pages.dev/"}}</script>
+</head>
+<body>
+<header class="topbar"><a class="brand" href="../">Once<span>.</span></a><nav><a href="../mcp-idempotency/">MCP idempotency</a><a href="../ai-agent-retry-safety/">Retry safety</a><a href="../ambiguous-timeout/">Timeouts</a><a href="https://github.com/stringsofthemind-oss/once">GitHub</a></nav></header>
+<main class="wrap">
+<section class="hero">
+<div class="eyebrow">CREWAI / SAFE TOOL EXECUTION</div>
+<h1>Make consequential CrewAI agent tools safe to retry.</h1>
+<p>CrewAI agents can call tools that trigger refunds, payments, bookings, orders and other external writes. If an action succeeds but its response is lost, blindly invoking the tool again can repeat the real-world side effect.</p>
+</section>
+<article>
+<div class="answer"><strong>Short answer:</strong> Give the logical operation a stable identity and route supported consequential execution through durable state and provider reconciliation instead of treating every tool call as a new action.</div>
+<h2>The retry failure</h2>
+<ol>
+<li>A CrewAI agent invokes a consequential tool.</li>
+<li>The external provider performs the action.</li>
+<li>The response is lost, times out or becomes ambiguous.</li>
+<li>The agent cannot prove whether the action happened.</li>
+<li>The tool is invoked again.</li>
+<li>A blind retry can duplicate the side effect.</li>
+</ol>
+<h2>The Once pattern</h2>
+<pre><code>operation_id = Once.id("refund", order_id)
+
+result = once.execute(
+    operation_id=operation_id,
+    provider=provider,
+    action={
+        "type": "refund",
+        "order_id": order_id,
+    },
+)</code></pre>
+<p>The same logical refund receives the same operation ID on every retry. Another CrewAI tool invocation is therefore not automatically treated as permission to perform a new external action.</p>
+<h2>CrewAI example</h2>
+<p>The Once repository includes a working Python example using CrewAI tools with the public <code>once-agent-sdk</code> package.</p>
+<p><a href="https://github.com/stringsofthemind-oss/once/tree/main/examples/crewai">View the Once + CrewAI example on GitHub</a></p>
+<div class="claim"><strong>Claim boundary:</strong> Once does not claim universal exactly-once execution. Safety depends on stable operation identity, durable Once state, the provider integration and sufficiently authoritative provider truth. When the outcome cannot be established safely, Once can preserve uncertainty instead of blindly repeating the action.</div>
+<div class="cta">
+<h2>Add execution safety to CrewAI tools</h2>
+<pre><code>pip install once-agent-sdk</code></pre>
+<p><a href="../#tester">Try the Once tester</a> · <a href="https://pypi.org/project/once-agent-sdk/">Python SDK</a> · <a href="https://github.com/stringsofthemind-oss/once/tree/main/examples/crewai">CrewAI example</a></p>
+</div>
+</article>
+</main>
+<footer class="footer"><div class="wrap"><a href="../">Once</a><a href="../llms.txt">llms.txt</a><a href="../agent.md">Agent guide</a><span>AI agent execution safety · safe retries · idempotency</span></div></footer>
+</body>
+</html>
