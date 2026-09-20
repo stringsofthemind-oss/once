@@ -39,5 +39,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Frozen vector hash diagnostics
+        run: |
+          echo "actual:"
+          sha256sum ../../conformance/once-id-v1-vectors.json
+          echo "expected:"
+          cat ../../conformance/once-id-v1-vectors.json.sha256
+
       - name: Run release suite
         run: npm run test:release
