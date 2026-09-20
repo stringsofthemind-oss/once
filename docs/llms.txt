@@ -95,7 +95,7 @@ The MCP layer is for agent-assisted discovery, integration and verification. Pro
 
 Registry identity prepared for the MCP server: `io.github.stringsofthemind-oss/once`.
 
-Source package: `@once-agent/mcp` v0.1.0. Publication to npm and the MCP Registry is a separate release step.
+Source package: `@once-agent/mcp` v0.1.1. Published on npm and available through the MCP Registry.
 
 ## Current scale tester
 
