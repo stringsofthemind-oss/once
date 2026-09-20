@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "once-agent",
+  "version": "0.1.0",
+  "description": "Once execution-safety plugins for AI agents performing consequential external writes.",
+  "owner": {
+    "name": "Once"
+  },
+  "plugins": [
+    {
+      "name": "once",
+      "description": "Adds Once execution-safety tools for consequential writes, ambiguous outcomes and safe retries.",
+      "version": "0.1.0",
+      "source": "./plugins/claude-code/once",
+      "category": "security"
+    }
+  ]
+}
