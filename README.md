@@ -32,6 +32,19 @@ npx -y @once-agent/mcp
 - **Claude Code** — [add Once as a project-scoped MCP server](./examples/claude-code/)
 - **Cursor** — [add Once as a project-scoped MCP server](./examples/cursor/)
 
+### Claude Code plugin
+
+Install Once from the public GitHub marketplace:
+
+```bash
+claude plugin marketplace add stringsofthemind-oss/once
+claude plugin install once@once-agent
+```
+
+This installs the Once Claude Code plugin, which exposes `@once-agent/mcp` through MCP.
+
+Plugin source: [`plugins/claude-code/once`](./plugins/claude-code/once/)
+
 
 
 <!-- ONCE_STRIPE_SANDBOX_NOTICE -->
