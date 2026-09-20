@@ -1,0 +1,7 @@
+﻿"suite","run_id","model_family","cases","passed","over_routes","under_routes","invalid_routes","action_mismatches","runtime_state_mismatches","missing_decisions","unexpected_decisions","duplicate_decisions","conformance"
+"V1","gemini-run-001","Gemini","17","17","0","0","0","0","0","0","0","0","PASS"
+"V1","claude-run-002","Claude","17","17","0","0","0","0","0","0","0","0","PASS"
+"V1","grok-run-003","Grok","17","17","0","0","0","0","0","0","0","0","PASS"
+"V2","gemini-v2-run-001","Gemini","40","40","0","0","0","0","0","0","0","0","PASS"
+"V2","claude-v2-run-002","Claude","40","40","0","0","0","0","0","0","0","0","PASS"
+"V2","grok-v2-run-003","Grok","40","40","0","0","0","0","0","0","0","0","PASS"
