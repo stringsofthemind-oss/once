@@ -623,6 +623,40 @@ async function productionDeploy(
     );
   }
 
+  console.log("");
+  console.log(
+    "[ONCE DEPLOY GUARD] Refreshing origin after final confirmation..."
+  );
+
+  const finalFetchResult =
+    run(
+      "git",
+      [
+        "fetch",
+        "origin"
+      ],
+      {
+        cwd:
+          repoRoot,
+        stdio:
+          "inherit"
+      }
+    );
+
+  if (
+    finalFetchResult.status !== 0
+  ) {
+    fail(
+      "Final git fetch origin failed. Nothing deployed."
+    );
+  }
+
+  const branchBeforeDeploy =
+    gitText([
+      "branch",
+      "--show-current"
+    ]);
+
   const dirtyBeforeDeploy =
     gitText([
       "status",
@@ -642,6 +676,8 @@ async function productionDeploy(
     ]);
 
   if (
+    branchBeforeDeploy !==
+      "main" ||
     dirtyBeforeDeploy ||
     headBeforeDeploy !==
       head ||
