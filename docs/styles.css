@@ -2728,3 +2728,44 @@ footer{
     animation:none;
   }
 }
+
+/* ==========================================================
+   ONCE NETWORK — CENTERED LIVE VALUE
+   Keep existing top telemetry/header positioning unchanged.
+   ========================================================== */
+
+.once-network-value-wrap{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  width:100%;
+  text-align:center;
+}
+
+.once-network-value{
+  display:block;
+  text-align:center;
+}
+
+.once-network-label{
+  width:100%;
+  text-align:center;
+}
+
+.once-network-status{
+  width:100%;
+  text-align:center;
+}
+
+/*
+ * Keep the orange confirmation pulse centred directly behind
+ * the operation count.
+ */
+.once-network::before{
+  left:50%;
+  transform:translate(-50%,-50%);
+}
+
+.once-network.is-live::before{
+  transform:translate(-50%,-50%);
+}
