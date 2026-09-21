@@ -2816,3 +2816,276 @@ footer{
   text-align:center;
   white-space:nowrap;
 }
+
+/* ==========================================================
+   ONCE / QUICK-JUMP RAIL
+   Approved open-spine desktop design.
+   ========================================================== */
+
+.once-jump-rail{
+  position:fixed;
+  left:-7px;
+  top:50%;
+  transform:translateY(-50%);
+  z-index:80;
+
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:0;
+
+  width:190px;
+  padding:16px 8px 16px 0;
+
+  /* Open design: no opaque card over page content. */
+  background:transparent;
+  border:0;
+  border-radius:0;
+  box-shadow:none;
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
+}
+
+.once-jump-line{
+  position:absolute;
+  left:19px;
+  top:34px;
+  bottom:34px;
+
+  width:1px;
+
+  background:linear-gradient(
+    to bottom,
+    rgba(53,236,169,.78),
+    rgba(121,174,194,.62) 18%,
+    rgba(121,174,194,.58) 82%,
+    rgba(53,236,169,.28)
+  );
+
+  box-shadow:0 0 8px rgba(60,210,175,.12);
+  pointer-events:none;
+}
+
+.once-jump-link{
+  position:relative;
+
+  display:flex;
+  align-items:center;
+
+  width:100%;
+  min-height:47px;
+
+  text-decoration:none;
+
+  color:rgba(177,199,211,.72);
+
+  font-size:12px;
+  font-weight:750;
+  line-height:1;
+  letter-spacing:.055em;
+
+  transition:
+    color .18s ease,
+    opacity .18s ease;
+}
+
+.once-jump-dot{
+  position:relative;
+  z-index:2;
+
+  flex:0 0 auto;
+
+  width:17px;
+  height:17px;
+
+  margin-left:11px;
+  margin-right:18px;
+
+  border-radius:50%;
+
+  background:#071017;
+  border:2px solid rgba(166,197,210,.78);
+
+  box-shadow:
+    0 0 0 4px rgba(5,11,15,.92);
+
+  transition:
+    background .18s ease,
+    border-color .18s ease,
+    box-shadow .18s ease,
+    transform .18s ease;
+}
+
+.once-jump-label{
+  display:block;
+  white-space:nowrap;
+
+  opacity:.82;
+
+  transition:
+    opacity .18s ease,
+    color .18s ease,
+    transform .18s ease;
+}
+
+.once-jump-link:hover{
+  color:#dceaf0;
+}
+
+.once-jump-link:hover .once-jump-label{
+  opacity:1;
+  transform:translateX(2px);
+}
+
+.once-jump-link:hover .once-jump-dot{
+  border-color:#b8d5df;
+  transform:scale(1.07);
+}
+
+.once-jump-link.is-active{
+  color:#35eca9;
+}
+
+.once-jump-link.is-active .once-jump-label{
+  opacity:1;
+  color:#35eca9;
+  transform:translateX(2px);
+}
+
+.once-jump-link.is-active .once-jump-dot{
+  background:#35eca9;
+  border-color:#35eca9;
+
+  box-shadow:
+    0 0 0 4px rgba(5,11,15,.94),
+    0 0 12px rgba(53,236,169,.88),
+    0 0 26px rgba(53,236,169,.34);
+
+  transform:scale(1.08);
+}
+
+.once-jump-link.is-active .once-jump-dot::after{
+  content:"";
+
+  position:absolute;
+  left:50%;
+  top:50%;
+
+  width:31px;
+  height:31px;
+
+  border:1px solid rgba(53,236,169,.48);
+  border-radius:50%;
+
+  transform:translate(-50%,-50%);
+  animation:once-jump-active 2.2s ease-out infinite;
+}
+
+@keyframes once-jump-active{
+  0%{
+    opacity:.82;
+    transform:
+      translate(-50%,-50%)
+      scale(.62);
+  }
+
+  72%{
+    opacity:0;
+    transform:
+      translate(-50%,-50%)
+      scale(1.25);
+  }
+
+  100%{
+    opacity:0;
+    transform:
+      translate(-50%,-50%)
+      scale(1.25);
+  }
+}
+
+/*
+ * Reserve a navigation lane rather than allowing the rail
+ * to cover the site's underlying content.
+ */
+@media(min-width:1381px){
+  main > section,
+  main > .section,
+  footer{
+    scroll-margin-left:0;
+  }
+
+  .once-jump-rail{
+    left:-7px;
+  }
+}
+
+/*
+ * At narrower desktop widths the rail becomes compact before
+ * disappearing completely on mobile.
+ */
+@media(max-width:1380px){
+  .once-jump-rail{
+    width:54px;
+    left:-7px;
+  }
+
+  .once-jump-label{
+    position:absolute;
+    left:48px;
+
+    padding:8px 10px;
+
+    background:rgba(5,11,15,.96);
+    border:1px solid rgba(121,174,194,.20);
+    border-radius:8px;
+
+    opacity:0;
+    pointer-events:none;
+
+    transform:translateX(-4px);
+
+    box-shadow:0 8px 28px rgba(0,0,0,.28);
+  }
+
+  .once-jump-link:hover .once-jump-label,
+  .once-jump-link:focus-visible .once-jump-label{
+    opacity:1;
+    transform:translateX(0);
+  }
+
+  .once-jump-link.is-active .once-jump-label{
+    opacity:0;
+  }
+}
+
+@media(max-width:780px){
+  .once-jump-rail{
+    display:none;
+  }
+}
+
+html{
+  scroll-behavior:smooth;
+}
+
+#top,
+#mechanism,
+#proof,
+#tester,
+#playground,
+#developers,
+#updates,
+#get-once{
+  scroll-margin-top:90px;
+}
+
+@media(prefers-reduced-motion:reduce){
+  html{
+    scroll-behavior:auto;
+  }
+
+  .once-jump-link.is-active .once-jump-dot::after{
+    animation:none;
+  }
+}

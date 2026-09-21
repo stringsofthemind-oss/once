@@ -1041,3 +1041,132 @@ import("./tester-v2.js?v=scale-1").catch((error) => console.error("Once tester v
   );
 
 })();
+
+/* ==========================================================
+   ONCE / QUICK-JUMP RAIL
+   Tracks the section currently occupying the reading zone.
+   ========================================================== */
+
+(() => {
+
+  const links = Array.from(
+    document.querySelectorAll(".once-jump-link[data-once-jump]")
+  );
+
+  if (!links.length) {
+    return;
+  }
+
+  const targets = links
+    .map((link) => {
+      const id = link.dataset.onceJump;
+      const section = document.getElementById(id);
+
+      return section
+        ? { id, link, section }
+        : null;
+    })
+    .filter(Boolean);
+
+  if (!targets.length) {
+    return;
+  }
+
+  let activeId = null;
+
+  function setActive(id) {
+
+    if (id === activeId) {
+      return;
+    }
+
+    activeId = id;
+
+    targets.forEach(({ id: targetId, link }) => {
+
+      const active = targetId === id;
+
+      link.classList.toggle(
+        "is-active",
+        active
+      );
+
+      if (active) {
+        link.setAttribute(
+          "aria-current",
+          "location"
+        );
+      } else {
+        link.removeAttribute(
+          "aria-current"
+        );
+      }
+    });
+  }
+
+  function updateActiveSection() {
+
+    const readingLine =
+      window.innerHeight * 0.38;
+
+    let current = targets[0];
+
+    for (const target of targets) {
+
+      const rect =
+        target.section.getBoundingClientRect();
+
+      if (rect.top <= readingLine) {
+        current = target;
+      } else {
+        break;
+      }
+    }
+
+    setActive(current.id);
+  }
+
+  links.forEach((link) => {
+
+    link.addEventListener(
+      "click",
+      () => {
+
+        const id =
+          link.dataset.onceJump;
+
+        setActive(id);
+      }
+    );
+  });
+
+  let ticking = false;
+
+  function requestUpdate() {
+
+    if (ticking) {
+      return;
+    }
+
+    ticking = true;
+
+    window.requestAnimationFrame(() => {
+      updateActiveSection();
+      ticking = false;
+    });
+  }
+
+  window.addEventListener(
+    "scroll",
+    requestUpdate,
+    { passive:true }
+  );
+
+  window.addEventListener(
+    "resize",
+    requestUpdate
+  );
+
+  updateActiveSection();
+
+})();
