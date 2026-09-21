@@ -913,3 +913,131 @@ window.addEventListener(
 
 // ONCE SCALE COMPARISON TESTER
 import("./tester-v2.js?v=scale-1").catch((error) => console.error("Once tester v2 failed", error));
+
+// ------------------------------------------------------------
+// ONCE LIVE NETWORK COUNTER
+// Read-only production telemetry.
+// ------------------------------------------------------------
+
+(() => {
+
+  const valueEl =
+    document.getElementById("once-network-value");
+
+  const labelEl =
+    document.getElementById("once-network-label");
+
+  const statusEl =
+    document.getElementById("once-network-status");
+
+  const networkEl =
+    document.getElementById("once-network");
+
+  if (!valueEl || !labelEl || !statusEl || !networkEl) {
+    return;
+  }
+
+  let previousValue = null;
+
+  function renderCount(value) {
+
+    const count = Number(value);
+
+    if (!Number.isFinite(count) || count < 0) {
+      throw new Error("Invalid protected_operations value");
+    }
+
+    const normalized = Math.floor(count);
+
+    valueEl.textContent =
+      normalized.toLocaleString();
+
+    labelEl.textContent =
+      normalized === 1
+        ? "protected operation"
+        : "protected operations";
+
+    statusEl.textContent =
+      "LIVE • PRODUCTION COUNTER";
+
+    networkEl.classList.add("is-live");
+
+    if (
+      previousValue !== null &&
+      normalized > previousValue
+    ) {
+
+      networkEl.classList.remove(
+        "operation-confirmed"
+      );
+
+      void networkEl.offsetWidth;
+
+      networkEl.classList.add(
+        "operation-confirmed"
+      );
+    }
+
+    previousValue = normalized;
+  }
+
+  async function refreshOnceNetwork() {
+
+
+    try {
+
+      const response = await fetch(
+        "https://once-q18-cloud.pennywatch.workers.dev/v1/public/stats",
+        {
+          method: "GET",
+          headers: {
+            "Accept": "application/json"
+          },
+          cache: "no-store"
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Once stats returned ${response.status}`
+        );
+      }
+
+      const data = await response.json();
+
+      renderCount(
+        data.protected_operations
+      );
+
+    } catch (error) {
+
+      console.warn(
+        "Once live network counter unavailable",
+        error
+      );
+
+      if (previousValue === null) {
+
+        valueEl.textContent = "—";
+
+        labelEl.textContent =
+          "protected operations";
+
+        statusEl.textContent =
+          "LIVE TELEMETRY UNAVAILABLE";
+
+        networkEl.classList.remove(
+          "is-live"
+        );
+      }
+    }
+  }
+
+  refreshOnceNetwork();
+
+  window.setInterval(
+    refreshOnceNetwork,
+    15000
+  );
+
+})();

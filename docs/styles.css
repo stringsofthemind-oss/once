@@ -2532,3 +2532,199 @@ footer{
     width:100%;
   }
 }
+
+/* ============================================================
+   ONCE LIVE NETWORK COUNTER
+   ============================================================ */
+
+.once-network{
+  position:relative;
+  overflow:hidden;
+  margin:14px 16px 16px;
+  padding:18px 20px 17px;
+  border:1px solid rgba(141,166,182,.15);
+  border-radius:15px;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(8,14,22,.92),
+      rgba(5,10,17,.78)
+    );
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.025);
+}
+
+/* Pulse exists only behind the live number area. */
+.once-network::before{
+  content:"";
+  position:absolute;
+  z-index:0;
+  left:50%;
+  top:52%;
+  width:150px;
+  height:105px;
+  border-radius:50%;
+  background:
+    radial-gradient(
+      ellipse,
+      rgba(255,159,67,.14) 0%,
+      rgba(255,159,67,.065) 34%,
+      rgba(255,159,67,0) 72%
+    );
+  transform:
+    translate(-50%,-50%)
+    scale(.82);
+  opacity:.30;
+  animation:
+    once-network-heartbeat
+    1s
+    ease-in-out
+    infinite;
+  pointer-events:none;
+}
+
+.once-network > *{
+  position:relative;
+  z-index:1;
+}
+
+.once-network-head{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  color:#718694;
+  font:750 9px
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  letter-spacing:.16em;
+}
+
+.once-network-dot{
+  width:6px;
+  height:6px;
+  flex:0 0 auto;
+  border-radius:50%;
+  background:#687984;
+}
+
+.once-network.is-live .once-network-dot{
+  background:var(--green);
+  box-shadow:
+    0 0 12px rgba(57,240,160,.32);
+}
+
+.once-network-value-wrap{
+  min-height:75px;
+  display:flex;
+  align-items:flex-end;
+  margin-top:5px;
+}
+
+.once-network-value{
+  color:#f3f8fa;
+  font-size:clamp(48px,5.5vw,72px);
+  font-weight:780;
+  line-height:.9;
+  letter-spacing:-.065em;
+  font-variant-numeric:tabular-nums;
+  text-shadow:
+    0 0 28px rgba(255,159,67,.10);
+}
+
+.once-network-label{
+  margin-top:8px;
+  color:#a1b1bc;
+  font-size:12px;
+  line-height:1.4;
+}
+
+.once-network-status{
+  margin-top:10px;
+  color:#647986;
+  font:700 8px
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  letter-spacing:.13em;
+}
+
+.once-network.is-live .once-network-status{
+  color:#6f9f89;
+}
+
+/* Stronger single ripple only when the real count rises. */
+.once-network.operation-confirmed::after{
+  content:"";
+  position:absolute;
+  z-index:0;
+  left:50%;
+  top:52%;
+  width:70px;
+  height:70px;
+  border:1px solid rgba(255,159,67,.62);
+  border-radius:50%;
+  transform:
+    translate(-50%,-50%)
+    scale(.45);
+  opacity:0;
+  animation:
+    once-operation-confirmed
+    1.15s
+    ease-out;
+  pointer-events:none;
+}
+
+@keyframes once-network-heartbeat{
+  0%,100%{
+    opacity:.22;
+    transform:
+      translate(-50%,-50%)
+      scale(.82);
+  }
+
+  50%{
+    opacity:.48;
+    transform:
+      translate(-50%,-50%)
+      scale(1);
+  }
+}
+
+@keyframes once-operation-confirmed{
+  0%{
+    opacity:.78;
+    transform:
+      translate(-50%,-50%)
+      scale(.45);
+  }
+
+  100%{
+    opacity:0;
+    transform:
+      translate(-50%,-50%)
+      scale(2.35);
+  }
+}
+
+@media(max-width:780px){
+
+  .once-network{
+    margin:12px;
+    padding:16px 17px;
+  }
+
+  .once-network-value{
+    font-size:52px;
+  }
+}
+
+@media(prefers-reduced-motion:reduce){
+
+  .once-network::before,
+  .once-network.operation-confirmed::after{
+    animation:none;
+  }
+}
