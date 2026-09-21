@@ -3,7 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "deploy": "wrangler deploy",
+    "deploy": "node ../../scripts/deploy-worker.cjs playground refuse",
+    "deploy:dry-run": "node ../../scripts/deploy-worker.cjs playground dry-run",
+    "deploy:production": "node ../../scripts/deploy-worker.cjs playground production",
     "dev": "wrangler dev",
     "start": "wrangler dev"
   },
