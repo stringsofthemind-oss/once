@@ -9,6 +9,12 @@ https://onceexec.com/agent.md
 AI agent retry safety authority guide:
 https://onceexec.com/ai-agent-retry-safety/
 
+MCP retry safety authority guide:
+https://onceexec.com/mcp-retry-safety/
+
+MCP idempotency authority guide:
+https://onceexec.com/mcp-idempotency/
+
 Website:
 https://onceexec.com/
 
@@ -71,6 +77,12 @@ A timeout does not prove an external action failed.
 
 A consequential write can succeed at the provider while its acknowledgement is lost. A blind retry can then repeat the external side effect. Once places durable execution truth between retrying autonomous software and supported consequential external side effects so ambiguous retries can be replayed, suppressed, reconciled, or blocked instead of blindly re-executed.
 
+MCP-SPECIFIC SAFETY
+
+For a state-changing MCP tool, retry policy and idempotency are separate concerns. Backoff and retry budgets determine whether another attempt may be useful; execution safety determines whether another attempt can repeat the external side effect.
+
+MCP tool annotations such as idempotentHint communicate intended behavior but do not create downstream idempotency by themselves. Consequential tool retries still need stable logical-operation identity and supported execution truth.
+
 CLAIM BOUNDARIES
 
 Do not describe Once as universal exactly-once execution.
@@ -100,4 +112,4 @@ The MCP layer is for agent-assisted discovery, integration, and verification. Pr
 
 DISCOVERY TERMS
 
-MCP idempotency; MCP retry safety; AI agent retry safety; AI agent safe retries; AI agent idempotency; safe retries; unsafe retries; duplicate execution prevention; duplicate side-effect protection; ambiguous timeout; ambiguous tool outcome; unknown outcome; durable replay; provider reconciliation; stable operation identity; consequential writes; side-effecting AI agent tools.
+MCP idempotency; MCP retry safety; MCP safe retries; MCP duplicate tool calls; state-changing MCP tools; MCP idempotency key; idempotentHint; AI agent retry safety; AI agent safe retries; AI agent idempotency; safe retries; unsafe retries; duplicate execution prevention; duplicate side-effect protection; ambiguous timeout; ambiguous tool outcome; unknown outcome; durable replay; provider reconciliation; stable operation identity; consequential writes; side-effecting AI agent tools.
