@@ -663,7 +663,7 @@ AGENT ROUTING EVIDENCE
 
     <article class="cross-proof-card">
       <div class="cross-proof-card-top">
-        <span>OBSERVED ERRORR</span>
+        <span>OBSERVED ERRORS</span>
         <span class="cross-proof-state">0</span>
       </div>
       <strong>No recorded routing errors</strong>
@@ -1202,6 +1202,84 @@ AGENT ROUTING EVIDENCE
 
 </section>
 
+
+
+<!-- ============================================
+ONCE DECISION MODEL
+============================================= -->
+
+<section class="cross-proof" id="once-decision-model">
+
+  <div class="cross-proof-head reveal">
+
+    <span class="cross-proof-kicker">
+      THE ONCE DECISION MODEL
+    </span>
+
+    <div>
+      <h2>
+        The retry gets a decision.
+        <br>
+        <em>Not another blind execution.</em>
+      </h2>
+
+      <p>
+        Once does not treat a missing response as proof that nothing happened.
+        It carries the same logical operation identity across retries, checks
+        durable state and provider truth on supported paths, then chooses one
+        of three outcomes.
+      </p>
+    </div>
+
+  </div>
+
+  <div class="cross-proof-grid reveal">
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>CONFIRMED</span>
+        <span class="cross-proof-state">REPLAY / SUPPRESS</span>
+      </div>
+      <strong>Reality already changed.</strong>
+      <small>Return the durable result or suppress the duplicate instead of executing the consequential action again.</small>
+    </article>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>ABSENT</span>
+        <span class="cross-proof-state">EXECUTE</span>
+      </div>
+      <strong>No prior effect is established.</strong>
+      <small>When durable state and supported reconciliation establish absence, the operation may proceed.</small>
+    </article>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>UNKNOWN</span>
+        <span class="cross-proof-state warn">BLOCK + RECONCILE</span>
+      </div>
+      <strong>Truth cannot be established yet.</strong>
+      <small>Fail closed rather than guess. Reconcile provider truth before another consequential execution is allowed.</small>
+    </article>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>CORE RULE</span>
+        <span class="cross-proof-state">SAME OPERATION ID</span>
+      </div>
+      <strong>A timeout is not a result.</strong>
+      <small>Retries reuse one stable logical identity so Once can reason about the operation rather than treating every attempt as new work.</small>
+    </article>
+
+  </div>
+
+  <p class="cross-proof-scope reveal">
+    Scope: Once does not infer provider truth from a lost response. Safe recovery on supported
+    paths depends on durable operation identity, durable state and authoritative reconciliation
+    or equivalent downstream guarantees.
+  </p>
+
+</section>
 
 
 <!-- ============================================
