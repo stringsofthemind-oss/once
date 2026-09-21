@@ -586,6 +586,212 @@ async function retrieveStripeSession(env, sessionId) {
   };
 }
 __name(retrieveStripeSession, "retrieveStripeSession");
+async function createActivationHandoff(
+  request,
+  env,
+  checkout
+) {
+  const expiresAt = Math.floor(Date.now() / 1000) + 600;
+
+  const payload = [
+    checkout.sandbox_session_id,
+    checkout.session_id,
+    expiresAt
+  ].join("|");
+
+  const signature = await hmacHex(
+    env.SANDBOX_SESSION_SECRET,
+    "activation-handoff-v1|" + payload
+  );
+
+  const browser = sandboxBrowserOrigin(
+    request,
+    env
+  );
+
+  const handoffUrl = new URL(
+    "/activate/handoff",
+    browser.origin
+  );
+
+  handoffUrl.searchParams.set(
+    "sandbox_session_id",
+    checkout.sandbox_session_id
+  );
+
+  handoffUrl.searchParams.set(
+    "session_id",
+    checkout.session_id
+  );
+
+  handoffUrl.searchParams.set(
+    "expires",
+    String(expiresAt)
+  );
+
+  handoffUrl.searchParams.set(
+    "signature",
+    signature
+  );
+
+  return handoffUrl.toString();
+}
+__name(createActivationHandoff, "createActivationHandoff");
+
+async function handleActivationHandoff(
+  request,
+  env
+) {
+  if (
+    !env.SANDBOX_SESSION_SECRET ||
+    !env.STRIPE_SECRET_KEY
+  ) {
+    return json3(
+      {
+        error: "sandbox_handoff_not_configured"
+      },
+      503
+    );
+  }
+
+  const url = new URL(request.url);
+
+  const sandboxSessionId = String(
+    url.searchParams.get("sandbox_session_id") || ""
+  ).trim();
+
+  const sessionId = String(
+    url.searchParams.get("session_id") || ""
+  ).trim();
+
+  const expiresRaw = String(
+    url.searchParams.get("expires") || ""
+  ).trim();
+
+  const suppliedSignature = String(
+    url.searchParams.get("signature") || ""
+  ).trim();
+
+  if (
+    !/^[0-9a-f-]{36}$/i.test(sandboxSessionId) ||
+    !sessionId ||
+    !/^\d+$/.test(expiresRaw) ||
+    !/^[0-9a-f]{64}$/i.test(suppliedSignature)
+  ) {
+    return json3(
+      {
+        error: "invalid_activation_handoff"
+      },
+      400
+    );
+  }
+
+  const expiresAt = Number(expiresRaw);
+  const now = Math.floor(Date.now() / 1000);
+
+  if (
+    !Number.isSafeInteger(expiresAt) ||
+    expiresAt < now ||
+    expiresAt > now + 600
+  ) {
+    return json3(
+      {
+        error: "activation_handoff_expired"
+      },
+      403
+    );
+  }
+
+  const payload = [
+    sandboxSessionId,
+    sessionId,
+    expiresRaw
+  ].join("|");
+
+  const expectedSignature = await hmacHex(
+    env.SANDBOX_SESSION_SECRET,
+    "activation-handoff-v1|" + payload
+  );
+
+  if (
+    !timingSafeTextEqual(
+      suppliedSignature,
+      expectedSignature
+    )
+  ) {
+    return json3(
+      {
+        error: "invalid_activation_handoff"
+      },
+      403
+    );
+  }
+
+  const stripe = await retrieveStripeSession(
+    env,
+    sessionId
+  );
+
+  if (
+    !stripe.ok ||
+    !stripe.body
+  ) {
+    return json3(
+      {
+        error: "activation_checkout_not_found"
+      },
+      404
+    );
+  }
+
+  const stripeSession = stripe.body;
+
+  if (
+    stripeSession.client_reference_id !== sandboxSessionId ||
+    stripeSession?.metadata?.once_sandbox !== "true" ||
+    stripeSession?.metadata?.once_sandbox_session !== sandboxSessionId
+  ) {
+    return json3(
+      {
+        error: "activation_handoff_session_mismatch"
+      },
+      403
+    );
+  }
+
+  const checkoutUrl =
+    typeof stripeSession.url === "string"
+      ? stripeSession.url
+      : "";
+
+  if (!checkoutUrl) {
+    return json3(
+      {
+        error: "activation_checkout_url_missing"
+      },
+      409
+    );
+  }
+
+  const sessionCookie = await createSandboxCookie(
+    request,
+    env,
+    sandboxSessionId
+  );
+
+  return new Response(
+    null,
+    {
+      status: 303,
+      headers: {
+        "location": checkoutUrl,
+        "set-cookie": sessionCookie,
+        "cache-control": "no-store"
+      }
+    }
+  );
+}
+__name(handleActivationHandoff, "handleActivationHandoff");
 function q18TruthStub(env) {
   const id = env.Q18_TRUTH.idFromName(
     "once-q18-authoritative-ledger-v1"
@@ -4654,6 +4860,12 @@ var index_default = {
         )
       });
     }
+    if (request.method === "GET" && url.pathname === "/activate/handoff") {
+      return handleActivationHandoff(
+        request,
+        env
+      );
+    }
     if (request.method === "POST" && url.pathname === "/api/checkout") {
       let body;
       try {
@@ -4703,13 +4915,18 @@ var index_default = {
         env,
         result.checkout.sandbox_session_id
       );
+      const handoffUrl = await createActivationHandoff(
+        request,
+        env,
+        result.checkout
+      );
       return json3(
         {
           created: true,
           mode: "stripe_test",
           plan: result.checkout.plan,
           session_id: result.checkout.session_id,
-          url: result.checkout.url
+          url: handoffUrl
         },
         200,
         {
