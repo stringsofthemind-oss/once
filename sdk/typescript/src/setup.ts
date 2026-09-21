@@ -2,7 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import readline from "node:readline/promises";
 import { randomUUID } from "node:crypto";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 
 import {
   stdin as input,
@@ -442,7 +442,7 @@ function openExternalUrl(
 
   try {
 
-    let result;
+    let child;
 
     if (
       process.platform === "win32"
@@ -454,8 +454,8 @@ function openExternalUrl(
           '""'
         );
 
-      result =
-        spawnSync(
+      child =
+        spawn(
           "cmd.exe",
           [
             "/d",
@@ -465,7 +465,8 @@ function openExternalUrl(
           ],
           {
             stdio: "ignore",
-            windowsHide: true
+            windowsHide: true,
+            detached: true
           }
         );
     }
@@ -473,42 +474,42 @@ function openExternalUrl(
       process.platform === "darwin"
     ) {
 
-      result =
-        spawnSync(
+      child =
+        spawn(
           "open",
           [
             url
           ],
           {
-            stdio: "ignore"
+            stdio: "ignore",
+            detached: true
           }
         );
     }
     else {
 
-      result =
-        spawnSync(
+      child =
+        spawn(
           "xdg-open",
           [
             url
           ],
           {
-            stdio: "ignore"
+            stdio: "ignore",
+            detached: true
           }
         );
     }
 
 
-    return (
-      !result.error &&
-      result.status === 0
-    );
+    child.unref();
+
+    return true;
   }
   catch {
     return false;
   }
 }
-
 
 async function readJsonBody(
   response: Response
@@ -699,18 +700,17 @@ export async function acquireApiKeyThroughActivation(
         );
 
 
-  if (!opened) {
+  console.log("");
 
-    console.log("");
-    console.log(
-      "Open this checkout URL in your browser:"
-    );
+  console.log(
+    opened
+      ? "Checkout URL:"
+      : "Open this checkout URL in your browser:"
+  );
 
-    console.log(
-      checkoutUrl
-    );
-  }
-
+  console.log(
+    checkoutUrl
+  );
 
   console.log("");
   console.log(
