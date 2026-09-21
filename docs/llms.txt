@@ -6,6 +6,9 @@ https://onceexec.com/once-agent-contract.json
 Agent-readable guide:
 https://onceexec.com/agent.md
 
+AI agent retry safety authority guide:
+https://onceexec.com/ai-agent-retry-safety/
+
 Website:
 https://onceexec.com/
 
@@ -97,4 +100,4 @@ The MCP layer is for agent-assisted discovery, integration, and verification. Pr
 
 DISCOVERY TERMS
 
-MCP idempotency; AI agent retry safety; safe retries; unsafe retries; duplicate execution prevention; duplicate side-effect protection; ambiguous timeout; unknown outcome; durable replay; provider reconciliation; stable operation identity; consequential writes; side-effecting AI agent tools.
+MCP idempotency; MCP retry safety; AI agent retry safety; AI agent safe retries; AI agent idempotency; safe retries; unsafe retries; duplicate execution prevention; duplicate side-effect protection; ambiguous timeout; ambiguous tool outcome; unknown outcome; durable replay; provider reconciliation; stable operation identity; consequential writes; side-effecting AI agent tools.
