@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1">
+<meta name="description" content="MCP retry safety for state-changing tools: prevent blind duplicate side effects after timeouts, lost responses and ambiguous outcomes.">
+<link rel="canonical" href="https://onceexec.com/mcp-retry-safety/">
+<link rel="describedby" type="text/plain" href="../llms.txt">
+<link rel="alternate" type="text/markdown" href="../agent.md" title="Once agent-readable guide">
+<meta property="og:type" content="article">
+<meta property="og:title" content="MCP Retry Safety: Safe Retries for State-Changing Tools | Once">
+<meta property="og:description" content="A practical guide to retrying state-changing MCP tools without blindly repeating consequential external side effects.">
+<meta property="og:url" content="https://onceexec.com/mcp-retry-safety/">
+<title>MCP Retry Safety: Safe Retries for State-Changing Tools | Once</title>
+<link rel="stylesheet" href="../discovery.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "MCP Retry Safety: Safe Retries for State-Changing Tools",
+  "description": "A practical guide to retrying state-changing MCP tools without blindly repeating consequential external side effects.",
+  "mainEntityOfPage": "https://onceexec.com/mcp-retry-safety/",
+  "datePublished": "2026-09-21",
+  "dateModified": "2026-09-21",
+  "articleSection": "MCP reliability",
+  "keywords": [
+    "MCP retry safety",
+    "MCP idempotency",
+    "state-changing MCP tools",
+    "safe retries",
+    "duplicate side effects",
+    "ambiguous outcome",
+    "AI agent execution safety"
+  ],
+  "about": [
+    "Model Context Protocol",
+    "MCP retry safety",
+    "MCP idempotency",
+    "AI agent execution safety",
+    "duplicate side effects"
+  ],
+  "publisher": {
+    "@type": "Organization",
+    "name": "Once",
+    "url": "https://onceexec.com/"
+  }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What is MCP retry safety?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "MCP retry safety is the ability to retry a logical state-changing tool operation without blindly repeating the same external side effect when an earlier attempt may already have succeeded."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does an MCP timeout mean the tool action failed?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. A timeout proves that the caller did not receive a timely result. The external side effect may still have completed, so the outcome can be unknown rather than failed."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does idempotentHint make an MCP tool safe to retry?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Not by itself. MCP tool annotations are descriptive hints rather than an execution guarantee. Retry safety still depends on the tool implementation, stable operation identity, downstream behavior and the ability to determine execution truth."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "When should an MCP tool use execution safety?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Evaluate execution safety when the tool changes external state, may be retried, can become ambiguous after failure, and would be undesirable or costly to execute twice."
+      }
+    }
+  ]
+}
+</script>
+<script src="../page-analytics.js" defer data-once-page-analytics></script>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="../">Once<span>.</span></a>
+  <nav>
+    <a href="../mcp-retry-safety/">MCP retry safety</a>
+    <a href="../mcp-idempotency/">MCP idempotency</a>
+    <a href="../ai-agent-retry-safety/">Agent retry safety</a>
+    <a href="https://github.com/stringsofthemind-oss/once">GitHub</a>
+  </nav>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <div class="eyebrow">MCP RELIABILITY / STATE-CHANGING TOOLS</div>
+    <h1>MCP Retry Safety: Safe Retries for State-Changing Tools</h1>
+    <p>An MCP tool call can fail at the transport boundary after the real-world action has already happened. Safe retry logic must preserve the identity and execution truth of the original operation instead of treating every retry as permission to execute again.</p>
+  </section>
+
+  <article>
+    <div class="answer">
+      <strong>Short answer:</strong> for a state-changing MCP tool, a timeout or lost response can leave the external outcome unknown. Retry safety means determining whether the original logical operation already happened before allowing another consequential execution.
+    </div>
+
+    <h2>Why MCP retries can duplicate real-world effects</h2>
+    <p>MCP standardizes how clients discover and invoke tools. It does not make every tool invocation naturally safe to repeat. A tool may charge a card, issue a refund, create an order, send a message, reserve inventory, provision infrastructure or mutate production state.</p>
+    <p>The difficult failure mode is an <strong>ambiguous outcome</strong>: the tool or downstream provider performs the side effect, but the caller loses the acknowledgement. From the caller's point of view the invocation failed. From the external system's point of view it may already be complete.</p>
+
+    <h2>The dangerous retry sequence</h2>
+    <ol>
+      <li>An agent calls a state-changing MCP tool.</li>
+      <li>The tool reaches an external provider.</li>
+      <li>The provider commits the side effect.</li>
+      <li>The response is lost, delayed or interrupted.</li>
+      <li>The client observes a timeout or recoverable failure.</li>
+      <li>A blind retry risks creating the same external effect again.</li>
+    </ol>
+    <p>That is why a timeout should not automatically be mapped to "nothing happened." The safe state may be <strong>UNKNOWN</strong>.</p>
+
+    <h2>Retry policy and idempotency are related, but different</h2>
+    <p>Backoff, retry budgets and recoverable-error signals answer <em>whether another attempt may be useful</em>. Idempotency and execution safety answer a different question: <em>whether another attempt can repeat the real-world effect</em>.</p>
+    <p>GitHub's MCP Scripts retry policy makes this distinction explicit: because tool invocations may be non-idempotent, callers should apply idempotency safeguards before retrying state-changing tools and should perform explicit side-effect checks after ambiguous failures.</p>
+
+    <h2>MCP annotations are risk hints, not an execution guarantee</h2>
+    <p>MCP tool annotations include signals such as <code>readOnlyHint</code>, <code>destructiveHint</code> and <code>idempotentHint</code>. They are valuable for communicating expected behavior, but the MCP maintainers describe annotations as hints rather than trusted enforcement.</p>
+    <p>An <code>idempotentHint: true</code> annotation therefore does not create idempotency by itself. The implementation and downstream system still need the semantics that make repeated logical operations safe.</p>
+
+    <h2>The Once decision model</h2>
+    <p>Once treats retries as repeated attempts at one logical real-world operation. The operation keeps a stable identity while execution truth is tracked durably.</p>
+    <pre><code>CONFIRMED  → replay or suppress
+ABSENT     → execute
+UNKNOWN    → block or reconcile</code></pre>
+    <p><strong>CONFIRMED</strong> means the supported execution path shows the logical operation already succeeded, so another external execution is unnecessary. <strong>ABSENT</strong> means the protected operation is not known to have happened and may proceed. <strong>UNKNOWN</strong> means the system cannot safely establish execution truth yet, so it should reconcile or block rather than guess.</p>
+
+    <h2>A practical safe-retry pattern for MCP tools</h2>
+    <ol>
+      <li><strong>Create stable operation identity.</strong> Retries of the same business intent reuse the same identity instead of generating a new one per transport attempt.</li>
+      <li><strong>Persist operation state.</strong> Execution state must survive process exits, transport failures and agent retries.</li>
+      <li><strong>Use provider-native idempotency when available.</strong> Pass a stable provider key through supported integrations instead of inventing a fresh key on each attempt.</li>
+      <li><strong>Reconcile ambiguous outcomes.</strong> Query sufficiently authoritative provider truth or another supported side-effect check before deciding that re-execution is safe.</li>
+      <li><strong>Fail closed when truth remains unknown.</strong> Uncertainty should not silently become permission to repeat a consequential write.</li>
+    </ol>
+
+    <h2>Example: refund tool times out after the provider commits</h2>
+    <pre><code>Agent → refund_order(order_4821)
+Tool  → provider refund request
+Provider → refund succeeds
+Network → acknowledgement lost
+Agent → sees timeout
+Agent → retries refund_order(order_4821)</code></pre>
+    <p>Without stable logical-operation identity, the second call can look like a new request. With execution safety, the retry is tied to the original refund intent. If the first refund is confirmed, the prior result can be replayed or the duplicate execution suppressed. If the provider truth cannot yet be established, the state remains UNKNOWN rather than being treated as a clean failure.</p>
+
+    <h2>When an MCP tool should evaluate Once</h2>
+    <p>Evaluate Once when all four conditions are true:</p>
+    <ol>
+      <li>The tool can change external state.</li>
+      <li>The same logical operation may be retried.</li>
+      <li>The first attempt can become ambiguous after a timeout, lost response, crash, queue redelivery or similar failure.</li>
+      <li>Blind duplicate execution would be undesirable or costly.</li>
+    </ol>
+    <p>Typical examples include payments, refunds, payouts, orders, bookings, reservations, provisioning, production writes, side-effecting webhooks and consequential messages.</p>
+
+    <h2>When not to add an execution-safety layer</h2>
+    <p>Pure reads, searches, retrieval and generation-only operations usually do not need this pattern. The goal is not to wrap every MCP call. The goal is to protect the relatively small set of tool boundaries where retrying can duplicate an external effect.</p>
+
+    <h2>MCP client responsibility versus tool implementation</h2>
+    <p>A client can choose whether to retry. A tool or runtime can implement stable identity, durable state and provider reconciliation. The safest design treats those responsibilities as complementary: clients should not blindly retry consequential writes, while the execution layer should not assume the client will always behave perfectly.</p>
+
+    <h2>How MCP retry safety relates to MCP idempotency</h2>
+    <p><a href="../mcp-idempotency/">MCP idempotency</a> is a core mechanism for making repeated logical operations safe. <strong>MCP retry safety</strong> is the broader execution problem: deciding whether to retry, determining whether the original side effect happened, replaying a confirmed result and preserving UNKNOWN when the truth cannot safely be established.</p>
+    <p>For the broader agent pattern, see <a href="../ai-agent-retry-safety/">AI agent retry safety</a>. For the most dangerous failure state, see <a href="../ambiguous-timeout/">ambiguous timeout handling</a>.</p>
+
+    <h2>Primary references</h2>
+    <p>The MCP maintainers describe tool annotations such as <code>idempotentHint</code> as hints rather than guaranteed behavior: <a href="https://blog.modelcontextprotocol.io/posts/2026-03-16-tool-annotations/">Tool Annotations as Risk Vocabulary</a>.</p>
+    <p>GitHub's MCP Scripts specification says callers should apply idempotency safeguards before retrying state-changing tools and perform side-effect checks after failures that may already have produced external effects: <a href="https://github.github.com/gh-aw/specs/mcp-scripts-specification/">MCP Scripts Specification — Retry Policy</a>.</p>
+
+    <div class="claim">
+      <strong>Claim boundary:</strong> Once does not claim universal exactly-once execution, atomicity between an arbitrary external provider and the Once ledger, automatic protection for every MCP tool, or that every retry would otherwise create a duplicate. Safety depends on stable operation identity, durable Once state, the supported provider integration and sufficiently authoritative execution truth.
+    </div>
+
+    <div class="cta">
+      <h2>Protect consequential MCP writes</h2>
+      <p>Use Once when a state-changing tool can be retried after an outcome becomes ambiguous.</p>
+      <pre><code>npx -y @once-agent/mcp</code></pre>
+      <p>Official MCP Registry identity: <code>io.github.stringsofthemind-oss/once</code></p>
+      <p><a href="../#tester">Try the Once tester</a> · <a href="../mcp-idempotency/">MCP idempotency guide</a> · <a href="../ai-agent-retry-safety/">AI agent retry safety</a> · <a href="../claude-code-mcp-safe-retries/">Claude Code</a> · <a href="../cursor-mcp-safe-retries/">Cursor</a> · <a href="https://www.npmjs.com/package/@once-agent/mcp">MCP package</a> · <a href="https://github.com/stringsofthemind-oss/once">Source</a></p>
+    </div>
+  </article>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <a href="../">Once</a>
+    <a href="../llms.txt">llms.txt</a>
+    <a href="../agent.md">Agent guide</a>
+    <span>MCP retry safety · MCP idempotency · AI agent execution safety</span>
+  </div>
+</footer>
+</body>
+</html>

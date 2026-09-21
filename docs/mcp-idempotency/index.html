@@ -4,24 +4,217 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1">
-<meta name="description" content="MCP idempotency and retry safety for AI agents performing refunds, bookings, payments and other consequential writes after ambiguous timeouts.">
+<meta name="description" content="MCP idempotency for side-effecting tools: stable operation identity, durable execution state and reconciliation for safe retries after ambiguous outcomes.">
 <link rel="canonical" href="https://onceexec.com/mcp-idempotency/">
 <link rel="describedby" type="text/plain" href="../llms.txt">
 <link rel="alternate" type="text/markdown" href="../agent.md" title="Once agent-readable guide">
-<meta property="og:type" content="article"><meta property="og:title" content="MCP Idempotency for AI Agent Retries | Once"><meta property="og:description" content="MCP idempotency and retry safety for AI agents performing refunds, bookings, payments and other consequential writes after ambiguous timeouts."><meta property="og:url" content="https://onceexec.com/mcp-idempotency/">
-<title>MCP Idempotency for AI Agent Retries | Once</title>
+<meta property="og:type" content="article">
+<meta property="og:title" content="MCP Idempotency for State-Changing AI Agent Tools | Once">
+<meta property="og:description" content="A practical guide to idempotency for MCP tools that perform consequential writes and may be retried after ambiguous failures.">
+<meta property="og:url" content="https://onceexec.com/mcp-idempotency/">
+<title>MCP Idempotency for State-Changing AI Agent Tools | Once</title>
 <link rel="stylesheet" href="../discovery.css">
-<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "MCP idempotency for side-effecting AI agent tools.", "description": "MCP idempotency and retry safety for AI agents performing refunds, bookings, payments and other consequential writes after ambiguous timeouts.", "mainEntityOfPage": "https://onceexec.com/mcp-idempotency/", "about": ["AI agent execution safety", "MCP idempotency", "safe retries", "ambiguous timeouts", "duplicate side effects"], "publisher": {"@type": "Organization", "name": "Once", "url": "https://onceexec.com/"}}</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "MCP Idempotency for State-Changing AI Agent Tools",
+  "description": "A practical guide to idempotency for MCP tools that perform consequential writes and may be retried after ambiguous failures.",
+  "mainEntityOfPage": "https://onceexec.com/mcp-idempotency/",
+  "datePublished": "2026-09-20",
+  "dateModified": "2026-09-21",
+  "articleSection": "MCP reliability",
+  "keywords": [
+    "MCP idempotency",
+    "MCP retry safety",
+    "idempotency key",
+    "state-changing MCP tools",
+    "duplicate side effects",
+    "ambiguous outcome",
+    "safe retries"
+  ],
+  "about": [
+    "Model Context Protocol",
+    "MCP idempotency",
+    "MCP retry safety",
+    "AI agent execution safety",
+    "stable operation identity"
+  ],
+  "publisher": {
+    "@type": "Organization",
+    "name": "Once",
+    "url": "https://onceexec.com/"
+  }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What does idempotency mean for an MCP tool?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "For a state-changing MCP tool, idempotency means repeated attempts at the same logical operation do not create unintended duplicate external effects."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Should an idempotency key change on every retry?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. Retries of the same logical operation need to reuse the same stable identity. A fresh key on every retry makes the retry look like a new operation."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is an MCP idempotentHint an enforcement mechanism?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. MCP annotations communicate intended behavior but do not create or enforce downstream idempotency by themselves."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What if the first MCP write may have succeeded but the result is unknown?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "The system should reconcile against sufficiently authoritative execution truth or preserve the operation as unknown rather than blindly repeating the external write."
+      }
+    }
+  ]
+}
+</script>
 <script src="../page-analytics.js" defer data-once-page-analytics></script>
 </head>
 <body>
-<header class="topbar"><a class="brand" href="../">Once<span>.</span></a><nav><a href="../mcp-idempotency/">MCP idempotency</a><a href="../ai-agent-retry-safety/">Retry safety</a><a href="../ambiguous-timeout/">Timeouts</a><a href="https://github.com/stringsofthemind-oss/once">GitHub</a></nav></header>
-<main class="wrap"><section class="hero"><div class="eyebrow">MCP IDEMPOTENCY / AI AGENT EXECUTION SAFETY</div><h1>MCP idempotency for side-effecting AI agent tools.</h1><p>For a consequential MCP write, a timeout is an unknown outcome, not proof of failure. Use stable logical-operation identity and durable execution state so a retry does not blindly create a second real-world side effect.</p></section><article>
-<div class="answer"><strong>Short answer:</strong> For a consequential MCP write, a timeout is an unknown outcome, not proof of failure. Use stable logical-operation identity and durable execution state so a retry does not blindly create a second real-world side effect.</div>
-<h2>Why MCP writes need more than a retry loop</h2>
-<p>MCP makes tools discoverable and callable, but a side-effecting tool can still suffer the classic distributed-systems failure: the provider performs the action, the response is lost, and the caller retries.</p><h2>The pattern Once implements</h2>
-<p><strong>Stable operation identity.</strong> Retries for the same logical action reuse the same identity.</p><p><strong>Durable operation state.</strong> The operation survives process and transport failures.</p><p><strong>Provider reconciliation.</strong> Supported integrations can check provider truth before re-execution.</p><p><strong>Fail closed on ambiguity.</strong> Uncertainty does not become permission to repeat the write.</p><h2>When an agent should evaluate Once</h2>
-<p>Evaluate Once when a tool can change external state and may be retried after a timeout, lost response, crash, queue redelivery or other ambiguous outcome. Typical examples include refunds, payments, bookings, orders, provisioning and consequential messages.</p>
-<div class="claim"><strong>Claim boundary:</strong> Once does not claim universal exactly-once execution. Safety depends on stable operation identity, durable Once state, the provider integration and sufficiently authoritative provider truth. When the outcome cannot be established safely, Once can preserve uncertainty rather than assume another external execution is safe.</div>
-<div class="cta"><h2>Use Once for this failure mode</h2><p>Once is the execution-safety layer between autonomous software and supported consequential real-world side effects.</p><pre><code>npx -y @once-agent/mcp</code></pre><p>Official MCP Registry identity: <code>io.github.stringsofthemind-oss/once</code></p><p><a href="../#tester">Try the Once tester</a> · <a href="../claude-code-mcp-safe-retries/">Claude Code</a> · <a href="../cursor-mcp-safe-retries/">Cursor</a> · <a href="https://www.npmjs.com/package/@once-agent/mcp">MCP package</a> · <a href="https://github.com/stringsofthemind-oss/once">Source</a></p></div>
-</article></main><footer class="footer"><div class="wrap"><a href="../">Once</a><a href="../llms.txt">llms.txt</a><a href="../agent.md">Agent guide</a><span>AI agent execution safety · MCP idempotency · safe retries</span></div></footer></body></html>
+<header class="topbar">
+  <a class="brand" href="../">Once<span>.</span></a>
+  <nav>
+    <a href="../mcp-retry-safety/">MCP retry safety</a>
+    <a href="../mcp-idempotency/">MCP idempotency</a>
+    <a href="../ai-agent-retry-safety/">Agent retry safety</a>
+    <a href="https://github.com/stringsofthemind-oss/once">GitHub</a>
+  </nav>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <div class="eyebrow">MCP IDEMPOTENCY / EXECUTION SAFETY</div>
+    <h1>MCP Idempotency for State-Changing AI Agent Tools</h1>
+    <p>When an MCP tool changes external state, retries need a stable logical-operation identity and durable execution truth. Otherwise a timeout, lost response or process failure can turn one business intent into multiple real-world side effects.</p>
+  </section>
+
+  <article>
+    <div class="answer">
+      <strong>Short answer:</strong> MCP idempotency means that repeated attempts at the same logical action do not blindly repeat the consequential external effect. The retry must reuse the same operation identity and the execution layer must determine whether the original action already happened.
+    </div>
+
+    <h2>Why idempotency matters for MCP tools</h2>
+    <p>MCP tools increasingly do more than retrieve information. They can issue refunds, create tickets, provision resources, send messages, place orders, update accounts and mutate production systems.</p>
+    <p>Those operations can cross several boundaries: agent, MCP client, MCP server, application service and external provider. A failure at any boundary can hide the outcome of a write that already completed downstream.</p>
+
+    <h2>Transport attempts are not business operations</h2>
+    <p>The most important distinction is between a <strong>logical operation</strong> and a <strong>transport attempt</strong>.</p>
+    <pre><code>Logical operation: refund order_4821 once
+Attempt 1: request sent, response lost
+Attempt 2: retry of the same refund intent</code></pre>
+    <p>If attempt 2 receives a brand-new identity, the downstream system may reasonably treat it as a new refund. Idempotency requires the retries to remain bound to the same logical operation.</p>
+
+    <h2>Stable idempotency identity</h2>
+    <p>A safe identity should represent the business intent being protected, not a transient request object or random retry attempt. The exact key design depends on the application, but the rule is consistent: <strong>same logical operation, same stable identity</strong>.</p>
+    <p>Useful inputs can include a durable business identifier, operation type, tenant or account scope and a stable user-approved intent identifier. Avoid deriving retry identity from timestamps, per-attempt UUIDs or values that change every time the agent calls the tool.</p>
+
+    <h2>Idempotency keys are necessary in many systems, but not sufficient everywhere</h2>
+    <p>Provider-native idempotency is valuable when the downstream service supports it. The safest implementation passes a stable key through to the provider rather than generating a fresh provider key for every retry.</p>
+    <p>But not every provider supports idempotency keys, and a key alone may not resolve every ambiguous state. Systems also need durable local state and, for supported integrations, a way to reconcile external provider truth when the acknowledgement is missing.</p>
+
+    <h2>MCP's idempotentHint describes intent</h2>
+    <p>MCP tool annotations include <code>idempotentHint</code>. The MCP maintainers describe tool annotations as hints: they communicate expected behavior to clients but are not guaranteed enforcement.</p>
+    <p>That makes the annotation useful for risk-aware clients, but the tool implementation still has to make repeated logical operations safe in practice.</p>
+
+    <h2>The ambiguous outcome is the hard case</h2>
+    <ol>
+      <li>The agent calls a state-changing MCP tool.</li>
+      <li>The downstream provider performs the action.</li>
+      <li>The response is lost.</li>
+      <li>The caller sees a timeout.</li>
+      <li>The caller does not know whether the side effect happened.</li>
+    </ol>
+    <p>At this point, neither "success" nor "failure" is justified by transport evidence alone. The execution truth is <strong>UNKNOWN</strong>.</p>
+
+    <h2>The Once execution model</h2>
+    <p>Once uses stable operation identity, durable state, replay and provider-specific reconciliation for supported paths.</p>
+    <pre><code>CONFIRMED  → replay or suppress
+ABSENT     → execute
+UNKNOWN    → block or reconcile</code></pre>
+    <p>This is deliberately narrower than claiming universal exactly-once execution. The goal is to avoid blind duplicate execution when the real-world outcome can be determined or must remain unresolved.</p>
+
+    <h2>A practical MCP idempotency checklist</h2>
+    <ol>
+      <li><strong>Identify consequential tools.</strong> Start with operations that can change external state.</li>
+      <li><strong>Define logical identity.</strong> Decide what makes two attempts the same business operation.</li>
+      <li><strong>Reuse that identity across retries.</strong> Do not mint a fresh key per attempt.</li>
+      <li><strong>Persist execution state durably.</strong> The decision must survive process and transport failures.</li>
+      <li><strong>Pass through provider-native keys where supported.</strong> Keep provider and application retry identity aligned when possible.</li>
+      <li><strong>Reconcile ambiguous outcomes.</strong> Query sufficiently authoritative provider truth before allowing another external effect.</li>
+      <li><strong>Preserve UNKNOWN when truth cannot be established.</strong> Do not convert uncertainty into automatic permission to retry.</li>
+    </ol>
+
+    <h2>Example: create-order MCP tool</h2>
+    <pre><code>operation_id = "customer_91:create_order:cart_733"
+
+attempt 1 → provider creates order → acknowledgement lost
+attempt 2 → same operation_id
+
+provider/order truth confirms original order
+→ replay confirmed result
+→ do not create a second order</code></pre>
+    <p>The important property is not the exact string format. It is that the second attempt represents the same logical business operation and can be reconciled against durable execution truth.</p>
+
+    <h2>When MCP idempotency should be evaluated</h2>
+    <p>Evaluate an execution-safety layer when all four conditions are true:</p>
+    <ol>
+      <li>The tool can change external state.</li>
+      <li>The same logical operation may be retried.</li>
+      <li>The first attempt can become ambiguous after a timeout, lost response, crash, queue redelivery or similar failure.</li>
+      <li>Blind duplicate execution would be undesirable or costly.</li>
+    </ol>
+
+    <h2>When it is usually unnecessary</h2>
+    <p>Pure reads, search, retrieval and generation-only tools generally do not need this pattern because repeating them does not create the same class of consequential duplicate external effect.</p>
+
+    <h2>MCP idempotency versus MCP retry safety</h2>
+    <p><strong>Idempotency</strong> is the mechanism that keeps repeated logical operations from producing unintended duplicate effects. <a href="../mcp-retry-safety/">MCP retry safety</a> is the broader decision problem around when another attempt is permitted, how ambiguity is reconciled and what happens when execution truth remains unknown.</p>
+    <p>For the general autonomous-software version of the problem, see <a href="../ai-agent-retry-safety/">AI agent retry safety</a>. For the failure state itself, see <a href="../ambiguous-timeout/">ambiguous timeout handling</a>.</p>
+
+    <h2>Primary references</h2>
+    <p>The MCP maintainers' tool-annotation guidance explains that <code>idempotentHint</code> is part of a risk vocabulary and that annotations are hints rather than guaranteed truth: <a href="https://blog.modelcontextprotocol.io/posts/2026-03-16-tool-annotations/">Tool Annotations as Risk Vocabulary</a>.</p>
+    <p>GitHub's MCP Scripts retry policy recommends idempotency safeguards before retrying state-changing tools and explicit side-effect checks when a failed attempt may already have produced external effects: <a href="https://github.github.com/gh-aw/specs/mcp-scripts-specification/">MCP Scripts Specification — Retry Policy</a>.</p>
+
+    <div class="claim">
+      <strong>Claim boundary:</strong> Once does not claim universal exactly-once execution, atomicity between arbitrary external effects and its ledger, automatic protection for every provider or MCP tool, or that every retry would otherwise create a duplicate. Safety depends on stable operation identity, durable Once state, supported integration behavior and sufficiently authoritative execution truth.
+    </div>
+
+    <div class="cta">
+      <h2>Add execution safety to consequential MCP writes</h2>
+      <p>Once is designed for tool boundaries where retries can otherwise become duplicate external side effects.</p>
+      <pre><code>npx -y @once-agent/mcp</code></pre>
+      <p>Official MCP Registry identity: <code>io.github.stringsofthemind-oss/once</code></p>
+      <p><a href="../#tester">Try the Once tester</a> · <a href="../mcp-retry-safety/">MCP retry safety</a> · <a href="../ai-agent-retry-safety/">AI agent retry safety</a> · <a href="../claude-code-mcp-safe-retries/">Claude Code</a> · <a href="../cursor-mcp-safe-retries/">Cursor</a> · <a href="https://www.npmjs.com/package/@once-agent/mcp">MCP package</a> · <a href="https://github.com/stringsofthemind-oss/once">Source</a></p>
+    </div>
+  </article>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <a href="../">Once</a>
+    <a href="../llms.txt">llms.txt</a>
+    <a href="../agent.md">Agent guide</a>
+    <span>MCP idempotency · MCP retry safety · AI agent execution safety</span>
+  </div>
+</footer>
+</body>
+</html>
