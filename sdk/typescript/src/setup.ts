@@ -448,20 +448,12 @@ function openExternalUrl(
       process.platform === "win32"
     ) {
 
-      const safeUrl =
-        url.replace(
-          /"/g,
-          '""'
-        );
-
       child =
         spawn(
-          "cmd.exe",
+          "rundll32.exe",
           [
-            "/d",
-            "/s",
-            "/c",
-            `start "" "${safeUrl}"`
+            "url.dll,FileProtocolHandler",
+            url
           ],
           {
             stdio: "ignore",
@@ -1722,6 +1714,15 @@ export async function runSetup(
       "API key verified."
     );
 
+    await persistApiKey(
+      root,
+      apiKey
+    );
+
+    console.log(
+      "ONCE_API_KEY saved to .env."
+    );
+
     if (
       !onceInstalled &&
       !options.skipInstall
@@ -1731,15 +1732,6 @@ export async function runSetup(
         packageManager
       );
     }
-
-    await persistApiKey(
-      root,
-      apiKey
-    );
-
-    console.log(
-      "ONCE_API_KEY saved to .env."
-    );
 
     console.log(
       "Note: vanilla Node does not automatically load .env."

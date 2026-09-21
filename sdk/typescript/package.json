@@ -45,7 +45,8 @@
     "build:esm": "tsc -p tsconfig.json",
     "build:cjs": "tsc -p tsconfig.cjs.json && node ./scripts/write-cjs-package.mjs",
     "test:runtime-setup": "npm run build && node ./scripts/runtime-setup-regression.mjs",
-    "test:activation": "npm run build && node ./scripts/activation-regression.mjs"
+    "test:activation": "npm run build && node ./scripts/activation-regression.mjs",
+    "test:setup-persistence": "npm run build && node ./scripts/setup-persistence-regression.mjs"
   },
   "keywords": [
     "ai",
