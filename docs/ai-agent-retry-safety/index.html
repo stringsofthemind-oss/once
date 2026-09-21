@@ -4,23 +4,235 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1">
-<meta name="description" content="AI agent retry safety for consequential writes: prevent unsafe duplicate side effects after timeouts, lost responses, crashes and ambiguous outcomes.">
+<meta name="description" content="AI agent retry safety for state-changing tools: prevent blind duplicate side effects after timeouts, lost responses, crashes and ambiguous outcomes.">
 <link rel="canonical" href="https://onceexec.com/ai-agent-retry-safety/">
 <link rel="describedby" type="text/plain" href="../llms.txt">
 <link rel="alternate" type="text/markdown" href="../agent.md" title="Once agent-readable guide">
-<meta property="og:type" content="article"><meta property="og:title" content="AI Agent Retry Safety for Consequential Writes | Once"><meta property="og:description" content="AI agent retry safety for consequential writes: prevent unsafe duplicate side effects after timeouts, lost responses, crashes and ambiguous outcomes."><meta property="og:url" content="https://onceexec.com/ai-agent-retry-safety/">
-<title>AI Agent Retry Safety for Consequential Writes | Once</title>
+<meta property="og:type" content="article">
+<meta property="og:title" content="AI Agent Retry Safety: Prevent Duplicate Side Effects | Once">
+<meta property="og:description" content="A practical guide to safe retries for side-effecting AI agents, MCP tools and autonomous workflows after ambiguous outcomes.">
+<meta property="og:url" content="https://onceexec.com/ai-agent-retry-safety/">
+<title>AI Agent Retry Safety: Prevent Duplicate Side Effects | Once</title>
 <link rel="stylesheet" href="../discovery.css">
-<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "Make AI agent retries safe at the execution boundary.", "description": "AI agent retry safety for consequential writes: prevent unsafe duplicate side effects after timeouts, lost responses, crashes and ambiguous outcomes.", "mainEntityOfPage": "https://onceexec.com/ai-agent-retry-safety/", "about": ["AI agent execution safety", "MCP idempotency", "safe retries", "ambiguous timeouts", "duplicate side effects"], "publisher": {"@type": "Organization", "name": "Once", "url": "https://onceexec.com/"}}</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "AI Agent Retry Safety: Prevent Duplicate Side Effects",
+  "description": "A practical guide to safe retries for side-effecting AI agents, MCP tools and autonomous workflows after ambiguous outcomes.",
+  "mainEntityOfPage": "https://onceexec.com/ai-agent-retry-safety/",
+  "datePublished": "2026-09-20",
+  "dateModified": "2026-09-21",
+  "articleSection": "AI agent reliability",
+  "keywords": [
+    "AI agent retry safety",
+    "MCP retry safety",
+    "MCP idempotency",
+    "AI agent idempotency",
+    "duplicate side effects",
+    "ambiguous outcome",
+    "safe retries",
+    "consequential writes"
+  ],
+  "about": [
+    "AI agent execution safety",
+    "MCP idempotency",
+    "safe retries",
+    "ambiguous timeouts",
+    "duplicate side effects"
+  ],
+  "publisher": {
+    "@type": "Organization",
+    "name": "Once",
+    "url": "https://onceexec.com/"
+  }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What is AI agent retry safety?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "AI agent retry safety is the ability to retry a logical operation without blindly repeating a consequential external side effect when the first attempt may already have succeeded."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Why can a timeout be dangerous after an AI agent tool call?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "A timeout proves the caller did not receive a timely response. It does not prove the external side effect failed. The operation may have succeeded before the acknowledgement was lost."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does Once guarantee universal exactly-once execution?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. Once does not claim universal exactly-once execution or atomicity between an arbitrary external provider and the Once ledger. Its safety model uses stable operation identity, durable state, replay and provider-specific reconciliation for supported paths."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Should reads and searches use Once?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Usually no. Once is intended for operations that change external state, can be retried, can become ambiguous, and would be undesirable or costly to execute twice."
+      }
+    }
+  ]
+}
+</script>
 <script src="../page-analytics.js" defer data-once-page-analytics></script>
 </head>
 <body>
-<header class="topbar"><a class="brand" href="../">Once<span>.</span></a><nav><a href="../mcp-idempotency/">MCP idempotency</a><a href="../ai-agent-retry-safety/">Retry safety</a><a href="../ambiguous-timeout/">Timeouts</a><a href="https://github.com/stringsofthemind-oss/once">GitHub</a></nav></header>
-<main class="wrap"><section class="hero"><div class="eyebrow">SAFE RETRIES / AUTONOMOUS SOFTWARE</div><h1>Make AI agent retries safe at the execution boundary.</h1><p>Retries are useful for reads and transient failures, but become dangerous when an AI agent can cause an irreversible or externally visible side effect. The safety boundary should distinguish a new logical action from another attempt at the same action.</p></section><article>
-<div class="answer"><strong>Short answer:</strong> Retries are useful for reads and transient failures, but become dangerous when an AI agent can cause an irreversible or externally visible side effect. The safety boundary should distinguish a new logical action from another attempt at the same action.</div>
-<h2>The dangerous retry sequence</h2>
-<ol><li>The agent requests a consequential write.</li><li>The provider performs it.</li><li>The response is lost.</li><li>The agent cannot tell whether it happened.</li><li>A blind retry risks performing it again.</li></ol><h2>Once's role</h2>
-<p>Once combines stable operation identity, durable state, replay and provider-specific reconciliation so supported operations can be resolved without blindly repeating the external side effect.</p>
-<div class="claim"><strong>Claim boundary:</strong> Once does not claim universal exactly-once execution. Safety depends on stable operation identity, durable Once state, the provider integration and sufficiently authoritative provider truth. When the outcome cannot be established safely, Once can preserve uncertainty rather than assume another external execution is safe.</div>
-<div class="cta"><h2>Use Once for this failure mode</h2><p>Once is the execution-safety layer between autonomous software and supported consequential real-world side effects.</p><pre><code>npx -y @once-agent/mcp</code></pre><p>Official MCP Registry identity: <code>io.github.stringsofthemind-oss/once</code></p><p><a href="../#tester">Try the Once tester</a> · <a href="../openai-agents-safe-retries/">OpenAI Agents</a> · <a href="../vercel-ai-sdk-safe-retries/">Vercel AI SDK</a> · <a href="../langchain-langgraph-safe-retries/">LangChain / LangGraph</a> · <a href="../crewai-safe-retries/">CrewAI</a> · <a href="../microsoft-agent-framework-safe-retries/">Microsoft Agent Framework</a> · <a href="https://www.npmjs.com/package/@once-agent/mcp">MCP package</a> · <a href="https://github.com/stringsofthemind-oss/once">Source</a></p></div>
-</article></main><footer class="footer"><div class="wrap"><a href="../">Once</a><a href="../llms.txt">llms.txt</a><a href="../agent.md">Agent guide</a><span>AI agent execution safety · MCP idempotency · safe retries</span></div></footer></body></html>
+<header class="topbar">
+  <a class="brand" href="../">Once<span>.</span></a>
+  <nav>
+    <a href="../mcp-idempotency/">MCP idempotency</a>
+    <a href="../ai-agent-retry-safety/">Retry safety</a>
+    <a href="../ambiguous-timeout/">Timeouts</a>
+    <a href="https://github.com/stringsofthemind-oss/once">GitHub</a>
+  </nav>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <div class="eyebrow">AI AGENT RELIABILITY / SAFE RETRIES</div>
+    <h1>AI Agent Retry Safety: Prevent Duplicate Side Effects</h1>
+    <p>Retries are essential for reliable autonomous software. They become dangerous when a tool can change external state and the first attempt may have succeeded before its response was lost. Safe retry logic must preserve the identity and truth of the original operation instead of treating every retry as a new action.</p>
+  </section>
+
+  <article>
+    <div class="answer">
+      <strong>Short answer:</strong> A retry is safe only when the system can distinguish a new logical operation from another attempt at the same operation and can determine whether the original side effect already happened. If the truth is still unknown, blindly executing again is not a safe default.
+    </div>
+
+    <h2>Why AI agent retries are different</h2>
+    <p>Traditional retry logic works well for reads and naturally idempotent operations. Agent tools are different because many of them create real-world effects: charging a customer, issuing a refund, sending a message, booking a reservation, creating an order, provisioning infrastructure or mutating production state.</p>
+    <p>The dangerous case is not a clean failure. It is an <strong>ambiguous outcome</strong>: the external provider may have committed the action, but the caller never received a definitive acknowledgement.</p>
+
+    <h2>The dangerous retry sequence</h2>
+    <ol>
+      <li>An agent requests a consequential write.</li>
+      <li>The external provider performs the action.</li>
+      <li>The response is lost, delayed or interrupted.</li>
+      <li>The agent sees a timeout or transport failure.</li>
+      <li>The agent cannot tell whether the action happened.</li>
+      <li>A blind retry risks producing the same side effect again.</li>
+    </ol>
+    <p>This is why <a href="../ambiguous-timeout/">a timeout is not proof of failure</a>. At the execution boundary, the correct state may be <strong>UNKNOWN</strong>, not failed.</p>
+
+    <h2>The Once decision model</h2>
+    <p>Once tracks the logical real-world operation rather than treating each transport attempt as a new action. Retries of the same logical operation reuse a stable operation identity.</p>
+    <pre><code>CONFIRMED  → replay or suppress
+ABSENT     → execute
+UNKNOWN    → block or reconcile</code></pre>
+    <p><strong>CONFIRMED</strong> means supported execution truth shows the operation already succeeded, so the result can be replayed or duplicate execution suppressed. <strong>ABSENT</strong> means the protected operation is not known to have happened and may proceed. <strong>UNKNOWN</strong> means the truth cannot yet be established safely, so the system should reconcile or block rather than guess.</p>
+
+    <h2>When an operation needs retry safety</h2>
+    <p>Evaluate Once when all four conditions are true:</p>
+    <ol>
+      <li>The operation can change external state.</li>
+      <li>The same logical operation may be retried.</li>
+      <li>The first attempt can become ambiguous after a timeout, lost response, crash, queue redelivery or similar failure.</li>
+      <li>Blind duplicate execution would be undesirable or costly.</li>
+    </ol>
+    <p>High-signal examples include payments, refunds, payouts, bookings, reservations, orders, account changes, provisioning, production writes, consequential messages and MCP tool calls that mutate external systems.</p>
+
+    <h2>When you usually do not need it</h2>
+    <p>Pure reads, searches, retrieval, generation-only tasks and operations where repetition cannot create a meaningful duplicate external effect generally do not need an execution-safety layer. Retry safety should be concentrated at consequential write boundaries rather than added indiscriminately to every call.</p>
+
+    <h2>Stable operation identity is the foundation</h2>
+    <p>If every retry generates a fresh identity, no deduplication layer can know that two attempts represent the same business intent. The operation identity therefore needs to remain stable across retries of the same logical action.</p>
+    <p>A useful identity is derived from the business operation or workflow intent, not from the transport attempt. For example, a retry of the same refund should preserve the refund operation identity; a genuinely new refund should receive a different one.</p>
+
+    <h2>Why an idempotency key alone may not be enough</h2>
+    <p>Provider-native idempotency is valuable and should be used when available. But agent workflows often cross multiple systems, some providers do not support native idempotency, and a caller may still need durable knowledge of what happened after an ambiguous response.</p>
+    <p>Once is designed to complement provider-native mechanisms with stable operation identity, durable Once state, replay and provider-specific reconciliation. Where authoritative execution truth cannot be established, the safety model preserves uncertainty instead of silently treating uncertainty as permission to execute again.</p>
+
+    <h2>MCP retry safety</h2>
+    <p>MCP tools can expose both harmless reads and consequential writes. Retry policy therefore cannot be based only on the fact that a tool call failed at the protocol or transport layer.</p>
+    <p>GitHub's MCP Scripts specification states that retry safety for potentially non-idempotent tool invocations is a caller responsibility and recommends idempotency safeguards or explicit side-effect checks before retrying state-changing tools. That is the same execution boundary Once is designed to protect.</p>
+    <p><a href="../mcp-idempotency/">Read the Once guide to MCP idempotency →</a></p>
+
+    <h2>Industry reliability guidance is converging on the same problem</h2>
+    <p>AWS's Agentic AI Lens identifies retries without idempotency as a source of duplicate side effects and recommends deterministic operation identity, checking for an existing result before execution and propagating idempotency through workflows. GitHub's MCP Scripts specification similarly warns that state-changing tool retries require explicit safeguards.</p>
+    <p>These recommendations are important because agent reliability is no longer only about getting the model to choose the right tool. Reliability also requires safe execution after the model has already made the correct decision.</p>
+
+    <h2>Example: refund after a lost acknowledgement</h2>
+    <p>Imagine an agent requests a £50 refund. The payment provider commits the refund, but the network drops before the response reaches the agent. The agent sees a timeout.</p>
+    <p>Unsafe logic says: <em>the request failed, retry it.</em></p>
+    <p>Safe logic says: <em>the outcome is unknown; determine execution truth before issuing another refund.</em></p>
+    <p>That distinction is the core of agent retry safety.</p>
+
+    <h2>Once's role at the execution boundary</h2>
+    <p>Once combines stable operation identity, durable state, replay and provider-specific reconciliation so supported operations can be resolved without blindly repeating an external side effect.</p>
+    <pre><code>// Conceptual flow
+const operationId = stableBusinessOperationId(input)
+
+const truth = await once.truth(operationId)
+
+if (truth === "CONFIRMED") return replay()
+if (truth === "ABSENT")    return executeProtectedWrite()
+if (truth === "UNKNOWN")   return reconcileOrBlock()</code></pre>
+
+    <div class="claim">
+      <strong>Claim boundary:</strong> Once does not claim universal exactly-once execution, atomicity between an arbitrary external provider effect and the Once ledger, or automatic protection for every provider and HTTP write method. Safety depends on stable operation identity, durable Once state, the supported provider integration and sufficiently authoritative provider truth.
+    </div>
+
+    <h2>How to start</h2>
+    <p>For agent-assisted discovery and integration, the Once MCP package can assess a project for likely consequential operations:</p>
+    <pre><code>npx -y @once-agent/mcp</code></pre>
+    <p>Official MCP Registry identity: <code>io.github.stringsofthemind-oss/once</code></p>
+    <p>For the TypeScript SDK:</p>
+    <pre><code>npm install @once-agent/sdk</code></pre>
+    <p>The MCP layer helps agents discover, explain and integrate the protection boundary. Production application agents do not need to call MCP before every protected write; the Once Runtime remains the execution-safety boundary.</p>
+
+    <h2>Frequently asked questions</h2>
+
+    <h2>What is AI agent retry safety?</h2>
+    <p>It is the ability to retry a logical operation without blindly repeating a consequential external side effect when the first attempt may already have succeeded.</p>
+
+    <h2>Why is UNKNOWN different from failed?</h2>
+    <p>Failed means there is sufficiently authoritative evidence the operation did not complete. UNKNOWN means the caller lacks enough evidence to say either way. Treating UNKNOWN as failed can create duplicates.</p>
+
+    <h2>Does Once stop agents from retrying?</h2>
+    <p>No. The goal is not to remove retries. The goal is to make retries safe at consequential execution boundaries by replaying confirmed work, allowing absent work to proceed and preserving uncertainty when truth cannot be established.</p>
+
+    <h2>Does Once guarantee exactly-once execution?</h2>
+    <p>No. Arbitrary external systems cannot generally participate in one atomic transaction with an independent execution ledger. Once therefore uses a narrower model based on stable identity, durable state, replay and reconciliation for supported paths.</p>
+
+    <h2>Do reads and searches need Once?</h2>
+    <p>Usually not. Reads, search and retrieval are normally safe to repeat because they do not create consequential duplicate external side effects.</p>
+
+    <h2>Related Once guides</h2>
+    <p><a href="../mcp-idempotency/">MCP idempotency</a> · <a href="../ambiguous-timeout/">Ambiguous timeouts</a> · <a href="../duplicate-refund-timeout/">Duplicate refund timeout</a> · <a href="../duplicate-booking-retry/">Duplicate booking retry</a> · <a href="../openai-agents-safe-retries/">OpenAI Agents</a> · <a href="../vercel-ai-sdk-safe-retries/">Vercel AI SDK</a> · <a href="../langchain-langgraph-safe-retries/">LangChain / LangGraph</a> · <a href="../crewai-safe-retries/">CrewAI</a> · <a href="../claude-code-mcp-safe-retries/">Claude Code</a></p>
+
+    <h2>Primary references</h2>
+    <p><a href="https://docs.aws.amazon.com/wellarchitected/latest/agentic-ai-lens/agentrel06-bp04.html">AWS Agentic AI Lens — Implement idempotent task execution patterns</a></p>
+    <p><a href="https://github.github.com/gh-aw/specs/mcp-scripts-specification/">GitHub Agentic Workflows — MCP Scripts Specification, retry policy</a></p>
+
+    <div class="cta">
+      <h2>See the failure mode instead of just reading about it</h2>
+      <p>Use the Once tester to model retries, duplicate exposure and the execution-safety boundary, then follow the integration path that matches your stack.</p>
+      <p><a href="../#tester">Open the Once tester</a> · <a href="https://github.com/stringsofthemind-oss/once">View source</a> · <a href="https://www.npmjs.com/package/@once-agent/mcp">MCP package</a></p>
+    </div>
+  </article>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <a href="../">Once</a>
+    <a href="../llms.txt">llms.txt</a>
+    <a href="../agent.md">Agent guide</a>
+    <span>AI agent execution safety · MCP idempotency · safe retries</span>
+  </div>
+</footer>
+</body>
+</html>
