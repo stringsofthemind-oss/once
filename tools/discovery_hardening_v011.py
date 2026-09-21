@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
 MCP = ROOT / "mcp"
 BRANCH = "discovery/onceexec-v0.1.1"
-ORIGIN = "https://onceexec.pages.dev"
+ORIGIN = "https://onceexec.com"
 TODAY = "2026-09-20"
 
 
@@ -74,7 +74,7 @@ def harden_homepage() -> None:
     )
     if 'name="robots"' not in html:
         marker = "<title>Once — AI Agent Execution Safety | MCP Idempotency & Safe Retries</title>"
-        metadata = marker + '''\n\n<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1">\n<meta property="og:type" content="website">\n<meta property="og:title" content="Once — AI Agent Execution Safety">\n<meta property="og:description" content="MCP idempotency, safe retries and duplicate side-effect protection for consequential AI agent writes.">\n<meta property="og:url" content="https://onceexec.pages.dev/">\n<meta name="twitter:card" content="summary">\n<meta name="twitter:title" content="Once — AI Agent Execution Safety">\n<meta name="twitter:description" content="MCP idempotency and retry safety for consequential AI agent writes.">'''
+        metadata = marker + '''\n\n<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1">\n<meta property="og:type" content="website">\n<meta property="og:title" content="Once — AI Agent Execution Safety">\n<meta property="og:description" content="MCP idempotency, safe retries and duplicate side-effect protection for consequential AI agent writes.">\n<meta property="og:url" content="https://onceexec.com/">\n<meta name="twitter:card" content="summary">\n<meta name="twitter:title" content="Once — AI Agent Execution Safety">\n<meta name="twitter:description" content="MCP idempotency and retry safety for consequential AI agent writes.">'''
         html = html.replace(marker, metadata, 1)
     html = replace_once(html, "AGENT EXECUTION SAFETY / 001", "AI AGENT EXECUTION SAFETY / MCP IDEMPOTENCY", "eyebrow")
     old = '''Once makes side-effecting AI agent tools safe to retry.\n\n      <strong>\n        Stable identity. Durable state. Provider truth.\n      </strong>\n\n      When execution is uncertain, Once reconciles what happened\n      before another consequential effect is allowed.'''
@@ -131,7 +131,7 @@ def create_discovery_pages() -> None:
 
 
 def crawl_surfaces() -> None:
-    write(DOCS / "robots.txt", """User-agent: *\nAllow: /\n\nUser-agent: OAI-SearchBot\nAllow: /\n\nUser-agent: ChatGPT-User\nAllow: /\n\nUser-agent: Googlebot\nAllow: /\n\nUser-agent: Bingbot\nAllow: /\n\nSitemap: https://onceexec.pages.dev/sitemap.xml\n""")
+    write(DOCS / "robots.txt", """User-agent: *\nAllow: /\n\nUser-agent: OAI-SearchBot\nAllow: /\n\nUser-agent: ChatGPT-User\nAllow: /\n\nUser-agent: Googlebot\nAllow: /\n\nUser-agent: Bingbot\nAllow: /\n\nSitemap: https://onceexec.com/sitemap.xml\n""")
     pages = [("", "1.0"), ("mcp-idempotency/", "0.9"), ("ai-agent-retry-safety/", "0.9"), ("ambiguous-timeout/", "0.9"), ("duplicate-refund-timeout/", "0.8"), ("duplicate-booking-retry/", "0.8")]
     urls = "\n".join(f"  <url><loc>{ORIGIN}/{suffix}</loc><lastmod>{TODAY}</lastmod><changefreq>weekly</changefreq><priority>{priority}</priority></url>" for suffix, priority in pages)
     write(DOCS / "sitemap.xml", f'''<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n{urls}\n</urlset>\n''')

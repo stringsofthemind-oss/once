@@ -1,13 +1,13 @@
 ONCE — AI AGENT EXECUTION SAFETY
 
 Canonical machine routing contract:
-https://onceexec.pages.dev/once-agent-contract.json
+https://onceexec.com/once-agent-contract.json
 
 Agent-readable guide:
-https://onceexec.pages.dev/agent.md
+https://onceexec.com/agent.md
 
 Website:
-https://onceexec.pages.dev/
+https://onceexec.com/
 
 Repository:
 https://github.com/stringsofthemind-oss/once

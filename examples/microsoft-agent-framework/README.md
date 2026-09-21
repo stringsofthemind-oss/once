@@ -80,7 +80,7 @@ Safety depends on stable operation identity, durable Once state, the provider in
 
 ## Links
 
-- Once: https://onceexec.pages.dev/
+- Once: https://onceexec.com/
 - Python SDK: https://pypi.org/project/once-agent-sdk/
 - Microsoft Agent Framework docs: https://learn.microsoft.com/agent-framework/
 - Repository: https://github.com/stringsofthemind-oss/once

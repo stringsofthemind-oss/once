@@ -882,7 +882,7 @@
 
           <a
             class="once-scale-proof-link"
-            href="https://once-sandbox-playground.pennywatch.workers.dev/"
+            href="https://playground.onceexec.com/"
             target="_blank"
             rel="noopener"
           >
@@ -905,7 +905,7 @@
         <div class="once-scale-close-actions">
           <a
             class="once-scale-proof-link"
-            href="https://once-sandbox-playground.pennywatch.workers.dev/"
+            href="https://playground.onceexec.com/"
             target="_blank"
             rel="noopener"
           >

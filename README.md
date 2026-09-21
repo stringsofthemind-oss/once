@@ -6,9 +6,9 @@
 
 Once helps protect supported refunds, bookings, payments and other externally visible side effects from unsafe duplicate execution after ambiguous timeouts, lost responses and retries.
 
-- Website: https://onceexec.pages.dev/
-- MCP idempotency guide: https://onceexec.pages.dev/mcp-idempotency/
-- AI agent retry safety: https://onceexec.pages.dev/ai-agent-retry-safety/
+- Website: https://onceexec.com/
+- MCP idempotency guide: https://onceexec.com/mcp-idempotency/
+- AI agent retry safety: https://onceexec.com/ai-agent-retry-safety/
 - MCP package: `@once-agent/mcp`
 - Python SDK: `pip install once-agent-sdk`
 - MCP Registry: `io.github.stringsofthemind-oss/once`

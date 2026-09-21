@@ -41,8 +41,8 @@ When an outcome cannot be established safely, Once can preserve uncertainty inst
 
 ## Links
 
-- Website: https://onceexec.pages.dev/
-- Claude Code guide: https://onceexec.pages.dev/claude-code-mcp-safe-retries/
+- Website: https://onceexec.com/
+- Claude Code guide: https://onceexec.com/claude-code-mcp-safe-retries/
 - MCP package: https://www.npmjs.com/package/@once-agent/mcp
 - MCP Registry: io.github.stringsofthemind-oss/once
 - Source: https://github.com/stringsofthemind-oss/once

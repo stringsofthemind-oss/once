@@ -13,4 +13,4 @@ Allow: /
 User-agent: Bingbot
 Allow: /
 
-Sitemap: https://onceexec.pages.dev/sitemap.xml
+Sitemap: https://onceexec.com/sitemap.xml

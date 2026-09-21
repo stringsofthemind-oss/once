@@ -3,7 +3,7 @@ import path from "node:path";
 
 const repositoryRoot = path.resolve(process.cwd(), "../..");
 const docs = path.join(repositoryRoot, "docs");
-const contractUrl = "https://onceexec.pages.dev/once-agent-contract.json";
+const contractUrl = "https://onceexec.com/once-agent-contract.json";
 
 function assert(condition, message) {
   if (!condition) {

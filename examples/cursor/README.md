@@ -78,7 +78,7 @@ io.github.stringsofthemind-oss/once
 
 ## Links
 
-- Once: https://onceexec.pages.dev/
+- Once: https://onceexec.com/
 - MCP package: https://www.npmjs.com/package/@once-agent/mcp
-- Agent guide: https://onceexec.pages.dev/agent.md
+- Agent guide: https://onceexec.com/agent.md
 - Repository: https://github.com/stringsofthemind-oss/once

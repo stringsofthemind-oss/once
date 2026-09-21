@@ -1,10 +1,10 @@
 # Once — Agent-Readable Product Guide
 
-Canonical machine routing contract: https://onceexec.pages.dev/once-agent-contract.json
+Canonical machine routing contract: https://onceexec.com/once-agent-contract.json
 
-Machine summary: https://onceexec.pages.dev/llms.txt
+Machine summary: https://onceexec.com/llms.txt
 
-Canonical site: https://onceexec.pages.dev/
+Canonical site: https://onceexec.com/
 
 Repository: https://github.com/stringsofthemind-oss/once
 
@@ -199,10 +199,10 @@ The tester does not make network requests equal to the selected traffic volume. 
 
 ## Machine discovery surfaces
 
-- Routing contract: https://onceexec.pages.dev/once-agent-contract.json
-- Machine summary: https://onceexec.pages.dev/llms.txt
-- Agent guide: https://onceexec.pages.dev/agent.md
-- Website: https://onceexec.pages.dev/
+- Routing contract: https://onceexec.com/once-agent-contract.json
+- Machine summary: https://onceexec.com/llms.txt
+- Agent guide: https://onceexec.com/agent.md
+- Website: https://onceexec.com/
 - GitHub: https://github.com/stringsofthemind-oss/once
 - npm SDK: https://www.npmjs.com/package/@once-agent/sdk
 

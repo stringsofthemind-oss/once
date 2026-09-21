@@ -98,7 +98,7 @@ Its safety properties depend on the configured provider integration and the auth
 
 ## Links
 
-- Once: https://onceexec.pages.dev/
-- AI agent retry safety: https://onceexec.pages.dev/ai-agent-retry-safety/
+- Once: https://onceexec.com/
+- AI agent retry safety: https://onceexec.com/ai-agent-retry-safety/
 - npm: `@once-agent/sdk`
 - MCP: `@once-agent/mcp`

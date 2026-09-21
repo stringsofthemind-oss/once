@@ -83,7 +83,7 @@ Once does not claim universal exactly-once execution. Safety depends on stable o
 
 ## Links
 
-- Once: https://onceexec.pages.dev/
-- AI agent retry safety: https://onceexec.pages.dev/ai-agent-retry-safety/
+- Once: https://onceexec.com/
+- AI agent retry safety: https://onceexec.com/ai-agent-retry-safety/
 - SDK: `@once-agent/sdk`
 - LangChain: https://www.langchain.com/

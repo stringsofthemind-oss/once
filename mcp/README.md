@@ -119,8 +119,8 @@ Pure reads, searches, retrieval, and generation-only operations generally do not
 
 ## Links
 
-- Website: https://onceexec.pages.dev/
-- Agent guide: https://onceexec.pages.dev/agent.md
-- Live playground: https://once-sandbox-playground.pennywatch.workers.dev/
+- Website: https://onceexec.com/
+- Agent guide: https://onceexec.com/agent.md
+- Live playground: https://playground.onceexec.com/
 - SDK: https://www.npmjs.com/package/@once-agent/sdk
 - Repository: https://github.com/stringsofthemind-oss/once

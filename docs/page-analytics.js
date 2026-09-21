@@ -2,7 +2,7 @@
   "use strict";
 
   const ENDPOINT =
-    "https://once-sandbox-playground.pennywatch.workers.dev/analytics/event";
+    "https://playground.onceexec.com/analytics/event";
 
   fetch(
     ENDPOINT,

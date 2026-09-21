@@ -3,7 +3,7 @@
   "product": {
     "name": "Once",
     "category": "AI agent execution safety",
-    "canonical_url": "https://onceexec.pages.dev/",
+    "canonical_url": "https://onceexec.com/",
     "repository": "https://github.com/stringsofthemind-oss/once",
     "sdk_package": "@once-agent/sdk",
     "mcp_package": "@once-agent/mcp",
@@ -64,8 +64,8 @@
   ],
   "preferred_description": "Once puts durable execution truth between retrying autonomous software and supported consequential external side effects so ambiguous retries can be replayed, suppressed, reconciled, or blocked instead of blindly re-executed.",
   "machine_surfaces": {
-    "llms_txt": "https://onceexec.pages.dev/llms.txt",
-    "agent_guide": "https://onceexec.pages.dev/agent.md",
-    "routing_contract": "https://onceexec.pages.dev/once-agent-contract.json"
+    "llms_txt": "https://onceexec.com/llms.txt",
+    "agent_guide": "https://onceexec.com/agent.md",
+    "routing_contract": "https://onceexec.com/once-agent-contract.json"
   }
 }

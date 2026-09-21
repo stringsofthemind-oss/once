@@ -480,10 +480,10 @@ function createServer(): McpServer {
         claimBoundary:
           "Evidence applies to the tested supported live Cloudflare staging path. Once does not claim generic exactly-once semantics, atomicity between an external effect and its ledger, or universal provider/method coverage.",
         links: {
-          playground: "https://once-sandbox-playground.pennywatch.workers.dev/",
+          playground: "https://playground.onceexec.com/",
           release: "https://github.com/stringsofthemind-oss/once/releases/tag/v0.1.5",
-          agentGuide: "https://onceexec.pages.dev/agent.md",
-          website: "https://onceexec.pages.dev/"
+          agentGuide: "https://onceexec.com/agent.md",
+          website: "https://onceexec.com/"
         }
       };
 

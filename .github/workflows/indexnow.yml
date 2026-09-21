@@ -20,7 +20,7 @@ jobs:
         run: |
           set -euo pipefail
           KEY="e7446e8ebe87241334541be52e68eacd"
-          KEY_URL="https://onceexec.pages.dev/${KEY}.txt"
+          KEY_URL="https://onceexec.com/${KEY}.txt"
 
           for i in $(seq 1 30); do
             BODY="$(curl -fsS "$KEY_URL" 2>/dev/null || true)"
@@ -40,20 +40,20 @@ jobs:
         run: |
           set -euo pipefail
           KEY="e7446e8ebe87241334541be52e68eacd"
-          KEY_URL="https://onceexec.pages.dev/${KEY}.txt"
+          KEY_URL="https://onceexec.com/${KEY}.txt"
 
           cat > indexnow-payload.json <<JSON
           {
-            "host": "onceexec.pages.dev",
+            "host": "onceexec.com",
             "key": "$KEY",
             "keyLocation": "$KEY_URL",
             "urlList": [
-              "https://onceexec.pages.dev/",
-              "https://onceexec.pages.dev/mcp-idempotency/",
-              "https://onceexec.pages.dev/ai-agent-retry-safety/",
-              "https://onceexec.pages.dev/ambiguous-timeout/",
-              "https://onceexec.pages.dev/duplicate-refund-timeout/",
-              "https://onceexec.pages.dev/duplicate-booking-retry/"
+              "https://onceexec.com/",
+              "https://onceexec.com/mcp-idempotency/",
+              "https://onceexec.com/ai-agent-retry-safety/",
+              "https://onceexec.com/ambiguous-timeout/",
+              "https://onceexec.com/duplicate-refund-timeout/",
+              "https://onceexec.com/duplicate-booking-retry/"
             ]
           }
           JSON
