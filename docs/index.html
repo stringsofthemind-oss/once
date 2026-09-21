@@ -1437,6 +1437,82 @@ ONCE TRUST BOUNDARY
 
 
 <!-- ============================================
+WHY ONCE VS NATIVE IDEMPOTENCY
+============================================= -->
+
+<section class="cross-proof" id="why-once-idempotency">
+
+  <div class="cross-proof-head reveal">
+
+    <span class="cross-proof-kicker">
+      WHY ONCE
+    </span>
+
+    <div>
+      <h2>
+        Keep provider idempotency.
+        <br>
+        <em>Add recovery when the caller no longer knows.</em>
+      </h2>
+
+      <p>
+        Once is not a replacement for provider-native idempotency, database constraints or durable workflows.
+        Those controls remain valuable. Once focuses on the retry boundary around a consequential external
+        operation: one stable logical identity, durable execution state and a safe decision after an ambiguous outcome.
+      </p>
+    </div>
+
+  </div>
+
+  <div class="cross-proof-grid reveal">
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>PROVIDER IDEMPOTENCY</span>
+        <span class="cross-proof-state">KEEP IT</span>
+      </div>
+      <strong>Deduplicate at the provider boundary.</strong>
+      <small>When a provider supports an idempotency key or equivalent control, use it. Once complements that downstream protection rather than asking you to remove it.</small>
+    </article>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>ONCE</span>
+        <span class="cross-proof-state">IDENTITY + STATE + RECONCILIATION</span>
+      </div>
+      <strong>Reason about the logical operation across attempts.</strong>
+      <small>Once carries stable operation identity across retries, records durable state and uses supported reconciliation to choose execute, replay or block instead of treating a lost response as a fresh action.</small>
+    </article>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>DATABASE / OUTBOX</span>
+        <span class="cross-proof-state">DIFFERENT BOUNDARY</span>
+      </div>
+      <strong>Protect local state and message handoff.</strong>
+      <small>Unique constraints, transactions and outbox patterns can protect application or messaging boundaries. They do not by themselves establish whether an external provider already performed an operation after the response was lost.</small>
+    </article>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>DURABLE WORKFLOW</span>
+        <span class="cross-proof-state">STILL NEEDS SAFE EFFECTS</span>
+      </div>
+      <strong>Durable orchestration and safe side effects solve different layers.</strong>
+      <small>A workflow engine can persist and retry a step. The external side effect still needs stable identity, downstream idempotency or reconciliation when execution crosses a failure boundary.</small>
+    </article>
+
+  </div>
+
+  <p class="cross-proof-scope reveal">
+    Rule of thumb: keep every useful downstream guarantee. Add Once when the same consequential operation may be retried,
+    the first outcome can be ambiguous, and blindly executing it again would be unsafe or costly.
+  </p>
+
+</section>
+
+
+<!-- ============================================
 04 PROOF
 ============================================= -->
 
