@@ -654,7 +654,7 @@
             <small>ONCE / CUSTOMER SCALE TESTER</small>
             <strong>Without Once vs With Once</strong>
           </div>
-          <span class="once-scale-badge">SCALE SIMULATION</span>
+          <span class="once-scale-badge">IMPACT MODEL / NOT PROOF</span>
         </div>
 
         <div class="once-scale-stage">
@@ -693,7 +693,7 @@
           </label>
 
           <label class="once-scale-field">
-            <span>RETRY / DUPLICATE RATE</span>
+            <span>RETRY RATE</span>
             <div class="once-scale-input-wrap">
               <input
                 class="once-scale-input"
@@ -765,7 +765,7 @@
 
         <div class="once-scale-runbar">
           <p>
-            This is a client-side scale model. Enter 10B and the browser performs arithmetic — it does not send 10B requests.
+            This is a client-side impact model, not proof. Enter 10B and the browser performs arithmetic — it does not send 10B requests.
             The live proof environment is linked below.
           </p>
           <button class="once-scale-run button-primary" id="onceScaleRun" type="button">RUN COMPARISON</button>
@@ -871,7 +871,7 @@
         <div class="once-scale-impact" id="onceScaleImpact">
           <div>
             <small>03 · WHAT THAT MEANS AT YOUR SCALE</small>
-            <strong id="onceImpactHeadline">10,000 modeled blind retry executions removed.</strong>
+            <strong id="onceImpactHeadline">10,000 modeled retries handled without blind re-execution on the confirmed replay path.</strong>
             <span id="onceImpactDetail">
               £750,000 of payment value passes through those retry events. This is exposure context, not a claim that every retry becomes a duplicate charge.
             </span>
@@ -882,7 +882,7 @@
 
           <a
             class="once-scale-proof-link"
-            href="https://once-sandbox-playground.pennywatch.workers.dev/"
+            href="https://playground.onceexec.com/"
             target="_blank"
             rel="noopener"
           >
@@ -905,7 +905,7 @@
         <div class="once-scale-close-actions">
           <a
             class="once-scale-proof-link"
-            href="https://once-sandbox-playground.pennywatch.workers.dev/"
+            href="https://playground.onceexec.com/"
             target="_blank"
             rel="noopener"
           >
@@ -1020,7 +1020,7 @@
       numberFormat.format(Math.round(retryEvents));
 
     impactHeadline.textContent =
-      `${retryCountText} retries. ${retryCountText} opportunities not to blindly re-execute the same protected action.`;
+      `${retryCountText} modeled retries handled without blind re-execution on the confirmed replay path.`;
 
     if (averageValue > 0) {
       impactDetail.textContent =

@@ -1,0 +1,53 @@
+{
+  "schema_version": "once-dataset-preregistration-v1",
+  "dataset_id": "once-dataset-001",
+  "purpose": "Sealed holdout for one-shot evaluation of the first Once freshness policy against authentic external-read traces.",
+  "collector": {
+    "branch": "evidence/dataset-001-collector",
+    "git_commit": "e79fb8ccd4eb1cb312558136b50f0256cbae2b55",
+    "command": "once trace fetch",
+    "trace_path": ".once/agent-trace.jsonl"
+  },
+  "collection_start": "2026-09-20T22:25:59.341Z",
+  "state_at_preregistration": {
+    "observations": 3,
+    "unique_resources": 3,
+    "eligible_repeated_observations": 0,
+    "freshness_policy_developed": false
+  },
+  "stopping_rule": {
+    "type": "all_conditions_must_be_met",
+    "minimum_observations": 500,
+    "minimum_eligible_repeated_observations": 250,
+    "minimum_unique_resources": 25,
+    "minimum_collection_days": 14,
+    "outcome_dependent_stopping": false,
+    "note": "Collection stops at the first point all four structural conditions are satisfied. Fingerprint outcomes, avoidance rates, change rates, or any future policy score must not influence the stopping decision."
+  },
+  "eligibility": {
+    "include": [
+      "Genuine external reads required during normal Once development, release, deployment, registry, documentation, or evidence work and deliberately routed through the frozen collector."
+    ],
+    "exclude": [
+      "Synthetic or mock traffic.",
+      "Reads performed solely to increase dataset size or create repeats.",
+      "Backfilled reads performed through other connectors or browsers that bypassed the frozen collector.",
+      "Any raw observation containing once_decision or another freshness-policy output."
+    ]
+  },
+  "seal_protocol": {
+    "copy_raw_jsonl_byte_for_byte": true,
+    "sha256_required": true,
+    "manifest_required": true,
+    "overwrite_existing_sealed_artifacts": false,
+    "raw_dataset_mutation_after_seal": false
+  },
+  "policy_protocol": {
+    "freshness_policy_development_before_dataset_seal": false,
+    "development_data": "Dataset #0 synthetic/local fixtures only after Dataset #1 is sealed.",
+    "policy_must_be_frozen_before_holdout_replay": true,
+    "holdout_replay_attempts_for_policy_v1": 1,
+    "retuning_policy_v1_after_holdout_result": false,
+    "publish_failures_and_unfavorable_results": true
+  }
+}

@@ -61,7 +61,7 @@ Execution safety depends on stable operation identity, durable Once state, the p
 
 ## Links
 
-- Website: https://onceexec.pages.dev/
+- Website: https://onceexec.com/
 - GitHub: https://github.com/stringsofthemind-oss/once
-- Agent guide: https://onceexec.pages.dev/agent.md
+- Agent guide: https://onceexec.com/agent.md
 - MCP package: https://www.npmjs.com/package/@once-agent/mcp

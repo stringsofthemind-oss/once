@@ -596,7 +596,7 @@ window.addEventListener(
 
 
   const ENDPOINT =
-    "https://once-sandbox-playground.pennywatch.workers.dev/analytics/event";
+    "https://playground.onceexec.com/analytics/event";
 
 
   const sent =
@@ -829,7 +829,7 @@ window.addEventListener(
 
       if (
         url.hostname ===
-          "once-sandbox-playground.pennywatch.workers.dev"
+          "playground.onceexec.com"
       ) {
 
         sendOnce(

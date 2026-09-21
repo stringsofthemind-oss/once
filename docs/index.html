@@ -24,7 +24,7 @@
 
 <link
   rel="canonical"
-  href="https://onceexec.pages.dev/"
+  href="https://onceexec.com/"
 >
 
 <link
@@ -47,7 +47,7 @@
   "name": "Once",
   "applicationCategory": "DeveloperApplication",
   "softwareVersion": "0.1.5",
-  "url": "https://onceexec.pages.dev/",
+  "url": "https://onceexec.com/",
   "downloadUrl": "https://www.npmjs.com/package/@once-agent/sdk",
   "codeRepository": "https://github.com/stringsofthemind-oss/once",
   "description": "Execution-safety infrastructure for supported consequential AI-agent and application side effects."
@@ -60,7 +60,7 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="Once — AI Agent Execution Safety">
 <meta property="og:description" content="MCP idempotency, safe retries and duplicate side-effect protection for consequential AI agent writes.">
-<meta property="og:url" content="https://onceexec.pages.dev/">
+<meta property="og:url" content="https://onceexec.com/">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Once — AI Agent Execution Safety">
 <meta name="twitter:description" content="MCP idempotency and retry safety for consequential AI agent writes.">
@@ -309,7 +309,7 @@ NAVIGATION
 
       <i></i>
 
-      SDK 0.1.5 · MCP 0.1.2
+      TS SDK 0.1.5 · PY SDK 0.1.0 · MCP 0.1.2
 
     </div>
 
@@ -383,7 +383,7 @@ HERO
 
       <a
         class="button"
-        href="https://once-sandbox-playground.pennywatch.workers.dev/"
+        href="https://playground.onceexec.com/"
         target="_blank"
         rel="noopener"
       >
@@ -603,6 +603,109 @@ CROSS-FRAMEWORK EVIDENCE
 
 </section>
 
+
+<!-- ============================================
+AGENT ROUTING EVIDENCE
+============================================= -->
+
+<section class="cross-proof" id="agent-routing-evidence">
+
+  <div class="cross-proof-head reveal">
+
+    <span class="cross-proof-kicker">
+      AGENT ROUTING EVIDENCE
+    </span>
+
+    <div>
+      <h2>
+        171 decisions.
+        <br>
+        <em>171 correct.</em>
+      </h2>
+
+      <p>
+        Gemini, Claude and Grok were evaluated across six blind runs using two
+        fixed Once routing-conformance suites, including a 40-case adversarial
+        suite designed to test harder execution-safety boundaries.
+      </p>
+    </div>
+
+  </div>
+
+  <div class="cross-proof-grid reveal">
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>MODEL FAMILIES</span>
+        <span class="cross-proof-state">3</span>
+      </div>
+      <strong>Gemini / Claude / Grok</strong>
+      <small>Three model families, each tested in separate fresh sessions.</small>
+    </article>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>BLIND RUNS</span>
+        <span class="cross-proof-state">6 / 6 PASS</span>
+      </div>
+      <strong>Two fixed suites</strong>
+      <small>17-case baseline plus 40-case adversarial routing conformance.</small>
+    </article>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>ROUTING DECISIONS</span>
+        <span class="cross-proof-state">171 / 171</span>
+      </div>
+      <strong>100% on the fixed suites</strong>
+      <small>All evaluated scenario decisions matched the hidden expected routes and actions.</small>
+    </article>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>OBSERVED ERRORS</span>
+        <span class="cross-proof-state">0</span>
+      </div>
+      <strong>No recorded routing errors</strong>
+      <small>Zero over-routes, under-routes, action mismatches or runtime-state mismatches.</small>
+    </article>
+
+  </div>
+
+  <div class="cross-proof-cta reveal">
+
+    <div>
+      <strong>Inspect the evidence trail.</strong>
+      <p>Read the methodology, integrity hashes and aggregate results behind the six blind runs.</p>
+    </div>
+
+    <div class="cross-proof-actions">
+
+      <a
+        class="button button-primary"
+        href="./evidence/routing/README.md"
+      >
+        Read evidence
+      </a>
+
+      <a
+        class="button"
+        href="./evidence/routing/once-routing-evidence-summary-v1.json"
+      >
+        Aggregate JSON
+      </a>
+
+    </div>
+
+  </div>
+
+  <p class="cross-proof-scope reveal">
+    Scope: these results demonstrate conformance on the two fixed test suites in these six
+    blind runs. They do not establish universal model correctness, guarantee routing for
+    every real-world operation, or claim universal exactly-once execution.
+  </p>
+
+</section>
 
 <!-- ============================================
 01 FAILURE
@@ -1102,6 +1205,390 @@ CROSS-FRAMEWORK EVIDENCE
 
 
 <!-- ============================================
+ONCE DECISION MODEL
+============================================= -->
+
+<section class="cross-proof" id="once-decision-model">
+
+  <div class="cross-proof-head reveal">
+
+    <span class="cross-proof-kicker">
+      THE ONCE DECISION MODEL
+    </span>
+
+    <div>
+      <h2>
+        The retry gets a decision.
+        <br>
+        <em>Not another blind execution.</em>
+      </h2>
+
+      <p>
+        Once does not treat a missing response as proof that nothing happened.
+        It carries the same logical operation identity across retries, checks
+        durable state and provider truth on supported paths, then chooses one
+        of three outcomes.
+      </p>
+    </div>
+
+  </div>
+
+  <div class="cross-proof-grid reveal">
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>CONFIRMED</span>
+        <span class="cross-proof-state">REPLAY / SUPPRESS</span>
+      </div>
+      <strong>Reality already changed.</strong>
+      <small>Return the durable result or suppress the duplicate instead of executing the consequential action again.</small>
+    </article>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>ABSENT</span>
+        <span class="cross-proof-state">EXECUTE</span>
+      </div>
+      <strong>No prior effect is established.</strong>
+      <small>When durable state and supported reconciliation establish absence, the operation may proceed.</small>
+    </article>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>UNKNOWN</span>
+        <span class="cross-proof-state warn">BLOCK + RECONCILE</span>
+      </div>
+      <strong>Truth cannot be established yet.</strong>
+      <small>Fail closed rather than guess. Reconcile provider truth before another consequential execution is allowed.</small>
+    </article>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>CORE RULE</span>
+        <span class="cross-proof-state">SAME OPERATION ID</span>
+      </div>
+      <strong>A timeout is not a result.</strong>
+      <small>Retries reuse one stable logical identity so Once can reason about the operation rather than treating every attempt as new work.</small>
+    </article>
+
+  </div>
+
+  <p class="cross-proof-scope reveal">
+    Scope: Once does not infer provider truth from a lost response. Safe recovery on supported
+    paths depends on durable operation identity, durable state and authoritative reconciliation
+    or equivalent downstream guarantees.
+  </p>
+
+</section>
+
+
+<!-- ============================================
+MCP VS RUNTIME
+============================================= -->
+
+<section class="cross-proof" id="mcp-runtime-boundary">
+
+  <div class="cross-proof-head reveal">
+
+    <span class="cross-proof-kicker">
+      WHERE ONCE SITS
+    </span>
+
+    <div>
+      <h2>
+        MCP helps the agent choose the protection.
+        <br>
+        <em>The runtime enforces the decision.</em>
+      </h2>
+
+      <p>
+        Once separates agent-facing discovery and setup from the execution-safety boundary.
+        The MCP server helps an agent assess a project, plan protection, apply supported setup
+        and verify the connection. The runtime is what executes, replays or blocks a protected
+        consequential operation.
+      </p>
+    </div>
+
+  </div>
+
+  <div class="cross-proof-grid reveal">
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>MCP / AGENT LAYER</span>
+        <span class="cross-proof-state">ASSESS + CONFIGURE</span>
+      </div>
+      <strong>Discovery, planning and verification.</strong>
+      <small>Agents can inspect the project, explain retry risk, plan setup, apply supported protection and verify Once is connected.</small>
+    </article>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>RUNTIME LAYER</span>
+        <span class="cross-proof-state">EXECUTE + REPLAY + BLOCK</span>
+      </div>
+      <strong>The execution-safety boundary.</strong>
+      <small>Protected operations use stable identity, durable state and supported reconciliation to decide whether to execute, replay or fail closed.</small>
+    </article>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>DATA PATH</span>
+        <span class="cross-proof-state">APPLICATION -> ONCE -> PROVIDER</span>
+      </div>
+      <strong>Protection sits on the consequential path.</strong>
+      <small>The runtime must be on the path of the side effect being protected. Installing the MCP server alone does not automatically guard every tool call.</small>
+    </article>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>BOUNDARY</span>
+        <span class="cross-proof-state">NO MAGIC INTERCEPTION</span>
+      </div>
+      <strong>Explicit integration, explicit guarantees.</strong>
+      <small>Once protects supported operations that are wired through its execution boundary; it does not claim to intercept arbitrary external actions automatically.</small>
+    </article>
+
+  </div>
+
+  <p class="cross-proof-scope reveal">
+    In short: MCP makes Once legible and usable to agents. The runtime is the safety boundary that protects the consequential operation.
+  </p>
+
+</section>
+
+
+<!-- ============================================
+ONCE TRUST BOUNDARY
+============================================= -->
+
+<section class="cross-proof" id="once-trust-boundary">
+
+  <div class="cross-proof-head reveal">
+
+    <span class="cross-proof-kicker">
+      CURRENT TRUST BOUNDARY
+    </span>
+
+    <div>
+      <h2>
+        Know what Once sees.
+        <br>
+        <em>Know how failure behaves.</em>
+      </h2>
+
+      <p>
+        The current hosted SDK path is intentionally explicit about its boundary.
+        Protected execution is authenticated to the Once service, operation data crosses
+        that boundary, and the SDK fails with an error rather than silently bypassing
+        Once when the service cannot be reached.
+      </p>
+    </div>
+
+  </div>
+
+  <div class="cross-proof-grid reveal">
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>HOSTED EXECUTION PATH</span>
+        <span class="cross-proof-state">AUTHENTICATED</span>
+      </div>
+      <strong>The SDK talks to the Once service.</strong>
+      <small>On the hosted execute path, the operation ID, provider alias and action payload are sent to the configured Once API using the Once API key.</small>
+    </article>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>PROVIDER REGISTRATION</span>
+        <span class="cross-proof-state">EXPLICIT SETUP</span>
+      </div>
+      <strong>Provider access is configured, not inferred.</strong>
+      <small>For the current hosted HTTP provider setup, the provider base URL and provider token are registered with Once so the runtime can execute and reconcile supported protected operations.</small>
+    </article>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>ONCE UNREACHABLE</span>
+        <span class="cross-proof-state warn">ERROR / NO SILENT BYPASS</span>
+      </div>
+      <strong>Protection does not disappear quietly.</strong>
+      <small>The SDK performs bounded network retries. If Once still cannot be reached, it raises a timeout or network error instead of silently sending the protected action directly to the provider.</small>
+    </article>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>REFERENCE EVIDENCE</span>
+        <span class="cross-proof-state">LOCAL SQLITE LABS</span>
+      </div>
+      <strong>The crash labs are reference implementations.</strong>
+      <small>LangGraph and CrewAI evidence uses the SQLite reference backend and simulated provider ledgers. That proof is deliberately scoped separately from the hosted Once service.</small>
+    </article>
+
+  </div>
+
+  <p class="cross-proof-scope reveal">
+    Scope: this describes the current hosted SDK execution path and the published reference labs.
+    It is not a claim about undocumented storage location, retention, encryption, compliance or
+    deployment guarantees. Those should be documented separately before they are promised.
+  </p>
+
+</section>
+
+
+<!-- ============================================
+WHY ONCE VS NATIVE IDEMPOTENCY
+============================================= -->
+
+<section class="cross-proof" id="why-once-idempotency">
+
+  <div class="cross-proof-head reveal">
+
+    <span class="cross-proof-kicker">
+      WHY ONCE
+    </span>
+
+    <div>
+      <h2>
+        Keep provider idempotency.
+        <br>
+        <em>Add recovery when the caller no longer knows.</em>
+      </h2>
+
+      <p>
+        Once is not a replacement for provider-native idempotency, database constraints or durable workflows.
+        Those controls remain valuable. Once focuses on the retry boundary around a consequential external
+        operation: one stable logical identity, durable execution state and a safe decision after an ambiguous outcome.
+      </p>
+    </div>
+
+  </div>
+
+  <div class="cross-proof-grid reveal">
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>PROVIDER IDEMPOTENCY</span>
+        <span class="cross-proof-state">KEEP IT</span>
+      </div>
+      <strong>Deduplicate at the provider boundary.</strong>
+      <small>When a provider supports an idempotency key or equivalent control, use it. Once complements that downstream protection rather than asking you to remove it.</small>
+    </article>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>ONCE</span>
+        <span class="cross-proof-state">IDENTITY + STATE + RECONCILIATION</span>
+      </div>
+      <strong>Reason about the logical operation across attempts.</strong>
+      <small>Once carries stable operation identity across retries, records durable state and uses supported reconciliation to choose execute, replay or block instead of treating a lost response as a fresh action.</small>
+    </article>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>DATABASE / OUTBOX</span>
+        <span class="cross-proof-state">DIFFERENT BOUNDARY</span>
+      </div>
+      <strong>Protect local state and message handoff.</strong>
+      <small>Unique constraints, transactions and outbox patterns can protect application or messaging boundaries. They do not by themselves establish whether an external provider already performed an operation after the response was lost.</small>
+    </article>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>DURABLE WORKFLOW</span>
+        <span class="cross-proof-state">STILL NEEDS SAFE EFFECTS</span>
+      </div>
+      <strong>Durable orchestration and safe side effects solve different layers.</strong>
+      <small>A workflow engine can persist and retry a step. The external side effect still needs stable identity, downstream idempotency or reconciliation when execution crosses a failure boundary.</small>
+    </article>
+
+  </div>
+
+  <p class="cross-proof-scope reveal">
+    Rule of thumb: keep every useful downstream guarantee. Add Once when the same consequential operation may be retried,
+    the first outcome can be ambiguous, and blindly executing it again would be unsafe or costly.
+  </p>
+
+</section>
+
+
+<!-- ============================================
+CURRENT SUPPORT MATRIX
+============================================= -->
+
+<section class="cross-proof" id="once-support-matrix">
+
+  <div class="cross-proof-head reveal">
+
+    <span class="cross-proof-kicker">
+      CURRENT SUPPORT
+    </span>
+
+    <div>
+      <h2>
+        Know what is proven today.
+        <br>
+        <em>Know what still requires manual integration.</em>
+      </h2>
+
+      <p>
+        Once deliberately separates detection from protection. The scanner can identify a wider set
+        of consequential operations than the current Runtime HTTP execution contract protects automatically.
+        Unsupported shapes fail closed or require an adapter instead of being presented as covered.
+      </p>
+    </div>
+
+  </div>
+
+  <div class="cross-proof-grid reveal">
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>RUNTIME HTTP V0.1</span>
+        <span class="cross-proof-state">PROVEN PROTECTED SHAPE</span>
+      </div>
+      <strong>POST + application/json + stable identity.</strong>
+      <small>The current proven Runtime HTTP path protects an explicitly configured target, requires a non-empty valid JSON body and supports stable identity through an idempotency key or an application resolver.</small>
+    </article>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>HTTP RESPONSE REPLAY</span>
+        <span class="cross-proof-state">REQUIRED ON RUNTIME SETUP</span>
+      </div>
+      <strong>Confirmed retries return durable application-visible results.</strong>
+      <small>Runtime HTTP setup pins the exact target URL and requires durable sanitized response replay for the registered provider version before the protected operation can use the confirmed replay path.</small>
+    </article>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>OTHER WRITE SHAPES</span>
+        <span class="cross-proof-state warn">ADAPTER / MANUAL REVIEW</span>
+      </div>
+      <strong>Classification is broader than automatic execution support.</strong>
+      <small>PUT, PATCH and DELETE may be recognized as consequential, but Runtime HTTP v0.1 does not claim a proven protected execution contract for those methods. Unsupported request shapes are rejected rather than silently treated as protected.</small>
+    </article>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>SCAN + AUTO-APPLY</span>
+        <span class="cross-proof-state">CONSERVATIVE</span>
+      </div>
+      <strong>Finding a candidate is not the same as protecting it.</strong>
+      <small>The scanner runs locally and can surface likely side effects. Automatic application is intentionally narrow: only a fully revalidated eligible callsite is patched; ambiguous or unsupported cases stay manual.</small>
+    </article>
+
+  </div>
+
+  <p class="cross-proof-scope reveal">
+    Current boundary: Once does not claim that every provider, HTTP method, request shape or detected side effect is automatically protected.
+    Provider-specific guarantees and automatic transformation support should be evaluated separately from detection.
+  </p>
+
+</section>
+
+
+<!-- ============================================
 04 PROOF
 ============================================= -->
 
@@ -1451,7 +1938,7 @@ CROSS-FRAMEWORK EVIDENCE
             <small>ONCE / CUSTOMER SCALE TESTER</small>
             <strong>Without Once vs With Once</strong>
           </div>
-          <span class="once-scale-badge">SCALE SIMULATION</span>
+          <span class="once-scale-badge">IMPACT MODEL / NOT PROOF</span>
         </div>
 
         <div class="once-scale-controls">
@@ -1479,7 +1966,7 @@ CROSS-FRAMEWORK EVIDENCE
           </label>
 
           <label class="once-scale-field">
-            <span>RETRY / DUPLICATE RATE</span>
+            <span>RETRY RATE</span>
             <div class="once-scale-input-wrap">
               <input
                 class="once-scale-input"
@@ -1551,7 +2038,7 @@ CROSS-FRAMEWORK EVIDENCE
 
         <div class="once-scale-runbar">
           <p>
-            This is a client-side scale model. Enter 10B and the browser performs arithmetic — it does not send 10B requests.
+            This is a client-side impact model, not proof. Enter 10B and the browser performs arithmetic — it does not send 10B requests.
             The live proof environment is linked below.
           </p>
           <button class="once-scale-run button-primary" id="onceScaleRun" type="button">RUN COMPARISON</button>
@@ -1646,7 +2133,7 @@ CROSS-FRAMEWORK EVIDENCE
         <div class="once-scale-impact" id="onceScaleImpact">
           <div>
             <small>AT YOUR SCALE</small>
-            <strong id="onceImpactHeadline">10,000 modeled blind retry executions removed.</strong>
+            <strong id="onceImpactHeadline">10,000 modeled retries handled without blind re-execution on the confirmed replay path.</strong>
             <span id="onceImpactDetail">
               £750,000 of payment value passes through those retry events. This is exposure context, not a claim that every retry becomes a duplicate charge.
             </span>
@@ -1657,7 +2144,7 @@ CROSS-FRAMEWORK EVIDENCE
 
           <a
             class="once-scale-proof-link"
-            href="https://once-sandbox-playground.pennywatch.workers.dev/"
+            href="https://playground.onceexec.com/"
             target="_blank"
             rel="noopener"
           >
@@ -1896,7 +2383,7 @@ CROSS-FRAMEWORK EVIDENCE
 
         <a
           class="button button-primary"
-          href="https://once-sandbox-playground.pennywatch.workers.dev/"
+          href="https://playground.onceexec.com/"
           target="_blank"
           rel="noopener"
         >
@@ -1952,8 +2439,9 @@ CROSS-FRAMEWORK EVIDENCE
           Use the MCP install below.
 
           Embedding Once directly in an application?
-          Use the SDK terminal below, inspect consequential operations locally,
-          review the proposed protection, then apply supported transformations.
+          Choose the TypeScript or Python SDK below.
+          The terminal workflow beneath is the TypeScript / CLI path for inspecting consequential operations locally,
+          reviewing proposed protection, then applying supported transformations.
 
         </p>
 
@@ -1989,7 +2477,7 @@ CROSS-FRAMEWORK EVIDENCE
       <div>
 
         <span>
-          APPLICATION / SDK INSTALL
+          APPLICATION SDK / TYPESCRIPT
         </span>
 
         <code>
@@ -2007,13 +2495,36 @@ CROSS-FRAMEWORK EVIDENCE
     </div>
 
 
+    <div class="install-card">
+
+      <div>
+
+        <span>
+          APPLICATION SDK / PYTHON
+        </span>
+
+        <code>
+          pip install once-agent-sdk
+        </code>
+
+      </div>
+
+      <button
+        data-copy="pip install once-agent-sdk"
+      >
+        COPY
+      </button>
+
+    </div>
+
+
     <div class="developer-terminal reveal">
 
 
       <div class="terminal-head">
 
         <span>
-          Terminal
+          TypeScript / CLI
         </span>
 
         <span>
@@ -2060,6 +2571,180 @@ CROSS-FRAMEWORK EVIDENCE
 
 
 
+
+<!-- ============================================
+ONCE UPDATES
+============================================= -->
+
+<section
+  class="once-updates"
+  id="updates"
+>
+
+  <div class="once-updates-shell reveal">
+
+    <div class="once-updates-copy">
+
+      <span class="chapter-number">
+        ONCE / UPDATES
+      </span>
+
+      <h2>
+        Stay ahead with
+        <em>Once.</em>
+      </h2>
+
+      <p>
+        Product updates, new integrations, research and occasional offers —
+        straight from the team building safer AI execution.
+      </p>
+
+      <div class="once-updates-trust">
+        DOUBLE OPT-IN · UNSUBSCRIBE ANYTIME
+      </div>
+
+    </div>
+
+
+    <div class="once-updates-form-card">
+
+      <div
+        id="sib-form-container"
+        class="sib-form-container"
+      >
+
+        <div
+          id="error-message"
+          class="sib-form-message-panel once-updates-message once-updates-message-error"
+          role="alert"
+          aria-live="polite"
+        >
+          <div class="sib-form-message-panel__text sib-form-message-panel__text--center">
+            <span class="sib-form-message-panel__inner-text">
+              Your subscription could not be saved. Please try again.
+            </span>
+          </div>
+        </div>
+
+        <div></div>
+
+        <div
+          id="success-message"
+          class="sib-form-message-panel once-updates-message once-updates-message-success"
+          role="status"
+          aria-live="polite"
+        >
+          <div class="sib-form-message-panel__text sib-form-message-panel__text--center">
+            <span class="sib-form-message-panel__inner-text">
+              Almost there — check your inbox and confirm your email to join Once updates.
+            </span>
+          </div>
+        </div>
+
+        <div></div>
+
+        <div
+          id="sib-container"
+          class="sib-container--large sib-container--vertical"
+        >
+
+          <form
+            id="sib-form"
+            class="once-updates-form"
+            method="POST"
+            action="https://150d3c53.sibforms.com/serve/MUIFAPDK9wJjjFlOGB0zr41EX2hXyNsizwTUKkz2L_VkffR1M5J-Q0yTjihjiw5aTImk27gTkcoScTq4Tm18OYl5w3EfE9_x6Q_xP1KBXOrg3UwEUoeBxTkMOaMNYla6vCVXbmb6OnvdIWweZGB8ElTQe3OoSFFtvWrsFLEZU8QZBOd1uSfP2MV0gwgz8PFMHn7cyuxsbndXW4kXzw=="
+            data-type="subscription"
+          >
+
+            <label
+              class="once-updates-label"
+              for="EMAIL"
+            >
+              EMAIL ADDRESS
+            </label>
+
+            <div class="form__entry entry_block">
+
+              <div class="form__label-row">
+
+                <div class="entry__field once-updates-field">
+
+                  <input
+                    class="input once-updates-input"
+                    type="email"
+                    id="EMAIL"
+                    name="EMAIL"
+                    autocomplete="email"
+                    placeholder="you@company.com"
+                    data-required="true"
+                    required
+                  >
+
+                </div>
+
+              </div>
+
+              <label
+                class="entry__error entry__error--primary once-updates-field-error"
+              ></label>
+
+            </div>
+
+
+            <button
+              class="button button-primary sib-form-block__button sib-form-block__button-with-loader once-updates-submit"
+              form="sib-form"
+              type="submit"
+            >
+
+              <svg
+                class="icon clickable__icon progress-indicator__icon sib-hide-loader-icon"
+                viewBox="0 0 512 512"
+                aria-hidden="true"
+              >
+                <path d="M460.116 373.846l-20.823-12.022c-5.541-3.199-7.54-10.159-4.663-15.874 30.137-59.886 28.343-131.652-5.386-189.946-33.641-58.394-94.896-95.833-161.827-99.676C261.028 55.961 256 50.751 256 44.352V20.309c0-6.904 5.808-12.337 12.703-11.982 83.556 4.306 160.163 50.864 202.11 123.677 42.063 72.696 44.079 162.316 6.031 236.832-3.14 6.148-10.75 8.461-16.728 5.01z"></path>
+              </svg>
+
+              <span>
+                Join Once updates
+              </span>
+
+            </button>
+
+
+            <p class="once-updates-note">
+              By joining, you agree to receive Once product updates,
+              integration news, research and occasional offers.
+              Double opt-in. Unsubscribe anytime.
+            </p>
+
+
+            <input
+              type="text"
+              name="email_address_check"
+              value=""
+              class="input--hidden"
+              tabindex="-1"
+              aria-hidden="true"
+            >
+
+            <input
+              type="hidden"
+              name="locale"
+              value="en"
+            >
+
+          </form>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</section>
 <!-- ============================================
 FINAL CTA
 ============================================= -->
@@ -2150,7 +2835,7 @@ FINAL CTA
 
 
   <span>
-    SDK 0.1.5 · MCP 0.1.2
+    TS SDK 0.1.5 · PY SDK 0.1.0 · MCP 0.1.2
   </span>
 
 </footer>
@@ -2183,6 +2868,49 @@ FINAL CTA
   </span>
 </button>
 
+
+
+<!-- ONCE / BREVO SIGNUP -->
+
+<script>
+  window.REQUIRED_CODE_ERROR_MESSAGE = 'Please choose a country code';
+  window.LOCALE = 'en';
+
+  window.EMAIL_INVALID_MESSAGE =
+  window.SMS_INVALID_MESSAGE =
+    'The information provided is invalid. Please review the field format and try again.';
+
+  window.REQUIRED_ERROR_MESSAGE =
+    'This field cannot be left blank. ';
+
+  window.GENERIC_INVALID_MESSAGE =
+    'The information provided is invalid. Please review the field format and try again.';
+
+  window.INVALID_NUMBER =
+    'The information provided is invalid. Please review the field format and try again.';
+
+  window.INVALID_DATE =
+    'Please enter a valid date';
+
+  window.REQUIRED_MULTISELECT_MESSAGE =
+    'Please select at least 1 option';
+
+  window.translation = {
+    common: {
+      selectedList: '{quantity} list selected',
+      selectedLists: '{quantity} lists selected',
+      selectedOption: '{quantity} selected',
+      selectedOptions: '{quantity} selected'
+    }
+  };
+
+  var AUTOHIDE = Boolean(0);
+</script>
+
+<script
+  defer
+  src="https://sibforms.com/forms/end-form/build/main.js"
+></script>
 
 <script src="./app.js"></script>
 

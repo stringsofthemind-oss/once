@@ -1,0 +1,262 @@
+{
+  "schema_version": "once-agent-routing-conformance-v1",
+  "contract_schema_version": "once-agent-discovery-v1",
+  "scope": "current execution-safety product only",
+  "scope_note": "Freshness / has_changed routing is intentionally out of scope for this suite because it is not part of the currently shipped Once execution-safety product.",
+  "decision_rule": "EVALUATE_ONCE only when all four routing conditions are true.",
+  "routes": [
+    "BYPASS_ONCE",
+    "EVALUATE_ONCE"
+  ],
+  "actions": [
+    "DIRECT",
+    "PROTECT",
+    "EXECUTE",
+    "REPLAY_OR_SUPPRESS",
+    "BLOCK_AND_RECONCILE"
+  ],
+  "cases": [
+    {
+      "id": "read_public_docs",
+      "description": "Read public product documentation with HTTP GET.",
+      "conditions": {
+        "changes_external_state": false,
+        "same_logical_operation_may_retry": true,
+        "first_attempt_can_be_ambiguous": true,
+        "blind_duplicate_undesirable_or_costly": false
+      },
+      "expected": {
+        "route": "BYPASS_ONCE",
+        "action": "DIRECT"
+      }
+    },
+    {
+      "id": "poll_npm_package_version",
+      "description": "Repeatedly read npm package metadata to see whether a dependency version changed.",
+      "conditions": {
+        "changes_external_state": false,
+        "same_logical_operation_may_retry": true,
+        "first_attempt_can_be_ambiguous": true,
+        "blind_duplicate_undesirable_or_costly": false
+      },
+      "expected": {
+        "route": "BYPASS_ONCE",
+        "action": "DIRECT"
+      },
+      "scope_note": "A future freshness / has_changed primitive may be relevant, but this is not current Once execution-safety routing."
+    },
+    {
+      "id": "web_search",
+      "description": "Search the web and retrieve results without changing external state.",
+      "conditions": {
+        "changes_external_state": false,
+        "same_logical_operation_may_retry": true,
+        "first_attempt_can_be_ambiguous": true,
+        "blind_duplicate_undesirable_or_costly": false
+      },
+      "expected": {
+        "route": "BYPASS_ONCE",
+        "action": "DIRECT"
+      }
+    },
+    {
+      "id": "generate_email_draft",
+      "description": "Generate email text but do not send it.",
+      "conditions": {
+        "changes_external_state": false,
+        "same_logical_operation_may_retry": true,
+        "first_attempt_can_be_ambiguous": false,
+        "blind_duplicate_undesirable_or_costly": false
+      },
+      "expected": {
+        "route": "BYPASS_ONCE",
+        "action": "DIRECT"
+      }
+    },
+    {
+      "id": "database_select",
+      "description": "Execute a read-only SELECT query against a database.",
+      "conditions": {
+        "changes_external_state": false,
+        "same_logical_operation_may_retry": true,
+        "first_attempt_can_be_ambiguous": true,
+        "blind_duplicate_undesirable_or_costly": false
+      },
+      "expected": {
+        "route": "BYPASS_ONCE",
+        "action": "DIRECT"
+      }
+    },
+    {
+      "id": "local_report_generation",
+      "description": "Compute and render a report without a consequential external side effect.",
+      "conditions": {
+        "changes_external_state": false,
+        "same_logical_operation_may_retry": true,
+        "first_attempt_can_be_ambiguous": false,
+        "blind_duplicate_undesirable_or_costly": false
+      },
+      "expected": {
+        "route": "BYPASS_ONCE",
+        "action": "DIRECT"
+      }
+    },
+    {
+      "id": "set_profile_theme_absolute",
+      "description": "Set an external profile theme to the same absolute value where repeating the write has no meaningful duplicate effect.",
+      "conditions": {
+        "changes_external_state": true,
+        "same_logical_operation_may_retry": true,
+        "first_attempt_can_be_ambiguous": true,
+        "blind_duplicate_undesirable_or_costly": false
+      },
+      "expected": {
+        "route": "BYPASS_ONCE",
+        "action": "DIRECT"
+      }
+    },
+    {
+      "id": "health_check_get",
+      "description": "Call a read-only service health endpoint.",
+      "conditions": {
+        "changes_external_state": false,
+        "same_logical_operation_may_retry": true,
+        "first_attempt_can_be_ambiguous": true,
+        "blind_duplicate_undesirable_or_costly": false
+      },
+      "expected": {
+        "route": "BYPASS_ONCE",
+        "action": "DIRECT"
+      }
+    },
+    {
+      "id": "create_refund",
+      "description": "Issue a refund that may be retried after a timeout or lost response.",
+      "conditions": {
+        "changes_external_state": true,
+        "same_logical_operation_may_retry": true,
+        "first_attempt_can_be_ambiguous": true,
+        "blind_duplicate_undesirable_or_costly": true
+      },
+      "expected": {
+        "route": "EVALUATE_ONCE",
+        "action": "PROTECT"
+      }
+    },
+    {
+      "id": "create_booking",
+      "description": "Create a reservation where a retry could create a second booking.",
+      "conditions": {
+        "changes_external_state": true,
+        "same_logical_operation_may_retry": true,
+        "first_attempt_can_be_ambiguous": true,
+        "blind_duplicate_undesirable_or_costly": true
+      },
+      "expected": {
+        "route": "EVALUATE_ONCE",
+        "action": "PROTECT"
+      }
+    },
+    {
+      "id": "send_consequential_email",
+      "description": "Send an externally visible email where retrying the same logical send could deliver twice.",
+      "conditions": {
+        "changes_external_state": true,
+        "same_logical_operation_may_retry": true,
+        "first_attempt_can_be_ambiguous": true,
+        "blind_duplicate_undesirable_or_costly": true
+      },
+      "expected": {
+        "route": "EVALUATE_ONCE",
+        "action": "PROTECT"
+      }
+    },
+    {
+      "id": "queue_redelivery_create_order",
+      "description": "A queue redelivers a create-order message after acknowledgement is lost.",
+      "conditions": {
+        "changes_external_state": true,
+        "same_logical_operation_may_retry": true,
+        "first_attempt_can_be_ambiguous": true,
+        "blind_duplicate_undesirable_or_costly": true
+      },
+      "expected": {
+        "route": "EVALUATE_ONCE",
+        "action": "PROTECT"
+      }
+    },
+    {
+      "id": "provision_account",
+      "description": "Provision an external account where replay could create duplicate resources or charges.",
+      "conditions": {
+        "changes_external_state": true,
+        "same_logical_operation_may_retry": true,
+        "first_attempt_can_be_ambiguous": true,
+        "blind_duplicate_undesirable_or_costly": true
+      },
+      "expected": {
+        "route": "EVALUATE_ONCE",
+        "action": "PROTECT"
+      }
+    },
+    {
+      "id": "production_deploy",
+      "description": "Trigger a production deployment where an ambiguous retry could repeat a consequential external action.",
+      "conditions": {
+        "changes_external_state": true,
+        "same_logical_operation_may_retry": true,
+        "first_attempt_can_be_ambiguous": true,
+        "blind_duplicate_undesirable_or_costly": true
+      },
+      "expected": {
+        "route": "EVALUATE_ONCE",
+        "action": "PROTECT"
+      }
+    },
+    {
+      "id": "refund_timeout_truth_unavailable",
+      "description": "A refund request times out after the provider may have executed it, and provider truth cannot currently be established.",
+      "conditions": {
+        "changes_external_state": true,
+        "same_logical_operation_may_retry": true,
+        "first_attempt_can_be_ambiguous": true,
+        "blind_duplicate_undesirable_or_costly": true
+      },
+      "runtime_state": "UNKNOWN",
+      "expected": {
+        "route": "EVALUATE_ONCE",
+        "action": "BLOCK_AND_RECONCILE"
+      }
+    },
+    {
+      "id": "booking_retry_prior_confirmed",
+      "description": "A retry arrives for a booking whose logical operation is already durably CONFIRMED.",
+      "conditions": {
+        "changes_external_state": true,
+        "same_logical_operation_may_retry": true,
+        "first_attempt_can_be_ambiguous": true,
+        "blind_duplicate_undesirable_or_costly": true
+      },
+      "runtime_state": "CONFIRMED",
+      "expected": {
+        "route": "EVALUATE_ONCE",
+        "action": "REPLAY_OR_SUPPRESS"
+      }
+    },
+    {
+      "id": "order_first_attempt_absent",
+      "description": "A protected create-order logical operation is established as ABSENT before execution.",
+      "conditions": {
+        "changes_external_state": true,
+        "same_logical_operation_may_retry": true,
+        "first_attempt_can_be_ambiguous": true,
+        "blind_duplicate_undesirable_or_costly": true
+      },
+      "runtime_state": "ABSENT",
+      "expected": {
+        "route": "EVALUATE_ONCE",
+        "action": "EXECUTE"
+      }
+    }
+  ]
+}

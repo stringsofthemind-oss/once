@@ -23,6 +23,14 @@ import {
   applyProtectionPlan
 } from "./apply.js";
 
+import {
+  runBenchmark
+} from "./benchmark.js";
+
+import {
+  runTraceFetch
+} from "./trace.js";
+
 async function runDoctor(): Promise<void> {
 
   console.log("");
@@ -155,7 +163,6 @@ function printHelp(): void {
     "      Use --snippets to generate per-callsite integration guidance."
   );
 
-
   console.log(
     "      Use --apply to transactionally apply exactly one PATCHABLE candidate."
   );
@@ -185,6 +192,24 @@ function printHelp(): void {
 
   console.log("");
   console.log(
+    "  once trace fetch <url> [--resource=<id>] [--trace=<path>]"
+  );
+
+  console.log(
+    "      Record a raw HTTP observation for Dataset #1 without inventing an Once decision."
+  );
+
+  console.log("");
+  console.log(
+    "  once benchmark <trace.jsonl>"
+  );
+
+  console.log(
+    "      Measure hindsight opportunity separately from measured Once avoidance."
+  );
+
+  console.log("");
+  console.log(
     "  once doctor"
   );
 
@@ -207,7 +232,6 @@ function printHelp(): void {
     "  once protect . --all --patch"
   );
 
-
   console.log(
     "  once protect . --apply"
   );
@@ -218,6 +242,14 @@ function printHelp(): void {
 
   console.log(
     "  once scan ."
+  );
+
+  console.log(
+    "  once trace fetch https://api.github.com/repos/stringsofthemind-oss/once"
+  );
+
+  console.log(
+    "  once benchmark .once/agent-trace.jsonl"
   );
 
   console.log(
@@ -241,6 +273,74 @@ async function main(): Promise<void> {
     case "doctor":
       await runDoctor();
       return;
+
+    case "trace": {
+      const subcommand =
+        (args.shift() ?? "").toLowerCase();
+
+      if (subcommand !== "fetch") {
+        throw new Error(
+          "trace currently supports only read-only HTTP collection: once trace fetch <url>"
+        );
+      }
+
+      const urlValue =
+        args.find(
+          value =>
+            !value.startsWith("--")
+        );
+
+      if (!urlValue) {
+        throw new Error(
+          "trace fetch requires a URL. Example: once trace fetch https://api.github.com/repos/stringsofthemind-oss/once"
+        );
+      }
+
+      const resourceArgument =
+        args.find(
+          value =>
+            value.startsWith("--resource=")
+        );
+
+      const traceArgument =
+        args.find(
+          value =>
+            value.startsWith("--trace=")
+        );
+
+      await runTraceFetch(
+        urlValue,
+        {
+          resource:
+            resourceArgument
+              ? resourceArgument.substring("--resource=".length)
+              : undefined,
+          tracePath:
+            traceArgument
+              ? traceArgument.substring("--trace=".length)
+              : undefined
+        }
+      );
+
+      return;
+    }
+
+    case "benchmark": {
+      const tracePath =
+        args.find(
+          value =>
+            !value.startsWith("--")
+        );
+
+      if (!tracePath) {
+        throw new Error(
+          "benchmark requires a JSONL trace path. Example: once benchmark .once/agent-trace.jsonl"
+        );
+      }
+
+      await runBenchmark(tracePath);
+      return;
+    }
 
     case "scan": {
       const noEstimate =
@@ -341,15 +441,6 @@ async function main(): Promise<void> {
                 : error
             );
 
-          /*
-           * runProtect currently does not persist a plan
-           * when zero candidates are selected.
-           *
-           * Because this apply path has just run Protect
-           * successfully with writePlan=true, a missing
-           * protect-plan here means there were zero
-           * selected candidates.
-           */
           if (
             message.includes(
               "protect-plan.json"

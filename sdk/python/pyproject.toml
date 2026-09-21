@@ -40,9 +40,9 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://onceexec.pages.dev/"
+Homepage = "https://onceexec.com/"
 Repository = "https://github.com/stringsofthemind-oss/once"
-Documentation = "https://onceexec.pages.dev/agent.md"
+Documentation = "https://onceexec.com/agent.md"
 Issues = "https://github.com/stringsofthemind-oss/once/issues"
 
 [tool.setuptools.packages.find]
