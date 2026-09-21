@@ -1513,6 +1513,82 @@ WHY ONCE VS NATIVE IDEMPOTENCY
 
 
 <!-- ============================================
+CURRENT SUPPORT MATRIX
+============================================= -->
+
+<section class="cross-proof" id="once-support-matrix">
+
+  <div class="cross-proof-head reveal">
+
+    <span class="cross-proof-kicker">
+      CURRENT SUPPORT
+    </span>
+
+    <div>
+      <h2>
+        Know what is proven today.
+        <br>
+        <em>Know what still requires manual integration.</em>
+      </h2>
+
+      <p>
+        Once deliberately separates detection from protection. The scanner can identify a wider set
+        of consequential operations than the current Runtime HTTP execution contract protects automatically.
+        Unsupported shapes fail closed or require an adapter instead of being presented as covered.
+      </p>
+    </div>
+
+  </div>
+
+  <div class="cross-proof-grid reveal">
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>RUNTIME HTTP V0.1</span>
+        <span class="cross-proof-state">PROVEN PROTECTED SHAPE</span>
+      </div>
+      <strong>POST + application/json + stable identity.</strong>
+      <small>The current proven Runtime HTTP path protects an explicitly configured target, requires a non-empty valid JSON body and supports stable identity through an idempotency key or an application resolver.</small>
+    </article>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>HTTP RESPONSE REPLAY</span>
+        <span class="cross-proof-state">REQUIRED ON RUNTIME SETUP</span>
+      </div>
+      <strong>Confirmed retries return durable application-visible results.</strong>
+      <small>Runtime HTTP setup pins the exact target URL and requires durable sanitized response replay for the registered provider version before the protected operation can use the confirmed replay path.</small>
+    </article>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>OTHER WRITE SHAPES</span>
+        <span class="cross-proof-state warn">ADAPTER / MANUAL REVIEW</span>
+      </div>
+      <strong>Classification is broader than automatic execution support.</strong>
+      <small>PUT, PATCH and DELETE may be recognized as consequential, but Runtime HTTP v0.1 does not claim a proven protected execution contract for those methods. Unsupported request shapes are rejected rather than silently treated as protected.</small>
+    </article>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>SCAN + AUTO-APPLY</span>
+        <span class="cross-proof-state">CONSERVATIVE</span>
+      </div>
+      <strong>Finding a candidate is not the same as protecting it.</strong>
+      <small>The scanner runs locally and can surface likely side effects. Automatic application is intentionally narrow: only a fully revalidated eligible callsite is patched; ambiguous or unsupported cases stay manual.</small>
+    </article>
+
+  </div>
+
+  <p class="cross-proof-scope reveal">
+    Current boundary: Once does not claim that every provider, HTTP method, request shape or detected side effect is automatically protected.
+    Provider-specific guarantees and automatic transformation support should be evaluated separately from detection.
+  </p>
+
+</section>
+
+
+<!-- ============================================
 04 PROOF
 ============================================= -->
 
