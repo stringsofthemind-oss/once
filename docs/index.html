@@ -1283,6 +1283,82 @@ ONCE DECISION MODEL
 
 
 <!-- ============================================
+MCP VS RUNTIME
+============================================= -->
+
+<section class="cross-proof" id="mcp-runtime-boundary">
+
+  <div class="cross-proof-head reveal">
+
+    <span class="cross-proof-kicker">
+      WHERE ONCE SITS
+    </span>
+
+    <div>
+      <h2>
+        MCP helps the agent choose the protection.
+        <br>
+        <em>The runtime enforces the decision.</em>
+      </h2>
+
+      <p>
+        Once separates agent-facing discovery and setup from the execution-safety boundary.
+        The MCP server helps an agent assess a project, plan protection, apply supported setup
+        and verify the connection. The runtime is what executes, replays or blocks a protected
+        consequential operation.
+      </p>
+    </div>
+
+  </div>
+
+  <div class="cross-proof-grid reveal">
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>MCP / AGENT LAYER</span>
+        <span class="cross-proof-state">ASSESS + CONFIGURE</span>
+      </div>
+      <strong>Discovery, planning and verification.</strong>
+      <small>Agents can inspect the project, explain retry risk, plan setup, apply supported protection and verify Once is connected.</small>
+    </article>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>RUNTIME LAYER</span>
+        <span class="cross-proof-state">EXECUTE + REPLAY + BLOCK</span>
+      </div>
+      <strong>The execution-safety boundary.</strong>
+      <small>Protected operations use stable identity, durable state and supported reconciliation to decide whether to execute, replay or fail closed.</small>
+    </article>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>DATA PATH</span>
+        <span class="cross-proof-state">APPLICATION -> ONCE -> PROVIDER</span>
+      </div>
+      <strong>Protection sits on the consequential path.</strong>
+      <small>The runtime must be on the path of the side effect being protected. Installing the MCP server alone does not automatically guard every tool call.</small>
+    </article>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>BOUNDARY</span>
+        <span class="cross-proof-state">NO MAGIC INTERCEPTION</span>
+      </div>
+      <strong>Explicit integration, explicit guarantees.</strong>
+      <small>Once protects supported operations that are wired through its execution boundary; it does not claim to intercept arbitrary external actions automatically.</small>
+    </article>
+
+  </div>
+
+  <p class="cross-proof-scope reveal">
+    In short: MCP makes Once legible and usable to agents. The runtime is the safety boundary that protects the consequential operation.
+  </p>
+
+</section>
+
+
+<!-- ============================================
 04 PROOF
 ============================================= -->
 
