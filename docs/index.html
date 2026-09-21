@@ -605,6 +605,109 @@ CROSS-FRAMEWORK EVIDENCE
 
 
 <!-- ============================================
+AGENT ROUTING EVIDENCE
+============================================= -->
+
+<section class="cross-proof" id="agent-routing-evidence">
+
+  <div class="cross-proof-head reveal">
+
+    <span class="cross-proof-kicker">
+      AGENT ROUTING EVIDENCE
+    </span>
+
+    <div>
+      <h2>
+        171 decisions.
+        <br>
+        <em>171 correct.</em>
+      </h2>
+
+      <p>
+        Gemini, Claude and Grok were evaluated across six blind runs using two
+        fixed Once routing-conformance suites, including a 40-case adversarial
+        suite designed to test harder execution-safety boundaries.
+      </p>
+    </div>
+
+  </div>
+
+  <div class="cross-proof-grid reveal">
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>MODEL FAMILIES</span>
+        <span class="cross-proof-state">3</span>
+      </div>
+      <strong>Gemini / Claude / Grok</strong>
+      <small>Three model families, each tested in separate fresh sessions.</small>
+    </article>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>BLIND RUNS</span>
+        <span class="cross-proof-state">6 / 6 PASS</span>
+      </div>
+      <strong>Two fixed suites</strong>
+      <small>17-case baseline plus 40-case adversarial routing conformance.</small>
+    </article>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>ROUTING DECISIONS</span>
+        <span class="cross-proof-state">171 / 171</span>
+      </div>
+      <strong>100% on the fixed suites</strong>
+      <small>All evaluated scenario decisions matched the hidden expected routes and actions.</small>
+    </article>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>OBSERVED ERRORR</span>
+        <span class="cross-proof-state">0</span>
+      </div>
+      <strong>No recorded routing errors</strong>
+      <small>Zero over-routes, under-routes, action mismatches or runtime-state mismatches.</small>
+    </article>
+
+  </div>
+
+  <div class="cross-proof-cta reveal">
+
+    <div>
+      <strong>Inspect the evidence trail.</strong>
+      <p>Read the methodology, integrity hashes and aggregate results behind the six blind runs.</p>
+    </div>
+
+    <div class="cross-proof-actions">
+
+      <a
+        class="button button-primary"
+        href="./evidence/routing/README.md"
+      >
+        Read evidence
+      </a>
+
+      <a
+        class="button"
+        href="./evidence/routing/once-routing-evidence-summary-v1.json"
+      >
+        Aggregate JSON
+      </a>
+
+    </div>
+
+  </div>
+
+  <p class="cross-proof-scope reveal">
+    Scope: these results demonstrate conformance on the two fixed test suites in these six
+    blind runs. They do not establish universal model correctness, guarantee routing for
+    every real-world operation, or claim universal exactly-once execution.
+  </p>
+
+</section>
+
+<!-- ============================================
 01 FAILURE
 ============================================= -->
 
