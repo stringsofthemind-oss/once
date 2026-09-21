@@ -1359,6 +1359,84 @@ MCP VS RUNTIME
 
 
 <!-- ============================================
+ONCE TRUST BOUNDARY
+============================================= -->
+
+<section class="cross-proof" id="once-trust-boundary">
+
+  <div class="cross-proof-head reveal">
+
+    <span class="cross-proof-kicker">
+      CURRENT TRUST BOUNDARY
+    </span>
+
+    <div>
+      <h2>
+        Know what Once sees.
+        <br>
+        <em>Know how failure behaves.</em>
+      </h2>
+
+      <p>
+        The current hosted SDK path is intentionally explicit about its boundary.
+        Protected execution is authenticated to the Once service, operation data crosses
+        that boundary, and the SDK fails with an error rather than silently bypassing
+        Once when the service cannot be reached.
+      </p>
+    </div>
+
+  </div>
+
+  <div class="cross-proof-grid reveal">
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>HOSTED EXECUTION PATH</span>
+        <span class="cross-proof-state">AUTHENTICATED</span>
+      </div>
+      <strong>The SDK talks to the Once service.</strong>
+      <small>On the hosted execute path, the operation ID, provider alias and action payload are sent to the configured Once API using the Once API key.</small>
+    </article>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>PROVIDER REGISTRATION</span>
+        <span class="cross-proof-state">EXPLICIT SETUP</span>
+      </div>
+      <strong>Provider access is configured, not inferred.</strong>
+      <small>For the current hosted HTTP provider setup, the provider base URL and provider token are registered with Once so the runtime can execute and reconcile supported protected operations.</small>
+    </article>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>ONCE UNREACHABLE</span>
+        <span class="cross-proof-state warn">ERROR / NO SILENT BYPASS</span>
+      </div>
+      <strong>Protection does not disappear quietly.</strong>
+      <small>The SDK performs bounded network retries. If Once still cannot be reached, it raises a timeout or network error instead of silently sending the protected action directly to the provider.</small>
+    </article>
+
+    <article class="cross-proof-card">
+      <div class="cross-proof-card-top">
+        <span>REFERENCE EVIDENCE</span>
+        <span class="cross-proof-state">LOCAL SQLITE LABS</span>
+      </div>
+      <strong>The crash labs are reference implementations.</strong>
+      <small>LangGraph and CrewAI evidence uses the SQLite reference backend and simulated provider ledgers. That proof is deliberately scoped separately from the hosted Once service.</small>
+    </article>
+
+  </div>
+
+  <p class="cross-proof-scope reveal">
+    Scope: this describes the current hosted SDK execution path and the published reference labs.
+    It is not a claim about undocumented storage location, retention, encryption, compliance or
+    deployment guarantees. Those should be documented separately before they are promised.
+  </p>
+
+</section>
+
+
+<!-- ============================================
 04 PROOF
 ============================================= -->
 
