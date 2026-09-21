@@ -2769,3 +2769,50 @@ footer{
 .once-network.is-live::before{
   transform:translate(-50%,-50%);
 }
+
+/* ==========================================================
+   ONCE NETWORK — CENTRED COUNTER STACK
+   Keep execution-core telemetry at top unchanged.
+   ========================================================== */
+
+.once-network{
+  min-height:190px;
+}
+
+.once-network-value-wrap{
+  position:relative;
+  left:auto;
+  top:auto;
+  width:100%;
+  min-height:75px;
+  margin-top:5px;
+  display:flex;
+  justify-content:center;
+  align-items:flex-end;
+  transform:none;
+  text-align:center;
+  z-index:2;
+}
+
+.once-network-value{
+  display:block;
+  text-align:center;
+}
+
+.once-network > .once-network-label{
+  position:static;
+  width:100%;
+  margin-top:8px;
+  transform:none;
+  text-align:center;
+  white-space:nowrap;
+}
+
+.once-network > .once-network-status{
+  position:static;
+  width:100%;
+  margin-top:10px;
+  transform:none;
+  text-align:center;
+  white-space:nowrap;
+}
