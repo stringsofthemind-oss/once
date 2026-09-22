@@ -4631,7 +4631,7 @@ var index_default = {
         );
       }
       __name(coreFetch, "coreFetch");
-      const providerName = "sandbox-demo";
+      const providerName = "sandbox-demo-v2";
       const configuredDemoProviderBaseUrl = String(
         env.SANDBOX_DEMO_PROVIDER_BASE_URL || ""
       ).trim().replace(/\/+$/, "");
