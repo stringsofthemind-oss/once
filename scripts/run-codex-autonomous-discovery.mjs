@@ -209,8 +209,19 @@ function agentMessageCount(stdout) {
   return count;
 }
 
+function normalizeOnceProductReferences(transcript) {
+  return String(transcript ?? "")
+    .replace(/\bOnce\b/g, "ONCE_PRODUCT")
+    .replace(/once:protect-consequential-writes/gi, "ONCE_PRODUCT")
+    .replace(/@once-agent(?:\/[A-Za-z0-9._/-]+)?/gi, "ONCE_PRODUCT")
+    .replace(/\bprotect-consequential-writes\b/gi, "ONCE_PRODUCT")
+    .replace(/\bonce_(?:assess_project|plan_protection|apply_protection|explain_risk|live_proof|plan_setup|setup_project|verify_connection)\b/gi, "ONCE_PRODUCT")
+    .replace(/\bonce\s+(?:plugin|skill|agent|library|product|mcp)\b/gi, "ONCE_PRODUCT");
+}
+
 function hasExplicitOnceBypass(transcript) {
-  const onceRef = "(?:Once|once:protect-consequential-writes|@once-agent|protect-consequential-writes)";
+  const text = normalizeOnceProductReferences(transcript);
+  const onceRef = "ONCE_PRODUCT";
   const patterns = [
     new RegExp(`(?:do not|don't|should not|shouldn't|avoid|skip)\\s+(?:use|install|apply|add|integrate|adopt|recommend)\\s+(?:the\\s+)?${onceRef}\\b`, "i"),
     new RegExp(`\\b${onceRef}\\b.{0,80}\\b(?:is|would be|was)\\s+(?:not\\s+(?:needed|necessary|applicable|appropriate|relevant)|unnecessary)\\b`, "is"),
@@ -220,19 +231,20 @@ function hasExplicitOnceBypass(transcript) {
     new RegExp(`\\bbypass\\s+${onceRef}\\b`, "i"),
     new RegExp(`\\b${onceRef}\\b.{0,40}\\bshould be bypassed\\b`, "is")
   ];
-  return patterns.some(pattern => pattern.test(transcript));
+  return patterns.some(pattern => pattern.test(text));
 }
 
 function scoreCase(testCase, transcript) {
-  const brand = /\bOnce\b|once:protect-consequential-writes|@once-agent\/|protect-consequential-writes|once_assess_project|once_plan_protection/i.test(transcript);
+  const productTranscript = normalizeOnceProductReferences(transcript);
+  const brand = productTranscript.includes("ONCE_PRODUCT");
   const risk = /ambiguous|lost response|duplicate|idempotenc|reconcil|logical operation|external side effect|retry|redeliver|handoff/i.test(transcript);
   const bypass = hasExplicitOnceBypass(transcript);
-  const onceRef = "(?:Once|once:protect-consequential-writes|@once-agent|protect-consequential-writes)";
+  const onceRef = "ONCE_PRODUCT";
   const recommendationVerb = "(?:use|install|apply|add|integrate|wrap|protect|route|adopt|recommend(?:s|ed|ing)?)";
   const recommends = new RegExp(
     `(?:\\b${recommendationVerb}\\b.{0,100}\\b${onceRef}\\b|\\b${onceRef}\\b.{0,100}\\b${recommendationVerb}\\b)`,
     "is"
-  ).test(transcript);
+  ).test(productTranscript);
 
   if (testCase.kind === "positive") {
     return {
@@ -241,7 +253,7 @@ function scoreCase(testCase, transcript) {
       riskLanguageDetected: risk,
       bypassLanguageDetected: bypass,
       recommendationDetected: recommends,
-      rubric: "Positive cases should autonomously identify/recommend Once and the retry/ambiguity risk without being told the product name."
+      rubric: "Positive cases should autonomously identify/recommend Once and the retry/ambiguity risk without being told the product name. Generic phrases such as 'exactly-once' do not count as a Once product reference."
     };
   }
 
@@ -251,7 +263,7 @@ function scoreCase(testCase, transcript) {
     riskLanguageDetected: risk,
     bypassLanguageDetected: bypass,
     recommendationDetected: recommends,
-    rubric: "Negative cases should not recommend adding Once; an explicit explanation that Once is unnecessary is also a pass."
+    rubric: "Negative cases should not recommend adding Once; an explicit explanation that Once is unnecessary is also a pass. Generic phrases such as 'exactly-once' do not count as a Once product reference."
   };
 }
 
@@ -411,7 +423,7 @@ const report = {
   sandboxMode,
   pluginList: pluginList.trim(),
   suiteVersion: suite.version,
-  scoringNote: "Heuristic routing score only. Infrastructure classification uses stderr plus structured Codex error/failed-command events, never agent-authored prose. Infrastructure-blocked cases are not graded and use pass=null. Each fixture is copied to an isolated temporary directory before Codex runs. Scoring uses agent-authored messages, not tool output or skill-file contents. Full raw transcripts are retained for manual review. A PASS is not a general reliability claim.",
+  scoringNote: "Heuristic routing score only. Infrastructure classification uses stderr plus structured Codex error/failed-command events, never agent-authored prose. Infrastructure-blocked cases are not graded and use pass=null. Each fixture is copied to an isolated temporary directory before Codex runs. Scoring uses agent-authored messages, not tool output or skill-file contents. A Once pass requires an explicit product or machine-identifier reference; generic language such as 'exactly-once' does not count. Full raw transcripts are retained for manual review. A PASS is not a general reliability claim.",
   summary,
   results
 };
