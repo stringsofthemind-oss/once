@@ -3434,6 +3434,244 @@ footer{
     width:100%;
   }
 }
+
+/* ----------------------------------------------------------
+   STRESS ONCE
+   ---------------------------------------------------------- */
+
+.evidence-panel{
+  margin:22px 0;
+  padding:20px;
+  border:1px solid rgba(68,208,255,.18);
+  border-radius:16px;
+  background:linear-gradient(
+    180deg,
+    rgba(8,18,29,.96),
+    rgba(5,11,18,.98)
+  );
+}
+
+.evidence-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+  margin:15px 0 12px;
+}
+
+.evidence-stat{
+  padding:16px;
+  border:1px solid var(--line);
+  border-radius:13px;
+  background:rgba(255,255,255,.018);
+}
+
+.evidence-stat strong{
+  display:block;
+  margin-bottom:5px;
+  color:#f5fbff;
+  font-size:27px;
+}
+
+.evidence-stat span{
+  color:#91a3b1;
+  font-size:11px;
+  line-height:1.45;
+}
+
+.evidence-note{
+  margin:10px 0 0;
+  color:#718692;
+  font-size:11px;
+  line-height:1.55;
+}
+
+.evidence-note a{
+  color:var(--cyan);
+  text-decoration:none;
+}
+
+.stress-controls{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,220px));
+  gap:14px;
+  margin:22px 0 14px;
+}
+
+.stress-control{
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+}
+
+.stress-control label{
+  color:#718692;
+  font:700 9px ui-monospace,monospace;
+  letter-spacing:.09em;
+  text-transform:uppercase;
+}
+
+.stress-control select{
+  width:100%;
+  padding:12px 14px;
+  border:1px solid var(--line);
+  border-radius:11px;
+  background:#081018;
+  color:#edf7fb;
+  font:inherit;
+}
+
+.stress-disclaimer{
+  margin:13px 0 0;
+  color:#607380;
+  font:700 9px ui-monospace,monospace;
+  letter-spacing:.08em;
+}
+
+.stress-progress{
+  display:none;
+  height:6px;
+  margin:18px 0 0;
+  overflow:hidden;
+  border-radius:999px;
+  background:#101a22;
+}
+
+.stress-progress > i{
+  display:block;
+  width:0;
+  height:100%;
+  background:var(--green);
+  transition:width .18s ease;
+}
+
+.stress-summary{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin:20px 0;
+}
+
+.stress-metric{
+  padding:15px;
+  border:1px solid var(--line);
+  border-radius:13px;
+  background:#080f16;
+}
+
+.stress-metric small{
+  display:block;
+  margin-bottom:7px;
+  color:#718692;
+  font:700 9px ui-monospace,monospace;
+}
+
+.stress-metric strong{
+  display:block;
+  color:#eef9f5;
+  font-size:21px;
+}
+
+.stress-headline{
+  margin:20px 0 7px;
+  font-size:25px;
+  font-weight:800;
+}
+
+.stress-subline{
+  margin:0 0 18px;
+  color:#91a3b1;
+  line-height:1.55;
+}
+
+.stress-operations{
+  display:grid;
+  gap:8px;
+  margin-top:16px;
+}
+
+.stress-op{
+  border:1px solid var(--line);
+  border-radius:11px;
+  background:#070d13;
+}
+
+.stress-op summary{
+  display:grid;
+  grid-template-columns:45px minmax(0,1fr) auto;
+  gap:10px;
+  align-items:center;
+  padding:12px 14px;
+  cursor:pointer;
+}
+
+.stress-op-index{
+  color:#607380;
+  font:700 10px ui-monospace,monospace;
+}
+
+.stress-op-main strong{
+  display:block;
+  color:#eaf6f1;
+  font-size:12px;
+}
+
+.stress-op-main small{
+  display:block;
+  margin-top:3px;
+  color:#718692;
+  font-size:10px;
+}
+
+.stress-op-state{
+  font:700 10px ui-monospace,monospace;
+}
+
+.stress-op.pass .stress-op-state{
+  color:var(--green);
+}
+
+.stress-op.fail .stress-op-state{
+  color:#ff6d7a;
+}
+
+.stress-op-detail{
+  padding:0 14px 14px 69px;
+  color:#91a3b1;
+  font:11px/1.6 ui-monospace,monospace;
+}
+
+.stress-cta{
+  display:none;
+  margin-top:18px;
+  text-align:center;
+  text-decoration:none;
+}
+
+@media(max-width:760px){
+  .evidence-grid,
+  .stress-summary{
+    grid-template-columns:1fr 1fr;
+  }
+
+  .stress-controls{
+    grid-template-columns:1fr;
+  }
+
+  .stress-op summary{
+    grid-template-columns:38px minmax(0,1fr);
+  }
+
+  .stress-op-state{
+    grid-column:2;
+  }
+}
+
+@media(max-width:520px){
+  .evidence-grid,
+  .stress-summary{
+    grid-template-columns:1fr;
+  }
+}
 </style>
 </head>
 
@@ -3798,6 +4036,174 @@ footer{
 
 
 
+
+<section
+  id="stressLab"
+  class="console-card"
+>
+
+  <div class="console-heading">
+
+    <span class="console-number">
+      04
+    </span>
+
+    <div>
+      <h2>
+        Stress Once
+      </h2>
+
+      <p>
+        Run a real batch of sandbox operations through normal and injected failure conditions.
+      </p>
+    </div>
+
+    <span class="state-pill">
+      LIVE BATCH
+    </span>
+
+  </div>
+
+
+  <div class="evidence-panel">
+
+    <span class="telemetry-label">
+      ECOSYSTEM SIGNAL / PUBLIC SOURCE-CODE SCAN
+    </span>
+
+    <div class="evidence-grid">
+
+      <div class="evidence-stat">
+        <strong>671</strong>
+        <span>published MCP servers scanned from source</span>
+      </div>
+
+      <div class="evidence-stat">
+        <strong>80.3%</strong>
+        <span>of scanned servers performed real writes</span>
+      </div>
+
+      <div class="evidence-stat">
+        <strong>32.5%</strong>
+        <span>of write-capable servers showed no visible idempotency guard</span>
+      </div>
+
+    </div>
+
+    <p class="evidence-note">
+      Public source-code scan. "No visible guard" does not prove
+      that no downstream guard exists. These are ecosystem observations,
+      not runtime failure rates.
+      <a
+        href="https://github.com/aurumflux20/fencescan/tree/main/docs/scan-dataset"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Inspect dataset
+      </a>
+    </p>
+
+  </div>
+
+
+  <div class="stress-controls">
+
+    <div class="stress-control">
+
+      <label for="stressBatch">
+        Batch size
+      </label>
+
+      <select id="stressBatch">
+        <option value="10" selected>
+          10 operations
+        </option>
+
+        <option value="25">
+          25 operations
+        </option>
+      </select>
+
+    </div>
+
+
+    <div class="stress-control">
+
+      <label for="stressPressure">
+        Injected fault pressure
+      </label>
+
+      <select id="stressPressure">
+        <option value="20">
+          20% / light
+        </option>
+
+        <option value="40" selected>
+          40% / pressure
+        </option>
+
+        <option value="60">
+          60% / adversarial
+        </option>
+      </select>
+
+    </div>
+
+  </div>
+
+
+  <button
+    id="runStress"
+    type="button"
+    class="primary stress-run"
+    disabled
+  >
+    Run stress test
+  </button>
+
+
+  <p class="stress-disclaimer">
+    CONTROLLED FAULT INJECTION · SELECTED PERCENTAGE IS A TEST CONDITION · NOT A REAL-WORLD FAILURE RATE
+  </p>
+
+
+  <div
+    id="stressStatus"
+    class="status"
+    aria-live="polite"
+  ></div>
+
+
+  <div
+    id="stressProgress"
+    class="stress-progress"
+  >
+    <i id="stressProgressFill"></i>
+  </div>
+
+
+  <div
+    id="stressResult"
+    style="display:none"
+  ></div>
+
+
+  <div
+    id="stressOperations"
+    class="stress-operations"
+  ></div>
+
+
+  <a
+    id="stressCta"
+    class="primary stress-cta"
+    href="#integrateCard"
+  >
+    Protect my agent
+  </a>
+
+</section>
+
 <section
   id="integrateCard"
   class="console-card"
@@ -3806,7 +4212,7 @@ footer{
   <div class="console-heading">
 
     <span class="console-number">
-      04
+      05
     </span>
 
     <div>
@@ -4021,6 +4427,50 @@ footer{
       document.getElementById(
         "labResult"
       );
+    const stressRunButton =
+      document.getElementById(
+        "runStress"
+      );
+
+    const stressBatch =
+      document.getElementById(
+        "stressBatch"
+      );
+
+    const stressPressure =
+      document.getElementById(
+        "stressPressure"
+      );
+
+    const stressStatus =
+      document.getElementById(
+        "stressStatus"
+      );
+
+    const stressProgress =
+      document.getElementById(
+        "stressProgress"
+      );
+
+    const stressProgressFill =
+      document.getElementById(
+        "stressProgressFill"
+      );
+
+    const stressResult =
+      document.getElementById(
+        "stressResult"
+      );
+
+    const stressOperations =
+      document.getElementById(
+        "stressOperations"
+      );
+
+    const stressCta =
+      document.getElementById(
+        "stressCta"
+      );
 
     const params =
       new URLSearchParams(
@@ -4206,6 +4656,8 @@ footer{
 
 
         runScenarioButton.disabled =
+          false;
+        stressRunButton.disabled =
           false;
 
         demoStatus.textContent =
