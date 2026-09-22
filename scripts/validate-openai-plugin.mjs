@@ -10,6 +10,7 @@ const paths = {
   mcp: path.join(pluginRoot, ".mcp.json"),
   launcher: path.join(pluginRoot, "scripts", "once-mcp.cjs"),
   skill: path.join(pluginRoot, "skills", "protect-consequential-writes", "SKILL.md"),
+  agent: path.join(pluginRoot, "skills", "protect-consequential-writes", "agents", "openai.yaml"),
   reference: path.join(pluginRoot, "skills", "protect-consequential-writes", "references", "routing-cases.md"),
   evals: path.join(pluginRoot, "evals", "routing-cases.json"),
   readme: path.join(pluginRoot, "README.md"),
@@ -31,12 +32,13 @@ for (const [name, file] of Object.entries(paths)) {
   });
 }
 
-const [manifest, marketplace, mcp, evals, skill, launcher, readme] = await Promise.all([
+const [manifest, marketplace, mcp, evals, skill, agent, launcher, readme] = await Promise.all([
   readJson(paths.manifest),
   readJson(paths.marketplace),
   readJson(paths.mcp),
   readJson(paths.evals),
   readFile(paths.skill, "utf8"),
+  readFile(paths.agent, "utf8"),
   readFile(paths.launcher, "utf8"),
   readFile(paths.readme, "utf8"),
 ]);
@@ -61,6 +63,14 @@ for (const prompt of ui.defaultPrompt) {
 if (ui.websiteURL) {
   assert(/^https:\/\//.test(ui.websiteURL), "websiteURL must use https");
 }
+assert(
+  ui.longDescription.includes("Do not invoke Once merely to discover whether it applies"),
+  "Manifest longDescription must preserve the pre-tool applicability gate"
+);
+assert(
+  ui.defaultPrompt.some((prompt) => /Inspect normally first; use Once only/i.test(prompt)),
+  "Manifest defaultPrompt must require ordinary inspection before Once selection"
+);
 
 assert(marketplace.name === "once-agent", "Marketplace name must be once-agent");
 const marketEntry = marketplace.plugins?.find((entry) => entry.name === "once");
@@ -91,6 +101,26 @@ for (const phrase of [
   assert(skill.includes(phrase), `Skill is missing routing/safety phrase: ${phrase}`);
 }
 assert(skill.includes("@once-agent/sdk@0.1.5"), "Skill CLI fallback must pin @once-agent/sdk@0.1.5");
+assert(
+  skill.includes("Decide whether Once applies before invoking any Once skill or MCP tool."),
+  "Skill must require applicability routing before Once tool invocation"
+);
+assert(
+  skill.includes("do not call any Once MCP tool"),
+  "Skill must explicitly bypass Once MCP tools when no external state-changing candidate exists"
+);
+assert(
+  skill.includes("Retry language, timeouts, crashes, queues, or multi-agent execution by themselves are not sufficient to select Once."),
+  "Skill must prevent retry language alone from selecting Once"
+);
+assert(
+  /bypass reads\/search\/retrieval/i.test(agent),
+  "OpenAI agent metadata must preserve the read/search/retrieval bypass gate"
+);
+assert(
+  /do not call Once merely to decide whether it applies/i.test(agent),
+  "OpenAI agent metadata must prohibit Once as a generic applicability detector"
+);
 
 assert(evals.schema_version === "once-openai-routing-v1", "Routing eval schema version is incorrect");
 assert(Array.isArray(evals.positive) && evals.positive.length >= 5, "Routing suite needs at least five positive cases");
@@ -101,7 +131,7 @@ for (const testCase of [...evals.positive, ...evals.negative]) {
 assert(evals.positive.every((testCase) => testCase.expected === "evaluate_once"), "All positive cases must expect evaluate_once");
 assert(evals.negative.every((testCase) => testCase.expected === "bypass_once"), "All negative cases must expect bypass_once");
 
-const combined = [JSON.stringify(manifest), JSON.stringify(marketplace), JSON.stringify(mcp), JSON.stringify(evals), skill, launcher, readme].join("\n");
+const combined = [JSON.stringify(manifest), JSON.stringify(marketplace), JSON.stringify(mcp), JSON.stringify(evals), skill, agent, launcher, readme].join("\n");
 assert(!combined.includes("[TODO:"), "Plugin package contains unresolved TODO placeholders");
 
 console.log("OPENAI CODEX PLUGIN: PASS");
