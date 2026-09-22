@@ -7,7 +7,8 @@
     "deploy:dry-run": "node ../../scripts/deploy-worker.cjs runtime dry-run",
     "deploy:production": "node ../../scripts/deploy-worker.cjs runtime production",
     "dev": "wrangler dev",
-    "start": "wrangler dev"
+    "start": "wrangler dev",
+    "test": "node --test test/safety.test.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.135.0"
