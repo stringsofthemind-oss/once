@@ -1,0 +1,287 @@
+name: Astra Full Audit and Upgrade
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_paid_run:
+        description: "Run the paid GPT-6 Astra full audit and upgrade mission"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  astra-full-audit-upgrade:
+    if: ${{ inputs.confirm_paid_run == true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      CODEX_HOME: /home/runner/.codex-astra-full-audit
+      ASTRA_MODEL: gpt-6-astra
+
+    steps:
+      - name: Checkout current main without persisted credentials
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install pinned Codex CLI
+        run: npm install --global @openai/codex@0.155.1
+
+      - name: Prepare Codex home and validate local config
+        run: |
+          set -euo pipefail
+          mkdir -p "$CODEX_HOME"
+          codex \
+            --sandbox danger-full-access \
+            -c 'shell_environment_policy.inherit="core"' \
+            -c 'shell_environment_policy.ignore_default_excludes=false' \
+            -c 'shell_environment_policy.exclude=["CODEX_API_KEY","OPENAI_API_KEY","GH_TOKEN","GITHUB_TOKEN"]' \
+            debug prompt-input probe >/dev/null
+          echo "Codex local config preflight passed."
+
+      - name: Verify paid credential without exposing it
+        env:
+          CODEX_API_KEY: ${{ secrets.CODEX_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "$CODEX_API_KEY" ]; then
+            echo "::error::CODEX_API_KEY repository secret is required."
+            exit 3
+          fi
+          codex --version
+          echo "Paid credential is present."
+
+      - name: Run Astra full audit and upgrade mission
+        id: astra
+        env:
+          CODEX_API_KEY: ${{ secrets.CODEX_API_KEY }}
+        run: |
+          set -uo pipefail
+          mkdir -p "$CODEX_HOME"
+
+          mission="$RUNNER_TEMP/astra-full-mission.txt"
+          events="$RUNNER_TEMP/astra-full-events.jsonl"
+          final="$RUNNER_TEMP/astra-full-final.md"
+          status_file="$RUNNER_TEMP/astra-full-exit-status.txt"
+
+          cat >"$mission" <<'MISSION'
+          You are the senior principal engineer temporarily taking ownership of the Once project.
+
+          This is a SINGLE, BUDGET-CONSTRAINED, TWO-PHASE engineering mission. Stay single-agent: do not spawn, delegate to, or invoke other model agents. Spend inference on inspecting, testing, reasoning, and implementing rather than long narration.
+
+          PRODUCT
+          Once — AI Agent Execution Safety.
+          Core principle: THE SAME ACTION SHOULD HAPPEN ONCE.
+
+          Applicability contract — Once should apply only when ALL FOUR are true:
+          1. the operation can change external state;
+          2. the same logical operation may be retried;
+          3. the first attempt can have an ambiguous outcome;
+          4. blind duplicate execution would be undesirable or costly.
+
+          Reads/search/retrieval, generation-only work, pure local computation, and harmless repetition should bypass Once.
+
+          Runtime truth model:
+          CONFIRMED -> replay/suppress
+          ABSENT -> execute
+          UNKNOWN -> block/reconcile
+
+          IMPORTANT KNOWN STARTING EVIDENCE
+          A previous independent run reproduced a P1 concurrency defect in the current cloud runtime: two concurrent retries of the same logical operation could both observe provider absence and both produce the external effect. That run demonstrated two effects instead of one for PREPARED and FAILED_BEFORE_EFFECT. Its proposed in-process guard was NOT merged. Independently re-evaluate this defect and its root cause. Do not assume the previous proposed fix is sufficient, especially across asynchronous execution, Durable Object lifecycle boundaries, restarts, multiple isolates/processes, queue redelivery, or multi-agent callers.
+
+          ============================================================
+          PHASE 1 — COMPLETE PROJECT AUDIT
+          ============================================================
+
+          Before making substantive edits, survey the repository broadly enough to understand its architecture, packages, runtime, SDKs, MCP surface, plugins, tests, CI, examples, public docs, and evidence.
+
+          Audit the project as all of the following:
+          - distributed-systems engineer;
+          - security reviewer;
+          - AI-agent infrastructure engineer;
+          - SDK/API maintainer;
+          - first-time external adopter.
+
+          Review at minimum:
+          - core execution-safety architecture and invariants;
+          - operation identity and stable logical keys;
+          - idempotency and duplicate suppression;
+          - CONFIRMED / ABSENT / UNKNOWN semantics;
+          - ambiguous outcomes and provider reconciliation;
+          - concurrent calls, races, locking, coordination, and serialization;
+          - crashes, restarts, process/isolate lifecycle, and durability;
+          - queue redelivery and at-least-once delivery behavior;
+          - multi-agent / multi-process handoff;
+          - persistence and state transitions;
+          - provider idempotency integration;
+          - failure recovery and retry policy;
+          - security, validation, trust boundaries, and secret handling;
+          - SDK/API ergonomics and misuse resistance;
+          - MCP server behavior and tool contracts;
+          - CLI and plugin behavior;
+          - package structure, installability, and version consistency;
+          - first-time setup and integration path;
+          - examples and documentation correctness;
+          - CI and regression coverage;
+          - observability, diagnostics, and debuggability;
+          - portability and production deployment assumptions;
+          - performance or scaling behavior that could compromise correctness;
+          - any issue that could make public safety claims stronger than the implementation supports.
+
+          Try to falsify the product's guarantees rather than assuming they hold. Reproduce important findings where practical using deterministic local tests.
+
+          Severity:
+          P0 — unsafe execution, serious security compromise, data loss/corruption, or catastrophic correctness failure.
+          P1 — serious correctness, durability, reliability, or adoption blocker.
+          P2 — meaningful robustness, integration, observability, or developer-experience weakness.
+          P3 — polish or low-risk improvement.
+
+          Form a prioritized upgrade plan before moving to Phase 2. Do not spend meaningful time on cosmetics while P0/P1/P2 work remains.
+
+          ============================================================
+          PHASE 2 — APPLY HIGH-VALUE UPGRADES
+          ============================================================
+
+          Implement as many HIGH-CONFIDENCE improvements from the audit as can be completed safely within this run.
+
+          Priority order:
+          1. P0/P1 safety and correctness defects;
+          2. concurrency, durability, provider-truth, reconciliation, crash/restart, and queue weaknesses;
+          3. security/trust-boundary defects;
+          4. reliability and misuse-resistance problems;
+          5. production-adoption blockers;
+          6. missing regression tests around consequential guarantees;
+          7. SDK/MCP/CLI/plugin integration quality;
+          8. observability and diagnostics;
+          9. documentation/onboarding inaccuracies or dangerous ambiguity;
+          10. polish.
+
+          You may modify source code, tests, package metadata, SDKs, MCP code, CLI/plugin code, examples, documentation, and CI where justified.
+
+          For every substantive change:
+          - establish the problem or improvement rationale first;
+          - prefer the smallest robust design over a broad speculative rewrite;
+          - add or strengthen regression coverage where possible;
+          - run the most relevant local tests available;
+          - do not weaken an invariant merely to obtain a passing test;
+          - preserve backwards compatibility unless breaking it is necessary for safety, and clearly report any such case.
+
+          You may refactor architecture when evidence shows the existing design cannot uphold the product contract, but explain the invariant the refactor restores.
+
+          If a suspected issue requires real Cloudflare/provider/live infrastructure to establish, do NOT pretend it is verified. Mark it NEEDS LIVE VALIDATION and improve local testability or guardrails if useful.
+
+          ============================================================
+          HARD BOUNDARIES
+          ============================================================
+
+          - Do not merge or push branches.
+          - Do not publish npm packages, deploy, release, purchase anything, rotate credentials, or alter external infrastructure.
+          - Do not inspect environment variables, secret stores, authentication files, git credentials, or /proc process environments.
+          - Do not make external network requests or invoke cloud/provider APIs. Work from this checkout and locally available tooling only.
+          - Do not invoke another paid model or API-dependent evaluation suite.
+          - Do not change historical evidence merely to make the project look stronger.
+          - Do not delete valid coverage just to simplify implementation.
+          - Do not make unsupported marketing claims.
+
+          ============================================================
+          FINAL HANDOFF
+          ============================================================
+
+          Finish with a compact engineering handoff containing:
+          1. architecture assessment;
+          2. P0/P1/P2/P3 findings discovered;
+          3. exact issues reproduced and how;
+          4. improvements implemented, grouped by safety/reliability/adoption;
+          5. files changed and why;
+          6. regression tests added/strengthened;
+          7. tests executed and results;
+          8. VERIFIED FIXED items;
+          9. VERIFIED DEFECT REMAINING items;
+          10. SUSPECTED / NEEDS LIVE VALIDATION items;
+          11. remaining known risks;
+          12. claims Once can safely make after these changes;
+          13. claims Once should still avoid making;
+          14. the five highest-value remaining next actions.
+
+          Explicitly state whether the resulting code should be considered safe to merge as-is or requires human review of specific areas.
+
+          Your objective is not to maximize lines changed or report length. Your objective is to leave Once materially safer, more reliable, easier to adopt, and closer to production readiness than you found it.
+          MISSION
+
+          set +e
+          timeout 2100s codex exec \
+            --ephemeral \
+            --json \
+            --sandbox danger-full-access \
+            --skip-git-repo-check \
+            --model "$ASTRA_MODEL" \
+            -c 'model_reasoning_effort="medium"' \
+            -c 'shell_environment_policy.inherit="core"' \
+            -c 'shell_environment_policy.ignore_default_excludes=false' \
+            -c 'shell_environment_policy.exclude=["CODEX_API_KEY","OPENAI_API_KEY","GH_TOKEN","GITHUB_TOKEN"]' \
+            --output-last-message "$final" \
+            "$(cat "$mission")" \
+            >"$events" 2>&1
+          astra_status=$?
+          set -e
+
+          printf '%s\n' "$astra_status" >"$status_file"
+          echo "exit_status=$astra_status" >>"$GITHUB_OUTPUT"
+
+          if [ -f "$final" ]; then
+            echo "===== ASTRA FULL AUDIT + UPGRADE HANDOFF ====="
+            cat "$final"
+          fi
+
+          if [ "$astra_status" -ne 0 ]; then
+            echo "::warning::Astra exited with status $astra_status. Any partial workspace changes are evidence only and require review."
+          fi
+
+      - name: Capture complete reviewed patch and safety checks
+        if: always()
+        run: |
+          set -euo pipefail
+
+          git status --short --branch | tee "$RUNNER_TEMP/astra-full-git-status.txt"
+
+          # Stage in the ephemeral runner only so new/untracked files are included
+          # in the captured patch. Nothing is committed or pushed.
+          git add -A
+
+          git diff --cached --binary >"$RUNNER_TEMP/astra-full.patch" || true
+          git diff --cached --stat | tee "$RUNNER_TEMP/astra-full-diff-stat.txt" || true
+          git diff --cached --check | tee "$RUNNER_TEMP/astra-full-diff-check.txt"
+          git diff --cached --name-status | tee "$RUNNER_TEMP/astra-full-name-status.txt" || true
+
+          if git diff --cached -U0 | grep -E '^\+.*(sk-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9_]{20,})' >/dev/null 2>&1; then
+            echo "::error::Potential credential material detected in added lines."
+            touch "$RUNNER_TEMP/astra-full-secret-scan-failed"
+            exit 4
+          fi
+
+      - name: Upload complete Astra audit evidence and patch
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: astra-full-audit-upgrade-evidence
+          path: |
+            ${{ runner.temp }}/astra-full-mission.txt
+            ${{ runner.temp }}/astra-full-events.jsonl
+            ${{ runner.temp }}/astra-full-final.md
+            ${{ runner.temp }}/astra-full-exit-status.txt
+            ${{ runner.temp }}/astra-full-git-status.txt
+            ${{ runner.temp }}/astra-full.patch
+            ${{ runner.temp }}/astra-full-diff-stat.txt
+            ${{ runner.temp }}/astra-full-diff-check.txt
+            ${{ runner.temp }}/astra-full-name-status.txt
+          if-no-files-found: warn
