@@ -1,14 +1,16 @@
 const { spawn } = require("node:child_process");
 
-const command = process.platform === "win32" ? "npx.cmd" : "npx";
-const child = spawn(
-  command,
-  ["-y", "@once-agent/mcp@0.1.2"],
-  {
-    stdio: "inherit",
-    env: process.env,
-  }
-);
+const isWindows = process.platform === "win32";
+const command = isWindows ? (process.env.ComSpec || "cmd.exe") : "npx";
+const args = isWindows
+  ? ["/d", "/s", "/c", "call npx.cmd -y @once-agent/mcp@0.1.2"]
+  : ["-y", "@once-agent/mcp@0.1.2"];
+
+const child = spawn(command, args, {
+  stdio: "inherit",
+  env: process.env,
+  windowsHide: true,
+});
 
 child.on("error", (error) => {
   console.error("Failed to start @once-agent/mcp:", error.message);
