@@ -4632,7 +4632,11 @@ var index_default = {
       }
       __name(coreFetch, "coreFetch");
       const providerName = "sandbox-demo";
-      const providerBaseUrl = url.origin + "/demo-provider";
+      const configuredDemoProviderBaseUrl = String(
+        env.SANDBOX_DEMO_PROVIDER_BASE_URL || ""
+      ).trim().replace(/\/+$/, "");
+      const providerBaseUrl = configuredDemoProviderBaseUrl || url.origin + "/demo-provider";
+      const demoTargetUrl = providerBaseUrl + "/execute";
       async function responseJson(response) {
         try {
           return await response.json();
@@ -4677,6 +4681,7 @@ var index_default = {
                 name: providerName,
                 type: "http_v1",
                 base_url: providerBaseUrl,
+                allowed_urls: [demoTargetUrl],
                 token: env.SANDBOX_DEMO_PROVIDER_TOKEN
               })
             }
@@ -4723,7 +4728,13 @@ var index_default = {
         operation_id: operationId,
         provider: providerName,
         action: {
-          type: "sandbox_demo",
+          type: "http_write_v1",
+          method: "POST",
+          url: demoTargetUrl,
+          body_json: JSON.stringify({
+            demo: true,
+            description: "Demonstrate ambiguous execution safety"
+          }),
           fault: "commit_then_503",
           description: "Demonstrate ambiguous execution safety"
         }
@@ -4801,20 +4812,33 @@ var index_default = {
           )
         );
       }
-      if (!truth) {
+      const finalState = String(
+        truth?.ledger_state || truth?.state || ""
+      ).toUpperCase();
+
+      if (
+        !truth ||
+        (
+          finalState !== "CONFIRMED" &&
+          finalState !== "FAILED" &&
+          finalState !== "QUARANTINED"
+        )
+      ) {
         return json3(
           {
-            error: "truth_not_available",
+            error: "truth_not_terminal",
             operation_id: operationId,
+            state: finalState || null,
+            provider_executed:
+              truth?.provider_executed ?? null,
+            side_effects:
+              truth?.side_effects ?? null,
             first,
             retry
           },
           502
         );
       }
-      const finalState = String(
-        truth?.ledger_state || truth?.state || ""
-      ).toUpperCase();
       const sideEffects = Number(
         truth?.side_effects
       );
