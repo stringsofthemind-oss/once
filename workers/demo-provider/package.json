@@ -3,8 +3,11 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
+    "deploy": "node ../../scripts/deploy-worker.cjs demo-provider refuse",
+    "deploy:dry-run": "node ../../scripts/deploy-worker.cjs demo-provider dry-run",
+    "deploy:production": "node ../../scripts/deploy-worker.cjs demo-provider production",
     "dev": "wrangler dev",
-    "deploy:dry-run": "wrangler deploy --dry-run"
+    "start": "wrangler dev"
   },
   "devDependencies": {
     "wrangler": "^4.135.0"
