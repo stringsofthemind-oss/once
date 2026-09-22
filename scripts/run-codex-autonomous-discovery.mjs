@@ -67,6 +67,47 @@ function readableTranscript(stdout, stderr) {
   return strings.join("\n");
 }
 
+function infrastructureEvidence(stdout, stderr) {
+  const strings = [];
+
+  for (const line of String(stdout ?? "").split(/\r?\n/)) {
+    if (!line.trim()) continue;
+
+    let event;
+    try {
+      event = JSON.parse(line);
+    } catch {
+      continue;
+    }
+
+    if (event?.type === "error") {
+      collectStrings(event, strings);
+      continue;
+    }
+
+    if (event?.type === "item.completed" && event?.item?.type === "error") {
+      collectStrings(event.item, strings);
+      continue;
+    }
+
+    if (
+      event?.type === "item.completed" &&
+      event?.item?.type === "command_execution" &&
+      (event.item.exit_code !== 0 || event.item.status === "failed")
+    ) {
+      if (typeof event.item.aggregated_output === "string" && event.item.aggregated_output.trim()) {
+        strings.push(event.item.aggregated_output.trim());
+      }
+      if (typeof event.item.error === "string" && event.item.error.trim()) {
+        strings.push(event.item.error.trim());
+      }
+    }
+  }
+
+  if (stderr?.trim()) strings.push(stderr.trim());
+  return strings.join("\n");
+}
+
 function classifyInfrastructureBlock(transcript) {
   const text = String(transcript ?? "");
   const cases = [
@@ -302,7 +343,8 @@ for (const testCase of selected) {
       env: { ONCE_EVAL_PROJECT_PATH: fixture }
     });
     const transcript = readableTranscript(run.stdout, run.stderr);
-    const infrastructureBlock = classifyInfrastructureBlock(transcript);
+    const infrastructureTranscript = infrastructureEvidence(run.stdout, run.stderr);
+    const infrastructureBlock = classifyInfrastructureBlock(infrastructureTranscript);
     const scoredTranscript = agentMessageTranscript(run.stdout) || transcript;
     const scoring = infrastructureBlock ? null : scoreCase(testCase, scoredTranscript);
     const pass = infrastructureBlock ? null : run.status === 0 && scoring.pass;
@@ -325,11 +367,12 @@ for (const testCase of selected) {
       scoring,
       scoredTranscript,
       transcript,
+      infrastructureTranscript,
       diagnostics: {
         onceMcpUnavailable: /Once MCP tools were unavailable|MCP server.*once.*(?:unavailable|failed)/i.test(transcript),
         onceCliAssessmentFailed: /once_assess_project.{0,160}(?:isError|failed)|Cannot find module.*@once-agent[\\/]sdk/i.test(transcript),
-        codexExecProcessError: /CreateProcessWithLogonW failed/i.test(transcript),
-        sandboxFailure: /bwrap:.*Operation not permitted|sandbox.{0,120}Operation not permitted/i.test(transcript),
+        codexExecProcessError: /CreateProcessWithLogonW failed/i.test(infrastructureTranscript),
+        sandboxFailure: /bwrap:.*Operation not permitted|sandbox.{0,120}Operation not permitted/i.test(infrastructureTranscript),
         modelMetadataFallback: /Model metadata for `[^`]+` not found\. Defaulting to fallback metadata/i.test(transcript),
         agentMessageCount: agentMessageCount(run.stdout),
         targetPathMentioned: transcript.includes(fixture)
@@ -368,7 +411,7 @@ const report = {
   sandboxMode,
   pluginList: pluginList.trim(),
   suiteVersion: suite.version,
-  scoringNote: "Heuristic routing score only. Infrastructure-blocked cases are not graded and use pass=null. Each fixture is copied to an isolated temporary directory before Codex runs. Scoring uses agent-authored messages, not tool output or skill-file contents. Full raw transcripts are retained for manual review. A PASS is not a general reliability claim.",
+  scoringNote: "Heuristic routing score only. Infrastructure classification uses stderr plus structured Codex error/failed-command events, never agent-authored prose. Infrastructure-blocked cases are not graded and use pass=null. Each fixture is copied to an isolated temporary directory before Codex runs. Scoring uses agent-authored messages, not tool output or skill-file contents. Full raw transcripts are retained for manual review. A PASS is not a general reliability claim.",
   summary,
   results
 };
