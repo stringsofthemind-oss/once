@@ -1,0 +1,23 @@
+{
+  "name": "once-sandbox-demo-provider",
+  "main": "src/index.js",
+  "workers_dev": true,
+  "preview_urls": true,
+  "compatibility_date": "2026-09-22",
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "SANDBOX_DEMO",
+        "class_name": "SandboxDemoEffect"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "SandboxDemoEffect"
+      ]
+    }
+  ]
+}
