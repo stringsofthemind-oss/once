@@ -55,11 +55,26 @@ if (args[0] === "exec") {
     process.exit(0);
   }
 
+  if (process.env.FAKE_CODEX_MODE === "api-connectivity") {
+    console.log(JSON.stringify({
+      type: "item.completed",
+      item: {
+        type: "error",
+        message: "connection reset while contacting the API"
+      }
+    }));
+    process.exit(1);
+  }
+
+  const text = process.env.FAKE_CODEX_MODE === "prose-connectivity"
+    ? "I recommend using Once to protect this ambiguous retry. A provider connection reset can leave the external side effect committed but locally uncertain."
+    : "I recommend using Once to protect this ambiguous retry and prevent duplicate external side effects.";
+
   console.log(JSON.stringify({
     type: "item.completed",
     item: {
       type: "agent_message",
-      text: "I recommend using Once to protect this ambiguous retry and prevent duplicate external side effects."
+      text
     }
   }));
   process.exit(0);
@@ -153,6 +168,17 @@ try {
 
   writeFileSync(fakeLog, "", "utf8");
 
+  const proseRun = run("prose-connectivity", "prose-connectivity.json");
+  assert(proseRun.result.status === 0, `Expected prose-connectivity exit 0, got ${proseRun.result.status}`);
+  assert(proseRun.report.summary.evaluated === 1, "Agent prose mentioning connection reset must still be evaluated");
+  assert(proseRun.report.summary.blocked === 0, "Agent prose must not trigger an infrastructure block");
+  assert(proseRun.report.summary.passed === 1, "Expected prose-connectivity case to pass");
+  assert(proseRun.report.results[0].blockedReason === null, "Agent prose must leave blockedReason=null");
+  assert(
+    !/connection reset/i.test(proseRun.report.results[0].infrastructureTranscript),
+    "Agent-authored connectivity language must not enter infrastructure evidence"
+  );
+
   const blockedRun = run("blocked", "blocked.json");
   assert(blockedRun.result.status === 3, `Expected blocked run exit 3, got ${blockedRun.result.status}`);
   assert(blockedRun.report.summary.total === 1, "Expected one blocked case");
@@ -163,6 +189,15 @@ try {
   assert(
     blockedRun.report.results[0].blockedReason === "BLOCKED_SANDBOX",
     `Expected BLOCKED_SANDBOX, got ${blockedRun.report.results[0].blockedReason}`
+  );
+
+  const connectivityRun = run("api-connectivity", "api-connectivity.json");
+  assert(connectivityRun.result.status === 3, `Expected API connectivity block exit 3, got ${connectivityRun.result.status}`);
+  assert(connectivityRun.report.summary.evaluated === 0, "Structured API connectivity failure must not be evaluated");
+  assert(connectivityRun.report.summary.blocked === 1, "Expected structured API connectivity failure to be blocked");
+  assert(
+    connectivityRun.report.results[0].blockedReason === "BLOCKED_API_CONNECTIVITY",
+    `Expected BLOCKED_API_CONNECTIVITY, got ${connectivityRun.report.results[0].blockedReason}`
   );
 
   console.log("CODEX AUTONOMOUS DISCOVERY HARNESS REGRESSION: PASS");
