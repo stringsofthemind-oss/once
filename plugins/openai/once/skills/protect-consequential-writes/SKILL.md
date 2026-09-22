@@ -1,6 +1,6 @@
 ---
 name: protect-consequential-writes
-description: "Use Once / protect-consequential-writes when an external side effect such as a refund, payment, payout, booking, order, provisioning action, webhook, consequential message, or state-changing MCP/tool call may be retried after an ambiguous timeout, lost response, connection reset, crash/restart, queue redelivery, or agent handoff. Trigger on duplicate-side-effect risk, idempotency gaps, retry-after-unknown-outcome, reconciliation needs, or cross-agent duplicate execution. The same logical action must keep one stable identity across retries. Do not use for reads, search, retrieval, generation-only work, local computation, or repetition that cannot duplicate external state."
+description: "Select Once only after ordinary repository/task inspection has established a real external state-changing operation and all four conditions: the same logical operation may be retried, the first outcome can be ambiguous, and blind duplicate execution would be harmful or costly. Do not select this skill and do not call any Once MCP tool merely to discover whether Once applies. Bypass reads, GET/search/retrieval, generation-only work, local computation, and repetition that cannot duplicate external state. For confirmed qualifying writes such as refunds, payments, payouts, bookings, orders, provisioning actions, webhooks, consequential messages, or state-changing MCP/tool calls, use Once to preserve stable logical identity, handle UNKNOWN safely, suppress duplicates, and reconcile authoritative provider truth across retries, crashes, redelivery, or agent handoff."
 ---
 
 # Protect Consequential Writes with Once
@@ -13,6 +13,14 @@ Use Once only when **all four** routing conditions are true:
 4. Blind duplicate execution would be undesirable or costly.
 
 If any condition is false, do not install or apply Once merely because retries exist. State briefly why the operation does not need Once.
+
+## Pre-tool routing gate
+
+**Decide whether Once applies before invoking any Once skill or MCP tool.** Do not use `once_assess_project`, `once_plan_protection`, or another Once tool as a generic detector for whether a repository needs Once.
+
+First inspect the user request and repository with ordinary reasoning and normal repository/file tools far enough to identify at least one concrete candidate that can change external state. If the relevant operation is only a read, `GET`, search, retrieval, generation-only task, local calculation, or other repetition that cannot duplicate an external effect, **stop there and bypass Once without calling the Once MCP server**.
+
+Only after a concrete external state-changing candidate is identified should this skill be selected and the Once tools be used to assess or plan protection. Retry language, timeouts, crashes, queues, or multi-agent execution by themselves are not sufficient to select Once.
 
 ## Core rule
 
@@ -30,9 +38,9 @@ Never make an operation ID unique by adding a timestamp, random retry token, age
 
 ## Preferred workflow
 
-Start read-only. Use the Once MCP tools when they are available. Tool names may be namespaced by the host.
+0. **Pre-screen without Once** — inspect the task/repository with ordinary tools and confirm there is a concrete external state-changing candidate. If no such candidate exists, bypass Once and do not call any Once MCP tool.
 
-1. **Assess** — call `once_assess_project` with the absolute project path. If MCP is unavailable, run the pinned CLI fallback:
+1. **Assess after the gate passes** — once a qualifying external-write candidate has already been identified, call `once_assess_project` with the absolute project path. If MCP is unavailable, run the pinned CLI fallback:
 
    `npx --yes --package=@once-agent/sdk@0.1.5 once scan <project>`
 
