@@ -4183,7 +4183,7 @@ footer{
 
       const heading =
         passed
-          ? "? Duplicate side effect prevented"
+          ? "&#10003; Duplicate side effect prevented"
           : "Safety condition not met";
 
       demoResult.innerHTML =

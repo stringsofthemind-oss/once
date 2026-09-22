@@ -1,0 +1,25 @@
+{
+    "schema_version":  1,
+    "evidence_type":  "production_playground_ambiguous_retry",
+    "observed_date":  "2026-09-22",
+    "environment":  "production-sandbox",
+    "git_merge_commit":  "98bc1e46457c359c7ab5d0d638b2c2527c108c70",
+    "playground":  {
+                       "public_url":  "https://playground.onceexec.com/",
+                       "worker_url":  "https://once-sandbox-playground.pennywatch.workers.dev",
+                       "worker_version":  "f08e7351-8673-4aa2-a48c-984884749696"
+                   },
+    "demo_provider":  {
+                          "worker_url":  "https://once-sandbox-demo-provider.pennywatch.workers.dev",
+                          "worker_version":  "0f55049d-505b-4e98-9fb5-05526abaac7a"
+                      },
+    "observed_result":  {
+                            "operation_id":  "demo:434ab119ab8b49f683b7503946be3f44",
+                            "state":  "CONFIRMED",
+                            "execution_attempts":  2,
+                            "actual_side_effects":  1,
+                            "duplicate_side_effect_prevented":  true,
+                            "ui_status":  "Once reconciled the ambiguous execution."
+                        },
+    "scope":  "One directly observed successful production Sandbox Playground run."
+}
