@@ -11,7 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CODEX_API_KEY: ${{ secrets.CODEX_API_KEY }}
-      CODEX_HOME: /tmp/codex-once-discovery
+      CODEX_HOME: /home/runner/.codex-once-discovery
+      CODEX_EVAL_MODEL: gpt-5.3-codex
 
     steps:
       - name: Checkout
