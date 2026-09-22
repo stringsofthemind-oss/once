@@ -1,0 +1,118 @@
+{
+  "version": "holdout-v1",
+  "purpose": "Fresh frozen holdout for Codex autonomous routing. Prompts do not name Once. Scorer is inherited unchanged from commit 6de52c0.",
+  "cases": [
+    {
+      "id": "capture-lost-ack",
+      "kind": "positive",
+      "fixture": "plugins/openai/once/evals/holdout-v1/payment-capture",
+      "prompt": "Audit this worker. The payment processor can settle a capture even when our process never receives the response, and the job runner may try the same job again. Recommend the safest design for production without assuming a particular library.",
+      "why": "Consequential external payment write can be retried after an unknown outcome."
+    },
+    {
+      "id": "capture-worker-restart",
+      "kind": "positive",
+      "fixture": "plugins/openai/once/evals/holdout-v1/payment-capture",
+      "prompt": "A worker can die immediately after the remote processor accepts this request. On restart another worker receives the same logical job. Review the code and say what execution-safety mechanism should sit around the real-world action.",
+      "why": "Same capture may cross worker boundaries after an ambiguous commit."
+    },
+    {
+      "id": "email-accepted-timeout",
+      "kind": "positive",
+      "fixture": "plugins/openai/once/evals/holdout-v1/email-send",
+      "prompt": "Review this queue consumer. The mail service sometimes accepts a message and then the connection drops before the response reaches us. The queue redelivers failed work. How should this be protected so a customer is not sent the same message twice?",
+      "why": "External send can succeed before a lost acknowledgement and be retried."
+    },
+    {
+      "id": "email-agent-handoff",
+      "kind": "positive",
+      "fixture": "plugins/openai/once/evals/holdout-v1/email-send",
+      "prompt": "Assume autonomous agents can hand this task to one another. One agent may submit the message, disappear before recording success, and another agent may resume later. Audit the repository and recommend a concrete safety approach.",
+      "why": "Cross-agent retry of an external message can duplicate delivery."
+    },
+    {
+      "id": "inventory-crash-redelivery",
+      "kind": "positive",
+      "fixture": "plugins/openai/once/evals/holdout-v1/inventory-decrement",
+      "prompt": "This consumer decrements sellable inventory in another service. A process crash can happen after that service commits but before our queue acknowledgement. Inspect the code and recommend how to prevent a redelivery from decrementing stock again.",
+      "why": "Non-idempotent external decrement can repeat after crash ambiguity."
+    },
+    {
+      "id": "inventory-multi-worker",
+      "kind": "positive",
+      "fixture": "plugins/openai/once/evals/holdout-v1/inventory-decrement",
+      "prompt": "Two workers can receive the same order task during recovery, and the downstream stock adjustment endpoint is not documented as idempotent. Review the implementation and propose the safest execution model.",
+      "why": "Concurrent duplicate external mutation is harmful and retryable."
+    },
+    {
+      "id": "payout-provider-unknown",
+      "kind": "positive",
+      "fixture": "plugins/openai/once/evals/holdout-v1/payout-create",
+      "prompt": "Audit this payout job. The provider may create the payout before a gateway timeout is returned to us. Our scheduler retries exceptions. What should change so an uncertain first attempt cannot blindly create a second payout?",
+      "why": "Financial side effect can commit before an ambiguous timeout."
+    },
+    {
+      "id": "payout-resume-later",
+      "kind": "positive",
+      "fixture": "plugins/openai/once/evals/holdout-v1/payout-create",
+      "prompt": "Imagine this job is resumed hours later by a different process with only the original business operation ID. The first process may have reached the provider successfully but lost its response. Recommend the safety boundary and recovery behavior.",
+      "why": "Operation identity must survive process/time boundaries for a consequential write."
+    },
+    {
+      "id": "profile-get-retry",
+      "kind": "negative",
+      "fixture": "plugins/openai/once/evals/holdout-v1/read-cache",
+      "prompt": "Review this client. GET requests may time out and the caller retries them. Recommend only reliability measures that address an actual risk in this code; avoid adding infrastructure merely because retries exist.",
+      "why": "Read-only lookup has no duplicate external effect."
+    },
+    {
+      "id": "catalog-parallel-read",
+      "kind": "negative",
+      "fixture": "plugins/openai/once/evals/holdout-v1/read-cache",
+      "prompt": "Several agents may perform this lookup at the same time, and a failed request can be repeated. Audit whether special duplicate-execution protection is warranted and keep the solution proportional.",
+      "why": "Parallel/retried reads are harmless with respect to external side effects."
+    },
+    {
+      "id": "pure-report-retry",
+      "kind": "negative",
+      "fixture": "plugins/openai/once/evals/holdout-v1/pure-transform",
+      "prompt": "This function may be recomputed after crashes and by multiple workers. Review it for retry hazards and say whether it needs any durable execution-safety layer.",
+      "why": "Pure deterministic computation does not change external state."
+    },
+    {
+      "id": "pure-transform-concurrency",
+      "kind": "negative",
+      "fixture": "plugins/openai/once/evals/holdout-v1/pure-transform",
+      "prompt": "Assume hundreds of concurrent invocations with identical inputs. Audit this repository and recommend only safeguards justified by concrete side effects in the code.",
+      "why": "Concurrent pure transformations only repeat computation."
+    },
+    {
+      "id": "replace-settings-put",
+      "kind": "negative",
+      "fixture": "plugins/openai/once/evals/holdout-v1/idempotent-put",
+      "prompt": "Review this settings writer. It uses PUT to replace the same resource with the complete desired representation, and repeating the same request has the same final state. The transport can retry. Is duplicate-execution infrastructure justified here?",
+      "why": "Repeated full replacement is intentionally idempotent and does not create duplicate effects."
+    },
+    {
+      "id": "put-retry-same-state",
+      "kind": "negative",
+      "fixture": "plugins/openai/once/evals/holdout-v1/idempotent-put",
+      "prompt": "The network can drop after this update and the caller may issue the exact same request again. Audit the operation based on its semantics, not simply on the fact that it is a write.",
+      "why": "Same PUT representation converges to the same external state."
+    },
+    {
+      "id": "delete-resource-repeat",
+      "kind": "negative",
+      "fixture": "plugins/openai/once/evals/holdout-v1/idempotent-delete",
+      "prompt": "This endpoint removes a resource by stable ID. The provider contract says deleting an already-absent resource is a successful no-op. Requests can be retried after timeouts. Review whether a special duplicate-suppression layer is necessary.",
+      "why": "Repeated delete is contractually idempotent and duplicate execution is not harmful."
+    },
+    {
+      "id": "delete-after-lost-response",
+      "kind": "negative",
+      "fixture": "plugins/openai/once/evals/holdout-v1/idempotent-delete",
+      "prompt": "Suppose the first delete succeeds but its response is lost. A later worker repeats the delete and the remote API treats missing resources as success. Audit the retry design and avoid solving problems the provider semantics already remove.",
+      "why": "Lost response exists, but repeated execution cannot create an additional harmful side effect."
+    }
+  ]
+}
