@@ -1,0 +1,202 @@
+name: Astra One-Shot Audit
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_paid_run:
+        description: "Run the single paid GPT-6 Astra audit"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  astra-audit:
+    if: ${{ inputs.confirm_paid_run == true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CODEX_HOME: ${{ runner.temp }}/codex-astra-one-shot
+      ASTRA_MODEL: gpt-6-astra
+      ASTRA_BRANCH: astra/one-shot-audit
+
+    steps:
+      - name: Checkout current main without persisted credentials
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Refuse to overwrite an existing Astra result branch
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --heads origin "refs/heads/$ASTRA_BRANCH" >/dev/null 2>&1; then
+            echo "::error::$ASTRA_BRANCH already exists remotely; refusing to overwrite a prior one-shot result."
+            exit 2
+          fi
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install pinned Codex CLI
+        run: npm install --global @openai/codex@0.155.1
+
+      - name: Verify paid credential without exposing it
+        env:
+          CODEX_API_KEY: ${{ secrets.CODEX_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "$CODEX_API_KEY" ]; then
+            echo "::error::CODEX_API_KEY repository secret is required."
+            exit 3
+          fi
+          codex --version
+          echo "Paid credential is present."
+
+      - name: Run the one-shot Astra mission
+        id: astra
+        env:
+          CODEX_API_KEY: ${{ secrets.CODEX_API_KEY }}
+        run: |
+          set -uo pipefail
+
+          mission="$RUNNER_TEMP/astra-mission.txt"
+          events="$RUNNER_TEMP/astra-events.jsonl"
+          final="$RUNNER_TEMP/astra-final.md"
+          status_file="$RUNNER_TEMP/astra-exit-status.txt"
+
+          cat >"$mission" <<'MISSION'
+          You are the independent senior infrastructure engineer temporarily responsible for auditing the Once repository.
+
+          This is a ONE-SHOT, BUDGET-CONSTRAINED mission. Stay single-agent: do not spawn or delegate to subagents. Spend tokens on investigation and implementation, not long prose.
+
+          Product contract:
+          - Once protects consequential external side effects across retries and ambiguous outcomes.
+          - Evaluate Once only when ALL FOUR hold: (1) an operation can change external state, (2) the same logical operation may be retried, (3) the first attempt can have an ambiguous outcome, and (4) blind duplicate execution would be undesirable or costly.
+          - Reads/search/retrieval, generation-only work, pure local computation, and harmless repetition should bypass Once.
+          - Runtime truth model: CONFIRMED -> replay/suppress; ABSENT -> execute; UNKNOWN -> block/reconcile.
+
+          Mission:
+          Find and fix the SINGLE most important remaining problem preventing Once from being safely adopted by a real developer.
+
+          First survey the repository broadly enough to understand the architecture and existing evidence. Then prioritize concrete, reproducible issues in this order:
+          1. unsafe duplicate execution or incorrect execution truth;
+          2. operation identity, concurrency, crash/restart, queue redelivery, multi-agent handoff, or reconciliation defects;
+          3. security/trust-boundary defects;
+          4. a serious installation, packaging, discovery, portability, or developer-adoption blocker.
+
+          Do not spend the run on cosmetics, generic advice, or speculative rewrites. Do not merely search TODOs. Try to falsify the product's safety assumptions using the code and tests available in this checkout.
+
+          If you find a genuine high-value issue:
+          - reproduce it with concrete evidence;
+          - implement the smallest robust fix in this workspace;
+          - add or strengthen a regression test;
+          - run the most relevant tests you can run locally.
+
+          If you cannot establish a serious defect with evidence, make no speculative code change. Instead identify the strongest unresolved risk or the single highest-leverage, evidence-backed improvement.
+
+          Hard boundaries:
+          - Do not merge, push, publish packages, deploy, release, purchase anything, rotate credentials, or alter external infrastructure.
+          - Do not inspect environment variables, credentials, secret stores, git credentials, or authentication files.
+          - Do not make network requests; work from this checkout and locally available tooling only.
+          - Do not weaken safety checks to make tests pass.
+          - Do not change generated/evidence history merely to make the project look better.
+
+          Finish with a COMPACT final handoff containing:
+          - strongest finding and severity (P0/P1/P2/P3);
+          - exact evidence/reproduction;
+          - files changed and why;
+          - tests run and results;
+          - unresolved risk;
+          - one sentence on whether this finding materially blocks real adoption.
+
+          Your desired outcome is not a broad report. It is one high-confidence improvement or one high-confidence finding that materially advances Once.
+          MISSION
+
+          set +e
+          timeout 1200s codex exec \
+            --ephemeral \
+            --json \
+            --sandbox workspace-write \
+            --skip-git-repo-check \
+            --model "$ASTRA_MODEL" \
+            -c 'model_reasoning_effort="low"' \
+            -c 'sandbox_workspace_write.network_access=false' \
+            --output-last-message "$final" \
+            "$(cat "$mission")" \
+            >"$events" 2>&1
+          astra_status=$?
+          set -e
+
+          printf '%s\n' "$astra_status" >"$status_file"
+          echo "exit_status=$astra_status" >>"$GITHUB_OUTPUT"
+
+          if [ -f "$final" ]; then
+            echo "===== ASTRA FINAL HANDOFF ====="
+            cat "$final"
+          fi
+
+          if [ "$astra_status" -ne 0 ]; then
+            echo "::warning::Astra exited with status $astra_status. Changes will not be pushed; evidence will still be uploaded."
+          fi
+
+      - name: Capture deterministic diff and safety checks
+        if: always()
+        run: |
+          set -euo pipefail
+          git status --short --branch | tee "$RUNNER_TEMP/astra-git-status.txt"
+          git diff --binary >"$RUNNER_TEMP/astra.patch" || true
+          git diff --stat | tee "$RUNNER_TEMP/astra-diff-stat.txt" || true
+          git diff --check | tee "$RUNNER_TEMP/astra-diff-check.txt"
+
+          if git diff -U0 | grep -E '^\+.*sk-[A-Za-z0-9_-]{20,}' >/dev/null 2>&1; then
+            echo "::error::Potential API credential material detected in added lines; refusing branch preservation."
+            touch "$RUNNER_TEMP/astra-secret-scan-failed"
+          fi
+
+      - name: Preserve successful Astra changes on dedicated branch
+        if: ${{ always() && steps.astra.outputs.exit_status == '0' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          if [ -f "$RUNNER_TEMP/astra-secret-scan-failed" ]; then
+            echo "::error::Secret scan failed; not pushing changes."
+            exit 4
+          fi
+
+          if git diff --quiet && [ -z "$(git ls-files --others --exclude-standard)" ]; then
+            echo "Astra made no workspace changes; no result branch will be pushed."
+            exit 0
+          fi
+
+          git switch -c "$ASTRA_BRANCH"
+          git config user.name "once-astra-audit"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "Apply Astra one-shot audit finding"
+
+          gh auth setup-git
+          git push origin "HEAD:refs/heads/$ASTRA_BRANCH"
+
+      - name: Upload Astra evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: astra-one-shot-audit-evidence
+          path: |
+            ${{ runner.temp }}/astra-mission.txt
+            ${{ runner.temp }}/astra-events.jsonl
+            ${{ runner.temp }}/astra-final.md
+            ${{ runner.temp }}/astra-exit-status.txt
+            ${{ runner.temp }}/astra-git-status.txt
+            ${{ runner.temp }}/astra.patch
+            ${{ runner.temp }}/astra-diff-stat.txt
+            ${{ runner.temp }}/astra-diff-check.txt
+          if-no-files-found: warn
