@@ -33,7 +33,7 @@ jobs:
       - name: Use Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Validate deploy guard syntax
         run: node --check scripts/deploy-worker.cjs
@@ -60,7 +60,7 @@ jobs:
       - name: Use Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: workers/${{ matrix.worker }}/package-lock.json
 
