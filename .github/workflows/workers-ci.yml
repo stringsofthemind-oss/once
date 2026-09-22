@@ -69,3 +69,7 @@ jobs:
 
       - name: Run guarded Worker dry-run
         run: npm run deploy:dry-run
+
+      - name: Run runtime safety regressions
+        if: matrix.worker == 'runtime'
+        run: npm test
