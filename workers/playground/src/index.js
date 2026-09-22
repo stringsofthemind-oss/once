@@ -1901,6 +1901,7 @@ footer{
     gap:8px;
   }
 }
+
 </style>
 </head>
 
@@ -3284,6 +3285,155 @@ footer{
     gap:8px;
   }
 }
+
+/* ----------------------------------------------------------
+   RESILIENCE LAB
+   ---------------------------------------------------------- */
+
+.fault-options{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
+  margin:22px 0 16px;
+}
+
+.fault-option{
+  position:relative;
+  display:grid;
+  grid-template-columns:22px 1fr;
+  grid-template-rows:auto auto;
+  column-gap:13px;
+  row-gap:7px;
+  min-height:150px;
+  padding:20px;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(9,15,23,.98),
+      rgba(6,11,17,.98)
+    );
+  cursor:pointer;
+  transition:
+    border-color .16s ease,
+    background .16s ease,
+    box-shadow .16s ease,
+    transform .16s ease;
+}
+
+.fault-option:hover{
+  border-color:rgba(68,208,255,.38);
+  transform:translateY(-1px);
+}
+
+.fault-option:has(input:checked){
+  border-color:rgba(57,240,160,.62);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(12,31,29,.92),
+      rgba(7,18,20,.98)
+    );
+  box-shadow:
+    inset 0 0 0 1px rgba(57,240,160,.08),
+    0 0 34px rgba(57,240,160,.07);
+}
+
+.fault-option input{
+  position:absolute;
+  opacity:0;
+  pointer-events:none;
+}
+
+.fault-radio{
+  grid-column:1;
+  grid-row:1;
+  width:18px;
+  height:18px;
+  margin-top:2px;
+  border:1px solid #61717e;
+  border-radius:50%;
+  background:#090f16;
+  box-shadow:inset 0 0 0 4px #090f16;
+  transition:
+    border-color .16s ease,
+    background .16s ease,
+    box-shadow .16s ease;
+}
+
+.fault-option:has(input:checked) .fault-radio{
+  border-color:var(--green);
+  background:var(--green);
+  box-shadow:
+    inset 0 0 0 4px #091511,
+    0 0 14px rgba(57,240,160,.24);
+}
+
+.fault-option strong{
+  grid-column:2;
+  grid-row:1;
+  display:block;
+  font-size:15px;
+  line-height:1.25;
+  letter-spacing:.01em;
+}
+
+.fault-option small{
+  grid-column:2;
+  grid-row:2;
+  display:block;
+  max-width:560px;
+  color:#91a3b1;
+  font-size:12px;
+  line-height:1.55;
+}
+
+.fault-option:has(input:checked) strong{
+  color:#f5fff9;
+}
+
+.fault-disclaimer{
+  margin:4px 0 18px;
+  color:#607380;
+  font:
+    700 9px
+    ui-monospace,
+    monospace;
+  letter-spacing:.09em;
+}
+
+.fault-run{
+  min-width:235px;
+  padding:14px 22px;
+  text-transform:uppercase;
+  letter-spacing:.035em;
+}
+
+.fault-run:disabled{
+  opacity:.42;
+  cursor:not-allowed;
+  box-shadow:none;
+}
+
+#labResult{
+  min-height:88px;
+  margin-top:22px;
+}
+
+@media(max-width:760px){
+  .fault-options{
+    grid-template-columns:1fr;
+  }
+
+  .fault-option{
+    min-height:130px;
+  }
+
+  .fault-run{
+    width:100%;
+  }
+}
 </style>
 </head>
 
@@ -3553,6 +3703,100 @@ footer{
 </section>
 
 
+<section
+  id="resilienceLab"
+  class="console-card"
+>
+
+  <div class="console-heading">
+
+    <span class="console-number">
+      03
+    </span>
+
+    <div>
+      <h2>
+        Try to break Once
+      </h2>
+
+      <p>
+        Choose the failure condition. Once reports what actually happened.
+      </p>
+    </div>
+
+    <span class="state-pill">
+      FAULT LAB
+    </span>
+
+  </div>
+
+
+  <div class="fault-options">
+
+    <label class="fault-option">
+      <input
+        type="radio"
+        name="faultScenario"
+        value="ambiguous_after_commit"
+        checked
+      >
+      <span class="fault-radio" aria-hidden="true"></span>
+      <strong>LOST RESPONSE AFTER COMMIT</strong>
+      <small>
+        Provider commits the effect, then the response becomes ambiguous.
+      </small>
+    </label>
+
+
+    <label class="fault-option">
+      <input
+        type="radio"
+        name="faultScenario"
+        value="fail_before_effect"
+      >
+      <span class="fault-radio" aria-hidden="true"></span>
+      <strong>FAIL BEFORE EFFECT</strong>
+      <small>
+        Provider explicitly rejects the operation before any effect occurs.
+      </small>
+    </label>
+
+  </div>
+
+
+  <p class="fault-disclaimer">
+    CONTROLLED FAULT INJECTION · TEST CONDITIONS ONLY · NO FAILURE RATE IMPLIED
+  </p>
+
+
+  <button
+    id="runScenario"
+    type="button"
+    class="primary fault-run"
+    disabled
+  >
+    Run failure scenario
+  </button>
+
+
+  <div
+    id="labStatus"
+    class="status"
+    aria-live="polite"
+  ></div>
+
+
+  <div
+    id="labResult"
+    class="big-result"
+  ></div>
+
+</section>
+
+
+
+
+
 
 <section
   id="integrateCard"
@@ -3562,7 +3806,7 @@ footer{
   <div class="console-heading">
 
     <span class="console-number">
-      03
+      04
     </span>
 
     <div>
@@ -3718,6 +3962,11 @@ footer{
         "runDemo"
       );
 
+    const runScenarioButton =
+      document.getElementById(
+        "runScenario"
+      );
+
     const copyEnvButton =
       document.getElementById(
         "copyEnv"
@@ -3761,6 +4010,16 @@ footer{
     const demoResult =
       document.getElementById(
         "demoResult"
+      );
+
+    const labStatus =
+      document.getElementById(
+        "labStatus"
+      );
+
+    const labResult =
+      document.getElementById(
+        "labResult"
       );
 
     const params =
@@ -3943,6 +4202,10 @@ footer{
           );
 
         runDemoButton.disabled =
+          false;
+
+
+        runScenarioButton.disabled =
           false;
 
         demoStatus.textContent =
@@ -4255,6 +4518,261 @@ footer{
       runDemoButton.disabled =
         false;
     }
+    async function runFaultScenario() {
+
+      if (!activeKey) {
+        labStatus.className =
+          "error";
+
+        labStatus.textContent =
+          "Activate your API key first.";
+
+        return;
+      }
+
+      const selected =
+        document.querySelector(
+          'input[name="faultScenario"]:checked'
+        );
+
+      const scenario =
+        selected?.value ||
+        "ambiguous_after_commit";
+
+      const ambiguous =
+        scenario ===
+        "ambiguous_after_commit";
+
+      runScenarioButton.disabled =
+        true;
+
+      labResult.style.display =
+        "none";
+
+      labStatus.className =
+        "";
+
+      labStatus.textContent =
+        ambiguous
+          ? "Injecting an ambiguous response after the provider commits..."
+          : "Injecting a provider rejection before any side effect...";
+
+      sendPlaygroundAnalytics(
+        "playground_fault_lab_run"
+      );
+
+      let response;
+      let body;
+
+      try {
+
+        response =
+          await fetch(
+            "/api/demo",
+            {
+              method:
+                "POST",
+
+              headers: {
+                authorization:
+                  "Bearer " +
+                  activeKey,
+
+                "content-type":
+                  "application/json"
+              },
+
+              body:
+                JSON.stringify({
+                  scenario
+                })
+            }
+          );
+
+        body =
+          await response.json();
+      }
+      catch {
+
+        labStatus.className =
+          "error";
+
+        labStatus.textContent =
+          "Fault lab network request failed.";
+
+        runScenarioButton.disabled =
+          false;
+
+        return;
+      }
+
+      if (!response.ok) {
+
+        labStatus.className =
+          "error";
+
+        labStatus.textContent =
+          body.error ||
+          "Fault scenario failed.";
+
+        labResult.style.display =
+          "block";
+
+        labResult.textContent =
+          body.error ||
+          "Unknown fault lab error";
+
+        runScenarioButton.disabled =
+          false;
+
+        return;
+      }
+
+      const result =
+        body.result || {};
+
+      const state =
+        String(
+          result.state || ""
+        ).toUpperCase();
+
+      const sideEffects =
+        Number(
+          result.side_effects
+        );
+
+      const passed =
+        ambiguous
+          ? (
+              result.duplicate_prevented === true &&
+              state === "CONFIRMED" &&
+              sideEffects === 1
+            )
+          : (
+              result.failed_safely_before_effect === true &&
+              state === "FAILED_BEFORE_EFFECT" &&
+              sideEffects === 0
+            );
+
+      const scenarioName =
+        ambiguous
+          ? "Lost response after commit"
+          : "Fail before effect";
+
+      const proofName =
+        ambiguous
+          ? "Duplicate prevented"
+          : "No effect committed";
+
+      const proofValue =
+        ambiguous
+          ? (
+              result.duplicate_prevented === true
+                ? "YES"
+                : "NO"
+            )
+          : (
+              result.failed_safely_before_effect === true
+                ? "YES"
+                : "NO"
+            );
+
+      labStatus.className =
+        passed
+          ? "success"
+          : "error";
+
+      labStatus.textContent =
+        passed
+          ? (
+              ambiguous
+                ? "Once reconciled the ambiguous execution."
+                : "Once recorded the explicit no-effect failure safely."
+            )
+          : "Observed result did not meet the expected safety condition.";
+
+      const className =
+        passed
+          ? "result-pass"
+          : "result-fail";
+
+      const heading =
+        passed
+          ? "&#10003; Intended external state preserved"
+          : "Safety condition not met";
+
+      labResult.innerHTML =
+        '<div class="' +
+        className +
+        '">' +
+
+        '<div class="big-result">' +
+        heading +
+        '</div>' +
+
+        '<div class="demo-steps">' +
+
+        '<div class="step">' +
+        '<span>Injected scenario</span>' +
+        '<strong>' +
+        scenarioName +
+        '</strong>' +
+        '</div>' +
+
+        '<div class="step">' +
+        '<span>Once state</span>' +
+        '<strong>' +
+        String(
+          result.state || "UNKNOWN"
+        ) +
+        '</strong>' +
+        '</div>' +
+
+        '<div class="step">' +
+        '<span>Execution attempts</span>' +
+        '<strong>' +
+        String(
+          result.attempts ?? "?"
+        ) +
+        '</strong>' +
+        '</div>' +
+
+        '<div class="step">' +
+        '<span>Actual side effects</span>' +
+        '<strong>' +
+        String(
+          result.side_effects ?? "?"
+        ) +
+        '</strong>' +
+        '</div>' +
+
+        '</div>' +
+
+        '<p><strong>' +
+        proofName +
+        ':</strong> ' +
+        proofValue +
+        '</p>' +
+
+        '<p>' +
+        'Result shown from this execution only. ' +
+        'No population failure rate is implied.' +
+        '</p>' +
+
+        '</div>';
+
+      labResult.style.display =
+        "block";
+
+      runScenarioButton.textContent =
+        "Run another failure";
+
+      runScenarioButton.disabled =
+        false;
+    }
+
+
+
 
     claimButton.addEventListener(
       "click",
@@ -4282,6 +4800,11 @@ footer{
     runDemoButton.addEventListener(
       "click",
       runDemo
+    );
+
+    runScenarioButton.addEventListener(
+      "click",
+      runFaultScenario
     );
 
     copyEnvButton.addEventListener(
@@ -4609,6 +5132,41 @@ var index_default = {
           401
         );
       }
+      let demoRequest = {};
+
+      try {
+        demoRequest = await request.json();
+      } catch {
+        demoRequest = {};
+      }
+
+      const requestedScenario = String(
+        demoRequest?.scenario || "ambiguous_after_commit"
+      ).trim().toLowerCase();
+
+      const allowedScenarios = new Set([
+        "ambiguous_after_commit",
+        "fail_before_effect"
+      ]);
+
+      if (!allowedScenarios.has(requestedScenario)) {
+        return json3(
+          {
+            error: "unsupported_demo_scenario",
+            allowed_scenarios: [
+              "ambiguous_after_commit",
+              "fail_before_effect"
+            ]
+          },
+          400
+        );
+      }
+
+      const scenarioFault =
+        requestedScenario === "fail_before_effect"
+          ? "fail_before_effect"
+          : "commit_then_503";
+
       const onceAuthorization = authorization;
       const core = String(
         env.ONCE_CORE_URL
@@ -4733,10 +5291,17 @@ var index_default = {
           url: demoTargetUrl,
           body_json: JSON.stringify({
             demo: true,
-            description: "Demonstrate ambiguous execution safety"
+            scenario: requestedScenario,
+            description:
+              requestedScenario === "fail_before_effect"
+                ? "Demonstrate explicit failure before external effect"
+                : "Demonstrate ambiguous execution safety"
           }),
-          fault: "commit_then_503",
-          description: "Demonstrate ambiguous execution safety"
+          fault: scenarioFault,
+          description:
+            requestedScenario === "fail_before_effect"
+              ? "Demonstrate explicit failure before external effect"
+              : "Demonstrate ambiguous execution safety"
         }
       };
       async function callExecute() {
@@ -4771,13 +5336,19 @@ var index_default = {
       }
       __name(callExecute, "callExecute");
       const first = await callExecute();
-      await new Promise(
-        (resolve) => setTimeout(
-          resolve,
-          250
-        )
-      );
-      const retry = await callExecute();
+
+      let retry = null;
+
+      if (requestedScenario === "ambiguous_after_commit") {
+        await new Promise(
+          (resolve) => setTimeout(
+            resolve,
+            250
+          )
+        );
+
+        retry = await callExecute();
+      }
       let truth = null;
       for (let attempt = 0; attempt < 20; attempt++) {
         try {
@@ -4799,7 +5370,7 @@ var index_default = {
             const state = String(
               truth?.ledger_state || truth?.state || ""
             ).toUpperCase();
-            if (state === "CONFIRMED" || state === "FAILED" || state === "QUARANTINED") {
+            if (state === "CONFIRMED" || state === "FAILED" || state === "FAILED_BEFORE_EFFECT" || state === "QUARANTINED") {
               break;
             }
           }
@@ -4821,6 +5392,7 @@ var index_default = {
         (
           finalState !== "CONFIRMED" &&
           finalState !== "FAILED" &&
+          finalState !== "FAILED_BEFORE_EFFECT" &&
           finalState !== "QUARANTINED"
         )
       ) {
@@ -4845,18 +5417,33 @@ var index_default = {
       const attempts = Number(
         truth?.attempts
       );
-      const protectedSuccessfully = finalState === "CONFIRMED" && sideEffects === 1;
+      const protectedSuccessfully =
+        requestedScenario === "ambiguous_after_commit" &&
+        finalState === "CONFIRMED" &&
+        sideEffects === 1;
+
+      const failedSafely =
+        requestedScenario === "fail_before_effect" &&
+        finalState === "FAILED_BEFORE_EFFECT" &&
+        sideEffects === 0;
+
       return json3({
         demo: true,
+        scenario: requestedScenario,
         operation_id: operationId,
         first_attempt: {
           http_status: first.http_status,
           state: first.body?.state || first.body?.ledger_state || null
         },
-        retry_attempt: {
-          http_status: retry.http_status,
-          state: retry.body?.state || retry.body?.ledger_state || null
-        },
+        retry_attempt: retry
+          ? {
+              http_status: retry.http_status,
+              state:
+                retry.body?.state ||
+                retry.body?.ledger_state ||
+                null
+            }
+          : null,
         result: {
           state: finalState,
           attempts: Number.isFinite(
@@ -4865,7 +5452,8 @@ var index_default = {
           side_effects: Number.isFinite(
             sideEffects
           ) ? sideEffects : null,
-          duplicate_prevented: protectedSuccessfully
+          duplicate_prevented: protectedSuccessfully,
+          failed_safely_before_effect: failedSafely
         },
         truth
       });
