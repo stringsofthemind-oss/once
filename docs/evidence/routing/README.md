@@ -1,4 +1,4 @@
-﻿# Once Agent Routing Conformance Evidence
+# Once Agent Routing Conformance Evidence
 
 ## Result
 
@@ -70,7 +70,16 @@ EB00002CE38A45F7EB827E97194A777CA82AE796FEFB121DC2E55B3F4C72BC86
 
 Combined evidence CSV SHA-256:
 
-752EFDE00344F7F5791FF6371440634EA99C5862AAA46FE3AC757FE31D3A2B01
+752EFDE00344F7F5791FF6371440634EA99C5862AAA46FE31D3A2B01
+
+## Controlled Codex routing study
+
+A separate controlled Codex study records autonomous Once selection, the read-only over-routing regression that exposed the need for a pre-tool gate, and the post-gate positive/negative validation pair:
+
+- [`codex-controlled-routing-v1.md`](./codex-controlled-routing-v1.md)
+- [`codex-controlled-routing-v1.json`](./codex-controlled-routing-v1.json)
+
+This Codex evidence uses a controlled startup-loaded routing catalog and is intentionally not presented as proof of default production Codex behavior.
 
 ## Interpretation
 
