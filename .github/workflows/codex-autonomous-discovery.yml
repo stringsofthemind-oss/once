@@ -2,6 +2,11 @@ name: Codex Autonomous Discovery
 
 on:
   workflow_dispatch:
+    inputs:
+      case_id:
+        description: "Optional single autonomous-discovery case ID"
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -13,6 +18,7 @@ jobs:
       CODEX_API_KEY: ${{ secrets.CODEX_API_KEY }}
       CODEX_HOME: /home/runner/.codex-once-discovery
       CODEX_EVAL_MODEL: gpt-5.3-codex
+      CODEX_EVAL_SANDBOX: danger-full-access
 
     steps:
       - name: Checkout
@@ -41,7 +47,14 @@ jobs:
           codex plugin list
 
       - name: Run autonomous discovery suite
-        run: node scripts/run-codex-autonomous-discovery.mjs --out "$RUNNER_TEMP/codex-autonomous-discovery-results.json"
+        env:
+          CASE_ID: ${{ inputs.case_id }}
+        run: |
+          args=(--out "$RUNNER_TEMP/codex-autonomous-discovery-results.json")
+          if [ -n "$CASE_ID" ]; then
+            args+=(--case "$CASE_ID")
+          fi
+          node scripts/run-codex-autonomous-discovery.mjs "${args[@]}"
 
       - name: Upload routing transcripts
         if: always()

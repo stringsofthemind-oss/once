@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 
 const repoRoot = resolve(new URL("..", import.meta.url).pathname.replace(/^\/(?:[A-Za-z]:)/, m => m.slice(1)));
 const defaultCases = resolve(repoRoot, "plugins/openai/once/evals/autonomous-discovery-cases.json");
@@ -20,6 +21,7 @@ const casesPath = resolve(argValue("--cases") ?? defaultCases);
 const outPath = resolve(argValue("--out") ?? "codex-autonomous-discovery-results.json");
 const onlyCase = argValue("--case");
 const model = process.env.CODEX_EVAL_MODEL?.trim();
+const sandboxMode = process.env.CODEX_EVAL_SANDBOX?.trim() || "danger-full-access";
 const codexCommand = process.env.CODEX_BIN?.trim() || (process.platform === "win32" ? "codex.cmd" : "codex");
 const shell = process.platform === "win32";
 
@@ -30,7 +32,10 @@ function runCodex(args, options = {}) {
     encoding: "utf8",
     maxBuffer: 8 * 1024 * 1024,
     shell,
-    env: process.env
+    env: {
+      ...process.env,
+      ...(options.env ?? {})
+    }
   });
 }
 
@@ -64,7 +69,6 @@ function readableTranscript(stdout, stderr) {
 
 function classifyInfrastructureBlock(transcript) {
   const text = String(transcript ?? "");
-
   const cases = [
     {
       code: "BLOCKED_API_CREDITS",
@@ -99,20 +103,25 @@ function classifyInfrastructureBlock(transcript) {
         /network (?:error|unreachable)/i,
         /timed? out connecting/i
       ]
+    },
+    {
+      code: "BLOCKED_SANDBOX",
+      patterns: [
+        /bwrap:.*Operation not permitted/i,
+        /sandbox.{0,120}Operation not permitted/i,
+        /(?:shell|command).{0,100}(?:blocked|failing).{0,100}Operation not permitted/i,
+        /environment.{0,100}blocks? even basic reads/i
+      ]
     }
   ];
 
-  return cases.find(item =>
-    item.patterns.some(pattern => pattern.test(text))
-  ) ?? null;
+  return cases.find(item => item.patterns.some(pattern => pattern.test(text))) ?? null;
 }
 
 function agentMessageTranscript(stdout) {
   const messages = [];
-
   for (const line of String(stdout ?? "").split(/\r?\n/)) {
     if (!line.trim()) continue;
-
     let event;
     try {
       event = JSON.parse(line);
@@ -121,12 +130,8 @@ function agentMessageTranscript(stdout) {
     }
 
     const candidates = [];
-    if (event?.type === "item.completed" && event?.item?.type === "agent_message") {
-      candidates.push(event.item);
-    }
-    if (event?.type === "agent_message") {
-      candidates.push(event);
-    }
+    if (event?.type === "item.completed" && event?.item?.type === "agent_message") candidates.push(event.item);
+    if (event?.type === "agent_message") candidates.push(event);
 
     for (const candidate of candidates) {
       if (typeof candidate.text === "string" && candidate.text.trim()) {
@@ -145,8 +150,22 @@ function agentMessageTranscript(stdout) {
       }
     }
   }
-
   return messages.join("\n");
+}
+
+function agentMessageCount(stdout) {
+  let count = 0;
+  for (const line of String(stdout ?? "").split(/\r?\n/)) {
+    if (!line.trim()) continue;
+    try {
+      const event = JSON.parse(line);
+      if (event?.type === "item.completed" && event?.item?.type === "agent_message") count += 1;
+      else if (event?.type === "agent_message") count += 1;
+    } catch {
+      // Ignore non-JSON output.
+    }
+  }
+  return count;
 }
 
 function hasExplicitOnceBypass(transcript) {
@@ -160,7 +179,6 @@ function hasExplicitOnceBypass(transcript) {
     new RegExp(`\\bbypass\\s+${onceRef}\\b`, "i"),
     new RegExp(`\\b${onceRef}\\b.{0,40}\\bshould be bypassed\\b`, "is")
   ];
-
   return patterns.some(pattern => pattern.test(transcript));
 }
 
@@ -194,6 +212,14 @@ function scoreCase(testCase, transcript) {
     recommendationDetected: recommends,
     rubric: "Negative cases should not recommend adding Once; an explicit explanation that Once is unnecessary is also a pass."
   };
+}
+
+function makeFixtureCopy(sourceFixture, caseId) {
+  const base = process.env.RUNNER_TEMP?.trim() || tmpdir();
+  const runRoot = mkdtempSync(join(resolve(base), `once-codex-${caseId}-`));
+  const fixture = join(runRoot, "project");
+  cpSync(sourceFixture, fixture, { recursive: true });
+  return { runRoot, fixture };
 }
 
 if (!existsSync(casesPath)) {
@@ -231,85 +257,93 @@ if (onlyCase) {
 
 const results = [];
 for (const testCase of selected) {
-  const fixture = resolve(repoRoot, testCase.fixture);
-  if (!existsSync(fixture)) {
-    results.push({ id: testCase.id, kind: testCase.kind, error: `Fixture not found: ${fixture}`, pass: false });
+  const sourceFixture = resolve(repoRoot, testCase.fixture);
+  if (!existsSync(sourceFixture)) {
+    results.push({
+      id: testCase.id,
+      kind: testCase.kind,
+      error: `Fixture not found: ${sourceFixture}`,
+      pass: false,
+      evaluationStatus: "evaluated",
+      blockedReason: null
+    });
     continue;
   }
 
-  const args = [
-    "exec",
-    "--experimental-json",
-    "--sandbox",
-    "read-only",
-    "--cd",
-    fixture,
-    "--skip-git-repo-check",
-    "--config",
-    'approval_policy="never"',
-    "--config",
-    'web_search="disabled"'
-  ];
-  if (model) args.push("--model", model);
+  const { runRoot, fixture } = makeFixtureCopy(sourceFixture, testCase.id);
+  try {
+    const args = [
+      "exec",
+      "--experimental-json",
+      "--sandbox",
+      sandboxMode,
+      "--cd",
+      fixture,
+      "--skip-git-repo-check",
+      "--config",
+      'approval_policy="never"',
+      "--config",
+      'web_search="disabled"'
+    ];
+    if (model) args.push("--model", model);
 
-  const prompt = [
-    testCase.prompt,
-    "",
-    "This is an audit-only evaluation. Inspect the repository, do not modify files, and make your recommendation from the installed capabilities available to you."
-  ].join("\n");
+    const prompt = [
+      testCase.prompt,
+      "",
+      `The repository to audit is exactly this directory: ${fixture}`,
+      "Treat that directory as the project root for every inspection or project-scanning tool you choose to use. If a tool accepts a project path, pass the absolute directory above rather than relying on '.'.",
+      "This is an audit-only evaluation. Inspect the repository, do not modify files, and make your recommendation from the installed capabilities available to you."
+    ].join("\n");
 
-  process.stdout.write(`Running ${testCase.id}... `);
-  const run = runCodex(args, { cwd: fixture, input: prompt });
-  const transcript = readableTranscript(run.stdout, run.stderr);
-  const infrastructureBlock =
-    run.status !== 0 ? classifyInfrastructureBlock(transcript) : null;
-  const scoredTranscript = agentMessageTranscript(run.stdout) || transcript;
-  const scoring = infrastructureBlock
-    ? null
-    : scoreCase(testCase, scoredTranscript);
-  const pass = infrastructureBlock
-    ? null
-    : run.status === 0 && scoring.pass;
-  const evaluationStatus = infrastructureBlock ? "blocked" : "evaluated";
+    process.stdout.write(`Running ${testCase.id}... `);
+    const run = runCodex(args, {
+      cwd: fixture,
+      input: prompt,
+      env: { ONCE_EVAL_PROJECT_PATH: fixture }
+    });
+    const transcript = readableTranscript(run.stdout, run.stderr);
+    const infrastructureBlock = classifyInfrastructureBlock(transcript);
+    const scoredTranscript = agentMessageTranscript(run.stdout) || transcript;
+    const scoring = infrastructureBlock ? null : scoreCase(testCase, scoredTranscript);
+    const pass = infrastructureBlock ? null : run.status === 0 && scoring.pass;
+    const evaluationStatus = infrastructureBlock ? "blocked" : "evaluated";
 
-  console.log(
-    infrastructureBlock
-      ? infrastructureBlock.code
-      : pass
-        ? "PASS"
-        : "FAIL"
-  );
+    console.log(infrastructureBlock ? infrastructureBlock.code : pass ? "PASS" : "FAIL");
 
-  results.push({
-    id: testCase.id,
-    kind: testCase.kind,
-    why: testCase.why,
-    fixture: testCase.fixture,
-    prompt: testCase.prompt,
-    exitCode: run.status,
-    signal: run.signal ?? null,
-    pass,
-    evaluationStatus,
-    blockedReason: infrastructureBlock?.code ?? null,
-    scoring,
-    scoredTranscript,
-    transcript,
-    diagnostics: {
-      onceMcpUnavailable: /Once MCP tools were unavailable/i.test(scoredTranscript),
-      onceCliAssessmentFailed: /pinned CLI assessment failed/i.test(scoredTranscript),
-      codexExecProcessError: /CreateProcessWithLogonW failed/i.test(transcript)
-    },
-    rawStdout: String(run.stdout ?? "").slice(0, 500000),
-    rawStderr: String(run.stderr ?? "").slice(0, 100000)
-  });
+    results.push({
+      id: testCase.id,
+      kind: testCase.kind,
+      why: testCase.why,
+      fixture: testCase.fixture,
+      isolatedFixture: fixture,
+      prompt: testCase.prompt,
+      exitCode: run.status,
+      signal: run.signal ?? null,
+      pass,
+      evaluationStatus,
+      blockedReason: infrastructureBlock?.code ?? null,
+      scoring,
+      scoredTranscript,
+      transcript,
+      diagnostics: {
+        onceMcpUnavailable: /Once MCP tools were unavailable|MCP server.*once.*(?:unavailable|failed)/i.test(transcript),
+        onceCliAssessmentFailed: /once_assess_project.{0,160}(?:isError|failed)|Cannot find module.*@once-agent[\\/]sdk/i.test(transcript),
+        codexExecProcessError: /CreateProcessWithLogonW failed/i.test(transcript),
+        sandboxFailure: /bwrap:.*Operation not permitted|sandbox.{0,120}Operation not permitted/i.test(transcript),
+        modelMetadataFallback: /Model metadata for `[^`]+` not found\. Defaulting to fallback metadata/i.test(transcript),
+        agentMessageCount: agentMessageCount(run.stdout),
+        targetPathMentioned: transcript.includes(fixture)
+      },
+      rawStdout: String(run.stdout ?? "").slice(0, 500000),
+      rawStderr: String(run.stderr ?? "").slice(0, 100000)
+    });
+  } finally {
+    rmSync(runRoot, { recursive: true, force: true });
+  }
 }
 
-const evaluated = results.filter(
-  result => result.evaluationStatus === "evaluated"
-);
-const blocked = results.filter(
-  result => result.evaluationStatus === "blocked"
-);
+const evaluated = results.filter(result => result.evaluationStatus === "evaluated");
+const blocked = results.filter(result => result.evaluationStatus === "blocked");
 const positive = evaluated.filter(result => result.kind === "positive");
 const negative = evaluated.filter(result => result.kind === "negative");
 
@@ -331,9 +365,10 @@ const report = {
   generatedAt: new Date().toISOString(),
   codexVersion: versionRun.stdout.trim() || versionRun.stderr.trim(),
   model: model || "Codex default",
+  sandboxMode,
   pluginList: pluginList.trim(),
   suiteVersion: suite.version,
-  scoringNote: "Heuristic routing score only. Infrastructure-blocked cases are not graded and use pass=null. Scoring uses agent-authored messages, not tool output or skill-file contents; bypass detection only matches explicit statements that Once is unnecessary/inapplicable or should not be used. Full raw transcripts are retained for manual review. A PASS is not a general reliability claim.",
+  scoringNote: "Heuristic routing score only. Infrastructure-blocked cases are not graded and use pass=null. Each fixture is copied to an isolated temporary directory before Codex runs. Scoring uses agent-authored messages, not tool output or skill-file contents. Full raw transcripts are retained for manual review. A PASS is not a general reliability claim.",
   summary,
   results
 };
@@ -342,39 +377,18 @@ mkdirSync(dirname(outPath), { recursive: true });
 writeFileSync(outPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
 
 if (summary.blocked > 0) {
-  const blockReasons = [
-    ...new Set(blocked.map(result => result.blockedReason).filter(Boolean))
-  ];
-
-  console.log(
-    `\nCodex autonomous discovery: BLOCKED (${summary.blocked}/${summary.total} cases not evaluated)`
-  );
-  console.log(
-    `Block reason(s): ${blockReasons.join(", ") || "UNKNOWN_INFRASTRUCTURE_BLOCK"}`
-  );
+  const blockReasons = [...new Set(blocked.map(result => result.blockedReason).filter(Boolean))];
+  console.log(`\nCodex autonomous discovery: BLOCKED (${summary.blocked}/${summary.total} cases not evaluated)`);
+  console.log(`Block reason(s): ${blockReasons.join(", ") || "UNKNOWN_INFRASTRUCTURE_BLOCK"}`);
   console.log(`Evaluated: ${summary.evaluated}/${summary.total}`);
-
-  if (summary.evaluated > 0) {
-    console.log(
-      `Passed among evaluated: ${summary.passed}/${summary.evaluated}`
-    );
-  }
+  if (summary.evaluated > 0) console.log(`Passed among evaluated: ${summary.passed}/${summary.evaluated}`);
 } else {
-  console.log(
-    `\nCodex autonomous discovery: ${summary.passed}/${summary.total} passed`
-  );
+  console.log(`\nCodex autonomous discovery: ${summary.passed}/${summary.total} passed`);
 }
 
-console.log(
-  `Positive evaluated: ${summary.positivePassed}/${summary.positiveEvaluated}`
-);
-console.log(
-  `Negative evaluated: ${summary.negativePassed}/${summary.negativeEvaluated}`
-);
+console.log(`Positive evaluated: ${summary.positivePassed}/${summary.positiveEvaluated}`);
+console.log(`Negative evaluated: ${summary.negativePassed}/${summary.negativeEvaluated}`);
 console.log(`Results: ${outPath}`);
 
-if (summary.failed > 0) {
-  process.exitCode = 1;
-} else if (summary.blocked > 0) {
-  process.exitCode = 3;
-}
+if (summary.failed > 0) process.exitCode = 1;
+else if (summary.blocked > 0) process.exitCode = 3;
