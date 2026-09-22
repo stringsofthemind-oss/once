@@ -46,6 +46,30 @@ jobs:
           codex plugin add once@once-agent
           codex plugin list
 
+      - name: Verify Once skill is visible to Codex
+        run: |
+          set -euo pipefail
+          probe_file="$RUNNER_TEMP/codex-prompt-probe.txt"
+
+          echo "Installed Once skill payloads:"
+          find "$CODEX_HOME/plugins/cache/once-agent/once" -path '*/skills/*/SKILL.md' -type f -print || true
+
+          if ! codex debug prompt-input probe >"$probe_file" 2>&1; then
+            cat "$probe_file"
+            echo "::error::Codex prompt-input probe failed before any paid model evaluation."
+            exit 2
+          fi
+
+          if ! grep -Fq 'once:protect-consequential-writes' "$probe_file"; then
+            echo "::error::Once plugin is installed but once:protect-consequential-writes is absent from the model-visible Codex skill catalog. Stopping before the paid evaluation."
+            echo "Matching Once/plugin lines from prompt probe:"
+            grep -Ei 'once|plugin|skill' "$probe_file" | head -n 120 || true
+            exit 3
+          fi
+
+          echo "Once skill catalog preflight: PASS"
+          grep -F 'once:protect-consequential-writes' "$probe_file" | head -n 5
+
       - name: Run autonomous discovery suite
         env:
           CASE_ID: ${{ inputs.case_id }}
@@ -61,5 +85,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: codex-autonomous-discovery-results
-          path: ${{ runner.temp }}/codex-autonomous-discovery-results.json
+          path: |
+            ${{ runner.temp }}/codex-autonomous-discovery-results.json
+            ${{ runner.temp }}/codex-prompt-probe.txt
           if-no-files-found: warn
