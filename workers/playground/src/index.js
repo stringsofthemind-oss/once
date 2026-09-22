@@ -5145,6 +5145,7 @@ var index_default = {
       ).trim().toLowerCase();
 
       const allowedScenarios = new Set([
+        "normal_success",
         "ambiguous_after_commit",
         "fail_before_effect"
       ]);
@@ -5154,6 +5155,7 @@ var index_default = {
           {
             error: "unsupported_demo_scenario",
             allowed_scenarios: [
+              "normal_success",
               "ambiguous_after_commit",
               "fail_before_effect"
             ]
@@ -5165,7 +5167,9 @@ var index_default = {
       const scenarioFault =
         requestedScenario === "fail_before_effect"
           ? "fail_before_effect"
-          : "commit_then_503";
+          : requestedScenario === "ambiguous_after_commit"
+            ? "commit_then_503"
+            : "";
 
       const onceAuthorization = authorization;
       const core = String(
@@ -5295,13 +5299,17 @@ var index_default = {
             description:
               requestedScenario === "fail_before_effect"
                 ? "Demonstrate explicit failure before external effect"
-                : "Demonstrate ambiguous execution safety"
+                : requestedScenario === "normal_success"
+                  ? "Demonstrate ordinary successful external effect"
+                  : "Demonstrate ambiguous execution safety"
           }),
           fault: scenarioFault,
           description:
             requestedScenario === "fail_before_effect"
-              ? "Demonstrate explicit failure before external effect"
-              : "Demonstrate ambiguous execution safety"
+                ? "Demonstrate explicit failure before external effect"
+                : requestedScenario === "normal_success"
+                  ? "Demonstrate ordinary successful external effect"
+                  : "Demonstrate ambiguous execution safety"
         }
       };
       async function callExecute() {
@@ -5427,6 +5435,11 @@ var index_default = {
         finalState === "FAILED_BEFORE_EFFECT" &&
         sideEffects === 0;
 
+      const normalSucceeded =
+        requestedScenario === "normal_success" &&
+        finalState === "CONFIRMED" &&
+        sideEffects === 1;
+
       return json3({
         demo: true,
         scenario: requestedScenario,
@@ -5453,7 +5466,8 @@ var index_default = {
             sideEffects
           ) ? sideEffects : null,
           duplicate_prevented: protectedSuccessfully,
-          failed_safely_before_effect: failedSafely
+          failed_safely_before_effect: failedSafely,
+          normal_success: normalSucceeded
         },
         truth
       });
