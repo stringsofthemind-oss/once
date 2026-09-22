@@ -5222,6 +5222,1009 @@ footer{
       runScenarioButton.disabled =
         false;
     }
+    // --------------------------------------------------------
+    // STRESS ONCE
+    //
+    // Every displayed result below comes from actual /api/demo
+    // executions. Fault percentages are controlled test inputs,
+    // never claimed production incidence rates.
+    // --------------------------------------------------------
+
+    function stressRandomUnit() {
+
+      const values =
+        new Uint32Array(1);
+
+      crypto.getRandomValues(
+        values
+      );
+
+      return (
+        values[0] /
+        4294967296
+      );
+    }
+
+
+    function stressShuffle(
+      values
+    ) {
+
+      const copy =
+        values.slice();
+
+      for (
+        let index =
+          copy.length - 1;
+        index > 0;
+        index--
+      ) {
+
+        const target =
+          Math.floor(
+            stressRandomUnit() *
+            (index + 1)
+          );
+
+        const temporary =
+          copy[index];
+
+        copy[index] =
+          copy[target];
+
+        copy[target] =
+          temporary;
+      }
+
+      return copy;
+    }
+
+
+    function buildStressPlan(
+      count,
+      pressure
+    ) {
+
+      const plan =
+        Array.from(
+          { length: count },
+          (_, index) => ({
+            index,
+            scenario:
+              "normal_success"
+          })
+        );
+
+      const faultCount =
+        Math.round(
+          count *
+          pressure /
+          100
+        );
+
+      const positions =
+        stressShuffle(
+          Array.from(
+            { length: count },
+            (_, index) => index
+          )
+        );
+
+
+      for (
+        let index = 0;
+        index < faultCount;
+        index++
+      ) {
+
+        let scenario;
+
+        // Guarantee both fault classes when the batch
+        // contains at least two injected faults.
+        if (
+          faultCount >= 2 &&
+          index === 0
+        ) {
+          scenario =
+            "ambiguous_after_commit";
+        }
+        else if (
+          faultCount >= 2 &&
+          index === 1
+        ) {
+          scenario =
+            "fail_before_effect";
+        }
+        else {
+          scenario =
+            stressRandomUnit() < 0.5
+              ? "ambiguous_after_commit"
+              : "fail_before_effect";
+        }
+
+        plan[
+          positions[index]
+        ].scenario =
+          scenario;
+      }
+
+      return plan;
+    }
+
+
+    function stressScenarioName(
+      scenario
+    ) {
+
+      if (
+        scenario ===
+        "normal_success"
+      ) {
+        return "Normal success";
+      }
+
+      if (
+        scenario ===
+        "fail_before_effect"
+      ) {
+        return "Fail before effect";
+      }
+
+      return "Lost response after commit";
+    }
+
+
+    function stressEscape(
+      value
+    ) {
+
+      return String(
+        value ?? ""
+      )
+        .replaceAll(
+          "&",
+          "&amp;"
+        )
+        .replaceAll(
+          "<",
+          "&lt;"
+        )
+        .replaceAll(
+          ">",
+          "&gt;"
+        )
+        .replaceAll(
+          '"',
+          "&quot;"
+        );
+    }
+
+
+    function assessStressEntry(
+      entry
+    ) {
+
+      if (
+        !entry ||
+        entry.request_error
+      ) {
+        return {
+          passed: false,
+          unresolved: true,
+          state: "REQUEST_ERROR",
+          attempts: 0,
+          sideEffects: 0
+        };
+      }
+
+      const result =
+        entry.body?.result || {};
+
+      const state =
+        String(
+          result.state || ""
+        ).toUpperCase();
+
+      const attempts =
+        Number(
+          result.attempts
+        );
+
+      const sideEffects =
+        Number(
+          result.side_effects
+        );
+
+      let passed =
+        false;
+
+
+      if (
+        entry.scenario ===
+        "normal_success"
+      ) {
+        passed =
+          entry.response_ok === true &&
+          result.normal_success === true &&
+          state === "CONFIRMED" &&
+          sideEffects === 1;
+      }
+
+
+      if (
+        entry.scenario ===
+        "ambiguous_after_commit"
+      ) {
+        passed =
+          entry.response_ok === true &&
+          result.duplicate_prevented === true &&
+          state === "CONFIRMED" &&
+          sideEffects === 1;
+      }
+
+
+      if (
+        entry.scenario ===
+        "fail_before_effect"
+      ) {
+        passed =
+          entry.response_ok === true &&
+          result.failed_safely_before_effect === true &&
+          state === "FAILED_BEFORE_EFFECT" &&
+          sideEffects === 0;
+      }
+
+
+      return {
+        passed,
+
+        unresolved:
+          entry.response_ok !== true,
+
+        state:
+          state || "UNKNOWN",
+
+        attempts:
+          Number.isFinite(
+            attempts
+          )
+            ? attempts
+            : 0,
+
+        sideEffects:
+          Number.isFinite(
+            sideEffects
+          )
+            ? sideEffects
+            : 0
+      };
+    }
+
+
+    async function executeStressOperation(
+      item
+    ) {
+
+      let response;
+      let body;
+
+      try {
+
+        response =
+          await fetch(
+            "/api/demo",
+            {
+              method:
+                "POST",
+
+              headers: {
+                authorization:
+                  "Bearer " +
+                  activeKey,
+
+                "content-type":
+                  "application/json"
+              },
+
+              body:
+                JSON.stringify({
+                  scenario:
+                    item.scenario
+                })
+            }
+          );
+
+        body =
+          await response.json();
+      }
+      catch {
+
+        return {
+          scenario:
+            item.scenario,
+
+          request_error:
+            true
+        };
+      }
+
+
+      return {
+        scenario:
+          item.scenario,
+
+        response_ok:
+          response.ok,
+
+        http_status:
+          response.status,
+
+        body
+      };
+    }
+
+
+    async function stressMapConcurrent(
+      items,
+      limit,
+      mapper
+    ) {
+
+      const results =
+        new Array(
+          items.length
+        );
+
+      let cursor =
+        0;
+
+
+      async function runner() {
+
+        while (true) {
+
+          const index =
+            cursor++;
+
+          if (
+            index >=
+            items.length
+          ) {
+            return;
+          }
+
+          results[index] =
+            await mapper(
+              items[index],
+              index
+            );
+        }
+      }
+
+
+      const runners =
+        Array.from(
+          {
+            length:
+              Math.min(
+                limit,
+                items.length
+              )
+          },
+          () => runner()
+        );
+
+      await Promise.all(
+        runners
+      );
+
+      return results;
+    }
+
+
+    async function runStressTest() {
+
+      if (!activeKey) {
+
+        stressStatus.className =
+          "error";
+
+        stressStatus.textContent =
+          "Activate your API key first.";
+
+        return;
+      }
+
+
+      const count =
+        Number(
+          stressBatch.value
+        );
+
+      const pressure =
+        Number(
+          stressPressure.value
+        );
+
+
+      const allowedCounts =
+        new Set([
+          10,
+          25
+        ]);
+
+      const allowedPressures =
+        new Set([
+          20,
+          40,
+          60
+        ]);
+
+
+      if (
+        !allowedCounts.has(count) ||
+        !allowedPressures.has(
+          pressure
+        )
+      ) {
+        stressStatus.className =
+          "error";
+
+        stressStatus.textContent =
+          "Invalid stress-test configuration.";
+
+        return;
+      }
+
+
+      const plan =
+        buildStressPlan(
+          count,
+          pressure
+        );
+
+
+      const injectedFaults =
+        plan.filter(
+          item =>
+            item.scenario !==
+            "normal_success"
+        ).length;
+
+
+      stressRunButton.disabled =
+        true;
+
+      stressBatch.disabled =
+        true;
+
+      stressPressure.disabled =
+        true;
+
+      stressCta.style.display =
+        "none";
+
+      stressResult.style.display =
+        "none";
+
+      stressResult.innerHTML =
+        "";
+
+      stressOperations.innerHTML =
+        "";
+
+      stressProgress.style.display =
+        "block";
+
+      stressProgressFill.style.width =
+        "0%";
+
+      stressStatus.className =
+        "";
+
+      stressStatus.textContent =
+        "Preparing " +
+        count +
+        " real sandbox operations with " +
+        injectedFaults +
+        " injected faults...";
+
+
+      sendPlaygroundAnalytics(
+        "playground_stress_run"
+      );
+
+
+      let completed =
+        0;
+
+
+      function updateProgress() {
+
+        stressProgressFill.style.width =
+          (
+            completed /
+            count *
+            100
+          ) +
+          "%";
+
+        stressStatus.textContent =
+          "Executed " +
+          completed +
+          " of " +
+          count +
+          " operations...";
+      }
+
+
+      const results =
+        new Array(
+          count
+        );
+
+
+      // First operation is deliberately sequential.
+      // This lets a new sandbox key establish its provider
+      // before the remaining batch fans out.
+
+      results[0] =
+        await executeStressOperation(
+          plan[0]
+        );
+
+      completed =
+        1;
+
+      updateProgress();
+
+
+      const remaining =
+        plan.slice(1);
+
+
+      const remainingResults =
+        await stressMapConcurrent(
+          remaining,
+          4,
+          async item => {
+
+            const result =
+              await executeStressOperation(
+                item
+              );
+
+            completed++;
+
+            updateProgress();
+
+            return result;
+          }
+        );
+
+
+      for (
+        let index = 0;
+        index <
+          remainingResults.length;
+        index++
+      ) {
+        results[
+          index + 1
+        ] =
+          remainingResults[index];
+      }
+
+
+      const assessed =
+        results.map(
+          (
+            entry,
+            index
+          ) => ({
+            index,
+            entry,
+
+            assessment:
+              assessStressEntry(
+                entry
+              )
+          })
+        );
+
+
+      const passed =
+        assessed.filter(
+          item =>
+            item.assessment.passed
+        ).length;
+
+
+      const unresolved =
+        assessed.filter(
+          item =>
+            item.assessment.unresolved
+        ).length;
+
+
+      const invariantFailures =
+        assessed.filter(
+          item =>
+            !item.assessment.passed &&
+            !item.assessment.unresolved
+        ).length;
+
+
+      const totalAttempts =
+        assessed.reduce(
+          (
+            total,
+            item
+          ) =>
+            total +
+            item.assessment.attempts,
+          0
+        );
+
+
+      const totalEffects =
+        assessed.reduce(
+          (
+            total,
+            item
+          ) =>
+            total +
+            item.assessment.sideEffects,
+          0
+        );
+
+
+      const ambiguousPassed =
+        assessed.filter(
+          item =>
+            item.entry?.scenario ===
+              "ambiguous_after_commit" &&
+            item.assessment.passed
+        ).length;
+
+
+      const preEffectPassed =
+        assessed.filter(
+          item =>
+            item.entry?.scenario ===
+              "fail_before_effect" &&
+            item.assessment.passed
+        ).length;
+
+
+      const normalPassed =
+        assessed.filter(
+          item =>
+            item.entry?.scenario ===
+              "normal_success" &&
+            item.assessment.passed
+        ).length;
+
+
+      const ambiguousCount =
+        assessed.filter(
+          item =>
+            item.entry?.scenario ===
+            "ambiguous_after_commit"
+        ).length;
+
+
+      const failBeforeCount =
+        assessed.filter(
+          item =>
+            item.entry?.scenario ===
+            "fail_before_effect"
+        ).length;
+
+
+      let headline;
+      let subline;
+      let statusClass;
+
+
+      if (
+        invariantFailures === 0 &&
+        unresolved === 0 &&
+        passed === count
+      ) {
+
+        headline =
+          count +
+          " operations. " +
+          injectedFaults +
+          " injected faults. 0 safety invariant violations.";
+
+        subline =
+          ambiguousPassed +
+          " ambiguous retry scenario(s) resolved without a duplicate effect; " +
+          preEffectPassed +
+          " pre-effect failure(s) committed nothing; " +
+          normalPassed +
+          " normal operation(s) completed once.";
+
+        statusClass =
+          "success";
+
+        stressCta.style.display =
+          "inline-block";
+      }
+
+      else if (
+        invariantFailures === 0 &&
+        unresolved > 0
+      ) {
+
+        headline =
+          "Proof incomplete: " +
+          unresolved +
+          " operation(s) could not be verified.";
+
+        subline =
+          "Completed operations preserved their expected external-state invariant, but unresolved operations prevent a complete batch proof.";
+
+        statusClass =
+          "warning";
+      }
+
+      else {
+
+        headline =
+          "Safety invariant failed on " +
+          invariantFailures +
+          " operation(s).";
+
+        subline =
+          "The batch exposed an observed result that did not match the expected external-state invariant.";
+
+        statusClass =
+          "error";
+      }
+
+
+      stressStatus.className =
+        statusClass;
+
+      stressStatus.textContent =
+        headline;
+
+
+      stressResult.innerHTML =
+        '<div class="stress-headline">' +
+        stressEscape(
+          headline
+        ) +
+        '</div>' +
+
+        '<p class="stress-subline">' +
+        stressEscape(
+          subline
+        ) +
+        '</p>' +
+
+        '<div class="stress-summary">' +
+
+        '<div class="stress-metric">' +
+        '<small>Operations</small>' +
+        '<strong>' +
+        count +
+        '</strong>' +
+        '</div>' +
+
+        '<div class="stress-metric">' +
+        '<small>Injected faults</small>' +
+        '<strong>' +
+        injectedFaults +
+        '</strong>' +
+        '</div>' +
+
+        '<div class="stress-metric">' +
+        '<small>Total attempts</small>' +
+        '<strong>' +
+        totalAttempts +
+        '</strong>' +
+        '</div>' +
+
+        '<div class="stress-metric">' +
+        '<small>Actual side effects</small>' +
+        '<strong>' +
+        totalEffects +
+        '</strong>' +
+        '</div>' +
+
+        '<div class="stress-metric">' +
+        '<small>Ambiguous retries reconciled</small>' +
+        '<strong>' +
+        ambiguousPassed +
+        ' / ' +
+        ambiguousCount +
+        '</strong>' +
+        '</div>' +
+
+        '<div class="stress-metric">' +
+        '<small>Safe no-effect failures</small>' +
+        '<strong>' +
+        preEffectPassed +
+        ' / ' +
+        failBeforeCount +
+        '</strong>' +
+        '</div>' +
+
+        '<div class="stress-metric">' +
+        '<small>Unresolved</small>' +
+        '<strong>' +
+        unresolved +
+        '</strong>' +
+        '</div>' +
+
+        '<div class="stress-metric">' +
+        '<small>Invariant violations</small>' +
+        '<strong>' +
+        invariantFailures +
+        '</strong>' +
+        '</div>' +
+
+        '</div>';
+
+
+      stressResult.style.display =
+        "block";
+
+
+      stressOperations.innerHTML =
+        assessed
+          .map(
+            item => {
+
+              const entry =
+                item.entry || {};
+
+              const assessment =
+                item.assessment;
+
+              const body =
+                entry.body || {};
+
+              const operationId =
+                body.operation_id ||
+                "not returned";
+
+              const scenario =
+                entry.scenario ||
+                "unknown";
+
+              const className =
+                assessment.passed
+                  ? "pass"
+                  : "fail";
+
+              const stateLabel =
+                assessment.passed
+                  ? "PASS"
+                  : (
+                      assessment.unresolved
+                        ? "UNRESOLVED"
+                        : "CHECK"
+                    );
+
+
+              return (
+                '<details class="stress-op ' +
+                className +
+                '">' +
+
+                '<summary>' +
+
+                '<span class="stress-op-index">#' +
+                String(
+                  item.index + 1
+                ).padStart(
+                  2,
+                  "0"
+                ) +
+                '</span>' +
+
+                '<span class="stress-op-main">' +
+
+                '<strong>' +
+                stressEscape(
+                  stressScenarioName(
+                    scenario
+                  )
+                ) +
+                '</strong>' +
+
+                '<small>' +
+                stressEscape(
+                  assessment.state
+                ) +
+                ' · ' +
+                assessment.attempts +
+                ' attempt(s) · ' +
+                assessment.sideEffects +
+                ' effect(s)' +
+                '</small>' +
+
+                '</span>' +
+
+                '<span class="stress-op-state">' +
+                stateLabel +
+                '</span>' +
+
+                '</summary>' +
+
+                '<div class="stress-op-detail">' +
+
+                'operation_id: ' +
+                stressEscape(
+                  operationId
+                ) +
+                '<br>' +
+
+                'scenario: ' +
+                stressEscape(
+                  scenario
+                ) +
+                '<br>' +
+
+                'http_status: ' +
+                stressEscape(
+                  entry.http_status ??
+                  "network error"
+                ) +
+                '<br>' +
+
+                'once_state: ' +
+                stressEscape(
+                  assessment.state
+                ) +
+                '<br>' +
+
+                'attempts: ' +
+                assessment.attempts +
+                '<br>' +
+
+                'actual_side_effects: ' +
+                assessment.sideEffects +
+
+                '</div>' +
+
+                '</details>'
+              );
+            }
+          )
+          .join(
+            ""
+          );
+
+
+      stressProgressFill.style.width =
+        "100%";
+
+
+      sendPlaygroundAnalytics(
+        "playground_stress_complete"
+      );
+
+
+      stressRunButton.textContent =
+        "Run another batch";
+
+      stressRunButton.disabled =
+        false;
+
+      stressBatch.disabled =
+        false;
+
+      stressPressure.disabled =
+        false;
+    }
+
+
 
 
 
@@ -5257,6 +6260,20 @@ footer{
     runScenarioButton.addEventListener(
       "click",
       runFaultScenario
+    );
+    stressRunButton.addEventListener(
+      "click",
+      runStressTest
+    );
+
+
+    stressCta.addEventListener(
+      "click",
+      () => {
+        sendPlaygroundAnalytics(
+          "tester_cta_clicked"
+        );
+      }
     );
 
     copyEnvButton.addEventListener(
@@ -5380,6 +6397,9 @@ var index_default = {
         "tester_cta_clicked",
         "playground_clicked",
         "playground_run",
+        "playground_fault_lab_run",
+        "playground_stress_run",
+        "playground_stress_complete",
         "once_confirmed",
         "mcp_copy_clicked",
         "sdk_copy_clicked",
