@@ -395,6 +395,7 @@ export class Once {
           `${this.baseUrl}${path}`,
           {
             ...init,
+            redirect: "error",
             signal: controller.signal,
             headers: {
               authorization:
@@ -406,9 +407,8 @@ export class Once {
           }
         );
 
-        clearTimeout(timeout);
-
         const raw = await response.text();
+        clearTimeout(timeout);
 
         let body: any = null;
 
@@ -916,6 +916,9 @@ export function createOnceRuntimeFetch(
   return createOnceFetchInterceptor({
     provider:
       options.provider,
+
+    shouldProtect:
+      options.shouldProtect,
 
     resolveProvider:
       options.resolveProvider,

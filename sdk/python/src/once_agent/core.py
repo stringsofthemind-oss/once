@@ -9,8 +9,9 @@ Separates:
 - external reality: provider CONFIRMED / ABSENT / UNKNOWN
 
 UNKNOWN never directly authorizes another write. Re-execution after ambiguity requires
-an authoritative provider ABSENT result, compare-and-swap reacquisition, and either
-provider-side idempotency or provider-enforced fencing.
+an authoritative provider ABSENT result, compare-and-swap reacquisition, and
+provider-side idempotency. Monotonic fencing alone cannot prevent an earlier
+in-flight request from committing before the newer fence reaches the provider.
 """
 
 from dataclasses import dataclass
@@ -117,6 +118,8 @@ class ExecutionResult:
 
 @dataclass(frozen=True)
 class ProviderCapabilities:
+    # Must cover concurrent dispatches and the entire supported retry horizon.
+    # An expired provider key is not an idempotency guarantee.
     idempotent_by_operation_id: bool = False
     lookup_by_operation_id: bool = False
     authoritative_absence: bool = False
@@ -333,8 +336,8 @@ class OnceCore:
 
     @staticmethod
     def _require_safe_reexecution(capabilities: ProviderCapabilities) -> None:
-        if capabilities.idempotent_by_operation_id or capabilities.fencing:
+        if capabilities.idempotent_by_operation_id:
             return
         raise UnsafeProviderCapability(
-            "authoritative ABSENT alone cannot fence a stale worker; provider idempotency or fencing is required"
+            "redispatch requires provider idempotency by operation_id; ABSENT and monotonic fencing alone cannot exclude an earlier in-flight effect"
         )

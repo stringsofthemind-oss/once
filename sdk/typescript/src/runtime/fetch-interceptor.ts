@@ -58,6 +58,15 @@ export type OnceProtectedFetchHandler =
 
 export type OnceFetchInterceptorOptions = {
   /**
+   * Explicit application policy: select only operations meeting all four Once
+   * applicability conditions. Return false for search, retrieval, generation,
+   * and harmless repetition, even when transported via POST.
+   * Without this hook, use this fetch only at already-qualified callsites.
+   * A thrown policy error blocks the request; it never falls back to execution.
+   */
+  shouldProtect?: (request: Request) => boolean | Promise<boolean>;
+
+  /**
    * Runtime v0.1 may use one configured provider
    * for every supported outbound write.
    */
@@ -261,6 +270,12 @@ export function createOnceFetchInterceptor(
           input,
           init
         );
+
+      // Reads bypass policy/provider/identity hooks as well as the ledger.
+      if (["GET", "HEAD", "OPTIONS"].includes(request.method) ||
+          (options.shouldProtect && await options.shouldProtect(request.clone()) === false)) {
+        return await originalFetch(request);
+      }
 
       const provider =
         options.resolveProvider
