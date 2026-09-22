@@ -43,7 +43,8 @@ jobs:
         run: node --check scripts/run-codex-autonomous-discovery.mjs
 
       - name: Validate autonomous-discovery case JSON
-        run: node -e "const fs=require('fs'); const p='plugins/openai/once/evals/autonomous-discovery-cases.json'; const x=JSON.parse(fs.readFileSync(p,'utf8')); if(!Array.isArray(x.cases)||x.cases.length<8) process.exit(1); console.log('AUTONOMOUS DISCOVERY CASES: PASS', x.cases.length);"
+        run: |
+          node -e "const fs=require('fs'); const p='plugins/openai/once/evals/autonomous-discovery-cases.json'; const x=JSON.parse(fs.readFileSync(p,'utf8')); if(!Array.isArray(x.cases)||x.cases.length<8) process.exit(1); console.log('AUTONOMOUS DISCOVERY CASES: PASS', x.cases.length);"
 
   codex-ingestion-smoke:
     runs-on: ubuntu-latest
