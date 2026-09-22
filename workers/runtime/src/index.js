@@ -185,6 +185,22 @@ async function onceSemanticHash(providerName, action) {
   );
 }
 __name(onceSemanticHash, "onceSemanticHash");
+// An absent field, coercible value, or contradictory receipt is UNKNOWN,
+// never evidence of absence. Providers must implement this explicit contract.
+function onceValidateProviderObservation(data, operationId) {
+  if (!data || typeof data !== "object" || Array.isArray(data) ||
+      typeof data.provider_executed !== "boolean" ||
+      !Number.isSafeInteger(data.side_effects) || data.side_effects < 0 ||
+      data.provider_executed !== (data.side_effects > 0) ||
+      (data.operation_id !== undefined && data.operation_id !== operationId)) {
+    throw new Error("provider_observation_invalid");
+  }
+  if (data.side_effects > 1) {
+    throw new Error("provider_duplicate_effects_detected");
+  }
+  return data.side_effects;
+}
+
 var Q18Truth = class extends DurableObject {
   static {
     __name(this, "Q18Truth");
@@ -993,6 +1009,8 @@ var Q18Truth = class extends DurableObject {
     const response = await fetch(
       "https://q18-blind-provider.pennywatch.workers.dev/truth/" + encodeURIComponent(operationId),
       {
+        redirect: "error",
+        signal: AbortSignal.timeout(10000),
         method: "GET"
       }
     );
@@ -1002,7 +1020,8 @@ var Q18Truth = class extends DurableObject {
       );
     }
     const data = await response.json();
-    if (!data.provider_executed || Number(data.side_effects || 0) === 0) {
+    const sideEffects = onceValidateProviderObservation(data, operationId);
+    if (sideEffects === 0) {
       return void 0;
     }
     return {
@@ -1022,6 +1041,8 @@ var Q18Truth = class extends DurableObject {
     const response = await fetch(
       "https://q18-blind-provider.pennywatch.workers.dev/execute",
       {
+        redirect: "error",
+        signal: AbortSignal.timeout(10000),
         method: "POST",
         headers: {
           "content-type": "application/json"
@@ -1037,6 +1058,9 @@ var Q18Truth = class extends DurableObject {
       );
     }
     const data = await response.json();
+    if (onceValidateProviderObservation(data, operationId) !== 1) {
+      throw new Error("provider_execute_unconfirmed");
+    }
     return {
       operation_id: operationId,
       side_effects: Number(
@@ -1257,6 +1281,8 @@ var Q18Truth = class extends DurableObject {
         operationId
       ),
       {
+        redirect: "error",
+        signal: AbortSignal.timeout(10000),
         method: "GET",
         headers: {
           "authorization": "Bearer " + config.token,
@@ -1270,10 +1296,8 @@ var Q18Truth = class extends DurableObject {
       );
     }
     const data = await response.json();
-    const sideEffects = Number(
-      data.side_effects || 0
-    );
-    if (!data.provider_executed || sideEffects === 0) {
+    const sideEffects = onceValidateProviderObservation(data, operationId);
+    if (sideEffects === 0) {
       return void 0;
     }
     return {
@@ -1292,6 +1316,8 @@ var Q18Truth = class extends DurableObject {
     const response = await fetch(
       config.baseUrl + "/execute",
       {
+        redirect: "error",
+        signal: AbortSignal.timeout(10000),
         method: "POST",
         headers: {
           "authorization": "Bearer " + config.token,
@@ -1324,10 +1350,8 @@ var Q18Truth = class extends DurableObject {
       throw error;
     }
     const data = await response.json();
-    const sideEffects = Number(
-      data.side_effects || 0
-    );
-    if (!data.provider_executed || sideEffects < 1) {
+    const sideEffects = onceValidateProviderObservation(data, operationId);
+    if (sideEffects !== 1) {
       throw new Error(
         "http_v1_execute_unconfirmed"
       );
@@ -1395,6 +1419,8 @@ var Q18Truth = class extends DurableObject {
     const response = await fetch(
       url.toString(),
       {
+        redirect: "error",
+        signal: AbortSignal.timeout(10000),
         method: "GET",
         headers: {
           "authorization": "Bearer " + config.secretKey,
@@ -1408,6 +1434,9 @@ var Q18Truth = class extends DurableObject {
       );
     }
     const data = await response.json();
+    if (!data || !Array.isArray(data.data) || typeof data.has_more !== "boolean") {
+      throw new Error("stripe_v1_truth_invalid");
+    }
     if (data.has_more) {
       throw new Error(
         "stripe_v1_truth_too_many_matches"
@@ -1493,6 +1522,8 @@ var Q18Truth = class extends DurableObject {
     const response = await fetch(
       "https://api.stripe.com/v1/customers",
       {
+        redirect: "error",
+        signal: AbortSignal.timeout(10000),
         method: "POST",
         headers: {
           "authorization": "Bearer " + config.secretKey,
@@ -4409,6 +4440,7 @@ var Q18Truth = class extends DurableObject {
           operationId
         );
       } catch (error) {
+        operation = this.getOperation(operationId);
         const providerTruthError = String(
           error?.message || "provider_truth_unavailable"
         );
@@ -4505,6 +4537,11 @@ var Q18Truth = class extends DurableObject {
           },
           503
         );
+      }
+      // Provider I/O permits other requests to run. Re-read durable truth.
+      operation = this.getOperation(operationId);
+      if (operation && operation.provider !== operationProvider) {
+        return json({ error: "provider_identity_conflict", operation_id: operationId }, 409);
       }
       if (provider) {
         const providerTruthReplayRequired = this.isHttpResponseReplayRequired(
@@ -4737,6 +4774,28 @@ WHERE operation_id = ?
           now
         );
       }
+      // This conditional transition, not the earlier provider snapshot, grants
+      // execution authority. It also covers the config-decryption await above.
+      // EXECUTING/UNKNOWN are never reclaimed on timeout or negative truth.
+      const claimed = [...this.ctx.storage.sql.exec(
+        `UPDATE operations SET state = 'EXECUTING'
+         WHERE operation_id = ? AND provider = ?
+           AND state IN ('PREPARED', 'FAILED_BEFORE_EFFECT')
+         RETURNING operation_id`,
+        operationId, operationProvider
+      )];
+      if (claimed.length !== 1) {
+        operation = this.getOperation(operationId);
+        return json({
+          operation_id: operationId,
+          result: "execution_claim_unavailable",
+          state: operation?.state || "UNKNOWN",
+          message: "operation changed during preflight; retry through Once with the same identity"
+        }, 409);
+      }
+      // Explicitly flush the durable claim before an outbound request can escape.
+      // A crash after this point leaves an unreclaimable ambiguous operation.
+      await this.ctx.storage.sync();
       if (fault === "fail_before_effect") {
         this.ctx.storage.sql.exec(
           `
@@ -4744,7 +4803,7 @@ WHERE operation_id = ?
 					SET state =
 						'FAILED_BEFORE_EFFECT'
 					WHERE
-						operation_id = ?
+						operation_id = ? AND state IN ('EXECUTING', 'UNKNOWN')
 					`,
           operationId
         );
@@ -4763,14 +4822,6 @@ WHERE operation_id = ?
           503
         );
       }
-      this.ctx.storage.sql.exec(
-        `
-				UPDATE operations
-				SET state = 'EXECUTING'
-				WHERE operation_id = ?
-				`,
-        operationId
-      );
       try {
         provider = await this.executeProvider(
           operationProvider,
@@ -4784,7 +4835,7 @@ WHERE operation_id = ?
                                            UPDATE operations
                                            SET state =
                                                    'FAILED_BEFORE_EFFECT'
-                                           WHERE operation_id = ?
+                                           WHERE operation_id = ? AND state IN ('EXECUTING', 'UNKNOWN')
                                            `,
             operationId
           );
@@ -4830,7 +4881,7 @@ WHERE operation_id = ?
           `
                                   UPDATE operations
                                   SET state = 'UNKNOWN'
-                                  WHERE operation_id = ?
+                                  WHERE operation_id = ? AND state IN ('EXECUTING', 'UNKNOWN')
                                   `,
           operationId
         );
@@ -4878,7 +4929,7 @@ WHERE operation_id = ?
           `
 					UPDATE operations
 					SET state = 'UNKNOWN'
-					WHERE operation_id = ?
+					WHERE operation_id = ? AND state IN ('EXECUTING', 'UNKNOWN')
 					`,
           operationId
         );
@@ -4936,8 +4987,7 @@ WHERE operation_id = ?
                                                                   'CONFIRMED'
                                                           WHERE
                                                                   operation_id = ?
-                                                                  AND state =
-                                                                      'EXECUTING'
+                                                                  AND state IN ('EXECUTING', 'UNKNOWN')
                                                           `,
                 operationId
               );
