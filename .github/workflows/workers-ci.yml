@@ -2,12 +2,8 @@ name: Worker CI
 
 on:
   pull_request:
-    paths:
-      - "workers/runtime/**"
-      - "workers/playground/**"
-      - "workers/demo-provider/**"
-      - "scripts/deploy-worker.cjs"
-      - ".github/workflows/workers-ci.yml"
+    branches:
+      - main
 
   push:
     branches:
