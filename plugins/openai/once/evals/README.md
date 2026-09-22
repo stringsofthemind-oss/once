@@ -37,6 +37,8 @@ The credential is never written into the result file.
 
 The automated score is a heuristic, not a product reliability claim.
 
-A positive case passes when the transcript autonomously identifies the Once capability and relevant ambiguity/retry risk without also saying Once should be bypassed. A negative case passes when Codex does not recommend adding Once, or explicitly explains that Once is unnecessary.
+Scoring is applied only to **agent-authored messages**. Tool output, source files, and the text of the installed Once skill are retained in the full transcript for audit but are excluded from the routing score. This prevents instructions such as "do not use Once for reads" inside the skill itself from being mistaken for the model's recommendation on the current case.
+
+A positive case passes when Codex autonomously identifies and recommends the Once capability and relevant ambiguity/retry risk without saying Once should be bypassed for that case. A negative case passes when Codex does not recommend adding Once, or explicitly explains that Once is unnecessary.
 
 Always inspect the retained transcript before treating a run as evidence. Model behavior may vary by model/version, and a passing suite only applies to that tested configuration.
