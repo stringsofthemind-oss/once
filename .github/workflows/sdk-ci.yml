@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "sdk/typescript/**"
+      - "sdk/python/**"
       - "conformance/**"
       - ".github/workflows/sdk-ci.yml"
   push:
@@ -12,6 +13,7 @@ on:
       - benchmark/phase1-instrumentation
     paths:
       - "sdk/typescript/**"
+      - "sdk/python/**"
       - "conformance/**"
       - ".github/workflows/sdk-ci.yml"
 
@@ -43,3 +45,27 @@ jobs:
 
       - name: Run release suite
         run: npm run test:release
+
+      - name: Run SDK safety regressions
+        run: |
+          npm run build
+          node ./scripts/safety-regression.mjs
+
+  python-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python SDK
+        run: python -m pip install -e ./sdk/python
+
+      - name: Run Python SDK regressions
+        run: python -m unittest discover -s sdk/python/tests -p 'test*.py' -v
