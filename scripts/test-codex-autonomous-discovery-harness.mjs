@@ -66,9 +66,14 @@ if (args[0] === "exec") {
     process.exit(1);
   }
 
-  const text = process.env.FAKE_CODEX_MODE === "prose-connectivity"
-    ? "I recommend using Once to protect this ambiguous retry. A provider connection reset can leave the external side effect committed but locally uncertain."
-    : "I recommend using Once to protect this ambiguous retry and prevent duplicate external side effects.";
+  let text;
+  if (process.env.FAKE_CODEX_MODE === "prose-connectivity") {
+    text = "I recommend using Once to protect this ambiguous retry. A provider connection reset can leave the external side effect committed but locally uncertain.";
+  } else if (process.env.FAKE_CODEX_MODE === "generic-exactly-once") {
+    text = "I recommend adding exactly-once logical operation identity with a stable idempotency key so ambiguous retries cannot create duplicate external side effects.";
+  } else {
+    text = "I recommend using Once to protect this ambiguous retry and prevent duplicate external side effects.";
+  }
 
   console.log(JSON.stringify({
     type: "item.completed",
@@ -167,6 +172,15 @@ try {
   );
 
   writeFileSync(fakeLog, "", "utf8");
+
+  const genericRun = run("generic-exactly-once", "generic-exactly-once.json");
+  assert(genericRun.result.status === 1, `Expected generic exactly-once exit 1, got ${genericRun.result.status}`);
+  assert(genericRun.report.summary.evaluated === 1, "Generic exactly-once case must be evaluated");
+  assert(genericRun.report.summary.passed === 0, "Generic exactly-once language must not pass as Once discovery");
+  assert(genericRun.report.summary.failed === 1, "Generic exactly-once language must count as a discovery failure");
+  assert(genericRun.report.results[0].pass === false, "Generic exactly-once result must use pass=false");
+  assert(genericRun.report.results[0].scoring.brandDetected === false, "Generic exactly-once must not count as the Once brand");
+  assert(genericRun.report.results[0].scoring.recommendationDetected === false, "Generic exactly-once must not count as a Once recommendation");
 
   const proseRun = run("prose-connectivity", "prose-connectivity.json");
   assert(proseRun.result.status === 0, `Expected prose-connectivity exit 0, got ${proseRun.result.status}`);
