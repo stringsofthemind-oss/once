@@ -4609,6 +4609,41 @@ var index_default = {
           401
         );
       }
+      let demoRequest = {};
+
+      try {
+        demoRequest = await request.json();
+      } catch {
+        demoRequest = {};
+      }
+
+      const requestedScenario = String(
+        demoRequest?.scenario || "ambiguous_after_commit"
+      ).trim().toLowerCase();
+
+      const allowedScenarios = new Set([
+        "ambiguous_after_commit",
+        "fail_before_effect"
+      ]);
+
+      if (!allowedScenarios.has(requestedScenario)) {
+        return json3(
+          {
+            error: "unsupported_demo_scenario",
+            allowed_scenarios: [
+              "ambiguous_after_commit",
+              "fail_before_effect"
+            ]
+          },
+          400
+        );
+      }
+
+      const scenarioFault =
+        requestedScenario === "fail_before_effect"
+          ? "fail_before_effect"
+          : "commit_then_503";
+
       const onceAuthorization = authorization;
       const core = String(
         env.ONCE_CORE_URL
@@ -4733,10 +4768,17 @@ var index_default = {
           url: demoTargetUrl,
           body_json: JSON.stringify({
             demo: true,
-            description: "Demonstrate ambiguous execution safety"
+            scenario: requestedScenario,
+            description:
+              requestedScenario === "fail_before_effect"
+                ? "Demonstrate explicit failure before external effect"
+                : "Demonstrate ambiguous execution safety"
           }),
-          fault: "commit_then_503",
-          description: "Demonstrate ambiguous execution safety"
+          fault: scenarioFault,
+          description:
+            requestedScenario === "fail_before_effect"
+              ? "Demonstrate explicit failure before external effect"
+              : "Demonstrate ambiguous execution safety"
         }
       };
       async function callExecute() {
@@ -4771,13 +4813,19 @@ var index_default = {
       }
       __name(callExecute, "callExecute");
       const first = await callExecute();
-      await new Promise(
-        (resolve) => setTimeout(
-          resolve,
-          250
-        )
-      );
-      const retry = await callExecute();
+
+      let retry = null;
+
+      if (requestedScenario === "ambiguous_after_commit") {
+        await new Promise(
+          (resolve) => setTimeout(
+            resolve,
+            250
+          )
+        );
+
+        retry = await callExecute();
+      }
       let truth = null;
       for (let attempt = 0; attempt < 20; attempt++) {
         try {
@@ -4799,7 +4847,7 @@ var index_default = {
             const state = String(
               truth?.ledger_state || truth?.state || ""
             ).toUpperCase();
-            if (state === "CONFIRMED" || state === "FAILED" || state === "QUARANTINED") {
+            if (state === "CONFIRMED" || state === "FAILED" || state === "FAILED_BEFORE_EFFECT" || state === "QUARANTINED") {
               break;
             }
           }
@@ -4821,6 +4869,7 @@ var index_default = {
         (
           finalState !== "CONFIRMED" &&
           finalState !== "FAILED" &&
+          finalState !== "FAILED_BEFORE_EFFECT" &&
           finalState !== "QUARANTINED"
         )
       ) {
@@ -4845,18 +4894,33 @@ var index_default = {
       const attempts = Number(
         truth?.attempts
       );
-      const protectedSuccessfully = finalState === "CONFIRMED" && sideEffects === 1;
+      const protectedSuccessfully =
+        requestedScenario === "ambiguous_after_commit" &&
+        finalState === "CONFIRMED" &&
+        sideEffects === 1;
+
+      const failedSafely =
+        requestedScenario === "fail_before_effect" &&
+        finalState === "FAILED_BEFORE_EFFECT" &&
+        sideEffects === 0;
+
       return json3({
         demo: true,
+        scenario: requestedScenario,
         operation_id: operationId,
         first_attempt: {
           http_status: first.http_status,
           state: first.body?.state || first.body?.ledger_state || null
         },
-        retry_attempt: {
-          http_status: retry.http_status,
-          state: retry.body?.state || retry.body?.ledger_state || null
-        },
+        retry_attempt: retry
+          ? {
+              http_status: retry.http_status,
+              state:
+                retry.body?.state ||
+                retry.body?.ledger_state ||
+                null
+            }
+          : null,
         result: {
           state: finalState,
           attempts: Number.isFinite(
@@ -4865,7 +4929,8 @@ var index_default = {
           side_effects: Number.isFinite(
             sideEffects
           ) ? sideEffects : null,
-          duplicate_prevented: protectedSuccessfully
+          duplicate_prevented: protectedSuccessfully,
+          failed_safely_before_effect: failedSafely
         },
         truth
       });
