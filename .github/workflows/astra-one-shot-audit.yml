@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
-      CODEX_HOME: ${{ runner.temp }}/codex-astra-one-shot
+      CODEX_HOME: /home/runner/.codex-astra-one-shot
       ASTRA_MODEL: gpt-6-astra
       ASTRA_BRANCH: astra/one-shot-audit
 
