@@ -204,6 +204,46 @@ jobs:
           echo "CODEX_CONTROL_MODEL_CATALOG=$control_on_catalog" >> "$GITHUB_ENV"
           echo "Controlled fallback metadata A/B: PASS"
 
+      - name: Verify startup-loaded routing catalog
+        run: |
+          set -euo pipefail
+          : "${CODEX_CONTROL_MODEL_CATALOG:?controlled catalog path missing}"
+
+          config_file="$CODEX_HOME/config.toml"
+          config_tmp="$RUNNER_TEMP/codex-controlled-config.toml"
+          startup_probe="$RUNNER_TEMP/codex-startup-routing-on-probe.txt"
+
+          printf 'model_catalog_json = "%s"\n' "$CODEX_CONTROL_MODEL_CATALOG" >"$config_tmp"
+          if [ -f "$config_file" ]; then
+            grep -v -E '^[[:space:]]*model_catalog_json[[:space:]]*=' "$config_file" >>"$config_tmp" || true
+          fi
+          mv "$config_tmp" "$config_file"
+
+          if ! codex -m "$CODEX_EVAL_MODEL" debug prompt-input probe >"$startup_probe" 2>&1; then
+            cat "$startup_probe"
+            echo "::error::Startup-loaded routing-ON prompt probe failed."
+            exit 8
+          fi
+
+          if grep -Fq 'Defaulting to fallback metadata' "$startup_probe"; then
+            cat "$startup_probe"
+            echo "::error::Startup-loaded catalog still fell back to generic model metadata."
+            exit 9
+          fi
+
+          for expected in \
+            'once:protect-consequential-writes' \
+            '### How to use skills' \
+            "task clearly matches a skill's description" \
+            '### How to use plugins'; do
+            if ! grep -Fq "$expected" "$startup_probe"; then
+              echo "::error::Startup-loaded prompt is missing expected routing marker: $expected"
+              exit 10
+            fi
+          done
+
+          echo "Startup-loaded controlled routing catalog: PASS"
+
       - name: Require API credential for paid control
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_paid_case == true }}
         env:
@@ -211,31 +251,24 @@ jobs:
         run: |
           if [ -z "$CODEX_API_KEY" ]; then
             echo "::error::CODEX_API_KEY repository secret is required for the paid controlled-routing evaluation."
-            exit 8
+            exit 11
           fi
 
-      - name: Configure controlled live evaluator
+      - name: Confirm controlled live evaluator startup config
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_paid_case == true }}
         run: |
           set -euo pipefail
           : "${CODEX_CONTROL_MODEL_CATALOG:?controlled catalog path missing}"
-          codex_wrapper="$RUNNER_TEMP/codex-controlled-routing-wrapper"
+          config_file="$CODEX_HOME/config.toml"
 
-          cat >"$codex_wrapper" <<'EOF'
-          #!/usr/bin/env bash
-          set -euo pipefail
-          if [ "${1:-}" = "exec" ]; then
-            : "${CODEX_CONTROL_MODEL_CATALOG:?controlled catalog path missing}"
-            exec codex -c "model_catalog_json=\"${CODEX_CONTROL_MODEL_CATALOG}\"" "$@"
+          if ! grep -Fq "model_catalog_json = \"$CODEX_CONTROL_MODEL_CATALOG\"" "$config_file"; then
+            echo "::error::Controlled catalog is not configured at Codex process startup."
+            exit 12
           fi
-          exec codex "$@"
-          EOF
 
-          chmod +x "$codex_wrapper"
-          echo "CODEX_BIN=$codex_wrapper" >> "$GITHUB_ENV"
-          echo "Controlled live evaluator routing metadata: ENABLED"
-          "$codex_wrapper" --version
-          "$codex_wrapper" plugin list
+          echo "Controlled live evaluator startup routing metadata: ENABLED"
+          codex --version
+          codex plugin list
 
       - name: Run one paid controlled-routing case
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_paid_case == true }}
@@ -258,6 +291,7 @@ jobs:
             ${{ runner.temp }}/codex-fallback-routing-on.json
             ${{ runner.temp }}/codex-fallback-routing-off-probe.txt
             ${{ runner.temp }}/codex-fallback-routing-on-probe.txt
+            ${{ runner.temp }}/codex-startup-routing-on-probe.txt
             ${{ runner.temp }}/codex-controlled-routing-preflight.txt
             ${{ runner.temp }}/codex-controlled-routing-results.json
           if-no-files-found: warn
