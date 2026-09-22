@@ -15,48 +15,100 @@ jobs:
   submit:
     runs-on: ubuntu-latest
     steps:
-      - name: Wait for deployed IndexNow key
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Wait for deployed sitemap and IndexNow key
         shell: bash
         run: |
           set -euo pipefail
           KEY="e7446e8ebe87241334541be52e68eacd"
           KEY_URL="https://onceexec.com/${KEY}.txt"
+          SITEMAP_URL="https://onceexec.com/sitemap.xml"
+          LOCAL_SITEMAP_HASH="$(sha256sum docs/sitemap.xml | awk '{print $1}')"
 
           for i in $(seq 1 30); do
-            BODY="$(curl -fsS "$KEY_URL" 2>/dev/null || true)"
-            if [ "$BODY" = "$KEY" ]; then
-              echo "IndexNow key is live."
+            KEY_BODY="$(curl -fsS "$KEY_URL" 2>/dev/null || true)"
+            curl -fsS "$SITEMAP_URL" -o deployed-sitemap.xml 2>/dev/null || true
+
+            REMOTE_SITEMAP_HASH=""
+            if [ -s deployed-sitemap.xml ]; then
+              REMOTE_SITEMAP_HASH="$(sha256sum deployed-sitemap.xml | awk '{print $1}')"
+            fi
+
+            if [ "$KEY_BODY" = "$KEY" ] && [ "$REMOTE_SITEMAP_HASH" = "$LOCAL_SITEMAP_HASH" ]; then
+              echo "Current sitemap and IndexNow key are live."
               exit 0
             fi
+
             echo "Waiting for Cloudflare Pages deployment ($i/30)..."
             sleep 10
           done
 
-          echo "IndexNow key did not become available in time."
+          echo "Current sitemap or IndexNow key did not become available in time."
           exit 1
 
-      - name: Submit Once discovery URLs to IndexNow
+      - name: Build IndexNow payload from sitemap
         shell: bash
         run: |
           set -euo pipefail
-          KEY="e7446e8ebe87241334541be52e68eacd"
-          KEY_URL="https://onceexec.com/${KEY}.txt"
+          python3 - <<'PY'
+          import json
+          import xml.etree.ElementTree as ET
+          from urllib.parse import urlparse
 
-          cat > indexnow-payload.json <<JSON
-          {
-            "host": "onceexec.com",
-            "key": "$KEY",
-            "keyLocation": "$KEY_URL",
-            "urlList": [
-              "https://onceexec.com/",
-              "https://onceexec.com/mcp-idempotency/",
-              "https://onceexec.com/ai-agent-retry-safety/",
-              "https://onceexec.com/ambiguous-timeout/",
-              "https://onceexec.com/duplicate-refund-timeout/",
-              "https://onceexec.com/duplicate-booking-retry/"
-            ]
+          HOST = "onceexec.com"
+          KEY = "e7446e8ebe87241334541be52e68eacd"
+          KEY_URL = f"https://{HOST}/{KEY}.txt"
+
+          tree = ET.parse("docs/sitemap.xml")
+          root = tree.getroot()
+          namespace = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+
+          urls = []
+          seen = set()
+
+          for node in root.findall("sm:url/sm:loc", namespace):
+              if not node.text:
+                  continue
+
+              url = node.text.strip()
+              if not url or url in seen:
+                  continue
+
+              parsed = urlparse(url)
+              if parsed.scheme != "https" or parsed.netloc != HOST:
+                  raise SystemExit(f"Refusing non-canonical sitemap URL: {url}")
+
+              seen.add(url)
+              urls.append(url)
+
+          if not urls:
+              raise SystemExit("No URLs found in docs/sitemap.xml")
+
+          if len(urls) > 10000:
+              raise SystemExit(f"IndexNow supports at most 10000 URLs per request; found {len(urls)}")
+
+          payload = {
+              "host": HOST,
+              "key": KEY,
+              "keyLocation": KEY_URL,
+              "urlList": urls,
           }
-          JSON
+
+          with open("indexnow-payload.json", "w", encoding="utf-8") as handle:
+              json.dump(payload, handle, indent=2)
+              handle.write("\n")
+
+          print(f"Prepared {len(urls)} canonical sitemap URLs for IndexNow:")
+          for url in urls:
+              print(f"  {url}")
+          PY
+
+      - name: Submit sitemap URLs to IndexNow
+        shell: bash
+        run: |
+          set -euo pipefail
 
           HTTP_CODE="$(curl -sS -o indexnow-response.txt -w "%{http_code}" \
             -X POST "https://api.indexnow.org/indexnow" \
