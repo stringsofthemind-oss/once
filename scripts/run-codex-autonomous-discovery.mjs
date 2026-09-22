@@ -24,6 +24,7 @@ const model = process.env.CODEX_EVAL_MODEL?.trim();
 const sandboxMode = process.env.CODEX_EVAL_SANDBOX?.trim() || "danger-full-access";
 const codexCommand = process.env.CODEX_BIN?.trim() || (process.platform === "win32" ? "codex.cmd" : "codex");
 const shell = process.platform === "win32";
+const ONCE_TOOL_RE = /^once_(?:assess_project|plan_protection|apply_protection|explain_risk|live_proof|plan_setup|setup_project|verify_connection)$/i;
 
 function runCodex(args, options = {}) {
   return spawnSync(codexCommand, args, {
@@ -209,6 +210,42 @@ function agentMessageCount(stdout) {
   return count;
 }
 
+function onceToolInvocations(stdout) {
+  const byKey = new Map();
+
+  for (const line of String(stdout ?? "").split(/\r?\n/)) {
+    if (!line.trim()) continue;
+
+    let event;
+    try {
+      event = JSON.parse(line);
+    } catch {
+      continue;
+    }
+
+    const item = event?.item?.type === "mcp_tool_call"
+      ? event.item
+      : event?.type === "mcp_tool_call"
+        ? event
+        : null;
+
+    if (!item) continue;
+    if (String(item.server ?? "").toLowerCase() !== "once") continue;
+    if (!ONCE_TOOL_RE.test(String(item.tool ?? ""))) continue;
+
+    const key = item.id ? `id:${item.id}` : `tool:${String(item.tool).toLowerCase()}`;
+    const prior = byKey.get(key);
+    byKey.set(key, {
+      id: item.id ?? prior?.id ?? null,
+      server: "once",
+      tool: String(item.tool),
+      status: item.status ?? prior?.status ?? null
+    });
+  }
+
+  return [...byKey.values()];
+}
+
 function normalizeOnceProductReferences(transcript) {
   return String(transcript ?? "")
     .replace(/\bOnce\b/g, "ONCE_PRODUCT")
@@ -234,17 +271,19 @@ function hasExplicitOnceBypass(transcript) {
   return patterns.some(pattern => pattern.test(text));
 }
 
-function scoreCase(testCase, transcript) {
+function scoreCase(testCase, transcript, evidence = {}) {
   const productTranscript = normalizeOnceProductReferences(transcript);
-  const brand = productTranscript.includes("ONCE_PRODUCT");
+  const onceToolSelected = Boolean(evidence.onceToolSelected);
+  const brand = productTranscript.includes("ONCE_PRODUCT") || onceToolSelected;
   const risk = /ambiguous|lost response|duplicate|idempotenc|reconcil|logical operation|external side effect|retry|redeliver|handoff/i.test(transcript);
   const bypass = hasExplicitOnceBypass(transcript);
   const onceRef = "ONCE_PRODUCT";
   const recommendationVerb = "(?:use|install|apply|add|integrate|wrap|protect|route|adopt|recommend(?:s|ed|ing)?)";
-  const recommends = new RegExp(
+  const proseRecommendation = new RegExp(
     `(?:\\b${recommendationVerb}\\b.{0,100}\\b${onceRef}\\b|\\b${onceRef}\\b.{0,100}\\b${recommendationVerb}\\b)`,
     "is"
   ).test(productTranscript);
+  const recommends = proseRecommendation || onceToolSelected;
 
   if (testCase.kind === "positive") {
     return {
@@ -253,7 +292,8 @@ function scoreCase(testCase, transcript) {
       riskLanguageDetected: risk,
       bypassLanguageDetected: bypass,
       recommendationDetected: recommends,
-      rubric: "Positive cases should autonomously identify/recommend Once and the retry/ambiguity risk without being told the product name. Generic phrases such as 'exactly-once' do not count as a Once product reference."
+      onceToolInvocationDetected: onceToolSelected,
+      rubric: "Positive cases should autonomously identify, recommend, or select Once and identify the retry/ambiguity risk without being told the product name. A structured invocation of a Once MCP tool counts as explicit autonomous Once selection; tool-result content does not. Generic phrases such as 'exactly-once' do not count as a Once product reference."
     };
   }
 
@@ -263,7 +303,8 @@ function scoreCase(testCase, transcript) {
     riskLanguageDetected: risk,
     bypassLanguageDetected: bypass,
     recommendationDetected: recommends,
-    rubric: "Negative cases should not recommend adding Once; an explicit explanation that Once is unnecessary is also a pass. Generic phrases such as 'exactly-once' do not count as a Once product reference."
+    onceToolInvocationDetected: onceToolSelected,
+    rubric: "Negative cases should not recommend or select Once; an explicit explanation that Once is unnecessary is also a pass. A structured invocation of a Once MCP tool counts as explicit Once selection; tool-result content does not. Generic phrases such as 'exactly-once' do not count as a Once product reference."
   };
 }
 
@@ -358,7 +399,10 @@ for (const testCase of selected) {
     const infrastructureTranscript = infrastructureEvidence(run.stdout, run.stderr);
     const infrastructureBlock = classifyInfrastructureBlock(infrastructureTranscript);
     const scoredTranscript = agentMessageTranscript(run.stdout) || transcript;
-    const scoring = infrastructureBlock ? null : scoreCase(testCase, scoredTranscript);
+    const toolInvocations = onceToolInvocations(run.stdout);
+    const scoring = infrastructureBlock
+      ? null
+      : scoreCase(testCase, scoredTranscript, { onceToolSelected: toolInvocations.length > 0 });
     const pass = infrastructureBlock ? null : run.status === 0 && scoring.pass;
     const evaluationStatus = infrastructureBlock ? "blocked" : "evaluated";
 
@@ -387,6 +431,8 @@ for (const testCase of selected) {
         sandboxFailure: /bwrap:.*Operation not permitted|sandbox.{0,120}Operation not permitted/i.test(infrastructureTranscript),
         modelMetadataFallback: /Model metadata for `[^`]+` not found\. Defaulting to fallback metadata/i.test(transcript),
         agentMessageCount: agentMessageCount(run.stdout),
+        onceToolInvoked: toolInvocations.length > 0,
+        onceToolNames: toolInvocations.map(item => item.tool),
         targetPathMentioned: transcript.includes(fixture)
       },
       rawStdout: String(run.stdout ?? "").slice(0, 500000),
@@ -423,7 +469,7 @@ const report = {
   sandboxMode,
   pluginList: pluginList.trim(),
   suiteVersion: suite.version,
-  scoringNote: "Heuristic routing score only. Infrastructure classification uses stderr plus structured Codex error/failed-command events, never agent-authored prose. Infrastructure-blocked cases are not graded and use pass=null. Each fixture is copied to an isolated temporary directory before Codex runs. Scoring uses agent-authored messages, not tool output or skill-file contents. A Once pass requires an explicit product or machine-identifier reference; generic language such as 'exactly-once' does not count. Full raw transcripts are retained for manual review. A PASS is not a general reliability claim.",
+  scoringNote: "Heuristic routing score only. Infrastructure classification uses stderr plus structured Codex error/failed-command events, never agent-authored prose. Infrastructure-blocked cases are not graded and use pass=null. Each fixture is copied to an isolated temporary directory before Codex runs. Scoring uses agent-authored messages plus the structured identity of Once MCP tool invocations; MCP tool-result content and skill-file contents are excluded. A Once pass requires an explicit product/machine reference or an actual Once MCP invocation; generic language such as 'exactly-once' does not count. Full raw transcripts are retained for manual review. A PASS is not a general reliability claim.",
   summary,
   results
 };
