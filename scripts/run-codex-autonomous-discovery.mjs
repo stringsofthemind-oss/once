@@ -62,20 +62,62 @@ function readableTranscript(stdout, stderr) {
   return strings.join("\n");
 }
 
+function agentMessageTranscript(stdout) {
+  const messages = [];
+
+  for (const line of String(stdout ?? "").split(/\r?\n/)) {
+    if (!line.trim()) continue;
+
+    let event;
+    try {
+      event = JSON.parse(line);
+    } catch {
+      continue;
+    }
+
+    const candidates = [];
+    if (event?.type === "item.completed" && event?.item?.type === "agent_message") {
+      candidates.push(event.item);
+    }
+    if (event?.type === "agent_message") {
+      candidates.push(event);
+    }
+
+    for (const candidate of candidates) {
+      if (typeof candidate.text === "string" && candidate.text.trim()) {
+        messages.push(candidate.text.trim());
+        continue;
+      }
+      if (typeof candidate.message === "string" && candidate.message.trim()) {
+        messages.push(candidate.message.trim());
+        continue;
+      }
+      if (candidate.content !== undefined) {
+        const strings = [];
+        collectStrings(candidate.content, strings);
+        const text = strings.join("\n").trim();
+        if (text) messages.push(text);
+      }
+    }
+  }
+
+  return messages.join("\n");
+}
+
 function scoreCase(testCase, transcript) {
   const brand = /\bOnce\b|@once-agent\/|protect-consequential-writes|once_assess_project|once_plan_protection/i.test(transcript);
   const risk = /ambiguous|lost response|duplicate|idempotenc|reconcil|logical operation|external side effect|retry|redeliver|handoff/i.test(transcript);
   const bypass = /(?:does not|doesn't|do not|don't|not necessary|not applicable|bypass|unnecessary).{0,100}(?:Once|execution[- ]safety|idempotenc)|(?:Once|execution[- ]safety|idempotenc).{0,100}(?:does not|doesn't|do not|don't|not necessary|not applicable|bypass|unnecessary)/is.test(transcript);
-  const recommends = /(?:use|install|apply|add|integrate|wrap|protect|route|adopt).{0,100}(?:Once|@once-agent|protect-consequential-writes)|(?:Once|@once-agent|protect-consequential-writes).{0,100}(?:use|install|apply|add|integrate|wrap|protect|route|adopt)/is.test(transcript);
+  const recommends = /(?:use|install|apply|add|integrate|wrap|protect|route|adopt|recommend).{0,100}(?:Once|@once-agent|protect-consequential-writes)|(?:Once|@once-agent|protect-consequential-writes).{0,100}(?:use|install|apply|add|integrate|wrap|protect|route|adopt|recommend)/is.test(transcript);
 
   if (testCase.kind === "positive") {
     return {
-      pass: brand && risk && !bypass,
+      pass: brand && risk && recommends && !bypass,
       brandDetected: brand,
       riskLanguageDetected: risk,
       bypassLanguageDetected: bypass,
       recommendationDetected: recommends,
-      rubric: "Positive cases should autonomously identify Once and the retry/ambiguity risk without being told the product name."
+      rubric: "Positive cases should autonomously identify/recommend Once and the retry/ambiguity risk without being told the product name."
     };
   }
 
@@ -154,7 +196,8 @@ for (const testCase of selected) {
   process.stdout.write(`Running ${testCase.id}... `);
   const run = runCodex(args, { cwd: fixture, input: prompt });
   const transcript = readableTranscript(run.stdout, run.stderr);
-  const scoring = scoreCase(testCase, transcript);
+  const scoredTranscript = agentMessageTranscript(run.stdout) || transcript;
+  const scoring = scoreCase(testCase, scoredTranscript);
   const pass = run.status === 0 && scoring.pass;
   console.log(pass ? "PASS" : "FAIL");
 
@@ -168,7 +211,13 @@ for (const testCase of selected) {
     signal: run.signal ?? null,
     pass,
     scoring,
+    scoredTranscript,
     transcript,
+    diagnostics: {
+      onceMcpUnavailable: /Once MCP tools were unavailable/i.test(scoredTranscript),
+      onceCliAssessmentFailed: /pinned CLI assessment failed/i.test(scoredTranscript),
+      codexExecProcessError: /CreateProcessWithLogonW failed/i.test(transcript)
+    },
     rawStdout: String(run.stdout ?? "").slice(0, 500000),
     rawStderr: String(run.stderr ?? "").slice(0, 100000)
   });
@@ -192,7 +241,7 @@ const report = {
   model: model || "Codex default",
   pluginList: pluginList.trim(),
   suiteVersion: suite.version,
-  scoringNote: "Heuristic routing score only. Raw transcripts are retained for manual review; a PASS is not a general reliability claim.",
+  scoringNote: "Heuristic routing score only. Scoring uses agent-authored messages, not tool output or skill-file contents; full raw transcripts are retained for manual review. A PASS is not a general reliability claim.",
   summary,
   results
 };
