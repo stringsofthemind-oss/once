@@ -7,6 +7,29 @@ function json(data, status = 200) {
   });
 }
 
+function timingSafeTextEqual(left, right) {
+  if (
+    typeof left !== "string" ||
+    typeof right !== "string"
+  ) {
+    return false;
+  }
+
+  let diff = left.length ^ right.length;
+  const length = Math.max(
+    left.length,
+    right.length
+  );
+
+  for (let index = 0; index < length; index++) {
+    diff |=
+      (left.charCodeAt(index) || 0) ^
+      (right.charCodeAt(index) || 0);
+  }
+
+  return diff === 0;
+}
+
 function authorized(request, env) {
   const token = String(
     env.SANDBOX_DEMO_PROVIDER_TOKEN || ""
@@ -16,8 +39,13 @@ function authorized(request, env) {
     return false;
   }
 
-  return request.headers.get("authorization") ===
-    `Bearer ${token}`;
+  const authorization =
+    request.headers.get("authorization") || "";
+
+  return timingSafeTextEqual(
+    authorization,
+    `Bearer ${token}`
+  );
 }
 
 export class SandboxDemoEffect {
