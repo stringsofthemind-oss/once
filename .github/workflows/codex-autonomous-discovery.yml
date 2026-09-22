@@ -180,6 +180,27 @@ jobs:
           echo "Controlled metadata causal check: PASS"
           grep -E '### How to use (skills|plugins)|task clearly matches a skill' "$control_on_probe" | head -n 20
 
+      - name: Configure live evaluator model discovery
+        if: ${{ inputs.preflight_only != true }}
+        run: |
+          set -euo pipefail
+          codex_wrapper="$RUNNER_TEMP/codex-eval-with-model-discovery"
+
+          cat >"$codex_wrapper" <<'EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          if [ "${1:-}" = "exec" ]; then
+            exec codex -c 'features.api_key_model_discovery=true' "$@"
+          fi
+          exec codex "$@"
+          EOF
+
+          chmod +x "$codex_wrapper"
+          echo "CODEX_BIN=$codex_wrapper" >> "$GITHUB_ENV"
+          echo "Live evaluator API-key model discovery: ENABLED"
+          "$codex_wrapper" --version
+          "$codex_wrapper" plugin list
+
       - name: Run autonomous discovery suite
         if: ${{ inputs.preflight_only != true }}
         env:
