@@ -1,0 +1,51 @@
+name: Codex Autonomous Discovery
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  autonomous-discovery:
+    runs-on: ubuntu-latest
+    env:
+      CODEX_API_KEY: ${{ secrets.CODEX_API_KEY }}
+      CODEX_HOME: ${{ runner.temp }}/codex-once-discovery
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Require Codex API credential
+        run: |
+          if [ -z "$CODEX_API_KEY" ]; then
+            echo "::error::CODEX_API_KEY repository secret is required for the live model-session evaluation."
+            exit 1
+          fi
+
+      - name: Install current tested Codex CLI
+        run: npm install --global @openai/codex@0.155.1
+
+      - name: Install Once plugin from this checkout
+        run: |
+          mkdir -p "$CODEX_HOME"
+          codex plugin marketplace add "$GITHUB_WORKSPACE"
+          codex plugin add once@once-agent
+          codex plugin list
+
+      - name: Run autonomous discovery suite
+        run: node scripts/run-codex-autonomous-discovery.mjs --out "$RUNNER_TEMP/codex-autonomous-discovery-results.json"
+
+      - name: Upload routing transcripts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-autonomous-discovery-results
+          path: ${{ runner.temp }}/codex-autonomous-discovery-results.json
+          if-no-files-found: warn

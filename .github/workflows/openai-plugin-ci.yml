@@ -6,7 +6,9 @@ on:
       - ".agents/plugins/**"
       - "plugins/openai/once/**"
       - "scripts/validate-openai-plugin.mjs"
+      - "scripts/run-codex-autonomous-discovery.mjs"
       - ".github/workflows/openai-plugin-ci.yml"
+      - ".github/workflows/codex-autonomous-discovery.yml"
   push:
     branches:
       - main
@@ -14,7 +16,9 @@ on:
       - ".agents/plugins/**"
       - "plugins/openai/once/**"
       - "scripts/validate-openai-plugin.mjs"
+      - "scripts/run-codex-autonomous-discovery.mjs"
       - ".github/workflows/openai-plugin-ci.yml"
+      - ".github/workflows/codex-autonomous-discovery.yml"
   workflow_dispatch:
 
 permissions:
@@ -34,6 +38,13 @@ jobs:
 
       - name: Validate Once Codex plugin package
         run: node scripts/validate-openai-plugin.mjs
+
+      - name: Validate autonomous-discovery runner syntax
+        run: node --check scripts/run-codex-autonomous-discovery.mjs
+
+      - name: Validate autonomous-discovery case JSON
+        run: |
+          node -e "const fs=require('fs'); const p='plugins/openai/once/evals/autonomous-discovery-cases.json'; const x=JSON.parse(fs.readFileSync(p,'utf8')); if(!Array.isArray(x.cases)||x.cases.length<8) process.exit(1); console.log('AUTONOMOUS DISCOVERY CASES: PASS', x.cases.length);"
 
   codex-ingestion-smoke:
     runs-on: ubuntu-latest
