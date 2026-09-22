@@ -79,7 +79,8 @@ export class SandboxDemoEffect {
           provider_executed: false,
           side_effects: 0,
           execute_calls: 0,
-          result: null
+          result: null,
+          outcome: null
         });
       }
 
@@ -87,7 +88,8 @@ export class SandboxDemoEffect {
         provider_executed: state.side_effects > 0,
         side_effects: state.side_effects,
         execute_calls: state.execute_calls,
-        result: state.result || null
+        result: state.result || null,
+        outcome: state.outcome || null
       });
     }
 
@@ -142,8 +144,35 @@ export class SandboxDemoEffect {
     const executeCalls =
       previous.execute_calls + 1;
 
+    const previousSideEffects =
+      Number(previous.side_effects || 0);
+
+    if (fault === "fail_before_effect") {
+      await this.ctx.storage.put(
+        "state",
+        {
+          execute_calls: executeCalls,
+          side_effects: previousSideEffects,
+          result: previous.result || null,
+          outcome: "rejected_before_effect",
+          updated_at: new Date().toISOString()
+        }
+      );
+
+      return json(
+        {
+          error: "sandbox_fail_before_effect",
+          provider_executed: false,
+          side_effects: previousSideEffects,
+          execute_calls: executeCalls,
+          outcome: "rejected_before_effect"
+        },
+        503
+      );
+    }
+
     const sideEffects =
-      previous.side_effects + 1;
+      previousSideEffects + 1;
 
     const result = {
       demo: true,
