@@ -3434,6 +3434,244 @@ footer{
     width:100%;
   }
 }
+
+/* ----------------------------------------------------------
+   STRESS ONCE
+   ---------------------------------------------------------- */
+
+.evidence-panel{
+  margin:22px 0;
+  padding:20px;
+  border:1px solid rgba(68,208,255,.18);
+  border-radius:16px;
+  background:linear-gradient(
+    180deg,
+    rgba(8,18,29,.96),
+    rgba(5,11,18,.98)
+  );
+}
+
+.evidence-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+  margin:15px 0 12px;
+}
+
+.evidence-stat{
+  padding:16px;
+  border:1px solid var(--line);
+  border-radius:13px;
+  background:rgba(255,255,255,.018);
+}
+
+.evidence-stat strong{
+  display:block;
+  margin-bottom:5px;
+  color:#f5fbff;
+  font-size:27px;
+}
+
+.evidence-stat span{
+  color:#91a3b1;
+  font-size:11px;
+  line-height:1.45;
+}
+
+.evidence-note{
+  margin:10px 0 0;
+  color:#718692;
+  font-size:11px;
+  line-height:1.55;
+}
+
+.evidence-note a{
+  color:var(--cyan);
+  text-decoration:none;
+}
+
+.stress-controls{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,220px));
+  gap:14px;
+  margin:22px 0 14px;
+}
+
+.stress-control{
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+}
+
+.stress-control label{
+  color:#718692;
+  font:700 9px ui-monospace,monospace;
+  letter-spacing:.09em;
+  text-transform:uppercase;
+}
+
+.stress-control select{
+  width:100%;
+  padding:12px 14px;
+  border:1px solid var(--line);
+  border-radius:11px;
+  background:#081018;
+  color:#edf7fb;
+  font:inherit;
+}
+
+.stress-disclaimer{
+  margin:13px 0 0;
+  color:#607380;
+  font:700 9px ui-monospace,monospace;
+  letter-spacing:.08em;
+}
+
+.stress-progress{
+  display:none;
+  height:6px;
+  margin:18px 0 0;
+  overflow:hidden;
+  border-radius:999px;
+  background:#101a22;
+}
+
+.stress-progress > i{
+  display:block;
+  width:0;
+  height:100%;
+  background:var(--green);
+  transition:width .18s ease;
+}
+
+.stress-summary{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin:20px 0;
+}
+
+.stress-metric{
+  padding:15px;
+  border:1px solid var(--line);
+  border-radius:13px;
+  background:#080f16;
+}
+
+.stress-metric small{
+  display:block;
+  margin-bottom:7px;
+  color:#718692;
+  font:700 9px ui-monospace,monospace;
+}
+
+.stress-metric strong{
+  display:block;
+  color:#eef9f5;
+  font-size:21px;
+}
+
+.stress-headline{
+  margin:20px 0 7px;
+  font-size:25px;
+  font-weight:800;
+}
+
+.stress-subline{
+  margin:0 0 18px;
+  color:#91a3b1;
+  line-height:1.55;
+}
+
+.stress-operations{
+  display:grid;
+  gap:8px;
+  margin-top:16px;
+}
+
+.stress-op{
+  border:1px solid var(--line);
+  border-radius:11px;
+  background:#070d13;
+}
+
+.stress-op summary{
+  display:grid;
+  grid-template-columns:45px minmax(0,1fr) auto;
+  gap:10px;
+  align-items:center;
+  padding:12px 14px;
+  cursor:pointer;
+}
+
+.stress-op-index{
+  color:#607380;
+  font:700 10px ui-monospace,monospace;
+}
+
+.stress-op-main strong{
+  display:block;
+  color:#eaf6f1;
+  font-size:12px;
+}
+
+.stress-op-main small{
+  display:block;
+  margin-top:3px;
+  color:#718692;
+  font-size:10px;
+}
+
+.stress-op-state{
+  font:700 10px ui-monospace,monospace;
+}
+
+.stress-op.pass .stress-op-state{
+  color:var(--green);
+}
+
+.stress-op.fail .stress-op-state{
+  color:#ff6d7a;
+}
+
+.stress-op-detail{
+  padding:0 14px 14px 69px;
+  color:#91a3b1;
+  font:11px/1.6 ui-monospace,monospace;
+}
+
+.stress-cta{
+  display:none;
+  margin-top:18px;
+  text-align:center;
+  text-decoration:none;
+}
+
+@media(max-width:760px){
+  .evidence-grid,
+  .stress-summary{
+    grid-template-columns:1fr 1fr;
+  }
+
+  .stress-controls{
+    grid-template-columns:1fr;
+  }
+
+  .stress-op summary{
+    grid-template-columns:38px minmax(0,1fr);
+  }
+
+  .stress-op-state{
+    grid-column:2;
+  }
+}
+
+@media(max-width:520px){
+  .evidence-grid,
+  .stress-summary{
+    grid-template-columns:1fr;
+  }
+}
 </style>
 </head>
 
@@ -3798,6 +4036,174 @@ footer{
 
 
 
+
+<section
+  id="stressLab"
+  class="console-card"
+>
+
+  <div class="console-heading">
+
+    <span class="console-number">
+      04
+    </span>
+
+    <div>
+      <h2>
+        Stress Once
+      </h2>
+
+      <p>
+        Run a real batch of sandbox operations through normal and injected failure conditions.
+      </p>
+    </div>
+
+    <span class="state-pill">
+      LIVE BATCH
+    </span>
+
+  </div>
+
+
+  <div class="evidence-panel">
+
+    <span class="telemetry-label">
+      ECOSYSTEM SIGNAL / PUBLIC SOURCE-CODE SCAN
+    </span>
+
+    <div class="evidence-grid">
+
+      <div class="evidence-stat">
+        <strong>671</strong>
+        <span>published MCP servers scanned from source</span>
+      </div>
+
+      <div class="evidence-stat">
+        <strong>80.3%</strong>
+        <span>of scanned servers performed real writes</span>
+      </div>
+
+      <div class="evidence-stat">
+        <strong>32.5%</strong>
+        <span>of write-capable servers showed no visible idempotency guard</span>
+      </div>
+
+    </div>
+
+    <p class="evidence-note">
+      Public source-code scan. "No visible guard" does not prove
+      that no downstream guard exists. These are ecosystem observations,
+      not runtime failure rates.
+      <a
+        href="https://github.com/aurumflux20/fencescan/tree/main/docs/scan-dataset"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Inspect dataset
+      </a>
+    </p>
+
+  </div>
+
+
+  <div class="stress-controls">
+
+    <div class="stress-control">
+
+      <label for="stressBatch">
+        Batch size
+      </label>
+
+      <select id="stressBatch">
+        <option value="10" selected>
+          10 operations
+        </option>
+
+        <option value="25">
+          25 operations
+        </option>
+      </select>
+
+    </div>
+
+
+    <div class="stress-control">
+
+      <label for="stressPressure">
+        Injected fault pressure
+      </label>
+
+      <select id="stressPressure">
+        <option value="20">
+          20% / light
+        </option>
+
+        <option value="40" selected>
+          40% / pressure
+        </option>
+
+        <option value="60">
+          60% / adversarial
+        </option>
+      </select>
+
+    </div>
+
+  </div>
+
+
+  <button
+    id="runStress"
+    type="button"
+    class="primary stress-run"
+    disabled
+  >
+    Run stress test
+  </button>
+
+
+  <p class="stress-disclaimer">
+    CONTROLLED FAULT INJECTION · SELECTED PERCENTAGE IS A TEST CONDITION · NOT A REAL-WORLD FAILURE RATE
+  </p>
+
+
+  <div
+    id="stressStatus"
+    class="status"
+    aria-live="polite"
+  ></div>
+
+
+  <div
+    id="stressProgress"
+    class="stress-progress"
+  >
+    <i id="stressProgressFill"></i>
+  </div>
+
+
+  <div
+    id="stressResult"
+    style="display:none"
+  ></div>
+
+
+  <div
+    id="stressOperations"
+    class="stress-operations"
+  ></div>
+
+
+  <a
+    id="stressCta"
+    class="primary stress-cta"
+    href="#integrateCard"
+  >
+    Protect my agent
+  </a>
+
+</section>
+
 <section
   id="integrateCard"
   class="console-card"
@@ -3806,7 +4212,7 @@ footer{
   <div class="console-heading">
 
     <span class="console-number">
-      04
+      05
     </span>
 
     <div>
@@ -4021,6 +4427,50 @@ footer{
       document.getElementById(
         "labResult"
       );
+    const stressRunButton =
+      document.getElementById(
+        "runStress"
+      );
+
+    const stressBatch =
+      document.getElementById(
+        "stressBatch"
+      );
+
+    const stressPressure =
+      document.getElementById(
+        "stressPressure"
+      );
+
+    const stressStatus =
+      document.getElementById(
+        "stressStatus"
+      );
+
+    const stressProgress =
+      document.getElementById(
+        "stressProgress"
+      );
+
+    const stressProgressFill =
+      document.getElementById(
+        "stressProgressFill"
+      );
+
+    const stressResult =
+      document.getElementById(
+        "stressResult"
+      );
+
+    const stressOperations =
+      document.getElementById(
+        "stressOperations"
+      );
+
+    const stressCta =
+      document.getElementById(
+        "stressCta"
+      );
 
     const params =
       new URLSearchParams(
@@ -4206,6 +4656,8 @@ footer{
 
 
         runScenarioButton.disabled =
+          false;
+        stressRunButton.disabled =
           false;
 
         demoStatus.textContent =
@@ -4770,6 +5222,1009 @@ footer{
       runScenarioButton.disabled =
         false;
     }
+    // --------------------------------------------------------
+    // STRESS ONCE
+    //
+    // Every displayed result below comes from actual /api/demo
+    // executions. Fault percentages are controlled test inputs,
+    // never claimed production incidence rates.
+    // --------------------------------------------------------
+
+    function stressRandomUnit() {
+
+      const values =
+        new Uint32Array(1);
+
+      crypto.getRandomValues(
+        values
+      );
+
+      return (
+        values[0] /
+        4294967296
+      );
+    }
+
+
+    function stressShuffle(
+      values
+    ) {
+
+      const copy =
+        values.slice();
+
+      for (
+        let index =
+          copy.length - 1;
+        index > 0;
+        index--
+      ) {
+
+        const target =
+          Math.floor(
+            stressRandomUnit() *
+            (index + 1)
+          );
+
+        const temporary =
+          copy[index];
+
+        copy[index] =
+          copy[target];
+
+        copy[target] =
+          temporary;
+      }
+
+      return copy;
+    }
+
+
+    function buildStressPlan(
+      count,
+      pressure
+    ) {
+
+      const plan =
+        Array.from(
+          { length: count },
+          (_, index) => ({
+            index,
+            scenario:
+              "normal_success"
+          })
+        );
+
+      const faultCount =
+        Math.round(
+          count *
+          pressure /
+          100
+        );
+
+      const positions =
+        stressShuffle(
+          Array.from(
+            { length: count },
+            (_, index) => index
+          )
+        );
+
+
+      for (
+        let index = 0;
+        index < faultCount;
+        index++
+      ) {
+
+        let scenario;
+
+        // Guarantee both fault classes when the batch
+        // contains at least two injected faults.
+        if (
+          faultCount >= 2 &&
+          index === 0
+        ) {
+          scenario =
+            "ambiguous_after_commit";
+        }
+        else if (
+          faultCount >= 2 &&
+          index === 1
+        ) {
+          scenario =
+            "fail_before_effect";
+        }
+        else {
+          scenario =
+            stressRandomUnit() < 0.5
+              ? "ambiguous_after_commit"
+              : "fail_before_effect";
+        }
+
+        plan[
+          positions[index]
+        ].scenario =
+          scenario;
+      }
+
+      return plan;
+    }
+
+
+    function stressScenarioName(
+      scenario
+    ) {
+
+      if (
+        scenario ===
+        "normal_success"
+      ) {
+        return "Normal success";
+      }
+
+      if (
+        scenario ===
+        "fail_before_effect"
+      ) {
+        return "Fail before effect";
+      }
+
+      return "Lost response after commit";
+    }
+
+
+    function stressEscape(
+      value
+    ) {
+
+      return String(
+        value ?? ""
+      )
+        .replaceAll(
+          "&",
+          "&amp;"
+        )
+        .replaceAll(
+          "<",
+          "&lt;"
+        )
+        .replaceAll(
+          ">",
+          "&gt;"
+        )
+        .replaceAll(
+          '"',
+          "&quot;"
+        );
+    }
+
+
+    function assessStressEntry(
+      entry
+    ) {
+
+      if (
+        !entry ||
+        entry.request_error
+      ) {
+        return {
+          passed: false,
+          unresolved: true,
+          state: "REQUEST_ERROR",
+          attempts: 0,
+          sideEffects: 0
+        };
+      }
+
+      const result =
+        entry.body?.result || {};
+
+      const state =
+        String(
+          result.state || ""
+        ).toUpperCase();
+
+      const attempts =
+        Number(
+          result.attempts
+        );
+
+      const sideEffects =
+        Number(
+          result.side_effects
+        );
+
+      let passed =
+        false;
+
+
+      if (
+        entry.scenario ===
+        "normal_success"
+      ) {
+        passed =
+          entry.response_ok === true &&
+          result.normal_success === true &&
+          state === "CONFIRMED" &&
+          sideEffects === 1;
+      }
+
+
+      if (
+        entry.scenario ===
+        "ambiguous_after_commit"
+      ) {
+        passed =
+          entry.response_ok === true &&
+          result.duplicate_prevented === true &&
+          state === "CONFIRMED" &&
+          sideEffects === 1;
+      }
+
+
+      if (
+        entry.scenario ===
+        "fail_before_effect"
+      ) {
+        passed =
+          entry.response_ok === true &&
+          result.failed_safely_before_effect === true &&
+          state === "FAILED_BEFORE_EFFECT" &&
+          sideEffects === 0;
+      }
+
+
+      return {
+        passed,
+
+        unresolved:
+          entry.response_ok !== true,
+
+        state:
+          state || "UNKNOWN",
+
+        attempts:
+          Number.isFinite(
+            attempts
+          )
+            ? attempts
+            : 0,
+
+        sideEffects:
+          Number.isFinite(
+            sideEffects
+          )
+            ? sideEffects
+            : 0
+      };
+    }
+
+
+    async function executeStressOperation(
+      item
+    ) {
+
+      let response;
+      let body;
+
+      try {
+
+        response =
+          await fetch(
+            "/api/demo",
+            {
+              method:
+                "POST",
+
+              headers: {
+                authorization:
+                  "Bearer " +
+                  activeKey,
+
+                "content-type":
+                  "application/json"
+              },
+
+              body:
+                JSON.stringify({
+                  scenario:
+                    item.scenario
+                })
+            }
+          );
+
+        body =
+          await response.json();
+      }
+      catch {
+
+        return {
+          scenario:
+            item.scenario,
+
+          request_error:
+            true
+        };
+      }
+
+
+      return {
+        scenario:
+          item.scenario,
+
+        response_ok:
+          response.ok,
+
+        http_status:
+          response.status,
+
+        body
+      };
+    }
+
+
+    async function stressMapConcurrent(
+      items,
+      limit,
+      mapper
+    ) {
+
+      const results =
+        new Array(
+          items.length
+        );
+
+      let cursor =
+        0;
+
+
+      async function runner() {
+
+        while (true) {
+
+          const index =
+            cursor++;
+
+          if (
+            index >=
+            items.length
+          ) {
+            return;
+          }
+
+          results[index] =
+            await mapper(
+              items[index],
+              index
+            );
+        }
+      }
+
+
+      const runners =
+        Array.from(
+          {
+            length:
+              Math.min(
+                limit,
+                items.length
+              )
+          },
+          () => runner()
+        );
+
+      await Promise.all(
+        runners
+      );
+
+      return results;
+    }
+
+
+    async function runStressTest() {
+
+      if (!activeKey) {
+
+        stressStatus.className =
+          "error";
+
+        stressStatus.textContent =
+          "Activate your API key first.";
+
+        return;
+      }
+
+
+      const count =
+        Number(
+          stressBatch.value
+        );
+
+      const pressure =
+        Number(
+          stressPressure.value
+        );
+
+
+      const allowedCounts =
+        new Set([
+          10,
+          25
+        ]);
+
+      const allowedPressures =
+        new Set([
+          20,
+          40,
+          60
+        ]);
+
+
+      if (
+        !allowedCounts.has(count) ||
+        !allowedPressures.has(
+          pressure
+        )
+      ) {
+        stressStatus.className =
+          "error";
+
+        stressStatus.textContent =
+          "Invalid stress-test configuration.";
+
+        return;
+      }
+
+
+      const plan =
+        buildStressPlan(
+          count,
+          pressure
+        );
+
+
+      const injectedFaults =
+        plan.filter(
+          item =>
+            item.scenario !==
+            "normal_success"
+        ).length;
+
+
+      stressRunButton.disabled =
+        true;
+
+      stressBatch.disabled =
+        true;
+
+      stressPressure.disabled =
+        true;
+
+      stressCta.style.display =
+        "none";
+
+      stressResult.style.display =
+        "none";
+
+      stressResult.innerHTML =
+        "";
+
+      stressOperations.innerHTML =
+        "";
+
+      stressProgress.style.display =
+        "block";
+
+      stressProgressFill.style.width =
+        "0%";
+
+      stressStatus.className =
+        "";
+
+      stressStatus.textContent =
+        "Preparing " +
+        count +
+        " real sandbox operations with " +
+        injectedFaults +
+        " injected faults...";
+
+
+      sendPlaygroundAnalytics(
+        "playground_stress_run"
+      );
+
+
+      let completed =
+        0;
+
+
+      function updateProgress() {
+
+        stressProgressFill.style.width =
+          (
+            completed /
+            count *
+            100
+          ) +
+          "%";
+
+        stressStatus.textContent =
+          "Executed " +
+          completed +
+          " of " +
+          count +
+          " operations...";
+      }
+
+
+      const results =
+        new Array(
+          count
+        );
+
+
+      // First operation is deliberately sequential.
+      // This lets a new sandbox key establish its provider
+      // before the remaining batch fans out.
+
+      results[0] =
+        await executeStressOperation(
+          plan[0]
+        );
+
+      completed =
+        1;
+
+      updateProgress();
+
+
+      const remaining =
+        plan.slice(1);
+
+
+      const remainingResults =
+        await stressMapConcurrent(
+          remaining,
+          4,
+          async item => {
+
+            const result =
+              await executeStressOperation(
+                item
+              );
+
+            completed++;
+
+            updateProgress();
+
+            return result;
+          }
+        );
+
+
+      for (
+        let index = 0;
+        index <
+          remainingResults.length;
+        index++
+      ) {
+        results[
+          index + 1
+        ] =
+          remainingResults[index];
+      }
+
+
+      const assessed =
+        results.map(
+          (
+            entry,
+            index
+          ) => ({
+            index,
+            entry,
+
+            assessment:
+              assessStressEntry(
+                entry
+              )
+          })
+        );
+
+
+      const passed =
+        assessed.filter(
+          item =>
+            item.assessment.passed
+        ).length;
+
+
+      const unresolved =
+        assessed.filter(
+          item =>
+            item.assessment.unresolved
+        ).length;
+
+
+      const invariantFailures =
+        assessed.filter(
+          item =>
+            !item.assessment.passed &&
+            !item.assessment.unresolved
+        ).length;
+
+
+      const totalAttempts =
+        assessed.reduce(
+          (
+            total,
+            item
+          ) =>
+            total +
+            item.assessment.attempts,
+          0
+        );
+
+
+      const totalEffects =
+        assessed.reduce(
+          (
+            total,
+            item
+          ) =>
+            total +
+            item.assessment.sideEffects,
+          0
+        );
+
+
+      const ambiguousPassed =
+        assessed.filter(
+          item =>
+            item.entry?.scenario ===
+              "ambiguous_after_commit" &&
+            item.assessment.passed
+        ).length;
+
+
+      const preEffectPassed =
+        assessed.filter(
+          item =>
+            item.entry?.scenario ===
+              "fail_before_effect" &&
+            item.assessment.passed
+        ).length;
+
+
+      const normalPassed =
+        assessed.filter(
+          item =>
+            item.entry?.scenario ===
+              "normal_success" &&
+            item.assessment.passed
+        ).length;
+
+
+      const ambiguousCount =
+        assessed.filter(
+          item =>
+            item.entry?.scenario ===
+            "ambiguous_after_commit"
+        ).length;
+
+
+      const failBeforeCount =
+        assessed.filter(
+          item =>
+            item.entry?.scenario ===
+            "fail_before_effect"
+        ).length;
+
+
+      let headline;
+      let subline;
+      let statusClass;
+
+
+      if (
+        invariantFailures === 0 &&
+        unresolved === 0 &&
+        passed === count
+      ) {
+
+        headline =
+          count +
+          " operations. " +
+          injectedFaults +
+          " injected faults. 0 safety invariant violations.";
+
+        subline =
+          ambiguousPassed +
+          " ambiguous retry scenario(s) resolved without a duplicate effect; " +
+          preEffectPassed +
+          " pre-effect failure(s) committed nothing; " +
+          normalPassed +
+          " normal operation(s) completed once.";
+
+        statusClass =
+          "success";
+
+        stressCta.style.display =
+          "inline-block";
+      }
+
+      else if (
+        invariantFailures === 0 &&
+        unresolved > 0
+      ) {
+
+        headline =
+          "Proof incomplete: " +
+          unresolved +
+          " operation(s) could not be verified.";
+
+        subline =
+          "Completed operations preserved their expected external-state invariant, but unresolved operations prevent a complete batch proof.";
+
+        statusClass =
+          "warning";
+      }
+
+      else {
+
+        headline =
+          "Safety invariant failed on " +
+          invariantFailures +
+          " operation(s).";
+
+        subline =
+          "The batch exposed an observed result that did not match the expected external-state invariant.";
+
+        statusClass =
+          "error";
+      }
+
+
+      stressStatus.className =
+        statusClass;
+
+      stressStatus.textContent =
+        headline;
+
+
+      stressResult.innerHTML =
+        '<div class="stress-headline">' +
+        stressEscape(
+          headline
+        ) +
+        '</div>' +
+
+        '<p class="stress-subline">' +
+        stressEscape(
+          subline
+        ) +
+        '</p>' +
+
+        '<div class="stress-summary">' +
+
+        '<div class="stress-metric">' +
+        '<small>Operations</small>' +
+        '<strong>' +
+        count +
+        '</strong>' +
+        '</div>' +
+
+        '<div class="stress-metric">' +
+        '<small>Injected faults</small>' +
+        '<strong>' +
+        injectedFaults +
+        '</strong>' +
+        '</div>' +
+
+        '<div class="stress-metric">' +
+        '<small>Total attempts</small>' +
+        '<strong>' +
+        totalAttempts +
+        '</strong>' +
+        '</div>' +
+
+        '<div class="stress-metric">' +
+        '<small>Actual side effects</small>' +
+        '<strong>' +
+        totalEffects +
+        '</strong>' +
+        '</div>' +
+
+        '<div class="stress-metric">' +
+        '<small>Ambiguous retries reconciled</small>' +
+        '<strong>' +
+        ambiguousPassed +
+        ' / ' +
+        ambiguousCount +
+        '</strong>' +
+        '</div>' +
+
+        '<div class="stress-metric">' +
+        '<small>Safe no-effect failures</small>' +
+        '<strong>' +
+        preEffectPassed +
+        ' / ' +
+        failBeforeCount +
+        '</strong>' +
+        '</div>' +
+
+        '<div class="stress-metric">' +
+        '<small>Unresolved</small>' +
+        '<strong>' +
+        unresolved +
+        '</strong>' +
+        '</div>' +
+
+        '<div class="stress-metric">' +
+        '<small>Invariant violations</small>' +
+        '<strong>' +
+        invariantFailures +
+        '</strong>' +
+        '</div>' +
+
+        '</div>';
+
+
+      stressResult.style.display =
+        "block";
+
+
+      stressOperations.innerHTML =
+        assessed
+          .map(
+            item => {
+
+              const entry =
+                item.entry || {};
+
+              const assessment =
+                item.assessment;
+
+              const body =
+                entry.body || {};
+
+              const operationId =
+                body.operation_id ||
+                "not returned";
+
+              const scenario =
+                entry.scenario ||
+                "unknown";
+
+              const className =
+                assessment.passed
+                  ? "pass"
+                  : "fail";
+
+              const stateLabel =
+                assessment.passed
+                  ? "PASS"
+                  : (
+                      assessment.unresolved
+                        ? "UNRESOLVED"
+                        : "CHECK"
+                    );
+
+
+              return (
+                '<details class="stress-op ' +
+                className +
+                '">' +
+
+                '<summary>' +
+
+                '<span class="stress-op-index">#' +
+                String(
+                  item.index + 1
+                ).padStart(
+                  2,
+                  "0"
+                ) +
+                '</span>' +
+
+                '<span class="stress-op-main">' +
+
+                '<strong>' +
+                stressEscape(
+                  stressScenarioName(
+                    scenario
+                  )
+                ) +
+                '</strong>' +
+
+                '<small>' +
+                stressEscape(
+                  assessment.state
+                ) +
+                ' · ' +
+                assessment.attempts +
+                ' attempt(s) · ' +
+                assessment.sideEffects +
+                ' effect(s)' +
+                '</small>' +
+
+                '</span>' +
+
+                '<span class="stress-op-state">' +
+                stateLabel +
+                '</span>' +
+
+                '</summary>' +
+
+                '<div class="stress-op-detail">' +
+
+                'operation_id: ' +
+                stressEscape(
+                  operationId
+                ) +
+                '<br>' +
+
+                'scenario: ' +
+                stressEscape(
+                  scenario
+                ) +
+                '<br>' +
+
+                'http_status: ' +
+                stressEscape(
+                  entry.http_status ??
+                  "network error"
+                ) +
+                '<br>' +
+
+                'once_state: ' +
+                stressEscape(
+                  assessment.state
+                ) +
+                '<br>' +
+
+                'attempts: ' +
+                assessment.attempts +
+                '<br>' +
+
+                'actual_side_effects: ' +
+                assessment.sideEffects +
+
+                '</div>' +
+
+                '</details>'
+              );
+            }
+          )
+          .join(
+            ""
+          );
+
+
+      stressProgressFill.style.width =
+        "100%";
+
+
+      sendPlaygroundAnalytics(
+        "playground_stress_complete"
+      );
+
+
+      stressRunButton.textContent =
+        "Run another batch";
+
+      stressRunButton.disabled =
+        false;
+
+      stressBatch.disabled =
+        false;
+
+      stressPressure.disabled =
+        false;
+    }
+
+
 
 
 
@@ -4805,6 +6260,20 @@ footer{
     runScenarioButton.addEventListener(
       "click",
       runFaultScenario
+    );
+    stressRunButton.addEventListener(
+      "click",
+      runStressTest
+    );
+
+
+    stressCta.addEventListener(
+      "click",
+      () => {
+        sendPlaygroundAnalytics(
+          "tester_cta_clicked"
+        );
+      }
     );
 
     copyEnvButton.addEventListener(
@@ -4928,6 +6397,9 @@ var index_default = {
         "tester_cta_clicked",
         "playground_clicked",
         "playground_run",
+        "playground_fault_lab_run",
+        "playground_stress_run",
+        "playground_stress_complete",
         "once_confirmed",
         "mcp_copy_clicked",
         "sdk_copy_clicked",
@@ -5145,6 +6617,7 @@ var index_default = {
       ).trim().toLowerCase();
 
       const allowedScenarios = new Set([
+        "normal_success",
         "ambiguous_after_commit",
         "fail_before_effect"
       ]);
@@ -5154,6 +6627,7 @@ var index_default = {
           {
             error: "unsupported_demo_scenario",
             allowed_scenarios: [
+              "normal_success",
               "ambiguous_after_commit",
               "fail_before_effect"
             ]
@@ -5165,7 +6639,9 @@ var index_default = {
       const scenarioFault =
         requestedScenario === "fail_before_effect"
           ? "fail_before_effect"
-          : "commit_then_503";
+          : requestedScenario === "ambiguous_after_commit"
+            ? "commit_then_503"
+            : "";
 
       const onceAuthorization = authorization;
       const core = String(
@@ -5295,13 +6771,17 @@ var index_default = {
             description:
               requestedScenario === "fail_before_effect"
                 ? "Demonstrate explicit failure before external effect"
-                : "Demonstrate ambiguous execution safety"
+                : requestedScenario === "normal_success"
+                  ? "Demonstrate ordinary successful external effect"
+                  : "Demonstrate ambiguous execution safety"
           }),
           fault: scenarioFault,
           description:
             requestedScenario === "fail_before_effect"
-              ? "Demonstrate explicit failure before external effect"
-              : "Demonstrate ambiguous execution safety"
+                ? "Demonstrate explicit failure before external effect"
+                : requestedScenario === "normal_success"
+                  ? "Demonstrate ordinary successful external effect"
+                  : "Demonstrate ambiguous execution safety"
         }
       };
       async function callExecute() {
@@ -5427,6 +6907,11 @@ var index_default = {
         finalState === "FAILED_BEFORE_EFFECT" &&
         sideEffects === 0;
 
+      const normalSucceeded =
+        requestedScenario === "normal_success" &&
+        finalState === "CONFIRMED" &&
+        sideEffects === 1;
+
       return json3({
         demo: true,
         scenario: requestedScenario,
@@ -5453,7 +6938,8 @@ var index_default = {
             sideEffects
           ) ? sideEffects : null,
           duplicate_prevented: protectedSuccessfully,
-          failed_safely_before_effect: failedSafely
+          failed_safely_before_effect: failedSafely,
+          normal_success: normalSucceeded
         },
         truth
       });
