@@ -64,6 +64,7 @@ jobs:
           CODEX_API_KEY: ${{ secrets.CODEX_API_KEY }}
         run: |
           set -uo pipefail
+          mkdir -p "$CODEX_HOME"
 
           mission="$RUNNER_TEMP/astra-mission.txt"
           events="$RUNNER_TEMP/astra-events.jsonl"
