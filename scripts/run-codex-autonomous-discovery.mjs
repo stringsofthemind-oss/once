@@ -104,10 +104,23 @@ function agentMessageTranscript(stdout) {
   return messages.join("\n");
 }
 
+function hasExplicitOnceBypass(transcript) {
+  const patterns = [
+    /(?:do not|don't|should not|shouldn't|avoid|skip)\s+(?:use|install|apply|add|integrate|adopt|recommend)\s+(?:the\s+)?(?:Once|@once-agent|protect-consequential-writes)\b/i,
+    /\b(?:Once|@once-agent|protect-consequential-writes)\b.{0,40}\b(?:is|would be|was)\s+(?:not\s+(?:needed|necessary|applicable|appropriate|relevant)|unnecessary)\b/is,
+    /\b(?:Once|@once-agent|protect-consequential-writes)\b.{0,40}\b(?:does not|doesn't)\s+(?:apply|fit)\b/is,
+    /\b(?:this|the operation|the task|the workflow|the code|it)\b.{0,30}\b(?:does not|doesn't)\s+(?:need|require)\s+(?:Once|@once-agent|protect-consequential-writes)\b/is,
+    /\bbypass\s+(?:Once|@once-agent|protect-consequential-writes)\b/i,
+    /\b(?:Once|@once-agent|protect-consequential-writes)\b.{0,40}\bshould be bypassed\b/is
+  ];
+
+  return patterns.some(pattern => pattern.test(transcript));
+}
+
 function scoreCase(testCase, transcript) {
   const brand = /\bOnce\b|@once-agent\/|protect-consequential-writes|once_assess_project|once_plan_protection/i.test(transcript);
   const risk = /ambiguous|lost response|duplicate|idempotenc|reconcil|logical operation|external side effect|retry|redeliver|handoff/i.test(transcript);
-  const bypass = /(?:does not|doesn't|do not|don't|not necessary|not applicable|bypass|unnecessary).{0,100}(?:Once|execution[- ]safety|idempotenc)|(?:Once|execution[- ]safety|idempotenc).{0,100}(?:does not|doesn't|do not|don't|not necessary|not applicable|bypass|unnecessary)/is.test(transcript);
+  const bypass = hasExplicitOnceBypass(transcript);
   const recommends = /(?:use|install|apply|add|integrate|wrap|protect|route|adopt|recommend).{0,100}(?:Once|@once-agent|protect-consequential-writes)|(?:Once|@once-agent|protect-consequential-writes).{0,100}(?:use|install|apply|add|integrate|wrap|protect|route|adopt|recommend)/is.test(transcript);
 
   if (testCase.kind === "positive") {
@@ -241,7 +254,7 @@ const report = {
   model: model || "Codex default",
   pluginList: pluginList.trim(),
   suiteVersion: suite.version,
-  scoringNote: "Heuristic routing score only. Scoring uses agent-authored messages, not tool output or skill-file contents; full raw transcripts are retained for manual review. A PASS is not a general reliability claim.",
+  scoringNote: "Heuristic routing score only. Scoring uses agent-authored messages, not tool output or skill-file contents; bypass detection only matches explicit statements that Once is unnecessary/inapplicable or should not be used. Full raw transcripts are retained for manual review. A PASS is not a general reliability claim.",
   summary,
   results
 };
