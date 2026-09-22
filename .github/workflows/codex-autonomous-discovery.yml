@@ -7,6 +7,11 @@ on:
         description: "Optional single autonomous-discovery case ID"
         required: false
         type: string
+      preflight_only:
+        description: "Run Codex model-metadata/skill-routing probes only; skip the paid model evaluation"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -32,7 +37,7 @@ jobs:
       - name: Require Codex API credential
         run: |
           if [ -z "$CODEX_API_KEY" ]; then
-            echo "::error::CODEX_API_KEY repository secret is required for the live model-session evaluation."
+            echo "::error::CODEX_API_KEY repository secret is required for Codex model metadata discovery and live model-session evaluation."
             exit 1
           fi
 
@@ -46,31 +51,158 @@ jobs:
           codex plugin add once@once-agent
           codex plugin list
 
-      - name: Verify Once skill is visible to Codex
+      - name: Compare Codex model metadata routing prompts
         run: |
           set -euo pipefail
-          probe_file="$RUNNER_TEMP/codex-prompt-probe.txt"
+
+          fallback_probe="$RUNNER_TEMP/codex-prompt-probe-fallback.txt"
+          discovery_probe="$RUNNER_TEMP/codex-prompt-probe-api-key-discovery.txt"
+          control_off_probe="$RUNNER_TEMP/codex-prompt-probe-control-off.txt"
+          control_on_probe="$RUNNER_TEMP/codex-prompt-probe-control-on.txt"
+          summary_file="$RUNNER_TEMP/codex-model-metadata-preflight.txt"
+          pinned_catalog="$RUNNER_TEMP/codex-0.155.1-models.json"
+          control_off_catalog="$RUNNER_TEMP/codex-control-off-models.json"
+          control_on_catalog="$RUNNER_TEMP/codex-control-on-models.json"
 
           echo "Installed Once skill payloads:"
           find "$CODEX_HOME/plugins/cache/once-agent/once" -path '*/skills/*/SKILL.md' -type f -print || true
 
-          if ! codex debug prompt-input probe >"$probe_file" 2>&1; then
-            cat "$probe_file"
-            echo "::error::Codex prompt-input probe failed before any paid model evaluation."
+          if ! codex -m "$CODEX_EVAL_MODEL" debug prompt-input probe >"$fallback_probe" 2>&1; then
+            cat "$fallback_probe"
+            echo "::error::Baseline Codex prompt-input probe failed before any paid model evaluation."
             exit 2
           fi
 
-          if ! grep -Fq 'once:protect-consequential-writes' "$probe_file"; then
-            echo "::error::Once plugin is installed but once:protect-consequential-writes is absent from the model-visible Codex skill catalog. Stopping before the paid evaluation."
-            echo "Matching Once/plugin lines from prompt probe:"
-            grep -Ei 'once|plugin|skill' "$probe_file" | head -n 120 || true
+          if ! codex -m "$CODEX_EVAL_MODEL" -c 'features.api_key_model_discovery=true' debug prompt-input probe >"$discovery_probe" 2>&1; then
+            cat "$discovery_probe"
+            echo "::error::API-key model-discovery prompt-input probe failed before any paid model evaluation."
             exit 3
           fi
 
-          echo "Once skill catalog preflight: PASS"
-          grep -F 'once:protect-consequential-writes' "$probe_file" | head -n 5
+          curl -fsSL \
+            'https://raw.githubusercontent.com/openai/codex/rust-v0.155.1/codex-rs/models-manager/models.json' \
+            -o "$pinned_catalog"
+
+          jq --arg slug "$CODEX_EVAL_MODEL" \
+            '{models:[.models[0] | .slug=$slug | .display_name=$slug | .description="Controlled local metadata probe" | .include_skills_usage_instructions=false | .include_plugin_usage_instructions=false]}' \
+            "$pinned_catalog" >"$control_off_catalog"
+
+          jq --arg slug "$CODEX_EVAL_MODEL" \
+            '{models:[.models[0] | .slug=$slug | .display_name=$slug | .description="Controlled local metadata probe" | .include_skills_usage_instructions=true | .include_plugin_usage_instructions=true]}' \
+            "$pinned_catalog" >"$control_on_catalog"
+
+          if ! codex -m "$CODEX_EVAL_MODEL" -c "model_catalog_json=\"$control_off_catalog\"" debug prompt-input probe >"$control_off_probe" 2>&1; then
+            cat "$control_off_probe"
+            echo "::error::Controlled metadata-off prompt-input probe failed."
+            exit 4
+          fi
+
+          if ! codex -m "$CODEX_EVAL_MODEL" -c "model_catalog_json=\"$control_on_catalog\"" debug prompt-input probe >"$control_on_probe" 2>&1; then
+            cat "$control_on_probe"
+            echo "::error::Controlled metadata-on prompt-input probe failed."
+            exit 5
+          fi
+
+          for probe_file in "$fallback_probe" "$discovery_probe" "$control_off_probe" "$control_on_probe"; do
+            if ! grep -Fq 'once:protect-consequential-writes' "$probe_file"; then
+              echo "::error::Once plugin is installed but once:protect-consequential-writes is absent from $probe_file."
+              grep -Ei 'once|plugin|skill' "$probe_file" | head -n 120 || true
+              exit 6
+            fi
+          done
+
+          bool_has() {
+            local pattern="$1"
+            local file="$2"
+            if grep -Fq "$pattern" "$file"; then
+              echo true
+            else
+              echo false
+            fi
+          }
+
+          fallback_warning=$(bool_has 'Defaulting to fallback metadata' "$fallback_probe")
+          discovery_warning=$(bool_has 'Defaulting to fallback metadata' "$discovery_probe")
+
+          fallback_skill_usage=$(bool_has '### How to use skills' "$fallback_probe")
+          discovery_skill_usage=$(bool_has '### How to use skills' "$discovery_probe")
+          control_off_skill_usage=$(bool_has '### How to use skills' "$control_off_probe")
+          control_on_skill_usage=$(bool_has '### How to use skills' "$control_on_probe")
+
+          fallback_skill_trigger=$(bool_has "task clearly matches a skill's description" "$fallback_probe")
+          discovery_skill_trigger=$(bool_has "task clearly matches a skill's description" "$discovery_probe")
+          control_off_skill_trigger=$(bool_has "task clearly matches a skill's description" "$control_off_probe")
+          control_on_skill_trigger=$(bool_has "task clearly matches a skill's description" "$control_on_probe")
+
+          fallback_plugin_usage=$(bool_has '### How to use plugins' "$fallback_probe")
+          discovery_plugin_usage=$(bool_has '### How to use plugins' "$discovery_probe")
+          control_off_plugin_usage=$(bool_has '### How to use plugins' "$control_off_probe")
+          control_on_plugin_usage=$(bool_has '### How to use plugins' "$control_on_probe")
+
+          {
+            echo "Codex model metadata preflight"
+            echo "model=$CODEX_EVAL_MODEL"
+            echo
+            echo "baseline.fallback_warning=$fallback_warning"
+            echo "baseline.once_skill_visible=true"
+            echo "baseline.skill_usage_instructions=$fallback_skill_usage"
+            echo "baseline.skill_trigger_rule=$fallback_skill_trigger"
+            echo "baseline.plugin_usage_instructions=$fallback_plugin_usage"
+            echo
+            echo "api_key_discovery.fallback_warning=$discovery_warning"
+            echo "api_key_discovery.once_skill_visible=true"
+            echo "api_key_discovery.skill_usage_instructions=$discovery_skill_usage"
+            echo "api_key_discovery.skill_trigger_rule=$discovery_skill_trigger"
+            echo "api_key_discovery.plugin_usage_instructions=$discovery_plugin_usage"
+            echo
+            echo "control_off.once_skill_visible=true"
+            echo "control_off.skill_usage_instructions=$control_off_skill_usage"
+            echo "control_off.skill_trigger_rule=$control_off_skill_trigger"
+            echo "control_off.plugin_usage_instructions=$control_off_plugin_usage"
+            echo
+            echo "control_on.once_skill_visible=true"
+            echo "control_on.skill_usage_instructions=$control_on_skill_usage"
+            echo "control_on.skill_trigger_rule=$control_on_skill_trigger"
+            echo "control_on.plugin_usage_instructions=$control_on_plugin_usage"
+          } | tee "$summary_file"
+
+          if [ "$control_off_skill_usage" != false ] || [ "$control_off_skill_trigger" != false ] || [ "$control_off_plugin_usage" != false ]; then
+            echo "::error::Controlled metadata-off probe unexpectedly included skill/plugin routing guidance."
+            exit 7
+          fi
+
+          if [ "$control_on_skill_usage" != true ] || [ "$control_on_skill_trigger" != true ] || [ "$control_on_plugin_usage" != true ]; then
+            echo "::error::Controlled metadata-on probe did not include the expected skill/plugin routing guidance."
+            exit 8
+          fi
+
+          echo
+          echo "Controlled metadata causal check: PASS"
+          grep -E '### How to use (skills|plugins)|task clearly matches a skill' "$control_on_probe" | head -n 20
+
+      - name: Configure live evaluator model discovery
+        if: ${{ inputs.preflight_only != true }}
+        run: |
+          set -euo pipefail
+          codex_wrapper="$RUNNER_TEMP/codex-eval-with-model-discovery"
+
+          cat >"$codex_wrapper" <<'EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          if [ "${1:-}" = "exec" ]; then
+            exec codex -c 'features.api_key_model_discovery=true' "$@"
+          fi
+          exec codex "$@"
+          EOF
+
+          chmod +x "$codex_wrapper"
+          echo "CODEX_BIN=$codex_wrapper" >> "$GITHUB_ENV"
+          echo "Live evaluator API-key model discovery: ENABLED"
+          "$codex_wrapper" --version
+          "$codex_wrapper" plugin list
 
       - name: Run autonomous discovery suite
+        if: ${{ inputs.preflight_only != true }}
         env:
           CASE_ID: ${{ inputs.case_id }}
         run: |
@@ -87,5 +219,9 @@ jobs:
           name: codex-autonomous-discovery-results
           path: |
             ${{ runner.temp }}/codex-autonomous-discovery-results.json
-            ${{ runner.temp }}/codex-prompt-probe.txt
+            ${{ runner.temp }}/codex-prompt-probe-fallback.txt
+            ${{ runner.temp }}/codex-prompt-probe-api-key-discovery.txt
+            ${{ runner.temp }}/codex-prompt-probe-control-off.txt
+            ${{ runner.temp }}/codex-prompt-probe-control-on.txt
+            ${{ runner.temp }}/codex-model-metadata-preflight.txt
           if-no-files-found: warn
