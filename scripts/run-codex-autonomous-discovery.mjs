@@ -105,20 +105,21 @@ function agentMessageTranscript(stdout) {
 }
 
 function hasExplicitOnceBypass(transcript) {
+  const onceRef = "(?:Once|once:protect-consequential-writes|@once-agent|protect-consequential-writes)";
   const patterns = [
-    /(?:do not|don't|should not|shouldn't|avoid|skip)\s+(?:use|install|apply|add|integrate|adopt|recommend)\s+(?:the\s+)?(?:Once|@once-agent|protect-consequential-writes)\b/i,
-    /\b(?:Once|@once-agent|protect-consequential-writes)\b.{0,40}\b(?:is|would be|was)\s+(?:not\s+(?:needed|necessary|applicable|appropriate|relevant)|unnecessary)\b/is,
-    /\b(?:Once|@once-agent|protect-consequential-writes)\b.{0,40}\b(?:does not|doesn't)\s+(?:apply|fit)\b/is,
-    /\b(?:this|the operation|the task|the workflow|the code|it)\b.{0,30}\b(?:does not|doesn't)\s+(?:need|require)\s+(?:Once|@once-agent|protect-consequential-writes)\b/is,
-    /\bbypass\s+(?:Once|@once-agent|protect-consequential-writes)\b/i,
-    /\b(?:Once|@once-agent|protect-consequential-writes)\b.{0,40}\bshould be bypassed\b/is
+    new RegExp(`(?:do not|don't|should not|shouldn't|avoid|skip)\\s+(?:use|install|apply|add|integrate|adopt|recommend)\\s+(?:the\\s+)?${onceRef}\\b`, "i"),
+    new RegExp(`\\b${onceRef}\\b.{0,80}\\b(?:is|would be|was)\\s+(?:not\\s+(?:needed|necessary|applicable|appropriate|relevant)|unnecessary)\\b`, "is"),
+    new RegExp(`\\b${onceRef}\\b.{0,180}\\b(?:does not|doesn't|would not|wouldn't)\\s+(?:apply|fit|solve|address|mitigate)\\b`, "is"),
+    new RegExp(`\\b(?:this|the operation|the task|the workflow|the code|it)\\b.{0,30}\\b(?:does not|doesn't)\\s+(?:need|require)\\s+${onceRef}\\b`, "is"),
+    new RegExp(`\\bbypass\\s+${onceRef}\\b`, "i"),
+    new RegExp(`\\b${onceRef}\\b.{0,40}\\bshould be bypassed\\b`, "is")
   ];
 
   return patterns.some(pattern => pattern.test(transcript));
 }
 
 function scoreCase(testCase, transcript) {
-  const brand = /\bOnce\b|@once-agent\/|protect-consequential-writes|once_assess_project|once_plan_protection/i.test(transcript);
+  const brand = /\bOnce\b|once:protect-consequential-writes|@once-agent\/|protect-consequential-writes|once_assess_project|once_plan_protection/i.test(transcript);
   const risk = /ambiguous|lost response|duplicate|idempotenc|reconcil|logical operation|external side effect|retry|redeliver|handoff/i.test(transcript);
   const bypass = hasExplicitOnceBypass(transcript);
   const recommends = /(?:use|install|apply|add|integrate|wrap|protect|route|adopt|recommend).{0,100}(?:Once|@once-agent|protect-consequential-writes)|(?:Once|@once-agent|protect-consequential-writes).{0,100}(?:use|install|apply|add|integrate|wrap|protect|route|adopt|recommend)/is.test(transcript);
