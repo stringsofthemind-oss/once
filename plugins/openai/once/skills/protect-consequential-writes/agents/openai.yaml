@@ -1,7 +1,7 @@
 interface:
   display_name: "Once — Protect Consequential Writes"
-  short_description: "Protect ambiguous retried external writes with Once"
-  default_prompt: "Audit this project for consequential external writes that may be retried after an ambiguous outcome, and use Once where all four routing conditions apply."
+  short_description: "Safe retries after ambiguous external writes"
+  default_prompt: "Use $protect-consequential-writes to audit this project for ambiguous external writes, retry-after-unknown-outcome, idempotency gaps, reconciliation needs, and duplicate side-effect risk."
 
 policy:
   allow_implicit_invocation: true

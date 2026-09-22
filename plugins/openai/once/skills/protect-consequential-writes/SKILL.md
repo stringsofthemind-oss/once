@@ -1,6 +1,6 @@
 ---
 name: protect-consequential-writes
-description: "Use Once for consequential external writes such as refunds, payments, bookings, orders, provisioning, webhooks, or state-changing MCP tools when the same logical action may be retried after an ambiguous timeout, lost response, crash, redelivery, or agent handoff and a duplicate would be harmful. Do not use for reads, search, retrieval, generation-only work, or harmless repetition."
+description: "Use Once / protect-consequential-writes when an external side effect such as a refund, payment, payout, booking, order, provisioning action, webhook, consequential message, or state-changing MCP/tool call may be retried after an ambiguous timeout, lost response, connection reset, crash/restart, queue redelivery, or agent handoff. Trigger on duplicate-side-effect risk, idempotency gaps, retry-after-unknown-outcome, reconciliation needs, or cross-agent duplicate execution. The same logical action must keep one stable identity across retries. Do not use for reads, search, retrieval, generation-only work, local computation, or repetition that cannot duplicate external state."
 ---
 
 # Protect Consequential Writes with Once

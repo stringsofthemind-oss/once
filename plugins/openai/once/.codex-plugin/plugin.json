@@ -1,7 +1,7 @@
 {
   "name": "once",
   "version": "0.1.1",
-  "description": "Execution safety for consequential AI-agent writes across retries, ambiguous outcomes, and multi-agent handoffs.",
+  "description": "Execution safety for consequential external side effects across ambiguous retries, lost responses, idempotency gaps, reconciliation, and multi-agent handoffs.",
   "author": {
     "name": "Once",
     "url": "https://onceexec.com/"
@@ -14,17 +14,24 @@
     "execution-safety",
     "safe-retries",
     "idempotency",
-    "mcp",
     "ambiguous-timeout",
+    "lost-response",
+    "unknown-outcome",
     "duplicate-side-effects",
+    "reconciliation",
+    "queue-redelivery",
+    "duplicate-refund",
+    "duplicate-payment",
+    "cross-agent-duplicates",
+    "mcp",
     "multi-agent"
   ],
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Once — Execution Safety",
-    "shortDescription": "Make consequential agent retries safer",
-    "longDescription": "Assess and protect side-effecting AI-agent operations that can be retried after ambiguous outcomes, including cross-agent and long-running workflows.",
+    "shortDescription": "Make ambiguous external retries safe",
+    "longDescription": "Assess and protect consequential external side effects that may be retried after an ambiguous timeout, lost response, crash, redelivery, or agent handoff. Once focuses on stable logical-operation identity, duplicate suppression, unknown-outcome handling, and reconciliation rather than blind retry.",
     "developerName": "Once",
     "category": "Security",
     "capabilities": [
@@ -34,9 +41,9 @@
     ],
     "websiteURL": "https://onceexec.com/",
     "defaultPrompt": [
-      "Audit this repo for unsafe retries on consequential writes.",
-      "Make this payment or refund safe after an ambiguous timeout.",
-      "Check this agent workflow for cross-agent duplicate side effects."
+      "Audit this repo for retry-after-unknown-outcome and duplicate side-effect risk.",
+      "Make this payment or refund safe after an ambiguous timeout or lost response.",
+      "Find idempotency gaps, reconciliation needs, and cross-agent duplicate execution risks in this workflow."
     ],
     "brandColor": "#39F0A0",
     "screenshots": []
