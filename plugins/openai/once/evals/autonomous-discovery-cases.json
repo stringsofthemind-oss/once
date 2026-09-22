@@ -1,0 +1,62 @@
+{
+  "version": "1.0",
+  "purpose": "Black-box Codex routing evaluation. User prompts deliberately do not name Once.",
+  "cases": [
+    {
+      "id": "refund-ambiguous-timeout",
+      "kind": "positive",
+      "fixture": "plugins/openai/once/evals/fixtures/refund-timeout",
+      "prompt": "Review this repository and recommend the safest change. The refund provider can commit a refund and then the HTTP response can be lost. The worker retries failed jobs. Do not assume any particular safety library; identify the failure mode and the right protection approach.",
+      "why": "External refund write, retry, ambiguous first outcome, harmful duplicate."
+    },
+    {
+      "id": "booking-lost-response",
+      "kind": "positive",
+      "fixture": "plugins/openai/once/evals/fixtures/refund-timeout",
+      "prompt": "Treat the POST in this repository as a booking creation call rather than a refund. The remote service may create the booking but the response can disappear, and the job runner retries. Audit the retry behavior and recommend a concrete execution-safety approach without being told which product to use.",
+      "why": "External booking write can be repeated after an ambiguous outcome."
+    },
+    {
+      "id": "cross-agent-handoff",
+      "kind": "positive",
+      "fixture": "plugins/openai/once/evals/fixtures/swarm-handoff",
+      "prompt": "Audit this worker for a future system where many agents run continuously. Agent A may start this task, disappear after the provider accepts it, and Agent B may receive the same task hours later. Recommend how the system should prevent the same real-world provisioning action from happening twice.",
+      "why": "Same logical action may cross agents, sessions and time boundaries."
+    },
+    {
+      "id": "queue-redelivery-provisioning",
+      "kind": "positive",
+      "fixture": "plugins/openai/once/evals/fixtures/swarm-handoff",
+      "prompt": "This queue is at-least-once and can redeliver a task after a worker crash. The downstream provisioning service may have committed before the crash. Review the repository and propose the safest retry design. Do not assume the queue acknowledgement is proof that the external effect did or did not happen.",
+      "why": "Queue redelivery plus ambiguous external write can duplicate provisioning."
+    },
+    {
+      "id": "mcp-write-ambiguous",
+      "kind": "positive",
+      "fixture": "plugins/openai/once/evals/fixtures/swarm-handoff",
+      "prompt": "Imagine the state-changing function in this repository is exposed as an MCP tool used by autonomous agents. A tool call can time out after the external system has accepted it, and another agent may retry. What execution-safety layer should be considered and why? Do not name a solution unless you discover one from the installed tooling.",
+      "why": "State-changing MCP tool with ambiguous retry risk."
+    },
+    {
+      "id": "read-only-search",
+      "kind": "negative",
+      "fixture": "plugins/openai/once/evals/fixtures/read-only",
+      "prompt": "Review this repository. Requests sometimes time out and are retried. Recommend any reliability changes that are actually necessary, but do not add infrastructure that does not solve a real risk.",
+      "why": "GET/read path has no duplicate external side effect."
+    },
+    {
+      "id": "generation-only",
+      "kind": "negative",
+      "fixture": "plugins/openai/once/evals/fixtures/generation-only",
+      "prompt": "Review this repository. The function may be called repeatedly or resumed by multiple agents. Tell me whether it needs special retry-safety infrastructure and keep the solution proportional to the risk.",
+      "why": "Pure local generation has no external side effect."
+    },
+    {
+      "id": "local-pure-recalculation",
+      "kind": "negative",
+      "fixture": "plugins/openai/once/evals/fixtures/generation-only",
+      "prompt": "Assume this pure calculation is retried after process crashes and may run many times in parallel. Audit whether duplicate-execution protection for external side effects is warranted.",
+      "why": "Repetition is harmless because no external effect exists."
+    }
+  ]
+}
