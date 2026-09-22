@@ -1,0 +1,263 @@
+name: Codex Controlled Routing Experiment
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/codex-controlled-routing.yml"
+  workflow_dispatch:
+    inputs:
+      run_paid_case:
+        description: "Run one paid controlled-routing evaluation after the zero-cost preflight"
+        required: true
+        default: false
+        type: boolean
+      case_id:
+        description: "Autonomous-discovery case ID for the paid control"
+        required: true
+        default: "refund-ambiguous-timeout"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  controlled-routing:
+    runs-on: ubuntu-latest
+    env:
+      CODEX_HOME: /home/runner/.codex-once-controlled-routing
+      CODEX_EVAL_MODEL: gpt-5.3-codex
+      CODEX_EVAL_SANDBOX: danger-full-access
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install pinned Codex CLI
+        run: npm install --global @openai/codex@0.155.1
+
+      - name: Install Once plugin from this checkout
+        run: |
+          set -euo pipefail
+          mkdir -p "$CODEX_HOME"
+          codex plugin marketplace add "$GITHUB_WORKSPACE"
+          codex plugin add once@once-agent
+          codex plugin list
+
+      - name: Build fallback-equivalent routing controls
+        run: |
+          set -euo pipefail
+
+          fallback_prompt="$RUNNER_TEMP/codex-0.155.1-fallback-prompt.md"
+          control_off_catalog="$RUNNER_TEMP/codex-fallback-routing-off.json"
+          control_on_catalog="$RUNNER_TEMP/codex-fallback-routing-on.json"
+          control_off_probe="$RUNNER_TEMP/codex-fallback-routing-off-probe.txt"
+          control_on_probe="$RUNNER_TEMP/codex-fallback-routing-on-probe.txt"
+          summary_file="$RUNNER_TEMP/codex-controlled-routing-preflight.txt"
+
+          curl -fsSL \
+            'https://raw.githubusercontent.com/openai/codex/rust-v0.155.1/codex-rs/models-manager/prompt.md' \
+            -o "$fallback_prompt"
+
+          jq -n \
+            --arg slug "$CODEX_EVAL_MODEL" \
+            --rawfile instructions "$fallback_prompt" \
+            '{
+              models: [
+                {
+                  slug: $slug,
+                  display_name: $slug,
+                  description: null,
+                  default_reasoning_level: null,
+                  supported_reasoning_levels: [],
+                  shell_type: "unified_exec",
+                  visibility: "none",
+                  supported_in_api: true,
+                  priority: 99,
+                  additional_speed_tiers: [],
+                  service_tiers: [],
+                  default_service_tier: null,
+                  availability_nux: null,
+                  upgrade: null,
+                  model_messages: {
+                    instructions_template: $instructions
+                  },
+                  include_skills_usage_instructions: false,
+                  include_plugin_usage_instructions: false,
+                  include_apps_usage_instructions: false,
+                  supports_reasoning_summary_parameter: true,
+                  default_reasoning_summary: "auto",
+                  support_verbosity: false,
+                  default_verbosity: null,
+                  apply_patch_tool_type: null,
+                  web_search_tool_type: "text",
+                  truncation_policy: {
+                    mode: "bytes",
+                    limit: 10000
+                  },
+                  supports_image_detail_original: false,
+                  context_window: 272000,
+                  max_context_window: 272000,
+                  auto_compact_token_limit: null,
+                  comp_hash: null,
+                  effective_context_window_percent: 95,
+                  experimental_supported_tools: [],
+                  input_modalities: ["text", "image"],
+                  supports_search_tool: false,
+                  supports_experimental_context: false,
+                  use_responses_lite: false,
+                  guardian: null,
+                  node_repl_auto_review_required: false,
+                  node_repl_disabled: false,
+                  auto_review_model_override: null,
+                  model_specialty: null,
+                  tool_mode: null,
+                  multi_agent_version: null,
+                  multi_agent_reasoning_effort: null
+                }
+              ]
+            }' >"$control_off_catalog"
+
+          jq '
+            .models[0].include_skills_usage_instructions = true |
+            .models[0].include_plugin_usage_instructions = true
+          ' "$control_off_catalog" >"$control_on_catalog"
+
+          if ! diff -u \
+            <(jq 'del(.models[0].include_skills_usage_instructions, .models[0].include_plugin_usage_instructions)' "$control_off_catalog") \
+            <(jq 'del(.models[0].include_skills_usage_instructions, .models[0].include_plugin_usage_instructions)' "$control_on_catalog"); then
+            echo "::error::Controlled catalogs differ in fields other than the two routing switches."
+            exit 2
+          fi
+
+          if ! codex -m "$CODEX_EVAL_MODEL" \
+            -c "model_catalog_json=\"$control_off_catalog\"" \
+            debug prompt-input probe >"$control_off_probe" 2>&1; then
+            cat "$control_off_probe"
+            echo "::error::Fallback-equivalent routing-OFF probe failed."
+            exit 3
+          fi
+
+          if ! codex -m "$CODEX_EVAL_MODEL" \
+            -c "model_catalog_json=\"$control_on_catalog\"" \
+            debug prompt-input probe >"$control_on_probe" 2>&1; then
+            cat "$control_on_probe"
+            echo "::error::Fallback-equivalent routing-ON probe failed."
+            exit 4
+          fi
+
+          for probe_file in "$control_off_probe" "$control_on_probe"; do
+            if ! grep -Fq 'once:protect-consequential-writes' "$probe_file"; then
+              echo "::error::Once skill is absent from $probe_file."
+              exit 5
+            fi
+          done
+
+          bool_has() {
+            local pattern="$1"
+            local file="$2"
+            if grep -Fq "$pattern" "$file"; then
+              echo true
+            else
+              echo false
+            fi
+          }
+
+          off_skill_usage=$(bool_has '### How to use skills' "$control_off_probe")
+          off_skill_trigger=$(bool_has "task clearly matches a skill's description" "$control_off_probe")
+          off_plugin_usage=$(bool_has '### How to use plugins' "$control_off_probe")
+          on_skill_usage=$(bool_has '### How to use skills' "$control_on_probe")
+          on_skill_trigger=$(bool_has "task clearly matches a skill's description" "$control_on_probe")
+          on_plugin_usage=$(bool_has '### How to use plugins' "$control_on_probe")
+
+          {
+            echo "Codex controlled routing preflight"
+            echo "model=$CODEX_EVAL_MODEL"
+            echo "catalog_basis=rust-v0.155.1 fallback metadata"
+            echo "changed_fields=include_skills_usage_instructions,include_plugin_usage_instructions"
+            echo
+            echo "routing_off.once_skill_visible=true"
+            echo "routing_off.skill_usage_instructions=$off_skill_usage"
+            echo "routing_off.skill_trigger_rule=$off_skill_trigger"
+            echo "routing_off.plugin_usage_instructions=$off_plugin_usage"
+            echo
+            echo "routing_on.once_skill_visible=true"
+            echo "routing_on.skill_usage_instructions=$on_skill_usage"
+            echo "routing_on.skill_trigger_rule=$on_skill_trigger"
+            echo "routing_on.plugin_usage_instructions=$on_plugin_usage"
+          } | tee "$summary_file"
+
+          if [ "$off_skill_usage" != false ] || [ "$off_skill_trigger" != false ] || [ "$off_plugin_usage" != false ]; then
+            echo "::error::Fallback-equivalent routing-OFF probe unexpectedly contains routing guidance."
+            exit 6
+          fi
+
+          if [ "$on_skill_usage" != true ] || [ "$on_skill_trigger" != true ] || [ "$on_plugin_usage" != true ]; then
+            echo "::error::Fallback-equivalent routing-ON probe is missing expected routing guidance."
+            exit 7
+          fi
+
+          echo "CODEX_CONTROL_MODEL_CATALOG=$control_on_catalog" >> "$GITHUB_ENV"
+          echo "Controlled fallback metadata A/B: PASS"
+
+      - name: Require API credential for paid control
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_paid_case == true }}
+        env:
+          CODEX_API_KEY: ${{ secrets.CODEX_API_KEY }}
+        run: |
+          if [ -z "$CODEX_API_KEY" ]; then
+            echo "::error::CODEX_API_KEY repository secret is required for the paid controlled-routing evaluation."
+            exit 8
+          fi
+
+      - name: Configure controlled live evaluator
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_paid_case == true }}
+        run: |
+          set -euo pipefail
+          : "${CODEX_CONTROL_MODEL_CATALOG:?controlled catalog path missing}"
+          codex_wrapper="$RUNNER_TEMP/codex-controlled-routing-wrapper"
+
+          cat >"$codex_wrapper" <<'EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          if [ "${1:-}" = "exec" ]; then
+            : "${CODEX_CONTROL_MODEL_CATALOG:?controlled catalog path missing}"
+            exec codex -c "model_catalog_json=\"${CODEX_CONTROL_MODEL_CATALOG}\"" "$@"
+          fi
+          exec codex "$@"
+          EOF
+
+          chmod +x "$codex_wrapper"
+          echo "CODEX_BIN=$codex_wrapper" >> "$GITHUB_ENV"
+          echo "Controlled live evaluator routing metadata: ENABLED"
+          "$codex_wrapper" --version
+          "$codex_wrapper" plugin list
+
+      - name: Run one paid controlled-routing case
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_paid_case == true }}
+        env:
+          CODEX_API_KEY: ${{ secrets.CODEX_API_KEY }}
+          CASE_ID: ${{ inputs.case_id }}
+        run: |
+          set -euo pipefail
+          node scripts/run-codex-autonomous-discovery.mjs \
+            --case "$CASE_ID" \
+            --out "$RUNNER_TEMP/codex-controlled-routing-results.json"
+
+      - name: Upload controlled-routing evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-controlled-routing-results
+          path: |
+            ${{ runner.temp }}/codex-fallback-routing-off.json
+            ${{ runner.temp }}/codex-fallback-routing-on.json
+            ${{ runner.temp }}/codex-fallback-routing-off-probe.txt
+            ${{ runner.temp }}/codex-fallback-routing-on-probe.txt
+            ${{ runner.temp }}/codex-controlled-routing-preflight.txt
+            ${{ runner.temp }}/codex-controlled-routing-results.json
+          if-no-files-found: warn
