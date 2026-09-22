@@ -18,7 +18,7 @@ The marketplace entry is repository-local at `.agents/plugins/marketplace.json`.
 ## What installs
 
 - `skills/protect-consequential-writes/` — teaches Codex when Once applies, when it does not, and how to plan/apply protection safely.
-- `.mcp.json` — starts the local `@once-agent/mcp@0.1.2` server through stdio.
+- `.mcp.json` — starts the local `@once-agent/mcp@0.1.3` server through stdio.
 - `scripts/once-mcp.cjs` — cross-platform pinned launcher for the MCP package.
 - `evals/routing-cases.json` — five positive and three negative discovery cases for routing evaluation.
 

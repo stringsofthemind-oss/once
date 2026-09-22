@@ -3,8 +3,8 @@ const { spawn } = require("node:child_process");
 const isWindows = process.platform === "win32";
 const command = isWindows ? (process.env.ComSpec || "cmd.exe") : "npx";
 const args = isWindows
-  ? ["/d", "/s", "/c", "call npx.cmd -y @once-agent/mcp@0.1.2"]
-  : ["-y", "@once-agent/mcp@0.1.2"];
+  ? ["/d", "/s", "/c", "call npx.cmd -y @once-agent/mcp@0.1.3"]
+  : ["-y", "@once-agent/mcp@0.1.3"];
 
 const child = spawn(command, args, {
   stdio: "inherit",

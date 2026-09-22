@@ -62,6 +62,51 @@ function readableTranscript(stdout, stderr) {
   return strings.join("\n");
 }
 
+function classifyInfrastructureBlock(transcript) {
+  const text = String(transcript ?? "");
+
+  const cases = [
+    {
+      code: "BLOCKED_API_CREDITS",
+      patterns: [
+        /no credits remaining/i,
+        /add credits to continue using the api/i,
+        /insufficient[_\s-]*quota/i,
+        /exceeded your current quota/i
+      ]
+    },
+    {
+      code: "BLOCKED_API_RATE_LIMIT",
+      patterns: [
+        /rate limit exceeded/i,
+        /tokens per min \(TPM\)/i,
+        /too many requests/i
+      ]
+    },
+    {
+      code: "BLOCKED_API_AUTH",
+      patterns: [
+        /incorrect api key/i,
+        /invalid api key/i,
+        /authentication (?:failed|error)/i,
+        /\bunauthorized\b/i
+      ]
+    },
+    {
+      code: "BLOCKED_API_CONNECTIVITY",
+      patterns: [
+        /connection (?:error|failed|reset)/i,
+        /network (?:error|unreachable)/i,
+        /timed? out connecting/i
+      ]
+    }
+  ];
+
+  return cases.find(item =>
+    item.patterns.some(pattern => pattern.test(text))
+  ) ?? null;
+}
+
 function agentMessageTranscript(stdout) {
   const messages = [];
 
@@ -216,10 +261,24 @@ for (const testCase of selected) {
   process.stdout.write(`Running ${testCase.id}... `);
   const run = runCodex(args, { cwd: fixture, input: prompt });
   const transcript = readableTranscript(run.stdout, run.stderr);
+  const infrastructureBlock =
+    run.status !== 0 ? classifyInfrastructureBlock(transcript) : null;
   const scoredTranscript = agentMessageTranscript(run.stdout) || transcript;
-  const scoring = scoreCase(testCase, scoredTranscript);
-  const pass = run.status === 0 && scoring.pass;
-  console.log(pass ? "PASS" : "FAIL");
+  const scoring = infrastructureBlock
+    ? null
+    : scoreCase(testCase, scoredTranscript);
+  const pass = infrastructureBlock
+    ? null
+    : run.status === 0 && scoring.pass;
+  const evaluationStatus = infrastructureBlock ? "blocked" : "evaluated";
+
+  console.log(
+    infrastructureBlock
+      ? infrastructureBlock.code
+      : pass
+        ? "PASS"
+        : "FAIL"
+  );
 
   results.push({
     id: testCase.id,
@@ -230,6 +289,8 @@ for (const testCase of selected) {
     exitCode: run.status,
     signal: run.signal ?? null,
     pass,
+    evaluationStatus,
+    blockedReason: infrastructureBlock?.code ?? null,
     scoring,
     scoredTranscript,
     transcript,
@@ -243,16 +304,27 @@ for (const testCase of selected) {
   });
 }
 
-const positive = results.filter(result => result.kind === "positive");
-const negative = results.filter(result => result.kind === "negative");
+const evaluated = results.filter(
+  result => result.evaluationStatus === "evaluated"
+);
+const blocked = results.filter(
+  result => result.evaluationStatus === "blocked"
+);
+const positive = evaluated.filter(result => result.kind === "positive");
+const negative = evaluated.filter(result => result.kind === "negative");
+
 const summary = {
   total: results.length,
-  passed: results.filter(result => result.pass).length,
-  failed: results.filter(result => !result.pass).length,
+  evaluated: evaluated.length,
+  blocked: blocked.length,
+  passed: evaluated.filter(result => result.pass).length,
+  failed: evaluated.filter(result => !result.pass).length,
   positivePassed: positive.filter(result => result.pass).length,
-  positiveTotal: positive.length,
+  positiveEvaluated: positive.length,
+  positiveTotal: results.filter(result => result.kind === "positive").length,
   negativePassed: negative.filter(result => result.pass).length,
-  negativeTotal: negative.length
+  negativeEvaluated: negative.length,
+  negativeTotal: results.filter(result => result.kind === "negative").length
 };
 
 const report = {
@@ -261,7 +333,7 @@ const report = {
   model: model || "Codex default",
   pluginList: pluginList.trim(),
   suiteVersion: suite.version,
-  scoringNote: "Heuristic routing score only. Scoring uses agent-authored messages, not tool output or skill-file contents; bypass detection only matches explicit statements that Once is unnecessary/inapplicable or should not be used. Full raw transcripts are retained for manual review. A PASS is not a general reliability claim.",
+  scoringNote: "Heuristic routing score only. Infrastructure-blocked cases are not graded and use pass=null. Scoring uses agent-authored messages, not tool output or skill-file contents; bypass detection only matches explicit statements that Once is unnecessary/inapplicable or should not be used. Full raw transcripts are retained for manual review. A PASS is not a general reliability claim.",
   summary,
   results
 };
@@ -269,9 +341,40 @@ const report = {
 mkdirSync(dirname(outPath), { recursive: true });
 writeFileSync(outPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
 
-console.log(`\nCodex autonomous discovery: ${summary.passed}/${summary.total} passed`);
-console.log(`Positive: ${summary.positivePassed}/${summary.positiveTotal}`);
-console.log(`Negative: ${summary.negativePassed}/${summary.negativeTotal}`);
+if (summary.blocked > 0) {
+  const blockReasons = [
+    ...new Set(blocked.map(result => result.blockedReason).filter(Boolean))
+  ];
+
+  console.log(
+    `\nCodex autonomous discovery: BLOCKED (${summary.blocked}/${summary.total} cases not evaluated)`
+  );
+  console.log(
+    `Block reason(s): ${blockReasons.join(", ") || "UNKNOWN_INFRASTRUCTURE_BLOCK"}`
+  );
+  console.log(`Evaluated: ${summary.evaluated}/${summary.total}`);
+
+  if (summary.evaluated > 0) {
+    console.log(
+      `Passed among evaluated: ${summary.passed}/${summary.evaluated}`
+    );
+  }
+} else {
+  console.log(
+    `\nCodex autonomous discovery: ${summary.passed}/${summary.total} passed`
+  );
+}
+
+console.log(
+  `Positive evaluated: ${summary.positivePassed}/${summary.positiveEvaluated}`
+);
+console.log(
+  `Negative evaluated: ${summary.negativePassed}/${summary.negativeEvaluated}`
+);
 console.log(`Results: ${outPath}`);
 
-if (summary.failed > 0) process.exitCode = 1;
+if (summary.failed > 0) {
+  process.exitCode = 1;
+} else if (summary.blocked > 0) {
+  process.exitCode = 3;
+}

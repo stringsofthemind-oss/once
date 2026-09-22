@@ -75,7 +75,7 @@ const onceServer = mcp.mcpServers?.once;
 assert(onceServer, "MCP config must define mcpServers.once");
 assert(onceServer.command === "node", "Once MCP launcher must use node");
 assert(Array.isArray(onceServer.args) && onceServer.args[0] === "./scripts/once-mcp.cjs", "Once MCP launcher path is incorrect");
-assert(launcher.includes("@once-agent/mcp@0.1.2"), "MCP package must be pinned to @once-agent/mcp@0.1.2");
+assert(launcher.includes("@once-agent/mcp@0.1.3"), "MCP package must be pinned to @once-agent/mcp@0.1.3");
 
 assert(skill.startsWith("---\n"), "Skill must start with YAML frontmatter");
 assert(/\nname:\s*protect-consequential-writes\n/.test(skill), "Skill frontmatter name is incorrect");
@@ -107,5 +107,5 @@ assert(!combined.includes("[TODO:"), "Plugin package contains unresolved TODO pl
 console.log("OPENAI CODEX PLUGIN: PASS");
 console.log(`Plugin: ${manifest.interface.displayName} v${manifest.version}`);
 console.log(`Routing evals: ${evals.positive.length} positive / ${evals.negative.length} negative`);
-console.log(`MCP: @once-agent/mcp@0.1.2`);
+console.log(`MCP: @once-agent/mcp@0.1.3`);
 console.log(`SDK fallback: @once-agent/sdk@0.1.5`);

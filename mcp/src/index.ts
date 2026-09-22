@@ -10,13 +10,14 @@ import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import * as z from "zod/v4";
 
 const SERVER_NAME = "once-agent";
-const SERVER_VERSION = "0.1.2";
+const SERVER_VERSION = "0.1.3";
 const MAX_OUTPUT_CHARS = 250_000;
 const DEFAULT_TIMEOUT_MS = 120_000;
 
 const require = createRequire(import.meta.url);
 const sdkEntry = require.resolve("@once-agent/sdk");
-const onceCliPath = resolve(dirname(sdkEntry), "cli.js");
+const sdkPackageRoot = resolve(dirname(sdkEntry), "..");
+const onceCliPath = resolve(sdkPackageRoot, "dist", "cli.js");
 
 type OnceRun = {
   command: string[];

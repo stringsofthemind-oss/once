@@ -1,6 +1,6 @@
 {
   "name": "once",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Execution safety for consequential AI-agent writes across retries, ambiguous outcomes, and multi-agent handoffs.",
   "author": {
     "name": "Once",

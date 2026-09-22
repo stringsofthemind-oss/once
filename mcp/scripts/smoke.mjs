@@ -34,6 +34,20 @@ try {
     }
   }
 
+  const assessment = await client.callTool({
+    name: "once_assess_project",
+    arguments: {
+      projectPath: process.cwd(),
+      includeEstimates: false
+    }
+  });
+
+  if (assessment.isError) {
+    throw new Error(
+      `once_assess_project returned isError=true: ${JSON.stringify(assessment.content)}`
+    );
+  }
+
   const risk = await client.callTool({
     name: "once_explain_risk",
     arguments: {
