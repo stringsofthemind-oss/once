@@ -46,6 +46,18 @@ jobs:
       - name: Install pinned Codex CLI
         run: npm install --global @openai/codex@0.155.1
 
+      - name: Prepare Codex home and validate local config
+        run: |
+          set -euo pipefail
+          mkdir -p "$CODEX_HOME"
+          codex \
+            --sandbox danger-full-access \
+            -c 'shell_environment_policy.inherit="core"' \
+            -c 'shell_environment_policy.ignore_default_excludes=false' \
+            -c 'shell_environment_policy.exclude=["CODEX_API_KEY","OPENAI_API_KEY","GH_TOKEN","GITHUB_TOKEN"]' \
+            debug prompt-input probe >/dev/null
+          echo "Codex local config preflight passed."
+
       - name: Verify paid credential without exposing it
         env:
           CODEX_API_KEY: ${{ secrets.CODEX_API_KEY }}
@@ -103,7 +115,7 @@ jobs:
 
           Hard boundaries:
           - Do not merge, push, publish packages, deploy, release, purchase anything, rotate credentials, or alter external infrastructure.
-          - Do not inspect environment variables, credentials, secret stores, git credentials, or authentication files.
+          - Do not inspect environment variables, credentials, secret stores, git credentials, authentication files, or /proc process environments.
           - Do not make network requests; work from this checkout and locally available tooling only.
           - Do not weaken safety checks to make tests pass.
           - Do not change generated/evidence history merely to make the project look better.
@@ -123,11 +135,13 @@ jobs:
           timeout 1200s codex exec \
             --ephemeral \
             --json \
-            --sandbox workspace-write \
+            --sandbox danger-full-access \
             --skip-git-repo-check \
             --model "$ASTRA_MODEL" \
             -c 'model_reasoning_effort="low"' \
-            -c 'sandbox_workspace_write.network_access=false' \
+            -c 'shell_environment_policy.inherit="core"' \
+            -c 'shell_environment_policy.ignore_default_excludes=false' \
+            -c 'shell_environment_policy.exclude=["CODEX_API_KEY","OPENAI_API_KEY","GH_TOKEN","GITHUB_TOKEN"]' \
             --output-last-message "$final" \
             "$(cat "$mission")" \
             >"$events" 2>&1
