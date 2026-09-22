@@ -51,12 +51,18 @@ jobs:
           codex plugin add once@once-agent
           codex plugin list
 
-      - name: Compare fallback and API-key model metadata prompts
+      - name: Compare Codex model metadata routing prompts
         run: |
           set -euo pipefail
+
           fallback_probe="$RUNNER_TEMP/codex-prompt-probe-fallback.txt"
           discovery_probe="$RUNNER_TEMP/codex-prompt-probe-api-key-discovery.txt"
+          control_off_probe="$RUNNER_TEMP/codex-prompt-probe-control-off.txt"
+          control_on_probe="$RUNNER_TEMP/codex-prompt-probe-control-on.txt"
           summary_file="$RUNNER_TEMP/codex-model-metadata-preflight.txt"
+          pinned_catalog="$RUNNER_TEMP/codex-0.155.1-models.json"
+          control_off_catalog="$RUNNER_TEMP/codex-control-off-models.json"
+          control_on_catalog="$RUNNER_TEMP/codex-control-on-models.json"
 
           echo "Installed Once skill payloads:"
           find "$CODEX_HOME/plugins/cache/once-agent/once" -path '*/skills/*/SKILL.md' -type f -print || true
@@ -73,31 +79,65 @@ jobs:
             exit 3
           fi
 
-          for probe_file in "$fallback_probe" "$discovery_probe"; do
+          curl -fsSL \
+            'https://raw.githubusercontent.com/openai/codex/rust-v0.155.1/codex-rs/models-manager/models.json' \
+            -o "$pinned_catalog"
+
+          jq --arg slug "$CODEX_EVAL_MODEL" \
+            '{models:[.models[0] | .slug=$slug | .display_name=$slug | .description="Controlled local metadata probe" | .include_skills_usage_instructions=false | .include_plugin_usage_instructions=false]}' \
+            "$pinned_catalog" >"$control_off_catalog"
+
+          jq --arg slug "$CODEX_EVAL_MODEL" \
+            '{models:[.models[0] | .slug=$slug | .display_name=$slug | .description="Controlled local metadata probe" | .include_skills_usage_instructions=true | .include_plugin_usage_instructions=true]}' \
+            "$pinned_catalog" >"$control_on_catalog"
+
+          if ! codex -m "$CODEX_EVAL_MODEL" -c "model_catalog_json=\"$control_off_catalog\"" debug prompt-input probe >"$control_off_probe" 2>&1; then
+            cat "$control_off_probe"
+            echo "::error::Controlled metadata-off prompt-input probe failed."
+            exit 4
+          fi
+
+          if ! codex -m "$CODEX_EVAL_MODEL" -c "model_catalog_json=\"$control_on_catalog\"" debug prompt-input probe >"$control_on_probe" 2>&1; then
+            cat "$control_on_probe"
+            echo "::error::Controlled metadata-on prompt-input probe failed."
+            exit 5
+          fi
+
+          for probe_file in "$fallback_probe" "$discovery_probe" "$control_off_probe" "$control_on_probe"; do
             if ! grep -Fq 'once:protect-consequential-writes' "$probe_file"; then
               echo "::error::Once plugin is installed but once:protect-consequential-writes is absent from $probe_file."
               grep -Ei 'once|plugin|skill' "$probe_file" | head -n 120 || true
-              exit 4
+              exit 6
             fi
           done
 
-          fallback_warning=false
-          discovery_warning=false
-          fallback_skill_usage=false
-          discovery_skill_usage=false
-          fallback_skill_trigger=false
-          discovery_skill_trigger=false
-          fallback_plugin_usage=false
-          discovery_plugin_usage=false
+          bool_has() {
+            local pattern="$1"
+            local file="$2"
+            if grep -Fq "$pattern" "$file"; then
+              echo true
+            else
+              echo false
+            fi
+          }
 
-          grep -Fq 'Defaulting to fallback metadata' "$fallback_probe" && fallback_warning=true || true
-          grep -Fq 'Defaulting to fallback metadata' "$discovery_probe" && discovery_warning=true || true
-          grep -Fq '### How to use skills' "$fallback_probe" && fallback_skill_usage=true || true
-          grep -Fq '### How to use skills' "$discovery_probe" && discovery_skill_usage=true || true
-          grep -Fq "task clearly matches a skill's description" "$fallback_probe" && fallback_skill_trigger=true || true
-          grep -Fq "task clearly matches a skill's description" "$discovery_probe" && discovery_skill_trigger=true || true
-          grep -Fq '### How to use plugins' "$fallback_probe" && fallback_plugin_usage=true || true
-          grep -Fq '### How to use plugins' "$discovery_probe" && discovery_plugin_usage=true || true
+          fallback_warning=$(bool_has 'Defaulting to fallback metadata' "$fallback_probe")
+          discovery_warning=$(bool_has 'Defaulting to fallback metadata' "$discovery_probe")
+
+          fallback_skill_usage=$(bool_has '### How to use skills' "$fallback_probe")
+          discovery_skill_usage=$(bool_has '### How to use skills' "$discovery_probe")
+          control_off_skill_usage=$(bool_has '### How to use skills' "$control_off_probe")
+          control_on_skill_usage=$(bool_has '### How to use skills' "$control_on_probe")
+
+          fallback_skill_trigger=$(bool_has "task clearly matches a skill's description" "$fallback_probe")
+          discovery_skill_trigger=$(bool_has "task clearly matches a skill's description" "$discovery_probe")
+          control_off_skill_trigger=$(bool_has "task clearly matches a skill's description" "$control_off_probe")
+          control_on_skill_trigger=$(bool_has "task clearly matches a skill's description" "$control_on_probe")
+
+          fallback_plugin_usage=$(bool_has '### How to use plugins' "$fallback_probe")
+          discovery_plugin_usage=$(bool_has '### How to use plugins' "$discovery_probe")
+          control_off_plugin_usage=$(bool_has '### How to use plugins' "$control_off_probe")
+          control_on_plugin_usage=$(bool_has '### How to use plugins' "$control_on_probe")
 
           {
             echo "Codex model metadata preflight"
@@ -114,15 +154,31 @@ jobs:
             echo "api_key_discovery.skill_usage_instructions=$discovery_skill_usage"
             echo "api_key_discovery.skill_trigger_rule=$discovery_skill_trigger"
             echo "api_key_discovery.plugin_usage_instructions=$discovery_plugin_usage"
+            echo
+            echo "control_off.once_skill_visible=true"
+            echo "control_off.skill_usage_instructions=$control_off_skill_usage"
+            echo "control_off.skill_trigger_rule=$control_off_skill_trigger"
+            echo "control_off.plugin_usage_instructions=$control_off_plugin_usage"
+            echo
+            echo "control_on.once_skill_visible=true"
+            echo "control_on.skill_usage_instructions=$control_on_skill_usage"
+            echo "control_on.skill_trigger_rule=$control_on_skill_trigger"
+            echo "control_on.plugin_usage_instructions=$control_on_plugin_usage"
           } | tee "$summary_file"
 
-          echo
-          echo "Once skill line with API-key model discovery enabled:"
-          grep -F 'once:protect-consequential-writes' "$discovery_probe" | head -n 5
+          if [ "$control_off_skill_usage" != false ] || [ "$control_off_skill_trigger" != false ] || [ "$control_off_plugin_usage" != false ]; then
+            echo "::error::Controlled metadata-off probe unexpectedly included skill/plugin routing guidance."
+            exit 7
+          fi
+
+          if [ "$control_on_skill_usage" != true ] || [ "$control_on_skill_trigger" != true ] || [ "$control_on_plugin_usage" != true ]; then
+            echo "::error::Controlled metadata-on probe did not include the expected skill/plugin routing guidance."
+            exit 8
+          fi
 
           echo
-          echo "Skill/plugin routing guidance with API-key model discovery enabled:"
-          grep -E '### How to use (skills|plugins)|task clearly matches a skill' "$discovery_probe" | head -n 20 || true
+          echo "Controlled metadata causal check: PASS"
+          grep -E '### How to use (skills|plugins)|task clearly matches a skill' "$control_on_probe" | head -n 20
 
       - name: Run autonomous discovery suite
         if: ${{ inputs.preflight_only != true }}
@@ -144,5 +200,7 @@ jobs:
             ${{ runner.temp }}/codex-autonomous-discovery-results.json
             ${{ runner.temp }}/codex-prompt-probe-fallback.txt
             ${{ runner.temp }}/codex-prompt-probe-api-key-discovery.txt
+            ${{ runner.temp }}/codex-prompt-probe-control-off.txt
+            ${{ runner.temp }}/codex-prompt-probe-control-on.txt
             ${{ runner.temp }}/codex-model-metadata-preflight.txt
           if-no-files-found: warn
