@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "once": {
+      "command": "node",
+      "args": ["./scripts/once-mcp.cjs"],
+      "cwd": ".",
+      "env_vars": ["ONCE_API_KEY"],
+      "startup_timeout_sec": 120,
+      "tool_timeout_sec": 300
+    }
+  }
+}

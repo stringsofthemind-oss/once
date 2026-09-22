@@ -1,0 +1,44 @@
+{
+  "name": "once",
+  "version": "0.1.0",
+  "description": "Execution safety for consequential AI-agent writes across retries, ambiguous outcomes, and multi-agent handoffs.",
+  "author": {
+    "name": "Once",
+    "url": "https://onceexec.com/"
+  },
+  "homepage": "https://onceexec.com/",
+  "repository": "https://github.com/stringsofthemind-oss/once",
+  "license": "MIT",
+  "keywords": [
+    "agent-safety",
+    "execution-safety",
+    "safe-retries",
+    "idempotency",
+    "mcp",
+    "ambiguous-timeout",
+    "duplicate-side-effects",
+    "multi-agent"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Once — Execution Safety",
+    "shortDescription": "Make consequential agent retries safer",
+    "longDescription": "Assess and protect side-effecting AI-agent operations that can be retried after ambiguous outcomes, including cross-agent and long-running workflows.",
+    "developerName": "Once",
+    "category": "Security",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://onceexec.com/",
+    "defaultPrompt": [
+      "Audit this repo for unsafe retries on consequential writes.",
+      "Make this payment or refund safe after an ambiguous timeout.",
+      "Check this agent workflow for cross-agent duplicate side effects."
+    ],
+    "brandColor": "#39F0A0",
+    "screenshots": []
+  }
+}

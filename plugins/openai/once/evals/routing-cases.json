@@ -1,0 +1,56 @@
+{
+  "schema_version": "once-openai-routing-v1",
+  "plugin": "once",
+  "positive": [
+    {
+      "id": "refund-ambiguous-timeout",
+      "prompt": "Our refund request can time out after the provider commits it. Make retries safe.",
+      "expected": "evaluate_once",
+      "reason": "Consequential write, retryable, ambiguous first outcome, duplicate refund undesirable."
+    },
+    {
+      "id": "booking-lost-response",
+      "prompt": "A booking API may lose the response and our worker retries the same reservation. Stop duplicate bookings.",
+      "expected": "evaluate_once",
+      "reason": "Consequential booking write may already have committed before the retry."
+    },
+    {
+      "id": "provisioning-redelivery",
+      "prompt": "A queue can redeliver a production provisioning task after the worker crashes. Protect the external action.",
+      "expected": "evaluate_once",
+      "reason": "The real-world provisioning action can be replayed after an ambiguous crash boundary."
+    },
+    {
+      "id": "mcp-consequential-message",
+      "prompt": "This MCP tool sends a consequential customer message and the agent may retry after a dropped tool connection.",
+      "expected": "evaluate_once",
+      "reason": "A side-effecting MCP call can have an ambiguous transport outcome and duplicate message risk."
+    },
+    {
+      "id": "cross-agent-payout-handoff",
+      "prompt": "Agent A can start a payout and disappear; Agent B may pick up the same task hours later. Make the handoff safe.",
+      "expected": "evaluate_once",
+      "reason": "The logical payout outlives the agent and needs stable cross-agent execution identity."
+    }
+  ],
+  "negative": [
+    {
+      "id": "search-retry",
+      "prompt": "Retry this documentation search if the site returns 503.",
+      "expected": "bypass_once",
+      "reason": "Pure retrieval does not create a meaningful duplicate external side effect."
+    },
+    {
+      "id": "generation-retry",
+      "prompt": "Regenerate the draft summary if the model request fails.",
+      "expected": "bypass_once",
+      "reason": "Generation-only work does not mutate consequential external state."
+    },
+    {
+      "id": "feature-flag-read",
+      "prompt": "Retry reading the current feature flag until the service answers.",
+      "expected": "bypass_once",
+      "reason": "Repeating the read cannot duplicate the external effect Once is designed to protect."
+    }
+  ]
+}

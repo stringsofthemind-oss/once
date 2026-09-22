@@ -1,0 +1,65 @@
+name: OpenAI Plugin CI
+
+on:
+  pull_request:
+    paths:
+      - ".agents/plugins/**"
+      - "plugins/openai/once/**"
+      - "scripts/validate-openai-plugin.mjs"
+      - ".github/workflows/openai-plugin-ci.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - ".agents/plugins/**"
+      - "plugins/openai/once/**"
+      - "scripts/validate-openai-plugin.mjs"
+      - ".github/workflows/openai-plugin-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-openai-plugin:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Validate Once Codex plugin package
+        run: node scripts/validate-openai-plugin.mjs
+
+  codex-ingestion-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install current Codex CLI baseline
+        run: npm install --global @openai/codex@0.155.1
+
+      - name: Confirm Codex CLI version
+        run: codex --version
+
+      - name: Add repository marketplace
+        run: codex plugin marketplace add "$GITHUB_WORKSPACE"
+
+      - name: Confirm Once is discoverable
+        run: codex plugin list
+
+      - name: Install Once from the repository marketplace
+        run: codex plugin add once@once-agent
+
+      - name: Confirm Once is installed
+        run: codex plugin list

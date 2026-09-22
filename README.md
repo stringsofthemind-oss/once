@@ -70,8 +70,22 @@ This is not a claim of universal "exactly once" execution. Safe recovery still d
 
 ## MCP host integrations
 
+- **Codex** — install the Once execution-safety plugin from this GitHub marketplace
 - **Claude Code** — [add Once as a project-scoped MCP server](./examples/claude-code/)
 - **Cursor** — [add Once as a project-scoped MCP server](./examples/cursor/)
+
+### Codex plugin
+
+Install **Once — Execution Safety** from the public GitHub marketplace:
+
+```bash
+codex plugin marketplace add stringsofthemind-oss/once --ref main
+codex plugin add once@once-agent
+```
+
+The plugin teaches Codex the Once four-condition routing rule, cross-agent operation identity, read-only assessment-first workflow, and explicit approval boundary before source mutation. It also exposes the pinned local `@once-agent/mcp` server.
+
+Plugin source: [`plugins/openai/once`](./plugins/openai/once/)
 
 ### Claude Code plugin
 
@@ -538,4 +552,3 @@ That is the failure mode Once is built to address.
 ## License
 
 MIT
-

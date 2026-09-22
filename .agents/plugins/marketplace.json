@@ -1,0 +1,20 @@
+{
+  "name": "once-agent",
+  "interface": {
+    "displayName": "Once Agent Plugins"
+  },
+  "plugins": [
+    {
+      "name": "once",
+      "source": {
+        "source": "local",
+        "path": "./plugins/openai/once"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_USE"
+      },
+      "category": "Security"
+    }
+  ]
+}
