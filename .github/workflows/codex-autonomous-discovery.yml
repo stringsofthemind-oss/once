@@ -7,6 +7,11 @@ on:
         description: "Optional single autonomous-discovery case ID"
         required: false
         type: string
+      preflight_only:
+        description: "Run Codex model-metadata/skill-routing probes only; skip the paid model evaluation"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -32,7 +37,7 @@ jobs:
       - name: Require Codex API credential
         run: |
           if [ -z "$CODEX_API_KEY" ]; then
-            echo "::error::CODEX_API_KEY repository secret is required for the live model-session evaluation."
+            echo "::error::CODEX_API_KEY repository secret is required for Codex model metadata discovery and live model-session evaluation."
             exit 1
           fi
 
@@ -46,31 +51,81 @@ jobs:
           codex plugin add once@once-agent
           codex plugin list
 
-      - name: Verify Once skill is visible to Codex
+      - name: Compare fallback and API-key model metadata prompts
         run: |
           set -euo pipefail
-          probe_file="$RUNNER_TEMP/codex-prompt-probe.txt"
+          fallback_probe="$RUNNER_TEMP/codex-prompt-probe-fallback.txt"
+          discovery_probe="$RUNNER_TEMP/codex-prompt-probe-api-key-discovery.txt"
+          summary_file="$RUNNER_TEMP/codex-model-metadata-preflight.txt"
 
           echo "Installed Once skill payloads:"
           find "$CODEX_HOME/plugins/cache/once-agent/once" -path '*/skills/*/SKILL.md' -type f -print || true
 
-          if ! codex debug prompt-input probe >"$probe_file" 2>&1; then
-            cat "$probe_file"
-            echo "::error::Codex prompt-input probe failed before any paid model evaluation."
+          if ! codex -m "$CODEX_EVAL_MODEL" debug prompt-input probe >"$fallback_probe" 2>&1; then
+            cat "$fallback_probe"
+            echo "::error::Baseline Codex prompt-input probe failed before any paid model evaluation."
             exit 2
           fi
 
-          if ! grep -Fq 'once:protect-consequential-writes' "$probe_file"; then
-            echo "::error::Once plugin is installed but once:protect-consequential-writes is absent from the model-visible Codex skill catalog. Stopping before the paid evaluation."
-            echo "Matching Once/plugin lines from prompt probe:"
-            grep -Ei 'once|plugin|skill' "$probe_file" | head -n 120 || true
+          if ! codex -m "$CODEX_EVAL_MODEL" -c 'features.api_key_model_discovery=true' debug prompt-input probe >"$discovery_probe" 2>&1; then
+            cat "$discovery_probe"
+            echo "::error::API-key model-discovery prompt-input probe failed before any paid model evaluation."
             exit 3
           fi
 
-          echo "Once skill catalog preflight: PASS"
-          grep -F 'once:protect-consequential-writes' "$probe_file" | head -n 5
+          for probe_file in "$fallback_probe" "$discovery_probe"; do
+            if ! grep -Fq 'once:protect-consequential-writes' "$probe_file"; then
+              echo "::error::Once plugin is installed but once:protect-consequential-writes is absent from $probe_file."
+              grep -Ei 'once|plugin|skill' "$probe_file" | head -n 120 || true
+              exit 4
+            fi
+          done
+
+          fallback_warning=false
+          discovery_warning=false
+          fallback_skill_usage=false
+          discovery_skill_usage=false
+          fallback_skill_trigger=false
+          discovery_skill_trigger=false
+          fallback_plugin_usage=false
+          discovery_plugin_usage=false
+
+          grep -Fq 'Defaulting to fallback metadata' "$fallback_probe" && fallback_warning=true || true
+          grep -Fq 'Defaulting to fallback metadata' "$discovery_probe" && discovery_warning=true || true
+          grep -Fq '### How to use skills' "$fallback_probe" && fallback_skill_usage=true || true
+          grep -Fq '### How to use skills' "$discovery_probe" && discovery_skill_usage=true || true
+          grep -Fq "task clearly matches a skill's description" "$fallback_probe" && fallback_skill_trigger=true || true
+          grep -Fq "task clearly matches a skill's description" "$discovery_probe" && discovery_skill_trigger=true || true
+          grep -Fq '### How to use plugins' "$fallback_probe" && fallback_plugin_usage=true || true
+          grep -Fq '### How to use plugins' "$discovery_probe" && discovery_plugin_usage=true || true
+
+          {
+            echo "Codex model metadata preflight"
+            echo "model=$CODEX_EVAL_MODEL"
+            echo
+            echo "baseline.fallback_warning=$fallback_warning"
+            echo "baseline.once_skill_visible=true"
+            echo "baseline.skill_usage_instructions=$fallback_skill_usage"
+            echo "baseline.skill_trigger_rule=$fallback_skill_trigger"
+            echo "baseline.plugin_usage_instructions=$fallback_plugin_usage"
+            echo
+            echo "api_key_discovery.fallback_warning=$discovery_warning"
+            echo "api_key_discovery.once_skill_visible=true"
+            echo "api_key_discovery.skill_usage_instructions=$discovery_skill_usage"
+            echo "api_key_discovery.skill_trigger_rule=$discovery_skill_trigger"
+            echo "api_key_discovery.plugin_usage_instructions=$discovery_plugin_usage"
+          } | tee "$summary_file"
+
+          echo
+          echo "Once skill line with API-key model discovery enabled:"
+          grep -F 'once:protect-consequential-writes' "$discovery_probe" | head -n 5
+
+          echo
+          echo "Skill/plugin routing guidance with API-key model discovery enabled:"
+          grep -E '### How to use (skills|plugins)|task clearly matches a skill' "$discovery_probe" | head -n 20 || true
 
       - name: Run autonomous discovery suite
+        if: ${{ inputs.preflight_only != true }}
         env:
           CASE_ID: ${{ inputs.case_id }}
         run: |
@@ -87,5 +142,7 @@ jobs:
           name: codex-autonomous-discovery-results
           path: |
             ${{ runner.temp }}/codex-autonomous-discovery-results.json
-            ${{ runner.temp }}/codex-prompt-probe.txt
+            ${{ runner.temp }}/codex-prompt-probe-fallback.txt
+            ${{ runner.temp }}/codex-prompt-probe-api-key-discovery.txt
+            ${{ runner.temp }}/codex-model-metadata-preflight.txt
           if-no-files-found: warn
