@@ -1,0 +1,141 @@
+{
+  "schema_version": "once-codex-controlled-routing-v1",
+  "generated_from": "saved GitHub Actions artifacts",
+  "date": "2026-09-22",
+  "model": "gpt-5.3-codex",
+  "codex_cli": "0.155.1",
+  "controlled_condition": {
+    "routing_catalog": "startup-loaded fallback-equivalent catalog with skill/plugin usage instructions enabled",
+    "model_metadata_fallback": false,
+    "scope_note": "This is controlled routing evidence. It does not establish that default or production Codex metadata currently selects Once automatically."
+  },
+  "gate_change": {
+    "pull_request": 36,
+    "merge_sha": "5d64a895a1822e3dad1a5050ad38351c3ae57817",
+    "purpose": "Require ordinary inspection to identify a concrete external state-changing operation before selecting or invoking Once. Reads/search/retrieval bypass before any Once MCP call."
+  },
+  "runs": [
+    {
+      "run_id": 35769148288,
+      "phase": "pre-gate",
+      "case_id": "refund-ambiguous-timeout",
+      "kind": "positive",
+      "head_sha": "a5513c67ba200d2eab274444a227553857e2385f",
+      "workflow_recorded_pass": false,
+      "historical_scorer_limitation": true,
+      "raw_routing_observation": "Codex autonomously invoked once_assess_project. The then-current scorer ignored structured MCP invocation identity, producing a false negative; PR #34 later corrected that scorer behavior.",
+      "once_tool_invoked": true,
+      "once_tool_names": ["once_assess_project"],
+      "model_metadata_fallback": false,
+      "artifact": {
+        "id": 10713730049,
+        "digest": "sha256:84ca34471fc74adba819c75e5884f4e84273cc4a1c3fb3cc6ec80124ba884a39"
+      },
+      "usage": {
+        "input_tokens": 31025,
+        "cached_input_tokens": 19456,
+        "output_tokens": 575,
+        "reasoning_output_tokens": 0
+      }
+    },
+    {
+      "run_id": 35771444690,
+      "phase": "pre-gate",
+      "case_id": "cross-agent-handoff",
+      "kind": "positive",
+      "head_sha": "dc740010ccaaba80308a7239e629b7cd68738b87",
+      "workflow_recorded_pass": true,
+      "once_tool_invoked": true,
+      "once_tool_names": ["once_assess_project", "once_plan_protection"],
+      "model_metadata_fallback": false,
+      "artifact": {
+        "id": 10714436382,
+        "digest": "sha256:477006a3b39f5f6f7473c85188757ce2f5d5222d8133dc378291ec6287b5d0f3"
+      },
+      "usage": {
+        "input_tokens": 52041,
+        "cached_input_tokens": 38912,
+        "output_tokens": 792,
+        "reasoning_output_tokens": 0
+      }
+    },
+    {
+      "run_id": 35771758017,
+      "phase": "pre-gate",
+      "case_id": "read-only-search",
+      "kind": "negative",
+      "head_sha": "dc740010ccaaba80308a7239e629b7cd68738b87",
+      "workflow_recorded_pass": false,
+      "failure_class": "over-route",
+      "raw_routing_observation": "Codex ultimately concluded the GET-only repository did not need duplicate-side-effect protection, but it first invoked Once. This exposed the pre-tool routing-order defect fixed by PR #36.",
+      "once_tool_invoked": true,
+      "once_tool_names": ["once_assess_project", "once_plan_protection"],
+      "model_metadata_fallback": false,
+      "artifact": {
+        "id": 10713759113,
+        "digest": "sha256:3c6de68d7314ea6fd80f657e421d2a33fddd0aa9d42d9357a14399694168614b"
+      },
+      "usage": {
+        "input_tokens": 51434,
+        "cached_input_tokens": 46592,
+        "output_tokens": 467,
+        "reasoning_output_tokens": 0
+      }
+    },
+    {
+      "run_id": 35772694317,
+      "phase": "post-gate",
+      "case_id": "read-only-search",
+      "kind": "negative",
+      "head_sha": "5d64a895a1822e3dad1a5050ad38351c3ae57817",
+      "workflow_recorded_pass": true,
+      "raw_routing_observation": "Codex inspected the repository normally, identified a read-only GET, did not invoke Once, and correctly bypassed duplicate-side-effect protection.",
+      "once_tool_invoked": false,
+      "once_tool_names": [],
+      "model_metadata_fallback": false,
+      "artifact": {
+        "id": 10714253680,
+        "digest": "sha256:9f2c8a58cc5f4f5509d393bc7228691d8c5fd5179cbacd068b640a9545e6a084"
+      },
+      "usage": {
+        "input_tokens": 29636,
+        "cached_input_tokens": 12288,
+        "output_tokens": 368,
+        "reasoning_output_tokens": 0
+      }
+    },
+    {
+      "run_id": 35773061615,
+      "phase": "post-gate",
+      "case_id": "queue-redelivery-provisioning",
+      "kind": "positive",
+      "head_sha": "5d64a895a1822e3dad1a5050ad38351c3ae57817",
+      "workflow_recorded_pass": true,
+      "raw_routing_observation": "Codex first inspected the repository normally, found the consequential POST and at-least-once redelivery risk, then selected Once and invoked assessment/planning tools.",
+      "once_tool_invoked": true,
+      "once_tool_names": ["once_assess_project", "once_plan_protection"],
+      "model_metadata_fallback": false,
+      "artifact": {
+        "id": 10715201080,
+        "digest": "sha256:ad2f700658c117329718a697eee975d441f8e060cd966100af16283aa041ddf7"
+      },
+      "usage": {
+        "input_tokens": 52265,
+        "cached_input_tokens": 46592,
+        "output_tokens": 838,
+        "reasoning_output_tokens": 0
+      }
+    }
+  ],
+  "post_gate_summary": {
+    "cases": 2,
+    "passed": 2,
+    "positive_cases": 1,
+    "positive_passed": 1,
+    "negative_cases": 1,
+    "negative_passed": 1,
+    "observed_over_routes": 0,
+    "observed_under_routes": 0
+  },
+  "interpretation": "In this controlled routing condition, the post-gate pair demonstrates both restraint on a read-only retry and successful selection on a consequential ambiguous queue-redelivery write. The sample is intentionally small and does not establish universal routing reliability or default-production Codex behavior."
+}
