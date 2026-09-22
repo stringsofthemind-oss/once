@@ -27,5 +27,11 @@
         "class_name": "Q18Truth"
       }
     ]
+  },
+  "exports": {
+    "Q18Truth": {
+      "type": "durable-object",
+      "storage": "sqlite"
+    }
   }
 }

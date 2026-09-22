@@ -32,5 +32,15 @@
         "class_name": "SandboxDemoEffect"
       }
     ]
+  },
+  "exports": {
+    "SandboxClaim": {
+      "type": "durable-object",
+      "storage": "sqlite"
+    },
+    "SandboxDemoEffect": {
+      "type": "durable-object",
+      "storage": "sqlite"
+    }
   }
 }

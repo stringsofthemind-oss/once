@@ -30,6 +30,16 @@ const targets = Object.freeze({
       "workers",
       "playground"
     )
+  },
+
+  "demo-provider": {
+    workerName: "once-sandbox-demo-provider",
+    packageName: "once-sandbox-demo-provider",
+    directory: path.join(
+      repoRoot,
+      "workers",
+      "demo-provider"
+    )
   }
 });
 

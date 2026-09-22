@@ -1,0 +1,71 @@
+name: Worker CI
+
+on:
+  pull_request:
+    branches:
+      - main
+
+  push:
+    branches:
+      - main
+    paths:
+      - "workers/runtime/**"
+      - "workers/playground/**"
+      - "workers/demo-provider/**"
+      - "scripts/deploy-worker.cjs"
+      - ".github/workflows/workers-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  guard-syntax:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate deploy guard syntax
+        run: node --check scripts/deploy-worker.cjs
+
+  worker-dry-run:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        worker:
+          - runtime
+          - playground
+          - demo-provider
+
+    defaults:
+      run:
+        working-directory: workers/${{ matrix.worker }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: workers/${{ matrix.worker }}/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run guarded Worker dry-run
+        run: npm run deploy:dry-run
