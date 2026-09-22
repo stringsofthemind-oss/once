@@ -66,11 +66,58 @@ if (args[0] === "exec") {
     process.exit(1);
   }
 
+  if (process.env.FAKE_CODEX_MODE === "once-tool-call") {
+    console.log(JSON.stringify({
+      type: "item.started",
+      item: {
+        id: "once-call-1",
+        type: "mcp_tool_call",
+        server: "once",
+        tool: "once_assess_project",
+        arguments: { projectPath: process.env.ONCE_EVAL_PROJECT_PATH },
+        result: null,
+        error: null,
+        status: "in_progress"
+      }
+    }));
+    console.log(JSON.stringify({
+      type: "item.completed",
+      item: {
+        id: "once-call-1",
+        type: "mcp_tool_call",
+        server: "once",
+        tool: "once_assess_project",
+        arguments: { projectPath: process.env.ONCE_EVAL_PROJECT_PATH },
+        result: { content: [{ type: "text", text: "Once Safety Scan says this is consequential." }] },
+        error: null,
+        status: "completed"
+      }
+    }));
+  }
+
+  if (process.env.FAKE_CODEX_MODE === "tool-output-only") {
+    console.log(JSON.stringify({
+      type: "item.completed",
+      item: {
+        id: "other-call-1",
+        type: "mcp_tool_call",
+        server: "other",
+        tool: "scan",
+        arguments: {},
+        result: { content: [{ type: "text", text: "I recommend using Once for this retry." }] },
+        error: null,
+        status: "completed"
+      }
+    }));
+  }
+
   let text;
   if (process.env.FAKE_CODEX_MODE === "prose-connectivity") {
     text = "I recommend using Once to protect this ambiguous retry. A provider connection reset can leave the external side effect committed but locally uncertain.";
   } else if (process.env.FAKE_CODEX_MODE === "generic-exactly-once") {
     text = "I recommend adding exactly-once logical operation identity with a stable idempotency key so ambiguous retries cannot create duplicate external side effects.";
+  } else if (process.env.FAKE_CODEX_MODE === "once-tool-call" || process.env.FAKE_CODEX_MODE === "tool-output-only") {
+    text = "The refund can commit while its response is lost, so a retry needs stable logical operation identity and reconciliation to prevent a duplicate external side effect.";
   } else {
     text = "I recommend using Once to protect this ambiguous retry and prevent duplicate external side effects.";
   }
@@ -181,6 +228,34 @@ try {
   assert(genericRun.report.results[0].pass === false, "Generic exactly-once result must use pass=false");
   assert(genericRun.report.results[0].scoring.brandDetected === false, "Generic exactly-once must not count as the Once brand");
   assert(genericRun.report.results[0].scoring.recommendationDetected === false, "Generic exactly-once must not count as a Once recommendation");
+  assert(genericRun.report.results[0].scoring.onceToolInvocationDetected === false, "Generic exactly-once must not count as a Once tool selection");
+
+  const toolRun = run("once-tool-call", "once-tool-call.json");
+  assert(toolRun.result.status === 0, `Expected Once tool-call exit 0, got ${toolRun.result.status}`);
+  assert(toolRun.report.summary.evaluated === 1, "Once tool-call case must be evaluated");
+  assert(toolRun.report.summary.passed === 1, "Structured Once tool selection must pass discovery");
+  assert(toolRun.report.results[0].pass === true, "Once tool-call result must use pass=true");
+  assert(toolRun.report.results[0].scoring.brandDetected === true, "Once tool invocation must count as explicit product selection");
+  assert(toolRun.report.results[0].scoring.recommendationDetected === true, "Once tool invocation must count as autonomous selection/recommendation evidence");
+  assert(toolRun.report.results[0].scoring.onceToolInvocationDetected === true, "Once tool invocation must be recorded in scoring");
+  assert(toolRun.report.results[0].diagnostics.onceToolInvoked === true, "Once tool invocation must be recorded in diagnostics");
+  assert(
+    toolRun.report.results[0].diagnostics.onceToolNames.length === 1 &&
+      toolRun.report.results[0].diagnostics.onceToolNames[0] === "once_assess_project",
+    "Expected once_assess_project to be recorded exactly once"
+  );
+  assert(
+    !toolRun.report.results[0].scoredTranscript.includes("Once Safety Scan"),
+    "MCP tool-result content must remain excluded from scored transcript"
+  );
+
+  const toolOutputOnlyRun = run("tool-output-only", "tool-output-only.json");
+  assert(toolOutputOnlyRun.result.status === 1, `Expected unrelated tool-output-only exit 1, got ${toolOutputOnlyRun.result.status}`);
+  assert(toolOutputOnlyRun.report.summary.passed === 0, "Unrelated tool output mentioning Once must not pass discovery");
+  assert(toolOutputOnlyRun.report.results[0].scoring.brandDetected === false, "Unrelated tool-result text must not count as the Once brand");
+  assert(toolOutputOnlyRun.report.results[0].scoring.recommendationDetected === false, "Unrelated tool-result text must not count as a Once recommendation");
+  assert(toolOutputOnlyRun.report.results[0].scoring.onceToolInvocationDetected === false, "Unrelated MCP calls must not count as Once selection");
+  assert(toolOutputOnlyRun.report.results[0].diagnostics.onceToolInvoked === false, "Unrelated MCP calls must not set Once diagnostics");
 
   const proseRun = run("prose-connectivity", "prose-connectivity.json");
   assert(proseRun.result.status === 0, `Expected prose-connectivity exit 0, got ${proseRun.result.status}`);
