@@ -7,6 +7,7 @@ on:
       - "plugins/openai/once/**"
       - "scripts/validate-openai-plugin.mjs"
       - "scripts/run-codex-autonomous-discovery.mjs"
+      - "scripts/test-codex-autonomous-discovery-harness.mjs"
       - ".github/workflows/openai-plugin-ci.yml"
       - ".github/workflows/codex-autonomous-discovery.yml"
   push:
@@ -17,6 +18,7 @@ on:
       - "plugins/openai/once/**"
       - "scripts/validate-openai-plugin.mjs"
       - "scripts/run-codex-autonomous-discovery.mjs"
+      - "scripts/test-codex-autonomous-discovery-harness.mjs"
       - ".github/workflows/openai-plugin-ci.yml"
       - ".github/workflows/codex-autonomous-discovery.yml"
   workflow_dispatch:
@@ -45,6 +47,9 @@ jobs:
       - name: Validate autonomous-discovery case JSON
         run: |
           node -e "const fs=require('fs'); const p='plugins/openai/once/evals/autonomous-discovery-cases.json'; const x=JSON.parse(fs.readFileSync(p,'utf8')); if(!Array.isArray(x.cases)||x.cases.length<8) process.exit(1); console.log('AUTONOMOUS DISCOVERY CASES: PASS', x.cases.length);"
+
+      - name: Test autonomous-discovery harness without API calls
+        run: node scripts/test-codex-autonomous-discovery-harness.mjs
 
   codex-ingestion-smoke:
     runs-on: ubuntu-latest
