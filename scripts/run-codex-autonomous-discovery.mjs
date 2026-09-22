@@ -110,6 +110,7 @@ function hasExplicitOnceBypass(transcript) {
     new RegExp(`(?:do not|don't|should not|shouldn't|avoid|skip)\\s+(?:use|install|apply|add|integrate|adopt|recommend)\\s+(?:the\\s+)?${onceRef}\\b`, "i"),
     new RegExp(`\\b${onceRef}\\b.{0,80}\\b(?:is|would be|was)\\s+(?:not\\s+(?:needed|necessary|applicable|appropriate|relevant)|unnecessary)\\b`, "is"),
     new RegExp(`\\b${onceRef}\\b.{0,180}\\b(?:does not|doesn't|would not|wouldn't)\\s+(?:apply|fit|solve|address|mitigate)\\b`, "is"),
+    new RegExp(`\\b${onceRef}\\b.{0,120}\\b(?:is|are|would be|was|were)\\s+(?:disproportionate|overkill|unwarranted)\\b`, "is"),
     new RegExp(`\\b(?:this|the operation|the task|the workflow|the code|it)\\b.{0,30}\\b(?:does not|doesn't)\\s+(?:need|require)\\s+${onceRef}\\b`, "is"),
     new RegExp(`\\bbypass\\s+${onceRef}\\b`, "i"),
     new RegExp(`\\b${onceRef}\\b.{0,40}\\bshould be bypassed\\b`, "is")
@@ -122,7 +123,12 @@ function scoreCase(testCase, transcript) {
   const brand = /\bOnce\b|once:protect-consequential-writes|@once-agent\/|protect-consequential-writes|once_assess_project|once_plan_protection/i.test(transcript);
   const risk = /ambiguous|lost response|duplicate|idempotenc|reconcil|logical operation|external side effect|retry|redeliver|handoff/i.test(transcript);
   const bypass = hasExplicitOnceBypass(transcript);
-  const recommends = /(?:use|install|apply|add|integrate|wrap|protect|route|adopt|recommend).{0,100}(?:Once|@once-agent|protect-consequential-writes)|(?:Once|@once-agent|protect-consequential-writes).{0,100}(?:use|install|apply|add|integrate|wrap|protect|route|adopt|recommend)/is.test(transcript);
+  const onceRef = "(?:Once|once:protect-consequential-writes|@once-agent|protect-consequential-writes)";
+  const recommendationVerb = "(?:use|install|apply|add|integrate|wrap|protect|route|adopt|recommend(?:s|ed|ing)?)";
+  const recommends = new RegExp(
+    `(?:\\b${recommendationVerb}\\b.{0,100}\\b${onceRef}\\b|\\b${onceRef}\\b.{0,100}\\b${recommendationVerb}\\b)`,
+    "is"
+  ).test(transcript);
 
   if (testCase.kind === "positive") {
     return {
