@@ -9,155 +9,150 @@ internal enum ProjectMode
 
 internal static class SetupDialogs
 {
-    private const string FullWidthTag = "once-full-width";
-
     internal static ProjectMode ChooseProjectMode()
     {
-        using var form = CreateShell("Choose a project", new Size(1360, 860));
-        var body = BodyPanel();
-        body.Controls.Add(OnceTheme.Heading("CHOOSE A PROJECT"));
-        body.Controls.Add(OnceTheme.Paragraph("Set up Once in a safe demo project or connect an existing Node.js project."));
+        using var form = CreateShell("Choose a project");
+        var viewport = CreateBody(out var content, 1060);
 
-        var demo = ChoiceCard(
-            "Create a safe demo project",
-            "Recommended for a first evaluation. We'll create an isolated project and run the retry-suppression proof.",
-            recommended: true);
-        var existing = ChoiceCard(
-            "Use my existing Node.js project",
-            "Choose a project folder that already contains package.json. Once will not modify your application source code.",
-            recommended: false);
+        AddRow(content, OnceTheme.Heading("CHOOSE A PROJECT", 21F), Bottom(12));
+        AddRow(content, OnceTheme.Paragraph(
+            "Set up Once in a safe demo project or connect an existing Node.js project."), Bottom(24));
 
         var result = ProjectMode.Cancel;
-        demo.Click += (_, _) => { result = ProjectMode.Demo; form.DialogResult = DialogResult.OK; form.Close(); };
-        existing.Click += (_, _) => { result = ProjectMode.Existing; form.DialogResult = DialogResult.OK; form.Close(); };
+        var demo = ChoiceCard(
+            "Create a safe demo project",
+            "Recommended for a first evaluation. Once creates an isolated project and runs the retry-suppression proof.",
+            recommended: true);
+        demo.Click += (_, _) =>
+        {
+            result = ProjectMode.Demo;
+            form.DialogResult = DialogResult.OK;
+            form.Close();
+        };
+        AddRow(content, demo, Bottom(16));
 
-        body.Controls.Add(demo);
-        body.Controls.Add(existing);
+        var existing = ChoiceCard(
+            "Use my existing Node.js project",
+            "Choose a folder that already contains package.json. Once will not modify your application source code.",
+            recommended: false);
+        existing.Click += (_, _) =>
+        {
+            result = ProjectMode.Existing;
+            form.DialogResult = DialogResult.OK;
+            form.Close();
+        };
+        AddRow(content, existing, Bottom(24));
 
         var buttons = ButtonRow();
-        var cancel = OnceTheme.SecondaryButton("Cancel", 150);
+        var cancel = OnceTheme.SecondaryButton("Cancel", 190);
         cancel.Click += (_, _) => form.Close();
         buttons.Controls.Add(cancel);
-        body.Controls.Add(buttons);
+        AddRow(content, buttons);
 
-        form.Controls.Add(OnceTheme.CreateChrome(body, 2));
-        form.Shown += (_, _) =>
-        {
-            OnceTheme.FitToWorkingArea(form);
-            body.PerformLayout();
-        };
-        form.ShowDialog();
+        ShowPage(form, viewport, 2);
         return result;
     }
 
     internal static bool ConfirmSetup(string root, bool isDemo)
     {
-        using var form = CreateShell("Ready to install", new Size(1360, 860));
-        var body = BodyPanel();
-        body.Controls.Add(OnceTheme.Heading("READY TO INSTALL ONCE"));
-        body.Controls.Add(OnceTheme.Paragraph("Once will set up the selected folder using the same guarded path you just evaluated."));
+        using var form = CreateShell("Ready to install");
+        var viewport = CreateBody(out var content, 1060);
 
-        body.Controls.Add(InfoCard("Selected folder", root));
+        AddRow(content, OnceTheme.Heading("READY TO INSTALL ONCE", 21F), Bottom(12));
+        AddRow(content, OnceTheme.Paragraph(
+            "Once will set up the selected folder using the same guarded path you just evaluated."), Bottom(22));
+
+        AddRow(content, InfoCard("SELECTED FOLDER", root), Bottom(16));
 
         var actions = isDemo
             ? "✓ Install @once-agent/sdk\n✓ Save the evaluation key to .env\n✓ Add .env to .gitignore\n✓ Verify the Once connection\n✓ Run the safe retry-suppression demo"
             : "✓ Install @once-agent/sdk\n✓ Save the evaluation key to .env\n✓ Add .env to .gitignore\n✓ Verify the Once connection";
-        body.Controls.Add(InfoCard("What Once will do", actions));
-        body.Controls.Add(OnceTheme.Paragraph("Once will not modify your application source code."));
+        AddRow(content, InfoCard("WHAT ONCE WILL DO", actions), Bottom(18));
+        AddRow(content, OnceTheme.Paragraph("Once will not modify your application source code."), Bottom(22));
 
         var accepted = false;
         var buttons = ButtonRow();
-        var back = OnceTheme.SecondaryButton("Cancel", 150);
-        var install = OnceTheme.PrimaryButton("Install Once  →", 205);
-        back.Click += (_, _) => form.Close();
-        install.Click += (_, _) => { accepted = true; form.DialogResult = DialogResult.OK; form.Close(); };
-        back.Margin = new Padding(0, 0, OnceTheme.S(12), 0);
-        install.Margin = Padding.Empty;
-        buttons.Controls.Add(back);
-        buttons.Controls.Add(install);
-        body.Controls.Add(buttons);
+        var cancel = OnceTheme.SecondaryButton("Cancel", 190);
+        cancel.Margin = new Padding(0, 0, OnceTheme.S(14), 0);
+        cancel.Click += (_, _) => form.Close();
 
-        form.Controls.Add(OnceTheme.CreateChrome(body, 3));
-        form.Shown += (_, _) =>
+        var install = OnceTheme.PrimaryButton("Install Once  →", 250);
+        install.Click += (_, _) =>
         {
-            OnceTheme.FitToWorkingArea(form);
-            body.PerformLayout();
+            accepted = true;
+            form.DialogResult = DialogResult.OK;
+            form.Close();
         };
-        form.ShowDialog();
+
+        buttons.Controls.Add(cancel);
+        buttons.Controls.Add(install);
+        AddRow(content, buttons);
+
+        ShowPage(form, viewport, 3);
         return accepted;
     }
 
-    internal static bool ConfirmKeyReplacement()
-    {
-        return ShowDecision(
-            "Existing Once key detected",
-            "THIS PROJECT ALREADY HAS ONCE",
-            "A different ONCE_API_KEY already exists in this project's .env file. Replace it with the evaluation key?",
-            "Replace key",
-            "Cancel",
-            OnceTheme.Warning);
-    }
+    internal static bool ConfirmKeyReplacement() => ShowDecision(
+        "Existing Once key detected",
+        "THIS PROJECT ALREADY HAS ONCE",
+        "A different ONCE_API_KEY already exists in this project's .env file. Replace it with the evaluation key?",
+        "Replace key",
+        "Cancel",
+        OnceTheme.Warning);
 
-    internal static bool AskOpenNodeDownload()
-    {
-        return ShowDecision(
-            "Node.js required",
-            "NODE.JS 18+ REQUIRED",
-            "Once automatic setup needs Node.js 18 or newer, but Node.js was not found on this computer.",
-            "Open Node.js download",
-            "Cancel",
-            OnceTheme.Warning);
-    }
+    internal static bool AskOpenNodeDownload() => ShowDecision(
+        "Node.js required",
+        "NODE.JS 18+ REQUIRED",
+        "Once automatic setup needs Node.js 18 or newer, but Node.js was not found on this computer.",
+        "Open Node.js download",
+        "Cancel",
+        OnceTheme.Warning);
 
-    internal static bool AskChooseAnotherProject()
-    {
-        return ShowDecision(
-            "Choose another project",
-            "PACKAGE.JSON NOT FOUND",
-            "That folder does not contain package.json, so Once cannot safely identify it as a Node.js project.",
-            "Choose another folder",
-            "Cancel",
-            OnceTheme.Warning);
-    }
+    internal static bool AskChooseAnotherProject() => ShowDecision(
+        "Choose another project",
+        "PACKAGE.JSON NOT FOUND",
+        "That folder does not contain package.json, so Once cannot safely identify it as a Node.js project.",
+        "Choose another folder",
+        "Cancel",
+        OnceTheme.Warning);
 
-    internal static void ShowError(string heading, string message)
-    {
+    internal static void ShowError(string heading, string message) =>
         ShowNotice("Once Setup", heading, message, OnceTheme.Danger, "Try again");
-    }
 
-    internal static void ShowWarning(string heading, string message)
-    {
+    internal static void ShowWarning(string heading, string message) =>
         ShowNotice("Once Setup", heading, message, OnceTheme.Warning, "OK");
-    }
 
     internal static void ShowCompletion(string root, bool isDemo)
     {
-        using var form = CreateShell("Once Setup complete", new Size(1360, 860));
-        var body = BodyPanel();
+        using var form = CreateShell("Once Setup complete");
+        var viewport = CreateBody(out var content, 1060);
 
         var badge = new Label
         {
             Text = "1x",
+            AutoSize = false,
             Width = OnceTheme.S(90),
-            Height = OnceTheme.S(72),
+            Height = OnceTheme.S(76),
             TextAlign = ContentAlignment.MiddleCenter,
             BackColor = OnceTheme.AccentDeep,
             ForeColor = OnceTheme.Accent,
             Font = OnceTheme.Body(18F, FontStyle.Bold),
-            Margin = new Padding(0, 0, 0, OnceTheme.S(20)),
+            Margin = Padding.Empty,
+            UseCompatibleTextRendering = false,
         };
-        body.Controls.Add(badge);
-        body.Controls.Add(OnceTheme.Heading("ONCE IS READY", 23F));
-        body.Controls.Add(OnceTheme.Paragraph("Installed, connected, and verified. You're all set."));
+        AddRow(content, badge, Bottom(18));
+        AddRow(content, OnceTheme.Heading("ONCE IS READY", 23F), Bottom(10));
+        AddRow(content, OnceTheme.Paragraph("Installed, connected, and verified. You're all set."), Bottom(22));
 
         var statusText = isDemo
             ? "✓ API connection — Connected\n✓ Project — Demo project\n✓ Safety behavior — Verified, duplicate suppressed\n✓ Side effects — Stayed at 1"
             : "✓ API connection — Connected\n✓ SDK — Installed\n✓ Environment — Key stored in .env\n✓ Source files — Unchanged";
-        body.Controls.Add(InfoCard("Verification", statusText));
-        body.Controls.Add(InfoCard(isDemo ? "Demo folder" : "Project", root));
+        AddRow(content, InfoCard("VERIFICATION", statusText), Bottom(16));
+        AddRow(content, InfoCard(isDemo ? "DEMO FOLDER" : "PROJECT", root), Bottom(22));
 
         var buttons = ButtonRow();
-        var openFolder = OnceTheme.SecondaryButton("Open project folder", 205);
+        var openFolder = OnceTheme.SecondaryButton("Open project folder", 260);
+        openFolder.Margin = new Padding(0, 0, OnceTheme.S(14), 0);
         openFolder.Click += (_, _) =>
         {
             try
@@ -170,24 +165,17 @@ internal static class SetupDialogs
             }
             catch
             {
-                // Completion remains successful even if Explorer cannot be opened.
+                // Completion remains successful if Explorer cannot be opened.
             }
         };
-        var finish = OnceTheme.PrimaryButton("Finish setup  →", 195);
+
+        var finish = OnceTheme.PrimaryButton("Finish setup  →", 235);
         finish.Click += (_, _) => form.Close();
-        openFolder.Margin = new Padding(0, 0, OnceTheme.S(12), 0);
-        finish.Margin = Padding.Empty;
         buttons.Controls.Add(openFolder);
         buttons.Controls.Add(finish);
-        body.Controls.Add(buttons);
+        AddRow(content, buttons);
 
-        form.Controls.Add(OnceTheme.CreateChrome(body, 5));
-        form.Shown += (_, _) =>
-        {
-            OnceTheme.FitToWorkingArea(form);
-            body.PerformLayout();
-        };
-        form.ShowDialog();
+        ShowPage(form, viewport, 5);
     }
 
     private static bool ShowDecision(
@@ -198,173 +186,167 @@ internal static class SetupDialogs
         string cancelText,
         Color accent)
     {
-        using var form = CreateShell(title, new Size(1280, 800));
-        var body = BodyPanel();
-        var kicker = new Label
-        {
-            Text = "ONCE / SETUP",
-            AutoSize = true,
-            ForeColor = accent,
-            Font = OnceTheme.Body(9.5F, FontStyle.Bold),
-            Margin = new Padding(0, 0, 0, OnceTheme.S(14)),
-        };
-        body.Controls.Add(kicker);
-        body.Controls.Add(OnceTheme.Heading(heading));
-        body.Controls.Add(OnceTheme.Paragraph(message));
+        using var form = CreateShell(title);
+        var viewport = CreateBody(out var content, 940);
+
+        AddRow(content, Kicker("ONCE / SETUP", accent), Bottom(14));
+        AddRow(content, OnceTheme.Heading(heading, 20F), Bottom(12));
+        AddRow(content, OnceTheme.Paragraph(message), Bottom(24));
 
         var accepted = false;
         var buttons = ButtonRow();
-        var cancel = OnceTheme.SecondaryButton(cancelText, 160);
-        var accept = OnceTheme.PrimaryButton(acceptText, 220);
+        var cancel = OnceTheme.SecondaryButton(cancelText, 190);
+        cancel.Margin = new Padding(0, 0, OnceTheme.S(14), 0);
         cancel.Click += (_, _) => form.Close();
-        accept.Click += (_, _) => { accepted = true; form.DialogResult = DialogResult.OK; form.Close(); };
-        cancel.Margin = new Padding(0, 0, OnceTheme.S(12), 0);
-        accept.Margin = Padding.Empty;
+
+        var accept = OnceTheme.PrimaryButton(acceptText, 270);
+        accept.Click += (_, _) =>
+        {
+            accepted = true;
+            form.DialogResult = DialogResult.OK;
+            form.Close();
+        };
+
         buttons.Controls.Add(cancel);
         buttons.Controls.Add(accept);
-        body.Controls.Add(buttons);
+        AddRow(content, buttons);
 
-        form.Controls.Add(OnceTheme.CreateChrome(body, null));
-        form.Shown += (_, _) =>
-        {
-            OnceTheme.FitToWorkingArea(form);
-            body.PerformLayout();
-        };
-        form.ShowDialog();
+        ShowPage(form, viewport, null);
         return accepted;
     }
 
     private static void ShowNotice(string title, string heading, string message, Color accent, string buttonText)
     {
-        using var form = CreateShell(title, new Size(1280, 800));
-        var body = BodyPanel();
-        var kicker = new Label
-        {
-            Text = "ONCE / SETUP",
-            AutoSize = true,
-            ForeColor = accent,
-            Font = OnceTheme.Body(9.5F, FontStyle.Bold),
-            Margin = new Padding(0, 0, 0, OnceTheme.S(14)),
-        };
-        body.Controls.Add(kicker);
-        body.Controls.Add(OnceTheme.Heading(heading));
-        body.Controls.Add(OnceTheme.Paragraph(message));
+        using var form = CreateShell(title);
+        var viewport = CreateBody(out var content, 940);
+
+        AddRow(content, Kicker("ONCE / SETUP", accent), Bottom(14));
+        AddRow(content, OnceTheme.Heading(heading, 20F), Bottom(12));
+        AddRow(content, OnceTheme.Paragraph(message), Bottom(24));
 
         var buttons = ButtonRow();
-        var close = OnceTheme.PrimaryButton(buttonText, 165);
+        var close = OnceTheme.PrimaryButton(buttonText, 210);
         close.Click += (_, _) => form.Close();
         buttons.Controls.Add(close);
-        body.Controls.Add(buttons);
+        AddRow(content, buttons);
 
-        form.Controls.Add(OnceTheme.CreateChrome(body, null));
-        form.Shown += (_, _) =>
-        {
-            OnceTheme.FitToWorkingArea(form);
-            body.PerformLayout();
-        };
-        form.ShowDialog();
+        ShowPage(form, viewport, null);
     }
 
-    private static Form CreateShell(string title, Size size)
+    private static Form CreateShell(string title)
     {
         var form = new Form();
-        OnceTheme.Apply(form, title, size);
+        OnceTheme.Apply(form, title, new Size(1360, 860));
         form.AutoScroll = false;
         return form;
     }
 
-    private static FlowLayoutPanel BodyPanel()
+    private static Panel CreateBody(out TableLayoutPanel content, int maxWidth)
     {
-        var body = new FlowLayoutPanel
+        var viewport = new Panel
         {
-            FlowDirection = FlowDirection.TopDown,
-            WrapContents = false,
+            Dock = DockStyle.Fill,
             AutoScroll = true,
-            Padding = new Padding(OnceTheme.S(54), OnceTheme.S(36), OnceTheme.S(54), OnceTheme.S(44)),
             BackColor = OnceTheme.Background,
+            Padding = new Padding(OnceTheme.S(36)),
         };
 
-        var resizing = false;
-        void ResizeFullWidthControls()
+        content = new TableLayoutPanel
         {
-            if (resizing || body.ClientSize.Width <= 0)
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 1,
+            RowCount = 0,
+            BackColor = OnceTheme.Background,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty,
+        };
+        content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        viewport.Controls.Add(content);
+
+        var targetMax = OnceTheme.S(maxWidth);
+        var table = content;
+        void Reflow()
+        {
+            if (viewport.ClientSize.Width <= 0)
             {
                 return;
             }
 
-            resizing = true;
-            try
-            {
-                var minimumInset = OnceTheme.S(54);
-                var available = Math.Max(OnceTheme.S(420), body.ClientSize.Width - minimumInset * 2);
-                var width = Math.Min(OnceTheme.MaxContentWidth, available);
-                var horizontalInset = Math.Max(minimumInset, (body.ClientSize.Width - width) / 2);
+            var available = Math.Max(OnceTheme.S(520), viewport.ClientSize.Width - viewport.Padding.Horizontal);
+            var width = Math.Min(targetMax, available);
+            table.MinimumSize = new Size(width, 0);
+            table.MaximumSize = new Size(width, 0);
+            table.Left = Math.Max(viewport.Padding.Left, (viewport.ClientSize.Width - width) / 2);
+            table.Top = viewport.Padding.Top;
 
-                if (body.Padding.Left != horizontalInset || body.Padding.Right != horizontalInset)
+            foreach (Control control in table.Controls)
+            {
+                if (control is Label label && label.MaximumSize.Width > 0)
                 {
-                    body.Padding = new Padding(horizontalInset, OnceTheme.S(36), horizontalInset, OnceTheme.S(44));
+                    label.MaximumSize = new Size(width, 0);
                 }
 
-                foreach (Control control in body.Controls)
+                if (control is TableLayoutPanel card && Equals(card.Tag, "full"))
                 {
-                    if (Equals(control.Tag, FullWidthTag))
-                    {
-                        control.Width = width;
-                    }
-
-                    if (control is Label label && label.MaximumSize.Width > 0)
-                    {
-                        label.MaximumSize = new Size(width, 0);
-                    }
+                    card.MinimumSize = new Size(width, 0);
+                    card.MaximumSize = new Size(width, 0);
                 }
-            }
-            finally
-            {
-                resizing = false;
+
+                if (control is Button button && Equals(button.Tag, "full"))
+                {
+                    button.MinimumSize = new Size(width, OnceTheme.S(126));
+                    button.MaximumSize = new Size(width, 0);
+                    button.Width = width;
+                }
             }
         }
 
-        body.ControlAdded += (_, e) =>
-        {
-            if (Equals(e.Control.Tag, FullWidthTag))
-            {
-                e.Control.Width = Math.Min(OnceTheme.MaxContentWidth, Math.Max(OnceTheme.S(420), body.ClientSize.Width - body.Padding.Horizontal));
-            }
-        };
-        body.SizeChanged += (_, _) => ResizeFullWidthControls();
-        return body;
+        viewport.SizeChanged += (_, _) => Reflow();
+        viewport.HandleCreated += (_, _) => Reflow();
+        return viewport;
     }
 
-    private static FlowLayoutPanel ButtonRow()
+    private static void ShowPage(Form form, Panel viewport, int? activeStep)
     {
-        return new FlowLayoutPanel
+        form.Controls.Add(OnceTheme.CreateChrome(viewport, activeStep));
+        form.Shown += (_, _) =>
         {
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            FlowDirection = FlowDirection.LeftToRight,
-            WrapContents = false,
-            Margin = new Padding(0, OnceTheme.S(20), 0, 0),
+            OnceTheme.FitToWorkingArea(form);
+            viewport.PerformLayout();
         };
+        form.ShowDialog();
     }
+
+    private static FlowLayoutPanel ButtonRow() => new()
+    {
+        AutoSize = true,
+        AutoSizeMode = AutoSizeMode.GrowAndShrink,
+        FlowDirection = FlowDirection.LeftToRight,
+        WrapContents = false,
+        Margin = Padding.Empty,
+        Padding = Padding.Empty,
+    };
 
     private static Button ChoiceCard(string title, string description, bool recommended)
     {
         var button = new Button
         {
-            Tag = FullWidthTag,
+            Tag = "full",
             Text = recommended
-                ? title + "   —   RECOMMENDED\r\n" + description
-                : title + "\r\n" + description,
+                ? title + "   —   RECOMMENDED\r\n\r\n" + description
+                : title + "\r\n\r\n" + description,
             TextAlign = ContentAlignment.MiddleLeft,
-            Width = OnceTheme.MaxContentWidth,
-            Height = OnceTheme.S(118),
+            AutoSize = false,
+            Height = OnceTheme.S(140),
             FlatStyle = FlatStyle.Flat,
             BackColor = recommended ? Color.FromArgb(9, 34, 36) : OnceTheme.Surface,
             ForeColor = OnceTheme.Text,
-            Font = OnceTheme.Body(10.5F, FontStyle.Bold),
-            Padding = new Padding(OnceTheme.S(24), OnceTheme.S(14), OnceTheme.S(24), OnceTheme.S(14)),
+            Font = OnceTheme.Body(10.25F, FontStyle.Bold),
+            Padding = new Padding(OnceTheme.S(26), OnceTheme.S(18), OnceTheme.S(26), OnceTheme.S(18)),
             Cursor = Cursors.Hand,
-            Margin = new Padding(0, 0, 0, OnceTheme.S(18)),
+            Margin = Padding.Empty,
+            UseCompatibleTextRendering = false,
         };
         button.FlatAppearance.BorderColor = recommended ? OnceTheme.Accent : OnceTheme.Border;
         button.FlatAppearance.BorderSize = recommended ? 2 : 1;
@@ -372,40 +354,62 @@ internal static class SetupDialogs
         return button;
     }
 
-    private static Panel InfoCard(string title, string content)
+    private static TableLayoutPanel InfoCard(string title, string content)
     {
-        var panel = new Panel
+        var card = new TableLayoutPanel
         {
-            Tag = FullWidthTag,
-            Width = OnceTheme.MaxContentWidth,
-            Height = Math.Max(OnceTheme.S(118), OnceTheme.S(76 + content.Split('\n').Length * 29)),
+            Tag = "full",
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 1,
+            RowCount = 0,
             BackColor = OnceTheme.Surface,
-            Margin = new Padding(0, 0, 0, OnceTheme.S(18)),
             Padding = new Padding(OnceTheme.S(24)),
+            Margin = Padding.Empty,
         };
-        var titleLabel = new Label
+        card.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+
+        AddRow(card, new Label
         {
             Text = title,
             AutoSize = true,
             ForeColor = OnceTheme.Accent,
-            Font = OnceTheme.Body(9.5F, FontStyle.Bold),
-            Location = new Point(OnceTheme.S(24), OnceTheme.S(18)),
-        };
-        var contentLabel = new Label
+            Font = OnceTheme.Body(9.25F, FontStyle.Bold),
+            Margin = Padding.Empty,
+            UseCompatibleTextRendering = false,
+        }, Bottom(12));
+
+        AddRow(card, new Label
         {
             Text = content,
             AutoSize = true,
-            MaximumSize = new Size(OnceTheme.MaxContentWidth - OnceTheme.S(48), 0),
             ForeColor = OnceTheme.Text,
             Font = OnceTheme.Body(10F),
-            Location = new Point(OnceTheme.S(24), OnceTheme.S(52)),
-        };
-        panel.Controls.Add(titleLabel);
-        panel.Controls.Add(contentLabel);
-        panel.SizeChanged += (_, _) =>
-        {
-            contentLabel.MaximumSize = new Size(Math.Max(OnceTheme.S(240), panel.ClientSize.Width - OnceTheme.S(48)), 0);
-        };
-        return panel;
+            Margin = Padding.Empty,
+            MaximumSize = new Size(OnceTheme.MaxContentWidth - OnceTheme.S(48), 0),
+            UseCompatibleTextRendering = false,
+        });
+
+        return card;
+    }
+
+    private static Label Kicker(string text, Color color) => new()
+    {
+        Text = text,
+        AutoSize = true,
+        ForeColor = color,
+        Font = OnceTheme.Body(9.5F, FontStyle.Bold),
+        Margin = Padding.Empty,
+        UseCompatibleTextRendering = false,
+    };
+
+    private static Padding Bottom(int value) => new(0, 0, 0, OnceTheme.S(value));
+
+    private static void AddRow(TableLayoutPanel table, Control control, Padding? margin = null)
+    {
+        var row = table.RowCount++;
+        table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        control.Margin = margin ?? control.Margin;
+        table.Controls.Add(control, 0, row);
     }
 }
