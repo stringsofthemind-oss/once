@@ -13,7 +13,7 @@ internal static class SetupDialogs
 
     internal static ProjectMode ChooseProjectMode()
     {
-        using var form = CreateShell("Choose a project", 2, new Size(1360, 860));
+        using var form = CreateShell("Choose a project", new Size(1360, 860));
         var body = BodyPanel();
         body.Controls.Add(OnceTheme.Heading("CHOOSE A PROJECT"));
         body.Controls.Add(OnceTheme.Paragraph("Set up Once in a safe demo project or connect an existing Node.js project."));
@@ -30,27 +30,17 @@ internal static class SetupDialogs
         var result = ProjectMode.Cancel;
         demo.Click += (_, _) => { result = ProjectMode.Demo; form.DialogResult = DialogResult.OK; form.Close(); };
         existing.Click += (_, _) => { result = ProjectMode.Existing; form.DialogResult = DialogResult.OK; form.Close(); };
-        foreach (Control c in demo.Controls)
-        {
-            c.Click += (_, _) => demo.PerformClick();
-        }
-        foreach (Control c in existing.Controls)
-        {
-            c.Click += (_, _) => existing.PerformClick();
-        }
 
         body.Controls.Add(demo);
         body.Controls.Add(existing);
 
         var buttons = ButtonRow();
-        var cancel = OnceTheme.SecondaryButton("Cancel", 140);
+        var cancel = OnceTheme.SecondaryButton("Cancel", 150);
         cancel.Click += (_, _) => form.Close();
         buttons.Controls.Add(cancel);
         body.Controls.Add(buttons);
 
-        form.Controls.Add(body);
-        form.Controls.Add(OnceTheme.CreateStepBar(2));
-        form.Controls.Add(OnceTheme.CreateTopBar());
+        form.Controls.Add(OnceTheme.CreateChrome(body, 2));
         form.Shown += (_, _) =>
         {
             OnceTheme.FitToWorkingArea(form);
@@ -62,7 +52,7 @@ internal static class SetupDialogs
 
     internal static bool ConfirmSetup(string root, bool isDemo)
     {
-        using var form = CreateShell("Ready to install", 3, new Size(1360, 860));
+        using var form = CreateShell("Ready to install", new Size(1360, 860));
         var body = BodyPanel();
         body.Controls.Add(OnceTheme.Heading("READY TO INSTALL ONCE"));
         body.Controls.Add(OnceTheme.Paragraph("Once will set up the selected folder using the same guarded path you just evaluated."));
@@ -78,16 +68,14 @@ internal static class SetupDialogs
         var accepted = false;
         var buttons = ButtonRow();
         var back = OnceTheme.SecondaryButton("Cancel", 150);
-        var install = OnceTheme.PrimaryButton("Install Once  →", 200);
+        var install = OnceTheme.PrimaryButton("Install Once  →", 205);
         back.Click += (_, _) => form.Close();
         install.Click += (_, _) => { accepted = true; form.DialogResult = DialogResult.OK; form.Close(); };
         buttons.Controls.Add(back);
         buttons.Controls.Add(install);
         body.Controls.Add(buttons);
 
-        form.Controls.Add(body);
-        form.Controls.Add(OnceTheme.CreateStepBar(3));
-        form.Controls.Add(OnceTheme.CreateTopBar());
+        form.Controls.Add(OnceTheme.CreateChrome(body, 3));
         form.Shown += (_, _) =>
         {
             OnceTheme.FitToWorkingArea(form);
@@ -142,22 +130,22 @@ internal static class SetupDialogs
 
     internal static void ShowCompletion(string root, bool isDemo)
     {
-        using var form = CreateShell("Once Setup complete", 5, new Size(1360, 860));
+        using var form = CreateShell("Once Setup complete", new Size(1360, 860));
         var body = BodyPanel();
 
         var badge = new Label
         {
             Text = "1x",
-            Width = 86,
-            Height = 68,
+            Width = OnceTheme.S(90),
+            Height = OnceTheme.S(72),
             TextAlign = ContentAlignment.MiddleCenter,
             BackColor = OnceTheme.AccentDeep,
             ForeColor = OnceTheme.Accent,
             Font = OnceTheme.Body(18F, FontStyle.Bold),
-            Margin = new Padding(0, 0, 0, 18),
+            Margin = new Padding(0, 0, 0, OnceTheme.S(20)),
         };
         body.Controls.Add(badge);
-        body.Controls.Add(OnceTheme.Heading("ONCE IS READY", 26F));
+        body.Controls.Add(OnceTheme.Heading("ONCE IS READY", 27F));
         body.Controls.Add(OnceTheme.Paragraph("Installed, connected, and verified. You're all set."));
 
         var statusText = isDemo
@@ -167,7 +155,7 @@ internal static class SetupDialogs
         body.Controls.Add(InfoCard(isDemo ? "Demo folder" : "Project", root));
 
         var buttons = ButtonRow();
-        var openFolder = OnceTheme.SecondaryButton("Open project folder", 200);
+        var openFolder = OnceTheme.SecondaryButton("Open project folder", 205);
         openFolder.Click += (_, _) =>
         {
             try
@@ -183,15 +171,13 @@ internal static class SetupDialogs
                 // Completion remains successful even if Explorer cannot be opened.
             }
         };
-        var finish = OnceTheme.PrimaryButton("Finish setup  →", 190);
+        var finish = OnceTheme.PrimaryButton("Finish setup  →", 195);
         finish.Click += (_, _) => form.Close();
         buttons.Controls.Add(openFolder);
         buttons.Controls.Add(finish);
         body.Controls.Add(buttons);
 
-        form.Controls.Add(body);
-        form.Controls.Add(OnceTheme.CreateStepBar(5));
-        form.Controls.Add(OnceTheme.CreateTopBar());
+        form.Controls.Add(OnceTheme.CreateChrome(body, 5));
         form.Shown += (_, _) =>
         {
             OnceTheme.FitToWorkingArea(form);
@@ -208,15 +194,15 @@ internal static class SetupDialogs
         string cancelText,
         Color accent)
     {
-        using var form = CreateShell(title, 1, new Size(1280, 800));
+        using var form = CreateShell(title, new Size(1280, 800));
         var body = BodyPanel();
         var kicker = new Label
         {
             Text = "ONCE / SETUP",
             AutoSize = true,
             ForeColor = accent,
-            Font = OnceTheme.Body(9F, FontStyle.Bold),
-            Margin = new Padding(0, 0, 0, 12),
+            Font = OnceTheme.Body(9.5F, FontStyle.Bold),
+            Margin = new Padding(0, 0, 0, OnceTheme.S(14)),
         };
         body.Controls.Add(kicker);
         body.Controls.Add(OnceTheme.Heading(heading));
@@ -225,16 +211,14 @@ internal static class SetupDialogs
         var accepted = false;
         var buttons = ButtonRow();
         var cancel = OnceTheme.SecondaryButton(cancelText, 160);
-        using var measureFont = OnceTheme.Body(10.5F, FontStyle.Bold);
-        var accept = OnceTheme.PrimaryButton(acceptText, Math.Max(200, TextRenderer.MeasureText(acceptText, measureFont).Width + 48));
+        var accept = OnceTheme.PrimaryButton(acceptText, 220);
         cancel.Click += (_, _) => form.Close();
         accept.Click += (_, _) => { accepted = true; form.DialogResult = DialogResult.OK; form.Close(); };
         buttons.Controls.Add(cancel);
         buttons.Controls.Add(accept);
         body.Controls.Add(buttons);
 
-        form.Controls.Add(body);
-        form.Controls.Add(OnceTheme.CreateTopBar());
+        form.Controls.Add(OnceTheme.CreateChrome(body, null));
         form.Shown += (_, _) =>
         {
             OnceTheme.FitToWorkingArea(form);
@@ -246,28 +230,27 @@ internal static class SetupDialogs
 
     private static void ShowNotice(string title, string heading, string message, Color accent, string buttonText)
     {
-        using var form = CreateShell(title, 1, new Size(1280, 800));
+        using var form = CreateShell(title, new Size(1280, 800));
         var body = BodyPanel();
         var kicker = new Label
         {
             Text = "ONCE / SETUP",
             AutoSize = true,
             ForeColor = accent,
-            Font = OnceTheme.Body(9F, FontStyle.Bold),
-            Margin = new Padding(0, 0, 0, 12),
+            Font = OnceTheme.Body(9.5F, FontStyle.Bold),
+            Margin = new Padding(0, 0, 0, OnceTheme.S(14)),
         };
         body.Controls.Add(kicker);
         body.Controls.Add(OnceTheme.Heading(heading));
         body.Controls.Add(OnceTheme.Paragraph(message));
 
         var buttons = ButtonRow();
-        var close = OnceTheme.PrimaryButton(buttonText, 160);
+        var close = OnceTheme.PrimaryButton(buttonText, 165);
         close.Click += (_, _) => form.Close();
         buttons.Controls.Add(close);
         body.Controls.Add(buttons);
 
-        form.Controls.Add(body);
-        form.Controls.Add(OnceTheme.CreateTopBar());
+        form.Controls.Add(OnceTheme.CreateChrome(body, null));
         form.Shown += (_, _) =>
         {
             OnceTheme.FitToWorkingArea(form);
@@ -276,7 +259,7 @@ internal static class SetupDialogs
         form.ShowDialog();
     }
 
-    private static Form CreateShell(string title, int step, Size size)
+    private static Form CreateShell(string title, Size size)
     {
         var form = new Form();
         OnceTheme.Apply(form, title, size);
@@ -288,11 +271,10 @@ internal static class SetupDialogs
     {
         var body = new FlowLayoutPanel
         {
-            Dock = DockStyle.Fill,
             FlowDirection = FlowDirection.TopDown,
             WrapContents = false,
             AutoScroll = true,
-            Padding = new Padding(70, 34, 70, 40),
+            Padding = new Padding(OnceTheme.S(72), OnceTheme.S(40), OnceTheme.S(72), OnceTheme.S(48)),
             BackColor = OnceTheme.Background,
         };
 
@@ -332,7 +314,7 @@ internal static class SetupDialogs
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
             FlowDirection = FlowDirection.LeftToRight,
             WrapContents = false,
-            Margin = new Padding(0, 18, 0, 0),
+            Margin = new Padding(0, OnceTheme.S(20), 0, 0),
         };
     }
 
@@ -346,14 +328,14 @@ internal static class SetupDialogs
                 : title + "\r\n" + description,
             TextAlign = ContentAlignment.MiddleLeft,
             Width = OnceTheme.MaxContentWidth,
-            Height = 120,
+            Height = OnceTheme.S(126),
             FlatStyle = FlatStyle.Flat,
             BackColor = recommended ? Color.FromArgb(9, 34, 36) : OnceTheme.Surface,
             ForeColor = OnceTheme.Text,
             Font = OnceTheme.Body(11F, FontStyle.Bold),
-            Padding = new Padding(22, 12, 22, 12),
+            Padding = new Padding(OnceTheme.S(24), OnceTheme.S(14), OnceTheme.S(24), OnceTheme.S(14)),
             Cursor = Cursors.Hand,
-            Margin = new Padding(0, 0, 0, 16),
+            Margin = new Padding(0, 0, 0, OnceTheme.S(18)),
         };
         button.FlatAppearance.BorderColor = recommended ? OnceTheme.Accent : OnceTheme.Border;
         button.FlatAppearance.BorderSize = recommended ? 2 : 1;
@@ -367,10 +349,10 @@ internal static class SetupDialogs
         {
             Tag = FullWidthTag,
             Width = OnceTheme.MaxContentWidth,
-            Height = Math.Max(118, 72 + content.Split('\n').Length * 30),
+            Height = Math.Max(OnceTheme.S(124), OnceTheme.S(78 + content.Split('\n').Length * 31)),
             BackColor = OnceTheme.Surface,
-            Margin = new Padding(0, 0, 0, 16),
-            Padding = new Padding(22),
+            Margin = new Padding(0, 0, 0, OnceTheme.S(18)),
+            Padding = new Padding(OnceTheme.S(24)),
         };
         var titleLabel = new Label
         {
@@ -378,22 +360,22 @@ internal static class SetupDialogs
             AutoSize = true,
             ForeColor = OnceTheme.Accent,
             Font = OnceTheme.Body(9.5F, FontStyle.Bold),
-            Location = new Point(22, 18),
+            Location = new Point(OnceTheme.S(24), OnceTheme.S(18)),
         };
         var contentLabel = new Label
         {
             Text = content,
             AutoSize = true,
-            MaximumSize = new Size(OnceTheme.MaxContentWidth - 44, 0),
+            MaximumSize = new Size(OnceTheme.MaxContentWidth - OnceTheme.S(48), 0),
             ForeColor = OnceTheme.Text,
             Font = OnceTheme.Body(10.5F),
-            Location = new Point(22, 50),
+            Location = new Point(OnceTheme.S(24), OnceTheme.S(52)),
         };
         panel.Controls.Add(titleLabel);
         panel.Controls.Add(contentLabel);
         panel.SizeChanged += (_, _) =>
         {
-            contentLabel.MaximumSize = new Size(Math.Max(240, panel.ClientSize.Width - 44), 0);
+            contentLabel.MaximumSize = new Size(Math.Max(OnceTheme.S(240), panel.ClientSize.Width - OnceTheme.S(48)), 0);
         };
         return panel;
     }
