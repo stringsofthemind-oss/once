@@ -2,6 +2,8 @@ namespace OnceSetup;
 
 internal static class OnceTheme
 {
+    internal const int MaxContentWidth = 1180;
+
     internal static readonly Color Background = Color.FromArgb(4, 9, 13);
     internal static readonly Color Surface = Color.FromArgb(8, 18, 24);
     internal static readonly Color SurfaceRaised = Color.FromArgb(11, 28, 34);
@@ -24,12 +26,18 @@ internal static class OnceTheme
         form.Text = title;
         form.StartPosition = FormStartPosition.CenterScreen;
         form.FormBorderStyle = FormBorderStyle.Sizable;
-        form.MinimumSize = new Size(760, 560);
-        form.ClientSize = clientSize ?? new Size(980, 680);
+        form.MinimumSize = new Size(900, 640);
+        form.ClientSize = clientSize ?? new Size(1360, 860);
         form.BackColor = Background;
         form.ForeColor = Text;
         form.Font = Body();
-        form.AutoScaleMode = AutoScaleMode.Dpi;
+
+        // The old DPI autoscaling doubled fixed WinForms coordinates at high
+        // Windows display scaling, then the form was shrunk back to the screen.
+        // That produced the clipping seen on the 200% display. Keep layout
+        // coordinates stable and fit the shell itself to the usable desktop.
+        form.AutoScaleMode = AutoScaleMode.None;
+
         form.ShowInTaskbar = true;
         form.MaximizeBox = true;
         form.MinimizeBox = true;
@@ -40,17 +48,17 @@ internal static class OnceTheme
         var bar = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 54,
+            Height = 58,
             BackColor = Color.FromArgb(5, 15, 20),
-            Padding = new Padding(18, 10, 18, 8),
+            Padding = new Padding(20, 12, 20, 8),
         };
 
         var badge = new Label
         {
             Text = "1x",
             AutoSize = false,
-            Width = 36,
-            Height = 30,
+            Width = 38,
+            Height = 32,
             TextAlign = ContentAlignment.MiddleCenter,
             BackColor = AccentDeep,
             ForeColor = Accent,
@@ -62,8 +70,8 @@ internal static class OnceTheme
             Text = title,
             AutoSize = true,
             ForeColor = Text,
-            Font = Body(10.5F, FontStyle.Bold),
-            Location = new Point(62, 17),
+            Font = Body(11F, FontStyle.Bold),
+            Location = new Point(66, 18),
         };
 
         bar.Controls.Add(badge);
@@ -76,7 +84,7 @@ internal static class OnceTheme
         return new StepBar(activeStep)
         {
             Dock = DockStyle.Top,
-            Height = 74,
+            Height = 82,
             Margin = new Padding(0),
         };
     }
@@ -89,11 +97,11 @@ internal static class OnceTheme
             AutoSize = true,
             ForeColor = Text,
             Font = Display(size),
-            Margin = new Padding(0, 0, 0, 8),
+            Margin = new Padding(0, 0, 0, 10),
         };
     }
 
-    internal static Label Paragraph(string text, int maxWidth = 820)
+    internal static Label Paragraph(string text, int maxWidth = MaxContentWidth)
     {
         return new Label
         {
@@ -102,7 +110,7 @@ internal static class OnceTheme
             MaximumSize = new Size(maxWidth, 0),
             ForeColor = Muted,
             Font = Body(11F),
-            Margin = new Padding(0, 0, 0, 16),
+            Margin = new Padding(0, 0, 0, 18),
         };
     }
 
@@ -113,7 +121,7 @@ internal static class OnceTheme
             Text = text,
             AutoSize = false,
             Width = width,
-            Height = 48,
+            Height = 50,
             FlatStyle = FlatStyle.Flat,
             BackColor = Accent,
             ForeColor = Color.FromArgb(2, 18, 16),
@@ -133,7 +141,7 @@ internal static class OnceTheme
             Text = text,
             AutoSize = false,
             Width = width,
-            Height = 48,
+            Height = 50,
             FlatStyle = FlatStyle.Flat,
             BackColor = SurfaceRaised,
             ForeColor = Text,
@@ -158,22 +166,29 @@ internal static class OnceTheme
         };
     }
 
+    internal static int ContentWidth(Control host, int maxWidth = MaxContentWidth)
+    {
+        var available = host.ClientSize.Width - host.Padding.Horizontal - 24;
+        return Math.Max(320, Math.Min(maxWidth, available));
+    }
+
     internal static void FitToWorkingArea(Form form)
     {
         var working = Screen.FromControl(form).WorkingArea;
-        if (form.Height > working.Height - 60)
-        {
-            form.Height = Math.Max(form.MinimumSize.Height, working.Height - 60);
-        }
-        if (form.Width > working.Width - 60)
-        {
-            form.Width = Math.Max(form.MinimumSize.Width, working.Width - 60);
-        }
+
+        // Use almost the full usable desktop. This is intentionally much larger
+        // than the old 980x680 shell while still leaving a small visual margin.
+        var targetWidth = Math.Max(form.MinimumSize.Width, (int)Math.Round(working.Width * 0.94));
+        var targetHeight = Math.Max(form.MinimumSize.Height, (int)Math.Round(working.Height * 0.92));
+        targetWidth = Math.Min(targetWidth, Math.Max(1, working.Width - 24));
+        targetHeight = Math.Min(targetHeight, Math.Max(1, working.Height - 24));
 
         form.StartPosition = FormStartPosition.Manual;
-        form.Location = new Point(
-            working.Left + Math.Max(0, (working.Width - form.Width) / 2),
-            working.Top + Math.Max(0, (working.Height - form.Height) / 2));
+        form.Bounds = new Rectangle(
+            working.Left + Math.Max(0, (working.Width - targetWidth) / 2),
+            working.Top + Math.Max(0, (working.Height - targetHeight) / 2),
+            targetWidth,
+            targetHeight);
     }
 
     private sealed class StepBar : Control
@@ -194,10 +209,10 @@ internal static class OnceTheme
             var g = e.Graphics;
             g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
 
-            var left = 54F;
-            var right = Width - 54F;
-            var y = 26F;
-            var spacing = (right - left) / (Steps.Length - 1);
+            var left = Math.Min(90F, Width * 0.08F);
+            var right = Width - left;
+            var y = 28F;
+            var spacing = Math.Max(1F, (right - left) / (Steps.Length - 1));
 
             using var pendingPen = new Pen(Border, 2F);
             using var donePen = new Pen(Accent, 2F);
@@ -218,8 +233,8 @@ internal static class OnceTheme
 
                 using var fillBrush = new SolidBrush(fill);
                 using var outlinePen = new Pen(outline, active ? 3F : 2F);
-                g.FillEllipse(fillBrush, x - 10, y - 10, 20, 20);
-                g.DrawEllipse(outlinePen, x - 10, y - 10, 20, 20);
+                g.FillEllipse(fillBrush, x - 11, y - 11, 22, 22);
+                g.DrawEllipse(outlinePen, x - 11, y - 11, 22, 22);
 
                 if (!completed)
                 {
@@ -235,10 +250,10 @@ internal static class OnceTheme
                     g.DrawLines(tickPen, [new PointF(x - 4, y), new PointF(x - 1, y + 4), new PointF(x + 5, y - 4)]);
                 }
 
-                using var labelFont = Body(8.5F, active ? FontStyle.Bold : FontStyle.Regular);
+                using var labelFont = Body(9F, active ? FontStyle.Bold : FontStyle.Regular);
                 using var labelBrush = new SolidBrush(active ? OnceTheme.Text : Muted);
                 var labelSize = g.MeasureString(Steps[i], labelFont);
-                g.DrawString(Steps[i], labelFont, labelBrush, x - labelSize.Width / 2, 46F);
+                g.DrawString(Steps[i], labelFont, labelBrush, x - labelSize.Width / 2, 50F);
             }
         }
     }
