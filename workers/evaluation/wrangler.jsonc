@@ -31,7 +31,7 @@
   "migrations": [
     {
       "tag": "evaluation-admission-v1",
-      "new_classes": ["EvaluationAdmission"]
+      "new_sqlite_classes": ["EvaluationAdmission"]
     }
   ]
 }
