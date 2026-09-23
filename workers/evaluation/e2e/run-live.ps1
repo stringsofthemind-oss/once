@@ -34,12 +34,13 @@ function Invoke-CurlJson {
     [string]$Body = ""
   )
 
-  $temp = [System.IO.Path]::GetTempFileName()
+  $responseTemp = [System.IO.Path]::GetTempFileName()
+  $bodyTemp = $null
 
   try {
     $args = @(
       "-sS",
-      "-o", $temp,
+      "-o", $responseTemp,
       "-w", "%{http_code}",
       "-X", $Method
     )
@@ -49,9 +50,16 @@ function Invoke-CurlJson {
     }
 
     if ($Body -ne "") {
+      $bodyTemp = [System.IO.Path]::GetTempFileName()
+      [System.IO.File]::WriteAllText(
+        $bodyTemp,
+        $Body,
+        [System.Text.UTF8Encoding]::new($false)
+      )
+
       $args += @(
         "-H", "content-type: application/json",
-        "--data-binary", $Body
+        "--data-binary", "@$bodyTemp"
       )
     }
 
@@ -63,7 +71,7 @@ function Invoke-CurlJson {
       throw "curl failed for $Uri"
     }
 
-    $raw = Get-Content -LiteralPath $temp -Raw
+    $raw = Get-Content -LiteralPath $responseTemp -Raw
     $parsed = $null
 
     if (-not [string]::IsNullOrWhiteSpace($raw)) {
@@ -82,7 +90,42 @@ function Invoke-CurlJson {
     }
   }
   finally {
-    Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $responseTemp -Force -ErrorAction SilentlyContinue
+    if ($bodyTemp) {
+      Remove-Item -LiteralPath $bodyTemp -Force -ErrorAction SilentlyContinue
+    }
+  }
+}
+
+function Stop-E2ERemoteDev {
+  param(
+    $Process,
+    [int]$LocalPort
+  )
+
+  if ($Process -and -not $Process.HasExited) {
+    try {
+      & taskkill.exe /PID $Process.Id /T /F *> $null
+    }
+    catch {
+      Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue
+    }
+  }
+
+  try {
+    $owners = @(
+      Get-NetTCPConnection -LocalPort $LocalPort -ErrorAction SilentlyContinue |
+        Select-Object -ExpandProperty OwningProcess -Unique
+    )
+
+    foreach ($ownerPid in $owners) {
+      if ($ownerPid -and $ownerPid -ne $PID) {
+        Stop-Process -Id $ownerPid -Force -ErrorAction SilentlyContinue
+      }
+    }
+  }
+  catch {
+    # Best-effort cleanup only.
   }
 }
 
@@ -202,11 +245,11 @@ try {
   } | ConvertTo-Json -Depth 10 -Compress
 
   $first = Invoke-CurlJson -Method "POST" -Uri "$ApiBase/v1/execute" -Headers $authHeaders -Body $payload
-  Assert-True ($first.Status -ge 200 -and $first.Status -lt 300) "First Once execution failed with HTTP $($first.Status)."
+  Assert-True ($first.Status -ge 200 -and $first.Status -lt 300) "First Once execution failed with HTTP $($first.Status): $($first.Raw)"
   Write-Host "First protected execution: PASS" -ForegroundColor Green
 
   $retry = Invoke-CurlJson -Method "POST" -Uri "$ApiBase/v1/execute" -Headers $authHeaders -Body $payload
-  Assert-True ($retry.Status -ge 200 -and $retry.Status -lt 300) "Same-operation retry failed with HTTP $($retry.Status)."
+  Assert-True ($retry.Status -ge 200 -and $retry.Status -lt 300) "Same-operation retry failed with HTTP $($retry.Status): $($retry.Raw)"
   Write-Host "Same-operation retry: PASS" -ForegroundColor Green
 
   $driftPayload = @{
@@ -219,14 +262,14 @@ try {
   } | ConvertTo-Json -Depth 10 -Compress
 
   $drift = Invoke-CurlJson -Method "POST" -Uri "$ApiBase/v1/execute" -Headers $authHeaders -Body $driftPayload
-  Assert-True ($drift.Status -eq 409) "Semantic drift should fail closed with HTTP 409, got $($drift.Status)."
+  Assert-True ($drift.Status -eq 409) "Semantic drift should fail closed with HTTP 409, got $($drift.Status): $($drift.Raw)"
   Write-Host "Semantic drift conflict: PASS (409)" -ForegroundColor Green
 
   $truth = Invoke-CurlJson -Method "GET" -Uri "$ApiBase/v1/truth/$([uri]::EscapeDataString($operationId))" -Headers $authHeaders
-  Assert-True ($truth.Status -eq 200) "Truth lookup failed with HTTP $($truth.Status)."
-  Assert-True ($truth.Body.ledger_state -eq "CONFIRMED") "Truth ledger_state was not CONFIRMED."
-  Assert-True ([int]$truth.Body.side_effects -eq 1) "Expected exactly one provider side effect."
-  Assert-True ([bool]$truth.Body.provider_executed) "Provider execution was not confirmed."
+  Assert-True ($truth.Status -eq 200) "Truth lookup failed with HTTP $($truth.Status): $($truth.Raw)"
+  Assert-True ($truth.Body.ledger_state -eq "CONFIRMED") "Truth ledger_state was not CONFIRMED: $($truth.Raw)"
+  Assert-True ([int]$truth.Body.side_effects -eq 1) "Expected exactly one provider side effect: $($truth.Raw)"
+  Assert-True ([bool]$truth.Body.provider_executed) "Provider execution was not confirmed: $($truth.Raw)"
 
   Write-Host "Durable truth: PASS (CONFIRMED, side_effects=1)" -ForegroundColor Green
   Write-Host ""
@@ -254,10 +297,7 @@ catch {
   exit 1
 }
 finally {
-  if ($wrangler -and -not $wrangler.HasExited) {
-    Stop-Process -Id $wrangler.Id -Force -ErrorAction SilentlyContinue
-    try { $wrangler.WaitForExit(5000) | Out-Null } catch {}
-  }
+  Stop-E2ERemoteDev -Process $wrangler -LocalPort $Port
 
   if ($null -eq $oldToken) {
     Remove-Item Env:E2E_TOKEN -ErrorAction SilentlyContinue
