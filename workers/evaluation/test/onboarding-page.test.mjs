@@ -109,14 +109,20 @@ test("embedded Windows PowerShell payload parses cleanly when pwsh is available"
     const parserCommand = [
       "$tokens=$null",
       "$errors=$null",
-      "[System.Management.Automation.Language.Parser]::ParseFile($args[0],[ref]$tokens,[ref]$errors) | Out-Null",
+      "[System.Management.Automation.Language.Parser]::ParseFile($env:ONCE_PS_PARSE_PATH,[ref]$tokens,[ref]$errors) | Out-Null",
       "if($errors.Count -gt 0){$errors | ForEach-Object { Write-Error $_.Message }; exit 1}",
     ].join(";");
 
     const parsed = spawnSync(
       "pwsh",
-      ["-NoProfile", "-Command", parserCommand, scriptPath],
-      { encoding: "utf8" },
+      ["-NoProfile", "-Command", parserCommand],
+      {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          ONCE_PS_PARSE_PATH: scriptPath,
+        },
+      },
     );
 
     assert.equal(parsed.status, 0, parsed.stderr || parsed.stdout);
