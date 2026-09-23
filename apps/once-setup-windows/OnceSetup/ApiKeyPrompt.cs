@@ -13,11 +13,10 @@ internal sealed class ApiKeyPrompt : Form
 
         var body = new FlowLayoutPanel
         {
-            Dock = DockStyle.Fill,
             FlowDirection = FlowDirection.TopDown,
             WrapContents = false,
             AutoScroll = true,
-            Padding = new Padding(70, 34, 70, 38),
+            Padding = new Padding(OnceTheme.S(72), OnceTheme.S(40), OnceTheme.S(72), OnceTheme.S(48)),
             BackColor = OnceTheme.Background,
         };
 
@@ -26,47 +25,59 @@ internal sealed class ApiKeyPrompt : Form
             Text = "ONCE / EXECUTION CORE",
             AutoSize = true,
             ForeColor = OnceTheme.Accent,
-            Font = OnceTheme.Body(9F, FontStyle.Bold),
-            Margin = new Padding(0, 0, 0, 12),
+            Font = OnceTheme.Body(9.5F, FontStyle.Bold),
+            Margin = new Padding(0, 0, 0, OnceTheme.S(14)),
         };
         body.Controls.Add(kicker);
-        body.Controls.Add(OnceTheme.Heading("CONNECT TO ONCE", 26F));
+        body.Controls.Add(OnceTheme.Heading("CONNECT TO ONCE", 27F));
 
         var intro = OnceTheme.Paragraph(
             "Paste your evaluation API key to connect this machine. The key begins with once_test_.");
         body.Controls.Add(intro);
 
-        var card = new Panel
+        var card = new TableLayoutPanel
         {
+            ColumnCount = 2,
+            RowCount = 3,
             Width = OnceTheme.MaxContentWidth,
-            Height = 196,
+            Height = OnceTheme.S(220),
             BackColor = OnceTheme.Surface,
-            Padding = new Padding(20),
-            Margin = new Padding(0, 0, 0, 16),
+            Padding = new Padding(OnceTheme.S(22)),
+            Margin = new Padding(0, 0, 0, OnceTheme.S(18)),
         };
+        card.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        card.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        card.RowStyles.Add(new RowStyle(SizeType.Absolute, OnceTheme.S(38)));
+        card.RowStyles.Add(new RowStyle(SizeType.Absolute, OnceTheme.S(70)));
+        card.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
         var keyLabel = new Label
         {
             Text = "ONCE API KEY",
             AutoSize = true,
             ForeColor = OnceTheme.Muted,
-            Font = OnceTheme.Body(9F, FontStyle.Bold),
-            Location = new Point(20, 18),
+            Font = OnceTheme.Body(9.5F, FontStyle.Bold),
+            Anchor = AnchorStyles.Left,
+            Margin = new Padding(0),
         };
+        card.Controls.Add(keyLabel, 0, 0);
+        card.SetColumnSpan(keyLabel, 2);
 
         _apiKey = new TextBox
         {
-            Width = 860,
-            Location = new Point(20, 54),
+            Dock = DockStyle.Fill,
             PlaceholderText = "once_test_...",
-            Font = new Font("Consolas", 11F),
+            Font = OnceTheme.Mono(11F),
             BackColor = Color.FromArgb(4, 13, 18),
             ForeColor = OnceTheme.Text,
             BorderStyle = BorderStyle.FixedSingle,
             UseSystemPasswordChar = true,
+            Margin = new Padding(0, OnceTheme.S(6), OnceTheme.S(16), OnceTheme.S(8)),
         };
 
-        var paste = OnceTheme.SecondaryButton("Paste", 140);
+        var paste = OnceTheme.SecondaryButton("Paste", 145);
+        paste.Dock = DockStyle.Fill;
+        paste.Margin = new Padding(0, OnceTheme.S(6), 0, OnceTheme.S(8));
         paste.Click += (_, _) =>
         {
             try
@@ -85,14 +96,28 @@ internal sealed class ApiKeyPrompt : Form
             _apiKey.Focus();
         };
 
+        card.Controls.Add(_apiKey, 0, 1);
+        card.Controls.Add(paste, 1, 1);
+
+        var hintRow = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = true,
+            AutoSize = false,
+            BackColor = OnceTheme.Surface,
+            Margin = Padding.Empty,
+            Padding = new Padding(0, OnceTheme.S(8), 0, 0),
+        };
+
         var showKey = new CheckBox
         {
             Text = "Show key",
             AutoSize = true,
             ForeColor = OnceTheme.Muted,
             BackColor = OnceTheme.Surface,
-            Location = new Point(20, 120),
             Font = OnceTheme.Body(9.5F),
+            Margin = new Padding(0, 0, OnceTheme.S(22), 0),
         };
         showKey.CheckedChanged += (_, _) => _apiKey.UseSystemPasswordChar = !showKey.Checked;
 
@@ -102,26 +127,13 @@ internal sealed class ApiKeyPrompt : Form
             AutoSize = true,
             ForeColor = OnceTheme.Muted,
             Font = OnceTheme.Body(9.5F),
-            Location = new Point(150, 122),
+            Margin = Padding.Empty,
         };
 
-        void LayoutCard()
-        {
-            var width = OnceTheme.ContentWidth(body);
-            card.Width = width;
-            var pasteWidth = 140;
-            var gap = 18;
-            _apiKey.Width = Math.Max(320, width - 40 - pasteWidth - gap);
-            paste.Location = new Point(20 + _apiKey.Width + gap, 50);
-            safeHint.MaximumSize = new Size(Math.Max(240, width - 175), 0);
-            intro.MaximumSize = new Size(width, 0);
-        }
-
-        card.Controls.Add(keyLabel);
-        card.Controls.Add(_apiKey);
-        card.Controls.Add(paste);
-        card.Controls.Add(showKey);
-        card.Controls.Add(safeHint);
+        hintRow.Controls.Add(showKey);
+        hintRow.Controls.Add(safeHint);
+        card.Controls.Add(hintRow, 0, 2);
+        card.SetColumnSpan(hintRow, 2);
         body.Controls.Add(card);
 
         var help = new LinkLabel
@@ -133,7 +145,7 @@ internal sealed class ApiKeyPrompt : Form
             ActiveLinkColor = Color.FromArgb(90, 255, 190),
             VisitedLinkColor = OnceTheme.Accent,
             Font = OnceTheme.Body(10F),
-            Margin = new Padding(0, 4, 0, 22),
+            Margin = new Padding(0, OnceTheme.S(6), 0, OnceTheme.S(26)),
         };
         body.Controls.Add(help);
 
@@ -143,7 +155,7 @@ internal sealed class ApiKeyPrompt : Form
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
             FlowDirection = FlowDirection.LeftToRight,
             WrapContents = false,
-            Margin = new Padding(0, 12, 0, 0),
+            Margin = new Padding(0, OnceTheme.S(12), 0, 0),
         };
         var cancel = OnceTheme.SecondaryButton("Cancel", 150);
         cancel.DialogResult = DialogResult.Cancel;
@@ -153,19 +165,26 @@ internal sealed class ApiKeyPrompt : Form
         buttons.Controls.Add(connect);
         body.Controls.Add(buttons);
 
-        body.SizeChanged += (_, _) => LayoutCard();
+        void LayoutContent()
+        {
+            var width = OnceTheme.ContentWidth(body);
+            card.Width = width;
+            intro.MaximumSize = new Size(width, 0);
+            help.MaximumSize = new Size(width, 0);
+            safeHint.MaximumSize = new Size(Math.Max(OnceTheme.S(260), width - OnceTheme.S(230)), 0);
+            body.PerformLayout();
+        }
 
-        Controls.Add(body);
-        Controls.Add(OnceTheme.CreateStepBar(1));
-        Controls.Add(OnceTheme.CreateTopBar());
+        body.SizeChanged += (_, _) => LayoutContent();
+
+        Controls.Add(OnceTheme.CreateChrome(body, 1));
 
         AcceptButton = connect;
         CancelButton = cancel;
         Shown += (_, _) =>
         {
             OnceTheme.FitToWorkingArea(this);
-            LayoutCard();
-            body.PerformLayout();
+            LayoutContent();
             _apiKey.Focus();
         };
     }
