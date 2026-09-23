@@ -22,21 +22,27 @@ internal static class Program
             var apiKey = Clipboard.GetText()?.Trim() ?? string.Empty;
             if (!EvaluationKeyPattern.IsMatch(apiKey))
             {
-                MessageBox.Show(
-                    "Once Setup could not find a valid evaluation API key on your clipboard.\n\nReturn to the Once evaluation page, click Copy API key, then open Once Setup again.",
-                    "Once Setup",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning);
+                using var prompt = new ApiKeyPrompt();
+                if (prompt.ShowDialog() != DialogResult.OK)
+                {
+                    return;
+                }
+                apiKey = prompt.ApiKey;
+            }
+
+            if (!EvaluationKeyPattern.IsMatch(apiKey))
+            {
+                SetupDialogs.ShowWarning(
+                    "INVALID API KEY",
+                    "The key does not look like a Once evaluation key. Return to the evaluation page, click Copy API key, then try again.");
                 return;
             }
 
             if (!await VerifyApiKeyAsync(apiKey))
             {
-                MessageBox.Show(
-                    "The Once API key could not be verified.\n\nReturn to the evaluation page and create a fresh evaluation key.",
-                    "Once Setup",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
+                SetupDialogs.ShowError(
+                    "API KEY COULD NOT BE VERIFIED",
+                    "Once could not verify this evaluation key. Return to the evaluation page and create a fresh evaluation key.");
                 return;
             }
 
@@ -44,13 +50,7 @@ internal static class Program
             var npm = FindOnPath("npm.cmd");
             if (node is null || npm is null)
             {
-                var answer = MessageBox.Show(
-                    "Once automatic setup needs Node.js 18 or newer, but Node.js was not found on this computer.\n\nOpen the official Node.js download page now?",
-                    "Once Setup",
-                    MessageBoxButtons.YesNo,
-                    MessageBoxIcon.Warning);
-
-                if (answer == DialogResult.Yes)
+                if (SetupDialogs.AskOpenNodeDownload())
                 {
                     Process.Start(new ProcessStartInfo
                     {
@@ -64,26 +64,19 @@ internal static class Program
             var major = GetNodeMajorVersion(node);
             if (major < 18)
             {
-                MessageBox.Show(
-                    $"Once needs Node.js 18 or newer. This computer is using Node.js {major}.",
-                    "Once Setup",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning);
+                SetupDialogs.ShowWarning(
+                    "NODE.JS UPDATE REQUIRED",
+                    $"Once needs Node.js 18 or newer. This computer is using Node.js {major}.");
                 return;
             }
 
-            var mode = MessageBox.Show(
-                "Where should Once be installed?\n\nYES — Create a safe Once demo project for me. Recommended for a first evaluation.\n\nNO — Let me choose an existing Node.js project.\n\nCANCEL — Exit without changing anything.",
-                "Once Setup",
-                MessageBoxButtons.YesNoCancel,
-                MessageBoxIcon.Question);
-
-            if (mode == DialogResult.Cancel)
+            var mode = SetupDialogs.ChooseProjectMode();
+            if (mode == ProjectMode.Cancel)
             {
                 return;
             }
 
-            var isDemo = mode == DialogResult.Yes;
+            var isDemo = mode == ProjectMode.Demo;
             var root = isDemo ? CreateDemoProject() : ChooseExistingProject();
             if (root is null)
             {
@@ -95,21 +88,17 @@ internal static class Program
                 return;
             }
 
-            var confirm = MessageBox.Show(
-                "Once is ready to set up this folder:\n\n" + root +
-                "\n\nOnce will:\n• install @once-agent/sdk\n• save your evaluation key to .env\n• add .env to .gitignore\n• verify the Once connection" +
-                (isDemo ? "\n• run a safe retry-suppression demo" : string.Empty) +
-                "\n\nIt will not modify your application source code.\n\nContinue?",
-                "Once Setup",
-                MessageBoxButtons.YesNo,
-                MessageBoxIcon.Question);
-
-            if (confirm != DialogResult.Yes)
+            if (!SetupDialogs.ConfirmSetup(root, isDemo))
             {
                 return;
             }
 
-            Cursor.Current = Cursors.WaitCursor;
+            using var progress = new SetupProgressForm();
+            progress.Show();
+            progress.SetStage(0, "Checking Node.js and the selected project...");
+            Application.DoEvents();
+
+            progress.SetStage(1, "Installing @once-agent/sdk...");
             var install = RunProcess(
                 "cmd.exe",
                 $"/d /s /c \"\"{npm}\" install @once-agent/sdk\"",
@@ -118,44 +107,43 @@ internal static class Program
 
             if (install.ExitCode != 0)
             {
+                progress.Close();
                 throw new InvalidOperationException(
                     "The Once SDK installation did not complete successfully.\n\n" + install.Output);
             }
 
+            progress.SetStage(2, "Saving the evaluation key to .env and protecting it with .gitignore...");
             SaveKey(root, apiKey);
 
+            progress.SetStage(3, "Verifying the Once API connection...");
             if (!await VerifyApiKeyAsync(apiKey))
             {
+                progress.Close();
                 throw new InvalidOperationException("The Once API connection could not be verified after installation.");
             }
+
+            progress.SetStage(4, isDemo
+                ? "Running the first-action and retry-suppression proof..."
+                : "Final verification complete. No application source files were changed.");
 
             if (isDemo)
             {
                 RunDemo(root, node, apiKey);
-                MessageBox.Show(
-                    "Once is installed and connected.\n\nThe demo also proved the safety behavior:\n\n✓ first action executed\n✓ retry was suppressed\n✓ side effects stayed at 1\n\nDemo folder:\n" + root,
-                    "Once Setup complete",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
-            }
-            else
-            {
-                MessageBox.Show(
-                    "Once is installed and connected to this project.\n\n✓ SDK installed\n✓ API key saved in .env\n✓ .env added to .gitignore\n✓ Once API connection verified\n\nNo application source files were changed.\n\nProject:\n" + root,
-                    "Once Setup complete",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
             }
 
+            progress.SetStage(5, isDemo
+                ? "Safety behavior verified: duplicate execution was suppressed."
+                : "Once is connected to this project.");
+            progress.Close();
+
+            SetupDialogs.ShowCompletion(root, isDemo);
             Clipboard.Clear();
         }
         catch (Exception ex)
         {
-            MessageBox.Show(
-                "Once Setup stopped safely.\n\n" + ex.Message + "\n\nNo hidden retry or recovery action was attempted.",
-                "Once Setup",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Error);
+            SetupDialogs.ShowError(
+                "SETUP STOPPED SAFELY",
+                ex.Message + "\n\nNo hidden retry or recovery action was attempted.");
         }
         finally
         {
@@ -258,13 +246,7 @@ internal static class Program
                 return dialog.SelectedPath;
             }
 
-            var retry = MessageBox.Show(
-                "That folder does not contain package.json, so Once cannot safely identify it as a Node.js project.\n\nChoose another folder?",
-                "Once Setup",
-                MessageBoxButtons.YesNo,
-                MessageBoxIcon.Warning);
-
-            if (retry != DialogResult.Yes)
+            if (!SetupDialogs.AskChooseAnotherProject())
             {
                 return null;
             }
@@ -286,11 +268,7 @@ internal static class Program
             return true;
         }
 
-        return MessageBox.Show(
-            "This project already has a different Once API key in .env.\n\nReplace it with this evaluation key?",
-            "Once Setup",
-            MessageBoxButtons.YesNo,
-            MessageBoxIcon.Warning) == DialogResult.Yes;
+        return SetupDialogs.ConfirmKeyReplacement();
     }
 
     private static void SaveKey(string root, string apiKey)
