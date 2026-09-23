@@ -8,8 +8,8 @@ internal sealed class ApiKeyPrompt : Form
 
     internal ApiKeyPrompt()
     {
-        OnceTheme.Apply(this, "Connect to Once", new Size(980, 680));
-        AutoScroll = true;
+        OnceTheme.Apply(this, "Connect to Once", new Size(1360, 860));
+        AutoScroll = false;
 
         var body = new FlowLayoutPanel
         {
@@ -17,7 +17,7 @@ internal sealed class ApiKeyPrompt : Form
             FlowDirection = FlowDirection.TopDown,
             WrapContents = false,
             AutoScroll = true,
-            Padding = new Padding(54, 26, 54, 32),
+            Padding = new Padding(70, 34, 70, 38),
             BackColor = OnceTheme.Background,
         };
 
@@ -31,16 +31,18 @@ internal sealed class ApiKeyPrompt : Form
         };
         body.Controls.Add(kicker);
         body.Controls.Add(OnceTheme.Heading("CONNECT TO ONCE", 26F));
-        body.Controls.Add(OnceTheme.Paragraph(
-            "Paste your evaluation API key to connect this machine. The key begins with once_test_."));
+
+        var intro = OnceTheme.Paragraph(
+            "Paste your evaluation API key to connect this machine. The key begins with once_test_.");
+        body.Controls.Add(intro);
 
         var card = new Panel
         {
-            Width = 820,
-            Height = 176,
+            Width = OnceTheme.MaxContentWidth,
+            Height = 196,
             BackColor = OnceTheme.Surface,
             Padding = new Padding(20),
-            Margin = new Padding(0, 0, 0, 14),
+            Margin = new Padding(0, 0, 0, 16),
         };
 
         var keyLabel = new Label
@@ -54,9 +56,8 @@ internal sealed class ApiKeyPrompt : Form
 
         _apiKey = new TextBox
         {
-            Width = 610,
-            Height = 42,
-            Location = new Point(20, 52),
+            Width = 860,
+            Location = new Point(20, 54),
             PlaceholderText = "once_test_...",
             Font = new Font("Consolas", 11F),
             BackColor = Color.FromArgb(4, 13, 18),
@@ -65,8 +66,7 @@ internal sealed class ApiKeyPrompt : Form
             UseSystemPasswordChar = true,
         };
 
-        var paste = OnceTheme.SecondaryButton("Paste", 120);
-        paste.Location = new Point(650, 49);
+        var paste = OnceTheme.SecondaryButton("Paste", 140);
         paste.Click += (_, _) =>
         {
             try
@@ -91,7 +91,7 @@ internal sealed class ApiKeyPrompt : Form
             AutoSize = true,
             ForeColor = OnceTheme.Muted,
             BackColor = OnceTheme.Surface,
-            Location = new Point(20, 112),
+            Location = new Point(20, 120),
             Font = OnceTheme.Body(9.5F),
         };
         showKey.CheckedChanged += (_, _) => _apiKey.UseSystemPasswordChar = !showKey.Checked;
@@ -102,8 +102,20 @@ internal sealed class ApiKeyPrompt : Form
             AutoSize = true,
             ForeColor = OnceTheme.Muted,
             Font = OnceTheme.Body(9.5F),
-            Location = new Point(132, 114),
+            Location = new Point(150, 122),
         };
+
+        void LayoutCard()
+        {
+            var width = OnceTheme.ContentWidth(body);
+            card.Width = width;
+            var pasteWidth = 140;
+            var gap = 18;
+            _apiKey.Width = Math.Max(320, width - 40 - pasteWidth - gap);
+            paste.Location = new Point(20 + _apiKey.Width + gap, 50);
+            safeHint.MaximumSize = new Size(Math.Max(240, width - 175), 0);
+            intro.MaximumSize = new Size(width, 0);
+        }
 
         card.Controls.Add(keyLabel);
         card.Controls.Add(_apiKey);
@@ -116,6 +128,7 @@ internal sealed class ApiKeyPrompt : Form
         {
             Text = "Need a key? Return to the Once evaluation page and click Copy API key.",
             AutoSize = true,
+            MaximumSize = new Size(OnceTheme.MaxContentWidth, 0),
             LinkColor = OnceTheme.Accent,
             ActiveLinkColor = Color.FromArgb(90, 255, 190),
             VisitedLinkColor = OnceTheme.Accent,
@@ -132,13 +145,15 @@ internal sealed class ApiKeyPrompt : Form
             WrapContents = false,
             Margin = new Padding(0, 12, 0, 0),
         };
-        var cancel = OnceTheme.SecondaryButton("Cancel", 140);
+        var cancel = OnceTheme.SecondaryButton("Cancel", 150);
         cancel.DialogResult = DialogResult.Cancel;
-        var connect = OnceTheme.PrimaryButton("Continue  →", 180);
+        var connect = OnceTheme.PrimaryButton("Continue  →", 190);
         connect.DialogResult = DialogResult.OK;
         buttons.Controls.Add(cancel);
         buttons.Controls.Add(connect);
         body.Controls.Add(buttons);
+
+        body.SizeChanged += (_, _) => LayoutCard();
 
         Controls.Add(body);
         Controls.Add(OnceTheme.CreateStepBar(1));
@@ -149,6 +164,8 @@ internal sealed class ApiKeyPrompt : Form
         Shown += (_, _) =>
         {
             OnceTheme.FitToWorkingArea(this);
+            LayoutCard();
+            body.PerformLayout();
             _apiKey.Focus();
         };
     }
