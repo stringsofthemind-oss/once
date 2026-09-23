@@ -71,6 +71,8 @@ internal static class SetupDialogs
         var install = OnceTheme.PrimaryButton("Install Once  →", 205);
         back.Click += (_, _) => form.Close();
         install.Click += (_, _) => { accepted = true; form.DialogResult = DialogResult.OK; form.Close(); };
+        back.Margin = new Padding(0, 0, OnceTheme.S(12), 0);
+        install.Margin = Padding.Empty;
         buttons.Controls.Add(back);
         buttons.Controls.Add(install);
         body.Controls.Add(buttons);
@@ -145,7 +147,7 @@ internal static class SetupDialogs
             Margin = new Padding(0, 0, 0, OnceTheme.S(20)),
         };
         body.Controls.Add(badge);
-        body.Controls.Add(OnceTheme.Heading("ONCE IS READY", 27F));
+        body.Controls.Add(OnceTheme.Heading("ONCE IS READY", 23F));
         body.Controls.Add(OnceTheme.Paragraph("Installed, connected, and verified. You're all set."));
 
         var statusText = isDemo
@@ -173,6 +175,8 @@ internal static class SetupDialogs
         };
         var finish = OnceTheme.PrimaryButton("Finish setup  →", 195);
         finish.Click += (_, _) => form.Close();
+        openFolder.Margin = new Padding(0, 0, OnceTheme.S(12), 0);
+        finish.Margin = Padding.Empty;
         buttons.Controls.Add(openFolder);
         buttons.Controls.Add(finish);
         body.Controls.Add(buttons);
@@ -214,6 +218,8 @@ internal static class SetupDialogs
         var accept = OnceTheme.PrimaryButton(acceptText, 220);
         cancel.Click += (_, _) => form.Close();
         accept.Click += (_, _) => { accepted = true; form.DialogResult = DialogResult.OK; form.Close(); };
+        cancel.Margin = new Padding(0, 0, OnceTheme.S(12), 0);
+        accept.Margin = Padding.Empty;
         buttons.Controls.Add(cancel);
         buttons.Controls.Add(accept);
         body.Controls.Add(buttons);
@@ -274,24 +280,47 @@ internal static class SetupDialogs
             FlowDirection = FlowDirection.TopDown,
             WrapContents = false,
             AutoScroll = true,
-            Padding = new Padding(OnceTheme.S(72), OnceTheme.S(40), OnceTheme.S(72), OnceTheme.S(48)),
+            Padding = new Padding(OnceTheme.S(54), OnceTheme.S(36), OnceTheme.S(54), OnceTheme.S(44)),
             BackColor = OnceTheme.Background,
         };
 
+        var resizing = false;
         void ResizeFullWidthControls()
         {
-            var width = OnceTheme.ContentWidth(body);
-            foreach (Control control in body.Controls)
+            if (resizing || body.ClientSize.Width <= 0)
             {
-                if (Equals(control.Tag, FullWidthTag))
+                return;
+            }
+
+            resizing = true;
+            try
+            {
+                var minimumInset = OnceTheme.S(54);
+                var available = Math.Max(OnceTheme.S(420), body.ClientSize.Width - minimumInset * 2);
+                var width = Math.Min(OnceTheme.MaxContentWidth, available);
+                var horizontalInset = Math.Max(minimumInset, (body.ClientSize.Width - width) / 2);
+
+                if (body.Padding.Left != horizontalInset || body.Padding.Right != horizontalInset)
                 {
-                    control.Width = width;
+                    body.Padding = new Padding(horizontalInset, OnceTheme.S(36), horizontalInset, OnceTheme.S(44));
                 }
 
-                if (control is Label label && label.MaximumSize.Width > 0)
+                foreach (Control control in body.Controls)
                 {
-                    label.MaximumSize = new Size(Math.Min(width, OnceTheme.MaxContentWidth), 0);
+                    if (Equals(control.Tag, FullWidthTag))
+                    {
+                        control.Width = width;
+                    }
+
+                    if (control is Label label && label.MaximumSize.Width > 0)
+                    {
+                        label.MaximumSize = new Size(width, 0);
+                    }
                 }
+            }
+            finally
+            {
+                resizing = false;
             }
         }
 
@@ -299,7 +328,7 @@ internal static class SetupDialogs
         {
             if (Equals(e.Control.Tag, FullWidthTag))
             {
-                e.Control.Width = OnceTheme.ContentWidth(body);
+                e.Control.Width = Math.Min(OnceTheme.MaxContentWidth, Math.Max(OnceTheme.S(420), body.ClientSize.Width - body.Padding.Horizontal));
             }
         };
         body.SizeChanged += (_, _) => ResizeFullWidthControls();
@@ -328,11 +357,11 @@ internal static class SetupDialogs
                 : title + "\r\n" + description,
             TextAlign = ContentAlignment.MiddleLeft,
             Width = OnceTheme.MaxContentWidth,
-            Height = OnceTheme.S(126),
+            Height = OnceTheme.S(118),
             FlatStyle = FlatStyle.Flat,
             BackColor = recommended ? Color.FromArgb(9, 34, 36) : OnceTheme.Surface,
             ForeColor = OnceTheme.Text,
-            Font = OnceTheme.Body(11F, FontStyle.Bold),
+            Font = OnceTheme.Body(10.5F, FontStyle.Bold),
             Padding = new Padding(OnceTheme.S(24), OnceTheme.S(14), OnceTheme.S(24), OnceTheme.S(14)),
             Cursor = Cursors.Hand,
             Margin = new Padding(0, 0, 0, OnceTheme.S(18)),
@@ -349,7 +378,7 @@ internal static class SetupDialogs
         {
             Tag = FullWidthTag,
             Width = OnceTheme.MaxContentWidth,
-            Height = Math.Max(OnceTheme.S(124), OnceTheme.S(78 + content.Split('\n').Length * 31)),
+            Height = Math.Max(OnceTheme.S(118), OnceTheme.S(76 + content.Split('\n').Length * 29)),
             BackColor = OnceTheme.Surface,
             Margin = new Padding(0, 0, 0, OnceTheme.S(18)),
             Padding = new Padding(OnceTheme.S(24)),
@@ -368,7 +397,7 @@ internal static class SetupDialogs
             AutoSize = true,
             MaximumSize = new Size(OnceTheme.MaxContentWidth - OnceTheme.S(48), 0),
             ForeColor = OnceTheme.Text,
-            Font = OnceTheme.Body(10.5F),
+            Font = OnceTheme.Body(10F),
             Location = new Point(OnceTheme.S(24), OnceTheme.S(52)),
         };
         panel.Controls.Add(titleLabel);
