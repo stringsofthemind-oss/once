@@ -2,6 +2,7 @@ import {
   assertAdmissionConfiguration,
   enforceEvaluationAdmission,
 } from "./admission.js";
+import { WINDOWS_INSTALLER } from "./windows-installer.js";
 
 export { EvaluationAdmission } from "./admission.js";
 
@@ -23,6 +24,18 @@ function html(body, status = 200) {
     headers: {
       "content-type": "text/html; charset=utf-8",
       "cache-control": "no-store",
+    },
+  });
+}
+
+function attachment(body, filename, contentType = "application/octet-stream") {
+  return new Response(body, {
+    status: 200,
+    headers: {
+      "content-type": contentType,
+      "content-disposition": `attachment; filename="${filename}"`,
+      "cache-control": "no-store",
+      "x-content-type-options": "nosniff",
     },
   });
 }
@@ -278,7 +291,7 @@ const PAGE = `<!doctype html>
 <meta name="robots" content="noindex,nofollow">
 <title>Once technical evaluation</title>
 <style>
-:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#05090e;color:#edf8f3;font:15px/1.6 system-ui,sans-serif}main{width:min(820px,calc(100% - 36px));margin:0 auto;padding:72px 0}.mark{color:#39f0a0;font-weight:850;letter-spacing:.08em}h1{font-size:clamp(38px,7vw,58px);line-height:1;margin:.25em 0}h2{font-size:21px;margin:28px 0 8px}.muted{color:#8da0ad}.card{margin-top:30px;padding:28px;border:1px solid #1e3340;border-radius:18px;background:#09111a}.note{color:#f1c86c}.success{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border:1px solid #246c50;border-radius:999px;background:#0d2b20;color:#79f2b7;font-weight:800}.step{margin-top:24px;padding-top:20px;border-top:1px solid #172a35}.copyrow{display:flex;gap:10px;align-items:stretch;margin:10px 0}.copyvalue{flex:1;display:flex;align-items:center;min-width:0;padding:13px 14px;border:1px solid #1e3340;border-radius:10px;background:#03070a;color:#b9dccb;font:14px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere}.primary,.copybtn{padding:13px 17px;border:0;border-radius:10px;background:#39f0a0;color:#04120b;font-weight:850;cursor:pointer}.copybtn{white-space:nowrap;background:#153344;color:#dff8ed;border:1px solid #285268}.primary:disabled,.copybtn:disabled{opacity:.55;cursor:not-allowed}.warning{padding:12px 14px;border:1px solid #5f5027;border-radius:10px;background:#1a170d;color:#f1c86c}.done{margin-top:26px;padding:18px;border:1px solid #246c50;border-radius:12px;background:#091b15}.small{font-size:13px}a{color:#44d0ff}@media(max-width:620px){.copyrow{flex-direction:column}.copybtn{width:100%}}
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#05090e;color:#edf8f3;font:15px/1.6 system-ui,sans-serif}main{width:min(820px,calc(100% - 36px));margin:0 auto;padding:72px 0}.mark{color:#39f0a0;font-weight:850;letter-spacing:.08em}h1{font-size:clamp(38px,7vw,58px);line-height:1;margin:.25em 0}h2{font-size:21px;margin:28px 0 8px}.muted{color:#8da0ad}.card{margin-top:30px;padding:28px;border:1px solid #1e3340;border-radius:18px;background:#09111a}.note{color:#f1c86c}.success{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border:1px solid #246c50;border-radius:999px;background:#0d2b20;color:#79f2b7;font-weight:800}.step{margin-top:24px;padding-top:20px;border-top:1px solid #172a35}.copyrow{display:flex;gap:10px;align-items:stretch;margin:10px 0}.copyvalue{flex:1;display:flex;align-items:center;min-width:0;padding:13px 14px;border:1px solid #1e3340;border-radius:10px;background:#03070a;color:#b9dccb;font:14px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere}.primary,.copybtn,.installbtn{padding:13px 17px;border:0;border-radius:10px;background:#39f0a0;color:#04120b;font-weight:850;cursor:pointer}.copybtn{white-space:nowrap;background:#153344;color:#dff8ed;border:1px solid #285268}.installbtn{font-size:16px;padding:16px 20px;width:100%;margin-top:10px}.primary:disabled,.copybtn:disabled,.installbtn:disabled{opacity:.55;cursor:not-allowed}.warning{padding:12px 14px;border:1px solid #5f5027;border-radius:10px;background:#1a170d;color:#f1c86c}.done{margin-top:26px;padding:18px;border:1px solid #246c50;border-radius:12px;background:#091b15}.small{font-size:13px}.numbered{margin:12px 0 0;padding-left:22px}.numbered li{margin:8px 0}details{margin-top:24px;padding:14px;border:1px solid #1e3340;border-radius:12px;background:#071018}summary{cursor:pointer;font-weight:750}a{color:#44d0ff}@media(max-width:620px){.copyrow{flex-direction:column}.copybtn{width:100%}}
 </style>
 </head>
 <body>
@@ -292,48 +305,57 @@ const PAGE = `<!doctype html>
 
 <div id="result" hidden>
   <div class="success">✓ Evaluation active</div>
-  <p><strong>Your Once evaluation is ready.</strong> Keep this page open until you finish the four steps below.</p>
+  <p><strong>Your Once evaluation is ready.</strong> The easy Windows setup below is designed so you do not need to know PowerShell, npm, or which commands to type.</p>
 
   <div class="step">
-    <h2>Step 1 — Copy your API key</h2>
-    <p>Click <strong>Copy API key</strong>. The box contains only your key. Do not add <code>ONCE_API_KEY=</code> and do not copy any install command with it.</p>
+    <h2>Step 1 — Your API key</h2>
+    <p>This box contains <strong>only your API key</strong>. Nothing else is mixed into it.</p>
     <div class="copyrow">
       <code id="apiKey" class="copyvalue"></code>
       <button id="copyApiKey" class="copybtn" type="button">Copy API key</button>
     </div>
-    <p class="warning small">Your key starts with <strong>once_test_</strong>. It is shown once. Keep it private and do not close this page until setup is complete.</p>
+    <p class="warning small">Your key starts with <strong>once_test_</strong>. It is shown once. Keep this page open until setup is finished.</p>
   </div>
 
   <div class="step">
-    <h2>Step 2 — Open your project terminal</h2>
-    <p>Open PowerShell, Terminal, or the terminal inside VS Code. Go to the folder containing the project you want Once to protect.</p>
-    <p class="muted small">If you are not sure whether you are in the right folder, stop here and check before continuing. The next commands install Once into the current project.</p>
+    <h2>Step 2 — Let Once install itself</h2>
+    <p>On Windows, click the button below. It copies your API key to the clipboard and downloads the Once setup launcher. The launcher reads the key from your clipboard, so you do not have to paste commands into PowerShell.</p>
+    <button id="installWindows" class="installbtn" type="button">Install Once on Windows</button>
+    <p id="installStatus" class="muted small">Automatic installer: Windows + Node.js 18 or newer.</p>
   </div>
 
   <div class="step">
-    <h2>Step 3 — Install Once</h2>
-    <p>Copy this command, paste it into your project terminal, press Enter, and wait for it to finish.</p>
+    <h2>Step 3 — Open the downloaded setup file</h2>
+    <ol class="numbered">
+      <li>Open your browser's Downloads list.</li>
+      <li>Open <strong>OnceSetup.cmd</strong>.</li>
+      <li>If Windows asks whether you want to run it, confirm that you do.</li>
+      <li>Choose <strong>Yes</strong> for a safe demo project (recommended for your first try), or <strong>No</strong> to choose one of your existing Node.js projects.</li>
+      <li>Confirm the final setup screen. Once performs the installation, saves the key to <code>.env</code>, protects it with <code>.gitignore</code>, and verifies the connection.</li>
+    </ol>
+    <p class="muted small">The browser cannot silently run programs on your computer. Opening the downloaded setup file is the one Windows security step we deliberately do not bypass.</p>
+  </div>
+
+  <div class="done">
+    <strong>What the automatic setup does for you</strong>
+    <p>✓ checks your Once key<br>✓ checks Node.js<br>✓ installs <code>@once-agent/sdk</code><br>✓ saves the key to <code>.env</code><br>✓ adds <code>.env</code> to <code>.gitignore</code><br>✓ verifies the Once API connection</p>
+    <p>If you choose the recommended demo, it also performs a real Once safety test: the first action executes, the retry is suppressed, and side effects stay at 1.</p>
+    <p class="muted small">Your technical evaluation lasts 24 hours. No card is required and nothing will be charged.</p>
+  </div>
+
+  <details>
+    <summary>Manual setup / Mac / Linux</summary>
+    <p>If you are not using the Windows installer, open a terminal inside your project and run:</p>
     <div class="copyrow">
       <code id="installCommand" class="copyvalue">npm install @once-agent/sdk</code>
       <button id="copyInstall" class="copybtn" type="button">Copy command</button>
     </div>
-  </div>
-
-  <div class="step">
-    <h2>Step 4 — Connect this project to Once</h2>
-    <p>After Step 3 finishes, copy and run this command in the same terminal:</p>
     <div class="copyrow">
       <code id="setupCommand" class="copyvalue">npx once setup .</code>
       <button id="copySetup" class="copybtn" type="button">Copy command</button>
     </div>
-    <p>Follow the instructions shown in your terminal. When setup asks for your Once API key, paste <strong>only the key from Step 1</strong> — the value beginning with <code>once_test_</code>.</p>
-  </div>
-
-  <div class="done">
-    <strong>What happens next?</strong>
-    <p>When setup completes, this project is connected to Once and you can start protecting consequential actions against duplicate execution.</p>
-    <p class="muted small">Your technical evaluation lasts 24 hours. No card is required and nothing will be charged.</p>
-  </div>
+    <p class="small muted">When setup asks for a key, paste only the value beginning with <code>once_test_</code>.</p>
+  </details>
 </div>
 </div>
 <p class="note">The API key is displayed once. Store it securely if you continue the evaluation.</p>
@@ -344,6 +366,8 @@ const status=document.getElementById("status");
 const result=document.getElementById("result");
 const apiKey=document.getElementById("apiKey");
 const copyApiKey=document.getElementById("copyApiKey");
+const installWindows=document.getElementById("installWindows");
+const installStatus=document.getElementById("installStatus");
 const copyInstall=document.getElementById("copyInstall");
 const copySetup=document.getElementById("copySetup");
 const installCommand=document.getElementById("installCommand");
@@ -357,15 +381,47 @@ async function copyText(value,control,successLabel){
     await navigator.clipboard.writeText(value);
     control.textContent=successLabel;
     setTimeout(()=>{control.textContent=original},1600);
+    return true;
   }catch{
     control.textContent="Copy failed — select the text";
     setTimeout(()=>{control.textContent=original},2200);
+    return false;
   }
 }
 
 copyApiKey.addEventListener("click",()=>copyText(apiKey.textContent,copyApiKey,"Copied ✓"));
 copyInstall.addEventListener("click",()=>copyText(installCommand.textContent,copyInstall,"Copied ✓"));
 copySetup.addEventListener("click",()=>copyText(setupCommand.textContent,copySetup,"Copied ✓"));
+
+installWindows.addEventListener("click",async()=>{
+  const key=apiKey.textContent.trim();
+  if(!key.startsWith("once_test_")){
+    installStatus.textContent="Your API key is not available. Start the evaluation again.";
+    return;
+  }
+
+  installWindows.disabled=true;
+  installStatus.textContent="Copying your API key and preparing OnceSetup…";
+
+  try{
+    await navigator.clipboard.writeText(key);
+  }catch{
+    installStatus.textContent="Your browser blocked clipboard access. Click Copy API key first, then click Install Once again.";
+    installWindows.disabled=false;
+    return;
+  }
+
+  const link=document.createElement("a");
+  link.href="/install/windows.cmd";
+  link.download="OnceSetup.cmd";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+
+  installStatus.textContent="OnceSetup.cmd downloaded. Open it from your Downloads list and follow the buttons. Your API key is already on the clipboard.";
+  installWindows.textContent="Download OnceSetup again";
+  installWindows.disabled=false;
+});
 
 button.addEventListener("click",async()=>{
   button.disabled=true;
@@ -401,10 +457,10 @@ button.addEventListener("click",async()=>{
       throw new Error("evaluation_key_invalid");
     }
     apiKey.textContent=body.api_key;
-    status.textContent="Evaluation activated. Follow Steps 1–4 below.";
+    status.textContent="Evaluation activated. Use the automatic installer below.";
     button.hidden=true;
     result.hidden=false;
-    copyApiKey.focus();
+    installWindows.focus();
   }catch(error){
     status.textContent="Activation failed: "+error.message;
     button.disabled=false;
@@ -431,6 +487,10 @@ export default {
       return html(PAGE);
     }
 
+    if (request.method === "GET" && url.pathname === "/install/windows.cmd") {
+      return attachment(WINDOWS_INSTALLER, "OnceSetup.cmd", "application/octet-stream");
+    }
+
     if (request.method === "POST" && url.pathname === "/api/evaluate") {
       try {
         return await activateEvaluation(request, env);
@@ -446,6 +506,7 @@ export default {
         enabled: true,
         stripe_mode: "test_required",
         admission_control: "durable_object",
+        windows_installer: "available",
       });
     }
 
