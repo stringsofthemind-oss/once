@@ -117,7 +117,8 @@ internal sealed class ApiKeyPrompt : Form
             canvas.SuspendLayout();
             try
             {
-                canvas.Width = width;
+                canvas.MinimumSize = new Size(width, 0);
+                canvas.MaximumSize = new Size(width, 0);
                 canvas.Left = Math.Max(viewport.Padding.Left, (viewport.ClientSize.Width - width) / 2);
                 canvas.Top = viewport.Padding.Top;
 
@@ -130,8 +131,10 @@ internal sealed class ApiKeyPrompt : Form
                 var leftWidth = narrow
                     ? width
                     : Math.Max(OnceTheme.S(560), (int)Math.Round((width - OnceTheme.S(36)) * 0.62));
-                left.Width = leftWidth;
-                card.Width = leftWidth;
+                left.MinimumSize = new Size(leftWidth, 0);
+                left.MaximumSize = new Size(leftWidth, 0);
+                card.MinimumSize = new Size(leftWidth, 0);
+                card.MaximumSize = new Size(leftWidth, 0);
                 intro.MaximumSize = new Size(leftWidth, 0);
                 help.MaximumSize = new Size(leftWidth, 0);
             }
@@ -195,7 +198,7 @@ internal sealed class ApiKeyPrompt : Form
         entry.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         entry.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-        apiKey = new TextBox
+        var keyBox = new TextBox
         {
             Dock = DockStyle.Fill,
             PlaceholderText = "once_test_...",
@@ -216,18 +219,18 @@ internal sealed class ApiKeyPrompt : Form
                 var clipboardText = Clipboard.GetText()?.Trim() ?? string.Empty;
                 if (clipboardText.Length > 0)
                 {
-                    apiKey.Text = clipboardText;
-                    apiKey.SelectionStart = apiKey.TextLength;
+                    keyBox.Text = clipboardText;
+                    keyBox.SelectionStart = keyBox.TextLength;
                 }
             }
             catch
             {
                 // Manual paste remains available.
             }
-            apiKey.Focus();
+            keyBox.Focus();
         };
 
-        entry.Controls.Add(apiKey, 0, 0);
+        entry.Controls.Add(keyBox, 0, 0);
         entry.Controls.Add(paste, 1, 0);
         AddRow(card, entry);
 
@@ -241,7 +244,7 @@ internal sealed class ApiKeyPrompt : Form
             Margin = new Padding(0, 0, 0, OnceTheme.S(10)),
             UseCompatibleTextRendering = false,
         };
-        showKey.CheckedChanged += (_, _) => apiKey.UseSystemPasswordChar = !showKey.Checked;
+        showKey.CheckedChanged += (_, _) => keyBox.UseSystemPasswordChar = !showKey.Checked;
         AddRow(card, showKey);
 
         var safeHint = new Label
@@ -256,6 +259,7 @@ internal sealed class ApiKeyPrompt : Form
         };
         AddRow(card, safeHint);
 
+        apiKey = keyBox;
         return card;
     }
 
