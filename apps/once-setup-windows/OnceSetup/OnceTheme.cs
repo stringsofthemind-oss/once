@@ -4,7 +4,8 @@ internal static class OnceTheme
 {
     private static readonly float UiScale = CalculateUiScale();
 
-    internal static int MaxContentWidth => S(1180);
+    internal static int MaxContentWidth => S(1120);
+    internal static int MaxChromeWidth => S(1240);
 
     internal static readonly Color Background = Color.FromArgb(4, 9, 13);
     internal static readonly Color Surface = Color.FromArgb(8, 18, 24);
@@ -40,10 +41,8 @@ internal static class OnceTheme
         form.ForeColor = Text;
         form.Font = Body();
 
-        // We scale Once's own metrics deliberately instead of asking WinForms
-        // to multiply fixed coordinates after layout. This avoids the clipping
-        // that appeared on high-DPI / 200% Windows displays while keeping the
-        // interface comfortably large and readable.
+        // Once owns its layout metrics. Disabling WinForms autoscaling avoids
+        // coordinates being multiplied a second time on high-DPI displays.
         form.AutoScaleMode = AutoScaleMode.None;
 
         form.ShowInTaskbar = true;
@@ -63,10 +62,10 @@ internal static class OnceTheme
             BackColor = Background,
         };
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, S(64)));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, S(82)));
         if (activeStep.HasValue)
         {
-            root.RowStyles.Add(new RowStyle(SizeType.Absolute, S(96)));
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute, S(92)));
         }
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
@@ -93,7 +92,8 @@ internal static class OnceTheme
         var bar = new Panel
         {
             BackColor = Color.FromArgb(5, 15, 20),
-            Padding = new Padding(S(22), S(13), S(22), S(10)),
+            Margin = Padding.Empty,
+            Padding = Padding.Empty,
         };
 
         var badge = new Label
@@ -106,7 +106,6 @@ internal static class OnceTheme
             BackColor = AccentDeep,
             ForeColor = Accent,
             Font = Body(10.5F, FontStyle.Bold),
-            Location = new Point(S(22), S(13)),
         };
 
         var name = new Label
@@ -115,11 +114,24 @@ internal static class OnceTheme
             AutoSize = true,
             ForeColor = Text,
             Font = Body(12F, FontStyle.Bold),
-            Location = new Point(S(82), S(20)),
         };
+
+        void LayoutBrand()
+        {
+            var available = Math.Max(S(320), bar.ClientSize.Width - S(48));
+            var canvas = Math.Min(MaxChromeWidth, available);
+            var left = Math.Max(S(24), (bar.ClientSize.Width - canvas) / 2);
+            var top = Math.Max(S(12), (bar.ClientSize.Height - badge.Height) / 2);
+
+            badge.Location = new Point(left, top);
+            name.Location = new Point(
+                left + badge.Width + S(18),
+                Math.Max(S(10), (bar.ClientSize.Height - name.PreferredHeight) / 2));
+        }
 
         bar.Controls.Add(badge);
         bar.Controls.Add(name);
+        bar.SizeChanged += (_, _) => LayoutBrand();
         return bar;
     }
 
@@ -131,7 +143,7 @@ internal static class OnceTheme
         };
     }
 
-    internal static Label Heading(string text, float size = 22F)
+    internal static Label Heading(string text, float size = 21F)
     {
         return new Label
         {
@@ -151,24 +163,27 @@ internal static class OnceTheme
             AutoSize = true,
             MaximumSize = new Size(maxWidth ?? MaxContentWidth, 0),
             ForeColor = Muted,
-            Font = Body(11F),
+            Font = Body(10.5F),
             Margin = new Padding(0, 0, 0, S(20)),
         };
     }
 
     internal static Button PrimaryButton(string text, int width = 180)
     {
+        using var measureFont = Body(10.5F, FontStyle.Bold);
+        var measuredWidth = TextRenderer.MeasureText(text, measureFont).Width + S(46);
         var button = new Button
         {
             Text = text,
             AutoSize = false,
-            Width = S(width),
-            Height = S(54),
+            Width = Math.Max(S(width), measuredWidth),
+            Height = S(56),
             FlatStyle = FlatStyle.Flat,
             BackColor = Accent,
             ForeColor = Color.FromArgb(2, 18, 16),
             Font = Body(10.5F, FontStyle.Bold),
             Cursor = Cursors.Hand,
+            Padding = new Padding(S(8), 0, S(8), 0),
         };
         button.FlatAppearance.BorderSize = 0;
         button.FlatAppearance.MouseOverBackColor = Color.FromArgb(76, 247, 177);
@@ -178,17 +193,20 @@ internal static class OnceTheme
 
     internal static Button SecondaryButton(string text, int width = 150)
     {
+        using var measureFont = Body(10.5F, FontStyle.Bold);
+        var measuredWidth = TextRenderer.MeasureText(text, measureFont).Width + S(46);
         var button = new Button
         {
             Text = text,
             AutoSize = false,
-            Width = S(width),
-            Height = S(54),
+            Width = Math.Max(S(width), measuredWidth),
+            Height = S(56),
             FlatStyle = FlatStyle.Flat,
             BackColor = SurfaceRaised,
             ForeColor = Text,
             Font = Body(10.5F, FontStyle.Bold),
             Cursor = Cursors.Hand,
+            Padding = new Padding(S(8), 0, S(8), 0),
         };
         button.FlatAppearance.BorderColor = Border;
         button.FlatAppearance.BorderSize = 1;
@@ -263,9 +281,11 @@ internal static class OnceTheme
             var g = e.Graphics;
             g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
 
-            var left = Math.Min(S(110), Width * 0.075F);
-            var right = Width - left;
-            var y = S(30);
+            var available = Math.Max(S(360), Width - S(72));
+            var span = Math.Min(MaxChromeWidth, available);
+            var left = (Width - span) / 2F;
+            var right = left + span;
+            var y = S(25);
             var spacing = Math.Max(1F, (right - left) / (Steps.Length - 1));
 
             using var pendingPen = new Pen(Border, Math.Max(2F, F(1.5F)));
@@ -284,7 +304,7 @@ internal static class OnceTheme
                 var active = state == _activeStep;
                 var fill = completed || active ? Accent : SurfaceRaised;
                 var outline = completed || active ? Accent : Border;
-                var radius = S(12);
+                var radius = S(10);
 
                 using var fillBrush = new SolidBrush(fill);
                 using var outlinePen = new Pen(outline, active ? Math.Max(3F, F(2F)) : Math.Max(2F, F(1.5F)));
@@ -293,7 +313,7 @@ internal static class OnceTheme
 
                 if (!completed)
                 {
-                    using var numberFont = Body(8.5F, FontStyle.Bold);
+                    using var numberFont = Body(8F, FontStyle.Bold);
                     using var numberBrush = new SolidBrush(active ? Background : Muted);
                     var n = state.ToString();
                     var nSize = g.MeasureString(n, numberFont);
@@ -304,16 +324,16 @@ internal static class OnceTheme
                     using var tickPen = new Pen(Background, Math.Max(2F, F(1.5F)));
                     g.DrawLines(tickPen,
                     [
-                        new PointF(x - S(5), y),
-                        new PointF(x - S(1), y + S(4)),
-                        new PointF(x + S(6), y - S(5)),
+                        new PointF(x - S(4), y),
+                        new PointF(x - S(1), y + S(3)),
+                        new PointF(x + S(5), y - S(4)),
                     ]);
                 }
 
-                using var labelFont = Body(9F, active ? FontStyle.Bold : FontStyle.Regular);
+                using var labelFont = Body(8.5F, active ? FontStyle.Bold : FontStyle.Regular);
                 using var labelBrush = new SolidBrush(active ? OnceTheme.Text : Muted);
                 var labelSize = g.MeasureString(Steps[i], labelFont);
-                g.DrawString(Steps[i], labelFont, labelBrush, x - labelSize.Width / 2, S(55));
+                g.DrawString(Steps[i], labelFont, labelBrush, x - labelSize.Width / 2, S(49));
             }
         }
     }
