@@ -72,6 +72,7 @@ test("Windows installer download is generic, non-secret, and attachment-only", a
 
   assert.match(installer, /^@echo off/);
   assert.match(installer, /#__ONCE_POWERSHELL__#/);
+  assert.match(installer, /LastIndexOf\(\$marker\)/);
   assert.match(installer, /Clipboard.*GetText/);
   assert.match(installer, /once_test_/);
   assert.match(installer, /& \$Npm install @once-agent\/sdk/);
@@ -97,7 +98,7 @@ test("embedded Windows PowerShell payload parses cleanly when pwsh is available"
 
   const { installer } = await getWindowsInstaller();
   const marker = "#__ONCE_POWERSHELL__#";
-  const markerIndex = installer.indexOf(marker);
+  const markerIndex = installer.lastIndexOf(marker);
   assert.notEqual(markerIndex, -1);
 
   const payload = installer.slice(markerIndex + marker.length).replace(/^\r?\n/, "");
