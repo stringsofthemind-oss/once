@@ -8,44 +8,84 @@ internal sealed class ApiKeyPrompt : Form
 
     internal ApiKeyPrompt()
     {
+        var messageFont = SystemFonts.MessageBoxFont ?? SystemFonts.DefaultFont;
+
         Text = "Connect Once";
         StartPosition = FormStartPosition.CenterScreen;
-        FormBorderStyle = FormBorderStyle.FixedDialog;
+        FormBorderStyle = FormBorderStyle.Sizable;
         MaximizeBox = false;
         MinimizeBox = false;
         ShowInTaskbar = true;
-        ClientSize = new Size(620, 245);
-        AutoScaleMode = AutoScaleMode.Dpi;
+        AutoScaleMode = AutoScaleMode.Font;
+        Font = messageFont;
+        ClientSize = new Size(760, 390);
+        MinimumSize = new Size(700, 360);
 
-        var messageFont = SystemFonts.MessageBoxFont ?? SystemFonts.DefaultFont;
+        var layout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            Padding = new Padding(30),
+            ColumnCount = 1,
+            RowCount = 5,
+        };
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
         var title = new Label
         {
             Text = "Paste your Once evaluation API key",
             AutoSize = true,
-            Font = new Font(messageFont.FontFamily, 14, FontStyle.Bold),
-            Location = new Point(24, 22),
+            MaximumSize = new Size(680, 0),
+            Font = new Font(messageFont.FontFamily, 16, FontStyle.Bold),
+            Margin = new Padding(0, 0, 0, 14),
         };
 
         var help = new Label
         {
-            Text = "Once could not read a valid key automatically from the clipboard.\nPaste the key shown on the evaluation page. It begins with once_test_.",
-            AutoSize = false,
-            Location = new Point(25, 62),
-            Size = new Size(565, 54),
+            Text = "Once could not read a valid key automatically from the clipboard.\n\nGo back to the Once evaluation page, click Copy API key, then return here. You can use Paste from clipboard below, or click in the box and press Ctrl+V.\n\nPaste only the value beginning with once_test_.",
+            AutoSize = true,
+            MaximumSize = new Size(680, 0),
+            Margin = new Padding(0, 0, 0, 20),
         };
 
         _apiKey = new TextBox
         {
-            Location = new Point(28, 124),
-            Size = new Size(564, 31),
+            Dock = DockStyle.Top,
             PlaceholderText = "once_test_...",
+            Font = new Font("Consolas", Math.Max(11F, messageFont.Size + 1F)),
+            Margin = new Padding(0, 0, 0, 16),
         };
+
+        var keyHint = new Label
+        {
+            Text = "Your API key is used only to connect this setup to your Once evaluation.",
+            AutoSize = true,
+            ForeColor = SystemColors.GrayText,
+            Margin = new Padding(0, 0, 0, 12),
+        };
+
+        var buttons = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            AutoSize = true,
+            ColumnCount = 3,
+            RowCount = 1,
+            Margin = new Padding(0),
+        };
+        buttons.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        buttons.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        buttons.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
         var paste = new Button
         {
             Text = "Paste from clipboard",
-            Location = new Point(28, 178),
-            Size = new Size(170, 38),
+            AutoSize = true,
+            MinimumSize = new Size(190, 44),
+            Margin = new Padding(0, 0, 12, 0),
         };
         paste.Click += (_, _) =>
         {
@@ -61,7 +101,6 @@ internal sealed class ApiKeyPrompt : Form
             }
             catch
             {
-                // Manual Ctrl+V remains available if clipboard API access is unavailable.
                 _apiKey.Focus();
             }
         };
@@ -70,24 +109,31 @@ internal sealed class ApiKeyPrompt : Form
         {
             Text = "Cancel",
             DialogResult = DialogResult.Cancel,
-            Location = new Point(392, 178),
-            Size = new Size(95, 38),
+            AutoSize = true,
+            MinimumSize = new Size(105, 44),
+            Margin = new Padding(0, 0, 12, 0),
         };
 
         var connect = new Button
         {
             Text = "Continue",
             DialogResult = DialogResult.OK,
-            Location = new Point(497, 178),
-            Size = new Size(95, 38),
+            AutoSize = true,
+            MinimumSize = new Size(115, 44),
+            Margin = new Padding(0),
         };
 
-        Controls.Add(title);
-        Controls.Add(help);
-        Controls.Add(_apiKey);
-        Controls.Add(paste);
-        Controls.Add(cancel);
-        Controls.Add(connect);
+        buttons.Controls.Add(paste, 0, 0);
+        buttons.Controls.Add(cancel, 1, 0);
+        buttons.Controls.Add(connect, 2, 0);
+
+        layout.Controls.Add(title, 0, 0);
+        layout.Controls.Add(help, 0, 1);
+        layout.Controls.Add(_apiKey, 0, 2);
+        layout.Controls.Add(keyHint, 0, 3);
+        layout.Controls.Add(buttons, 0, 4);
+
+        Controls.Add(layout);
 
         AcceptButton = connect;
         CancelButton = cancel;
