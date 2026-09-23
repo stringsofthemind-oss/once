@@ -169,7 +169,11 @@ internal static class OnceTheme
         {
             form.Width = Math.Max(form.MinimumSize.Width, working.Width - 60);
         }
-        form.CenterToScreen();
+
+        form.StartPosition = FormStartPosition.Manual;
+        form.Location = new Point(
+            working.Left + Math.Max(0, (working.Width - form.Width) / 2),
+            working.Top + Math.Max(0, (working.Height - form.Height) / 2));
     }
 
     private sealed class StepBar : Control
@@ -232,7 +236,7 @@ internal static class OnceTheme
                 }
 
                 using var labelFont = Body(8.5F, active ? FontStyle.Bold : FontStyle.Regular);
-                using var labelBrush = new SolidBrush(active ? Text : Muted);
+                using var labelBrush = new SolidBrush(active ? OnceTheme.Text : Muted);
                 var labelSize = g.MeasureString(Steps[i], labelFont);
                 g.DrawString(Steps[i], labelFont, labelBrush, x - labelSize.Width / 2, 46F);
             }
