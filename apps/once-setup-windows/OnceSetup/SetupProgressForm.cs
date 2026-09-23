@@ -17,7 +17,7 @@ internal sealed class SetupProgressForm : Form
             FlowDirection = FlowDirection.TopDown,
             WrapContents = false,
             AutoScroll = true,
-            Padding = new Padding(OnceTheme.S(72), OnceTheme.S(40), OnceTheme.S(72), OnceTheme.S(48)),
+            Padding = new Padding(OnceTheme.S(54), OnceTheme.S(36), OnceTheme.S(54), OnceTheme.S(44)),
             BackColor = OnceTheme.Background,
         };
 
@@ -28,7 +28,7 @@ internal sealed class SetupProgressForm : Form
         var card = new Panel
         {
             Width = OnceTheme.MaxContentWidth,
-            Height = OnceTheme.S(340),
+            Height = OnceTheme.S(330),
             BackColor = OnceTheme.Surface,
             Padding = new Padding(OnceTheme.S(28)),
             Margin = new Padding(0, 0, 0, OnceTheme.S(20)),
@@ -51,8 +51,8 @@ internal sealed class SetupProgressForm : Form
                 Text = "○  " + items[i],
                 AutoSize = true,
                 ForeColor = OnceTheme.Muted,
-                Font = OnceTheme.Body(10.5F),
-                Location = new Point(OnceTheme.S(28), OnceTheme.S(28 + i * 50)),
+                Font = OnceTheme.Body(10F),
+                Location = new Point(OnceTheme.S(28), OnceTheme.S(28 + i * 48)),
             };
             _statusLabels[i] = label;
             card.Controls.Add(label);
@@ -66,7 +66,7 @@ internal sealed class SetupProgressForm : Form
             Maximum = 100,
             Value = 5,
             Style = ProgressBarStyle.Continuous,
-            Location = new Point(OnceTheme.S(28), OnceTheme.S(286)),
+            Location = new Point(OnceTheme.S(28), OnceTheme.S(276)),
         };
         card.Controls.Add(_progress);
 
@@ -75,17 +75,36 @@ internal sealed class SetupProgressForm : Form
             AutoSize = true,
             MaximumSize = new Size(OnceTheme.MaxContentWidth, 0),
             ForeColor = OnceTheme.Muted,
-            Font = OnceTheme.Body(10F),
+            Font = OnceTheme.Body(9.5F),
             Margin = Padding.Empty,
         };
 
+        var resizing = false;
         void LayoutContent()
         {
-            var width = OnceTheme.ContentWidth(body);
-            card.Width = width;
-            _progress.Width = Math.Max(OnceTheme.S(260), width - OnceTheme.S(56));
-            _detail.MaximumSize = new Size(width, 0);
-            intro.MaximumSize = new Size(width, 0);
+            if (resizing || body.ClientSize.Width <= 0)
+            {
+                return;
+            }
+
+            resizing = true;
+            try
+            {
+                var minimumInset = OnceTheme.S(54);
+                var available = Math.Max(OnceTheme.S(420), body.ClientSize.Width - minimumInset * 2);
+                var width = Math.Min(OnceTheme.MaxContentWidth, available);
+                var horizontalInset = Math.Max(minimumInset, (body.ClientSize.Width - width) / 2);
+                body.Padding = new Padding(horizontalInset, OnceTheme.S(36), horizontalInset, OnceTheme.S(44));
+
+                card.Width = width;
+                _progress.Width = Math.Max(OnceTheme.S(260), width - OnceTheme.S(56));
+                _detail.MaximumSize = new Size(width, 0);
+                intro.MaximumSize = new Size(width, 0);
+            }
+            finally
+            {
+                resizing = false;
+            }
         }
 
         body.Controls.Add(card);
