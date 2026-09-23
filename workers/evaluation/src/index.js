@@ -303,10 +303,10 @@ button.addEventListener("click",async()=>{
     }
     status.textContent="Evaluation activated. Copy the API key now; it is shown once.";
     result.hidden=false;
-    result.textContent=`ONCE_API_KEY=${body.api_key}\n\nnpm install @once-agent/sdk\nnpx once setup .`;
+    result.textContent="ONCE_API_KEY="+body.api_key+"\\n\\nnpm install @once-agent/sdk\\nnpx once setup .";
     button.textContent="Activated";
   }catch(error){
-    status.textContent=`Activation failed: ${error.message}`;
+    status.textContent="Activation failed: "+error.message;
     button.disabled=false;
   }
 });
