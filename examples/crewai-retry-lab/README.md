@@ -50,6 +50,34 @@ CASE C2 RECOVERY
   expected -> still 1 effect
 ```
 
+## Logical identity boundary
+
+`crewai_identity_boundary.py` pins a separate adoption boundary that is easy to
+miss when idempotency is derived from tool arguments alone:
+
+```text
+logical operation identity != payload identity
+```
+
+The caller supplies a logical operation ID minted before execution. The same
+payload may therefore represent either a retry of existing work or a genuinely
+new action.
+
+The regression proves all four cases through CrewAI's native structured-tool
+path:
+
+```text
+D1  action A: operation_id=A, payload=$42 -> execute -> 1 effect
+D2  retry A:  operation_id=A, payload=$42 -> replay  -> still 1 effect
+D3  action B: operation_id=B, payload=$42 -> execute -> 2 effects
+D4  drifted A: operation_id=A, payload=$84 -> conflict -> still 2 effects
+```
+
+This is why an example such as `charge:{order_id}` is safe only when the domain
+contract guarantees one admitted charge for that order. If two intentionally
+identical charges are valid business actions, each admitted action needs its own
+stable logical operation identity created before the external effect.
+
 ## Run
 
 From this directory:
@@ -57,13 +85,13 @@ From this directory:
 ```powershell
 py -m pip install -r .\requirements.txt
 py .\crewai_v4_regression.py run
+py .\crewai_identity_boundary.py
 ```
 
-The script also imports the local Once SDK directly from
-`../../sdk/python/src`, so it tests the repository copy rather than a published
-package.
+The scripts import the local Once SDK directly from `../../sdk/python/src`, so
+they test the repository copy rather than a published package.
 
-Expected final summary:
+Expected hostile-retry summary:
 
 ```text
 PASS: Once V4 CrewAI portability regression gate held.
@@ -73,9 +101,24 @@ CASE C  UNKNOWN    -> 1 effect  -> BLOCKED
 CASE C2 RECOVERY   -> 1 effect  -> UNKNOWN->CONFIRMED
 ```
 
+Expected logical-identity summary:
+
+```text
+CASE D1 A execute        -> effects=1
+CASE D2 A retry          -> effects=1
+CASE D3 identical B      -> effects=2
+CASE D4 drifted A        -> effects=2 failure=once_operation_conflict
+PASS: A executes once; retry A replays; identical B executes as new work; drifted A is rejected.
+```
+
+The same logical-identity invariant is also pinned by the offline Python SDK
+unit regression in `sdk/python/tests/test_logical_identity_boundary.py`, so the
+core boundary is exercised by SDK CI without requiring CrewAI or an API key.
+
 ## Scope
 
 This proves portability across CrewAI's current native structured-tool boundary
-and fresh-process redispatch. It does not claim that CrewAI itself survives
+and fresh-process redispatch, plus the distinction between logical operation
+identity and payload equality. It does not claim that CrewAI itself survives
 `os._exit(77)` or automatically restarts a killed process; the harness models
 the external worker/orchestrator redispatch explicitly.
