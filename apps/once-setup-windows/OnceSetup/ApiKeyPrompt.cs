@@ -8,94 +8,65 @@ internal sealed class ApiKeyPrompt : Form
 
     internal ApiKeyPrompt()
     {
-        var messageFont = SystemFonts.MessageBoxFont ?? SystemFonts.DefaultFont;
-
-        Text = "Connect Once";
-        StartPosition = FormStartPosition.CenterScreen;
-        FormBorderStyle = FormBorderStyle.Sizable;
-        MaximizeBox = true;
-        MinimizeBox = false;
-        ShowInTaskbar = true;
-        AutoScaleMode = AutoScaleMode.Dpi;
-        Font = messageFont;
+        OnceTheme.Apply(this, "Connect to Once", new Size(980, 680));
         AutoScroll = true;
-        ClientSize = new Size(860, 610);
-        MinimumSize = new Size(700, 500);
 
-        var layout = new TableLayoutPanel
+        var body = new FlowLayoutPanel
         {
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            Dock = DockStyle.Top,
-            Padding = new Padding(32),
-            ColumnCount = 1,
-            RowCount = 6,
-        };
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-        for (var i = 0; i < 6; i++)
-        {
-            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        }
-
-        var title = new Label
-        {
-            Text = "Connect your Once evaluation",
-            AutoSize = true,
-            MaximumSize = new Size(760, 0),
-            Font = new Font(messageFont.FontFamily, 13F, FontStyle.Bold),
-            Margin = new Padding(0, 0, 0, 18),
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+            AutoScroll = true,
+            Padding = new Padding(54, 26, 54, 32),
+            BackColor = OnceTheme.Background,
         };
 
-        var help = new Label
+        var kicker = new Label
         {
-            Text = "1. Go back to the Once evaluation page and click Copy API key.\n\n2. Return here and click Paste from clipboard.\n\n3. Click Continue.\n\nThe key begins with once_test_.",
+            Text = "ONCE / EXECUTION CORE",
             AutoSize = true,
-            MaximumSize = new Size(760, 0),
-            Margin = new Padding(0, 0, 0, 22),
+            ForeColor = OnceTheme.Accent,
+            Font = OnceTheme.Body(9F, FontStyle.Bold),
+            Margin = new Padding(0, 0, 0, 12),
+        };
+        body.Controls.Add(kicker);
+        body.Controls.Add(OnceTheme.Heading("CONNECT TO ONCE", 26F));
+        body.Controls.Add(OnceTheme.Paragraph(
+            "Paste your evaluation API key to connect this machine. The key begins with once_test_."));
+
+        var card = new Panel
+        {
+            Width = 820,
+            Height = 176,
+            BackColor = OnceTheme.Surface,
+            Padding = new Padding(20),
+            Margin = new Padding(0, 0, 0, 14),
         };
 
         var keyLabel = new Label
         {
-            Text = "Evaluation API key",
+            Text = "ONCE API KEY",
             AutoSize = true,
-            Font = new Font(messageFont, FontStyle.Bold),
-            Margin = new Padding(0, 0, 0, 8),
+            ForeColor = OnceTheme.Muted,
+            Font = OnceTheme.Body(9F, FontStyle.Bold),
+            Location = new Point(20, 18),
         };
 
         _apiKey = new TextBox
         {
-            Width = 760,
-            Anchor = AnchorStyles.Left | AnchorStyles.Right,
+            Width = 610,
+            Height = 42,
+            Location = new Point(20, 52),
             PlaceholderText = "once_test_...",
             Font = new Font("Consolas", 11F),
-            Margin = new Padding(0, 0, 0, 18),
+            BackColor = Color.FromArgb(4, 13, 18),
+            ForeColor = OnceTheme.Text,
+            BorderStyle = BorderStyle.FixedSingle,
+            UseSystemPasswordChar = true,
         };
 
-        var keyHint = new Label
-        {
-            Text = "Only the API key is needed here. Do not paste ONCE_API_KEY= or any install commands.",
-            AutoSize = true,
-            MaximumSize = new Size(760, 0),
-            ForeColor = SystemColors.GrayText,
-            Margin = new Padding(0, 0, 0, 24),
-        };
-
-        var buttons = new FlowLayoutPanel
-        {
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            FlowDirection = FlowDirection.LeftToRight,
-            WrapContents = true,
-            Margin = new Padding(0),
-        };
-
-        var paste = new Button
-        {
-            Text = "Paste from clipboard",
-            AutoSize = true,
-            MinimumSize = new Size(190, 46),
-            Margin = new Padding(0, 0, 12, 0),
-        };
+        var paste = OnceTheme.SecondaryButton("Paste", 120);
+        paste.Location = new Point(650, 49);
         paste.Click += (_, _) =>
         {
             try
@@ -106,60 +77,78 @@ internal sealed class ApiKeyPrompt : Form
                     _apiKey.Text = clipboardText;
                     _apiKey.SelectionStart = _apiKey.TextLength;
                 }
-                _apiKey.Focus();
             }
             catch
             {
-                _apiKey.Focus();
+                // Manual paste remains available.
             }
+            _apiKey.Focus();
         };
 
-        var cancel = new Button
+        var showKey = new CheckBox
         {
-            Text = "Cancel",
-            DialogResult = DialogResult.Cancel,
+            Text = "Show key",
             AutoSize = true,
-            MinimumSize = new Size(105, 46),
-            Margin = new Padding(0, 0, 12, 0),
+            ForeColor = OnceTheme.Muted,
+            BackColor = OnceTheme.Surface,
+            Location = new Point(20, 112),
+            Font = OnceTheme.Body(9.5F),
         };
+        showKey.CheckedChanged += (_, _) => _apiKey.UseSystemPasswordChar = !showKey.Checked;
 
-        var connect = new Button
+        var safeHint = new Label
         {
-            Text = "Continue",
-            DialogResult = DialogResult.OK,
+            Text = "Your key stays local to setup and is cleared from the clipboard when setup completes.",
             AutoSize = true,
-            MinimumSize = new Size(120, 46),
-            Margin = new Padding(0),
+            ForeColor = OnceTheme.Muted,
+            Font = OnceTheme.Body(9.5F),
+            Location = new Point(132, 114),
         };
 
-        buttons.Controls.Add(paste);
+        card.Controls.Add(keyLabel);
+        card.Controls.Add(_apiKey);
+        card.Controls.Add(paste);
+        card.Controls.Add(showKey);
+        card.Controls.Add(safeHint);
+        body.Controls.Add(card);
+
+        var help = new LinkLabel
+        {
+            Text = "Need a key? Return to the Once evaluation page and click Copy API key.",
+            AutoSize = true,
+            LinkColor = OnceTheme.Accent,
+            ActiveLinkColor = Color.FromArgb(90, 255, 190),
+            VisitedLinkColor = OnceTheme.Accent,
+            Font = OnceTheme.Body(10F),
+            Margin = new Padding(0, 4, 0, 22),
+        };
+        body.Controls.Add(help);
+
+        var buttons = new FlowLayoutPanel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            Margin = new Padding(0, 12, 0, 0),
+        };
+        var cancel = OnceTheme.SecondaryButton("Cancel", 140);
+        cancel.DialogResult = DialogResult.Cancel;
+        var connect = OnceTheme.PrimaryButton("Continue  →", 180);
+        connect.DialogResult = DialogResult.OK;
         buttons.Controls.Add(cancel);
         buttons.Controls.Add(connect);
+        body.Controls.Add(buttons);
 
-        layout.Controls.Add(title, 0, 0);
-        layout.Controls.Add(help, 0, 1);
-        layout.Controls.Add(keyLabel, 0, 2);
-        layout.Controls.Add(_apiKey, 0, 3);
-        layout.Controls.Add(keyHint, 0, 4);
-        layout.Controls.Add(buttons, 0, 5);
-
-        Controls.Add(layout);
+        Controls.Add(body);
+        Controls.Add(OnceTheme.CreateStepBar(1));
+        Controls.Add(OnceTheme.CreateTopBar());
 
         AcceptButton = connect;
         CancelButton = cancel;
-
         Shown += (_, _) =>
         {
-            var working = Screen.FromControl(this).WorkingArea;
-            if (Height > working.Height - 80)
-            {
-                Height = Math.Max(MinimumSize.Height, working.Height - 80);
-            }
-            if (Width > working.Width - 80)
-            {
-                Width = Math.Max(MinimumSize.Width, working.Width - 80);
-            }
-            CenterToScreen();
+            OnceTheme.FitToWorkingArea(this);
             _apiKey.Focus();
         };
     }
