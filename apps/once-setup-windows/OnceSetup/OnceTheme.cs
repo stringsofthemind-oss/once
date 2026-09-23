@@ -311,7 +311,7 @@ internal static class OnceTheme
                 }
 
                 using var labelFont = Body(9F, active ? FontStyle.Bold : FontStyle.Regular);
-                using var labelBrush = new SolidBrush(active ? Text : Muted);
+                using var labelBrush = new SolidBrush(active ? OnceTheme.Text : Muted);
                 var labelSize = g.MeasureString(Steps[i], labelFont);
                 g.DrawString(Steps[i], labelFont, labelBrush, x - labelSize.Width / 2, S(55));
             }
