@@ -6,7 +6,9 @@
   "compatibility_date": "2026-09-18",
   "vars": {
     "EVALUATION_BYPASS_ENABLED": "false",
-    "STRIPE_PRICE_PRO": "price_1UGqPRAHX5spO4zqQcuRzi3S"
+    "STRIPE_PRICE_PRO": "price_1UGqPRAHX5spO4zqQcuRzi3S",
+    "EVALUATION_MAX_PER_CLIENT_24H": "3",
+    "EVALUATION_GLOBAL_MAX_24H": "100"
   },
   "durable_objects": {
     "bindings": [
@@ -19,7 +21,17 @@
         "name": "SANDBOX_CLAIMS",
         "class_name": "SandboxClaim",
         "script_name": "once-sandbox-playground"
+      },
+      {
+        "name": "EVALUATION_ADMISSION",
+        "class_name": "EvaluationAdmission"
       }
     ]
-  }
+  },
+  "migrations": [
+    {
+      "tag": "evaluation-admission-v1",
+      "new_classes": ["EvaluationAdmission"]
+    }
+  ]
 }
