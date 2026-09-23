@@ -8,9 +8,9 @@ internal sealed class SetupProgressForm : Form
 
     internal SetupProgressForm()
     {
-        OnceTheme.Apply(this, "Installing Once", new Size(980, 680));
+        OnceTheme.Apply(this, "Installing Once", new Size(1360, 860));
         ControlBox = false;
-        AutoScroll = true;
+        AutoScroll = false;
 
         var body = new FlowLayoutPanel
         {
@@ -18,20 +18,21 @@ internal sealed class SetupProgressForm : Form
             FlowDirection = FlowDirection.TopDown,
             WrapContents = false,
             AutoScroll = true,
-            Padding = new Padding(54, 28, 54, 32),
+            Padding = new Padding(70, 34, 70, 40),
             BackColor = OnceTheme.Background,
         };
 
         body.Controls.Add(OnceTheme.Heading("INSTALLING ONCE"));
-        body.Controls.Add(OnceTheme.Paragraph("Setting up Once in your project and preparing the safety verification."));
+        var intro = OnceTheme.Paragraph("Setting up Once in your project and preparing the safety verification.");
+        body.Controls.Add(intro);
 
         var card = new Panel
         {
-            Width = 820,
-            Height = 300,
+            Width = OnceTheme.MaxContentWidth,
+            Height = 320,
             BackColor = OnceTheme.Surface,
-            Padding = new Padding(24),
-            Margin = new Padding(0, 0, 0, 16),
+            Padding = new Padding(26),
+            Margin = new Padding(0, 0, 0, 18),
         };
 
         var items = new[]
@@ -52,7 +53,7 @@ internal sealed class SetupProgressForm : Form
                 AutoSize = true,
                 ForeColor = OnceTheme.Muted,
                 Font = OnceTheme.Body(10.5F),
-                Location = new Point(24, 24 + i * 46),
+                Location = new Point(26, 26 + i * 48),
             };
             _statusLabels[i] = label;
             card.Controls.Add(label);
@@ -60,32 +61,47 @@ internal sealed class SetupProgressForm : Form
 
         _progress = new ProgressBar
         {
-            Width = 772,
-            Height = 12,
+            Width = OnceTheme.MaxContentWidth - 52,
+            Height = 14,
             Minimum = 0,
             Maximum = 100,
             Value = 5,
             Style = ProgressBarStyle.Continuous,
-            Location = new Point(24, 252),
+            Location = new Point(26, 272),
         };
         card.Controls.Add(_progress);
 
         _detail = new Label
         {
             AutoSize = true,
-            MaximumSize = new Size(820, 0),
+            MaximumSize = new Size(OnceTheme.MaxContentWidth, 0),
             ForeColor = OnceTheme.Muted,
             Font = OnceTheme.Body(10F),
             Margin = new Padding(0),
         };
 
+        void LayoutContent()
+        {
+            var width = OnceTheme.ContentWidth(body);
+            card.Width = width;
+            _progress.Width = Math.Max(260, width - 52);
+            _detail.MaximumSize = new Size(width, 0);
+            intro.MaximumSize = new Size(width, 0);
+        }
+
         body.Controls.Add(card);
         body.Controls.Add(_detail);
+        body.SizeChanged += (_, _) => LayoutContent();
 
         Controls.Add(body);
         Controls.Add(OnceTheme.CreateStepBar(3));
         Controls.Add(OnceTheme.CreateTopBar());
-        Shown += (_, _) => OnceTheme.FitToWorkingArea(this);
+        Shown += (_, _) =>
+        {
+            OnceTheme.FitToWorkingArea(this);
+            LayoutContent();
+            body.PerformLayout();
+        };
     }
 
     internal void SetStage(int stage, string? detail = null)
