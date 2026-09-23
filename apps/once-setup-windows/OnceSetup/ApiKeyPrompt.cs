@@ -11,121 +11,225 @@ internal sealed class ApiKeyPrompt : Form
         OnceTheme.Apply(this, "Connect to Once", new Size(1360, 860));
         AutoScroll = false;
 
-        var body = new Panel
-        {
-            AutoScroll = true,
-            Padding = new Padding(OnceTheme.S(44), OnceTheme.S(28), OnceTheme.S(44), OnceTheme.S(36)),
-            BackColor = OnceTheme.Background,
-        };
-
-        var main = new TableLayoutPanel
+        var viewport = new Panel
         {
             Dock = DockStyle.Fill,
+            AutoScroll = true,
+            BackColor = OnceTheme.Background,
+            Padding = new Padding(OnceTheme.S(30)),
+        };
+
+        var canvas = new TableLayoutPanel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
             ColumnCount = 3,
             RowCount = 1,
+            BackColor = OnceTheme.Background,
             Margin = Padding.Empty,
             Padding = Padding.Empty,
-            BackColor = OnceTheme.Background,
         };
-        main.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 62F));
-        main.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, OnceTheme.S(34)));
-        main.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 38F));
-        main.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+        canvas.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 62F));
+        canvas.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, OnceTheme.S(36)));
+        canvas.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 38F));
+        canvas.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-        var left = new FlowLayoutPanel
+        var left = new TableLayoutPanel
         {
-            Dock = DockStyle.Fill,
-            FlowDirection = FlowDirection.TopDown,
-            WrapContents = false,
-            AutoScroll = true,
-            Margin = Padding.Empty,
-            Padding = new Padding(OnceTheme.S(10), OnceTheme.S(4), OnceTheme.S(10), OnceTheme.S(20)),
-            BackColor = OnceTheme.Background,
-        };
-
-        var kicker = new Label
-        {
-            Text = "ONCE / EXECUTION CORE",
             AutoSize = true,
-            ForeColor = OnceTheme.Accent,
-            Font = OnceTheme.Body(9.5F, FontStyle.Bold),
-            Margin = new Padding(0, 0, 0, OnceTheme.S(14)),
-            UseCompatibleTextRendering = false,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 1,
+            RowCount = 0,
+            Dock = DockStyle.Top,
+            BackColor = OnceTheme.Background,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty,
         };
-        left.Controls.Add(kicker);
-        left.Controls.Add(OnceTheme.Heading("CONNECT TO ONCE", 22F));
+        left.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+
+        AddRow(left, Kicker("ONCE / EXECUTION CORE"));
+        AddRow(left, OnceTheme.Heading("CONNECT TO ONCE", 22F), new Padding(0, OnceTheme.S(8), 0, OnceTheme.S(12)));
 
         var intro = OnceTheme.Paragraph(
             "Paste your evaluation API key to connect this machine. The key begins with once_test_.");
-        left.Controls.Add(intro);
+        intro.Margin = new Padding(0, 0, 0, OnceTheme.S(24));
+        AddRow(left, intro);
 
-        var card = new TableLayoutPanel
-        {
-            ColumnCount = 2,
-            RowCount = 4,
-            Width = OnceTheme.MaxContentWidth,
-            Height = OnceTheme.S(300),
-            BackColor = OnceTheme.Surface,
-            Padding = new Padding(OnceTheme.S(24)),
-            Margin = new Padding(0, 0, 0, OnceTheme.S(20)),
-            GrowStyle = TableLayoutPanelGrowStyle.FixedSize,
-        };
-        card.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-        card.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        card.RowStyles.Add(new RowStyle(SizeType.Absolute, OnceTheme.S(54)));
-        card.RowStyles.Add(new RowStyle(SizeType.Absolute, OnceTheme.S(76)));
-        card.RowStyles.Add(new RowStyle(SizeType.Absolute, OnceTheme.S(52)));
-        card.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+        var card = BuildKeyCard(out _apiKey);
+        card.Margin = new Padding(0, 0, 0, OnceTheme.S(22));
+        AddRow(left, card);
 
-        var keyLabel = new Label
+        var help = new LinkLabel
         {
-            Text = "ONCE API KEY",
-            AutoSize = false,
-            Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleLeft,
-            ForeColor = OnceTheme.Muted,
-            Font = OnceTheme.Body(9.5F, FontStyle.Bold),
-            Margin = Padding.Empty,
+            Text = "Need a key? Open the Once evaluation page and copy your API key.",
+            AutoSize = true,
+            LinkColor = OnceTheme.Accent,
+            ActiveLinkColor = Color.FromArgb(90, 255, 190),
+            VisitedLinkColor = OnceTheme.Accent,
+            ForeColor = OnceTheme.Accent,
+            Font = OnceTheme.Body(9.5F),
+            Margin = new Padding(0, 0, 0, OnceTheme.S(26)),
             UseCompatibleTextRendering = false,
         };
-        card.Controls.Add(keyLabel, 0, 0);
-        card.SetColumnSpan(keyLabel, 2);
+        AddRow(left, help);
 
-        _apiKey = new TextBox
+        var buttons = new FlowLayoutPanel
         {
-            Anchor = AnchorStyles.Left | AnchorStyles.Right,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty,
+        };
+        var cancel = OnceTheme.SecondaryButton("Cancel", 190);
+        cancel.DialogResult = DialogResult.Cancel;
+        cancel.Margin = new Padding(0, 0, OnceTheme.S(14), 0);
+
+        var connect = OnceTheme.PrimaryButton("Continue  →", 235);
+        connect.DialogResult = DialogResult.OK;
+        connect.Margin = Padding.Empty;
+
+        buttons.Controls.Add(cancel);
+        buttons.Controls.Add(connect);
+        AddRow(left, buttons);
+
+        var status = BuildStatusPanel();
+        status.Dock = DockStyle.Top;
+        status.Margin = Padding.Empty;
+
+        canvas.Controls.Add(left, 0, 0);
+        canvas.Controls.Add(status, 2, 0);
+        viewport.Controls.Add(canvas);
+
+        void Reflow()
+        {
+            if (viewport.ClientSize.Width <= 0)
+            {
+                return;
+            }
+
+            var available = Math.Max(OnceTheme.S(620), viewport.ClientSize.Width - viewport.Padding.Horizontal);
+            var maxCanvas = OnceTheme.S(1320);
+            var width = Math.Min(maxCanvas, available);
+            var narrow = available < OnceTheme.S(1050);
+
+            canvas.SuspendLayout();
+            try
+            {
+                canvas.Width = width;
+                canvas.Left = Math.Max(viewport.Padding.Left, (viewport.ClientSize.Width - width) / 2);
+                canvas.Top = viewport.Padding.Top;
+
+                status.Visible = !narrow;
+                canvas.ColumnStyles[0].Width = narrow ? 100F : 62F;
+                canvas.ColumnStyles[1].SizeType = SizeType.Absolute;
+                canvas.ColumnStyles[1].Width = narrow ? 0F : OnceTheme.S(36);
+                canvas.ColumnStyles[2].Width = narrow ? 0F : 38F;
+
+                var leftWidth = narrow
+                    ? width
+                    : Math.Max(OnceTheme.S(560), (int)Math.Round((width - OnceTheme.S(36)) * 0.62));
+                left.Width = leftWidth;
+                card.Width = leftWidth;
+                intro.MaximumSize = new Size(leftWidth, 0);
+                help.MaximumSize = new Size(leftWidth, 0);
+            }
+            finally
+            {
+                canvas.ResumeLayout(true);
+            }
+        }
+
+        viewport.SizeChanged += (_, _) => Reflow();
+
+        Controls.Add(OnceTheme.CreateChrome(viewport, 1));
+        AcceptButton = connect;
+        CancelButton = cancel;
+
+        Shown += (_, _) =>
+        {
+            OnceTheme.FitToWorkingArea(this);
+            Reflow();
+            _apiKey.Focus();
+        };
+    }
+
+    private static TableLayoutPanel BuildKeyCard(out TextBox apiKey)
+    {
+        var card = new TableLayoutPanel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 1,
+            RowCount = 0,
+            BackColor = OnceTheme.Surface,
+            Padding = new Padding(OnceTheme.S(24)),
+            Margin = Padding.Empty,
+        };
+        card.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+
+        var label = new Label
+        {
+            Text = "ONCE API KEY",
+            AutoSize = true,
+            ForeColor = OnceTheme.Muted,
+            Font = OnceTheme.Body(9.5F, FontStyle.Bold),
+            Margin = new Padding(0, 0, 0, OnceTheme.S(12)),
+            UseCompatibleTextRendering = false,
+        };
+        AddRow(card, label);
+
+        var entry = new TableLayoutPanel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 2,
+            RowCount = 1,
+            Dock = DockStyle.Top,
+            Margin = new Padding(0, 0, 0, OnceTheme.S(14)),
+            Padding = Padding.Empty,
+            BackColor = OnceTheme.Surface,
+        };
+        entry.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        entry.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        entry.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        apiKey = new TextBox
+        {
+            Dock = DockStyle.Fill,
             PlaceholderText = "once_test_...",
             Font = OnceTheme.Mono(10.5F),
             BackColor = Color.FromArgb(4, 13, 18),
             ForeColor = OnceTheme.Text,
             BorderStyle = BorderStyle.FixedSingle,
             UseSystemPasswordChar = true,
-            Margin = new Padding(0, OnceTheme.S(12), OnceTheme.S(18), OnceTheme.S(12)),
+            Margin = new Padding(0, OnceTheme.S(7), OnceTheme.S(16), OnceTheme.S(7)),
         };
 
         var paste = OnceTheme.SecondaryButton("Paste", 150);
-        paste.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-        paste.Margin = new Padding(0, OnceTheme.S(8), 0, OnceTheme.S(8));
+        paste.Margin = Padding.Empty;
         paste.Click += (_, _) =>
         {
             try
             {
-                var clipboardText = System.Windows.Forms.Clipboard.GetText()?.Trim() ?? string.Empty;
+                var clipboardText = Clipboard.GetText()?.Trim() ?? string.Empty;
                 if (clipboardText.Length > 0)
                 {
-                    _apiKey.Text = clipboardText;
-                    _apiKey.SelectionStart = _apiKey.TextLength;
+                    apiKey.Text = clipboardText;
+                    apiKey.SelectionStart = apiKey.TextLength;
                 }
             }
             catch
             {
                 // Manual paste remains available.
             }
-            _apiKey.Focus();
+            apiKey.Focus();
         };
 
-        card.Controls.Add(_apiKey, 0, 1);
-        card.Controls.Add(paste, 1, 1);
+        entry.Controls.Add(apiKey, 0, 0);
+        entry.Controls.Add(paste, 1, 0);
+        AddRow(card, entry);
 
         var showKey = new CheckBox
         {
@@ -134,139 +238,52 @@ internal sealed class ApiKeyPrompt : Form
             ForeColor = OnceTheme.Muted,
             BackColor = OnceTheme.Surface,
             Font = OnceTheme.Body(9.5F),
-            Anchor = AnchorStyles.Left,
-            Margin = Padding.Empty,
+            Margin = new Padding(0, 0, 0, OnceTheme.S(10)),
             UseCompatibleTextRendering = false,
         };
-        showKey.CheckedChanged += (_, _) => _apiKey.UseSystemPasswordChar = !showKey.Checked;
-        card.Controls.Add(showKey, 0, 2);
-        card.SetColumnSpan(showKey, 2);
+        showKey.CheckedChanged += (_, _) => apiKey.UseSystemPasswordChar = !showKey.Checked;
+        AddRow(card, showKey);
 
         var safeHint = new Label
         {
             Text = "Your key stays local to setup and is cleared from the clipboard when setup completes.",
-            AutoSize = false,
-            Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.TopLeft,
+            AutoSize = true,
             ForeColor = OnceTheme.Muted,
             Font = OnceTheme.Body(9F),
-            Padding = new Padding(0, OnceTheme.S(8), 0, 0),
             Margin = Padding.Empty,
+            MaximumSize = new Size(OnceTheme.S(920), 0),
             UseCompatibleTextRendering = false,
         };
-        card.Controls.Add(safeHint, 0, 3);
-        card.SetColumnSpan(safeHint, 2);
-        left.Controls.Add(card);
+        AddRow(card, safeHint);
 
-        var help = new LinkLabel
-        {
-            Text = "Need a key? Open the Once evaluation page and copy your API key.",
-            AutoSize = true,
-            MaximumSize = new Size(OnceTheme.MaxContentWidth, 0),
-            LinkColor = OnceTheme.Accent,
-            ActiveLinkColor = Color.FromArgb(90, 255, 190),
-            VisitedLinkColor = OnceTheme.Accent,
-            Font = OnceTheme.Body(9.5F),
-            Margin = new Padding(0, OnceTheme.S(4), 0, OnceTheme.S(26)),
-            UseCompatibleTextRendering = false,
-        };
-        left.Controls.Add(help);
-
-        var buttons = new FlowLayoutPanel
-        {
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            FlowDirection = FlowDirection.LeftToRight,
-            WrapContents = false,
-            Margin = new Padding(0, OnceTheme.S(10), 0, 0),
-            Padding = Padding.Empty,
-        };
-        var cancel = OnceTheme.SecondaryButton("Cancel", 190);
-        cancel.DialogResult = DialogResult.Cancel;
-        var connect = OnceTheme.PrimaryButton("Continue  →", 235);
-        connect.DialogResult = DialogResult.OK;
-        cancel.Margin = new Padding(0, 0, OnceTheme.S(14), 0);
-        connect.Margin = Padding.Empty;
-        buttons.Controls.Add(cancel);
-        buttons.Controls.Add(connect);
-        left.Controls.Add(buttons);
-
-        var status = BuildStatusPanel();
-        status.Dock = DockStyle.Fill;
-        status.Margin = new Padding(0, OnceTheme.S(12), 0, OnceTheme.S(12));
-
-        main.Controls.Add(left, 0, 0);
-        main.Controls.Add(status, 2, 0);
-        body.Controls.Add(main);
-
-        var layingOut = false;
-        void LayoutContent()
-        {
-            if (layingOut || body.ClientSize.Width <= 0)
-            {
-                return;
-            }
-
-            layingOut = true;
-            try
-            {
-                var narrow = body.ClientSize.Width < 1150;
-                status.Visible = !narrow;
-                main.ColumnStyles[0].SizeType = SizeType.Percent;
-                main.ColumnStyles[0].Width = narrow ? 100F : 62F;
-                main.ColumnStyles[1].SizeType = SizeType.Absolute;
-                main.ColumnStyles[1].Width = narrow ? 0F : OnceTheme.S(34);
-                main.ColumnStyles[2].SizeType = SizeType.Percent;
-                main.ColumnStyles[2].Width = narrow ? 0F : 38F;
-
-                var width = Math.Max(OnceTheme.S(500), left.ClientSize.Width - left.Padding.Horizontal - OnceTheme.S(16));
-                width = Math.Min(OnceTheme.MaxContentWidth, width);
-                card.Width = width;
-                intro.MaximumSize = new Size(width, 0);
-                help.MaximumSize = new Size(width, 0);
-            }
-            finally
-            {
-                layingOut = false;
-            }
-        }
-
-        body.SizeChanged += (_, _) => LayoutContent();
-        left.SizeChanged += (_, _) => LayoutContent();
-
-        Controls.Add(OnceTheme.CreateChrome(body, 1));
-
-        AcceptButton = connect;
-        CancelButton = cancel;
-        Shown += (_, _) =>
-        {
-            OnceTheme.FitToWorkingArea(this);
-            LayoutContent();
-            _apiKey.Focus();
-        };
+        return card;
     }
 
     private static Panel BuildStatusPanel()
     {
         var panel = new Panel
         {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
             BackColor = OnceTheme.Surface,
             Padding = new Padding(OnceTheme.S(28)),
-            MinimumSize = new Size(OnceTheme.S(300), OnceTheme.S(360)),
+            MinimumSize = new Size(OnceTheme.S(330), OnceTheme.S(390)),
         };
 
-        var flow = new FlowLayoutPanel
+        var flow = new TableLayoutPanel
         {
-            Dock = DockStyle.Fill,
-            FlowDirection = FlowDirection.TopDown,
-            WrapContents = false,
-            AutoScroll = true,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 1,
+            RowCount = 0,
+            Dock = DockStyle.Top,
             BackColor = OnceTheme.Surface,
             Margin = Padding.Empty,
             Padding = Padding.Empty,
         };
+        flow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
 
-        flow.Controls.Add(new Label
+        AddRow(flow, new Label
         {
             Text = "ONCE / SETUP STATUS",
             AutoSize = true,
@@ -276,7 +293,7 @@ internal sealed class ApiKeyPrompt : Form
             UseCompatibleTextRendering = false,
         });
 
-        flow.Controls.Add(new Label
+        AddRow(flow, new Label
         {
             Text = "READY TO CONNECT",
             AutoSize = true,
@@ -286,9 +303,9 @@ internal sealed class ApiKeyPrompt : Form
             UseCompatibleTextRendering = false,
         });
 
-        flow.Controls.Add(new Label
+        AddRow(flow, new Label
         {
-            Text = "Connect this machine, choose a project, then Once will verify the retry-safety path before setup completes.",
+            Text = "Connect this machine, choose a project, then Once verifies the retry-safety path before setup completes.",
             AutoSize = true,
             MaximumSize = new Size(OnceTheme.S(310), 0),
             ForeColor = OnceTheme.Muted,
@@ -304,7 +321,7 @@ internal sealed class ApiKeyPrompt : Form
             "●  Retry protection verified during setup",
         })
         {
-            flow.Controls.Add(new Label
+            AddRow(flow, new Label
             {
                 Text = text,
                 AutoSize = true,
@@ -316,17 +333,38 @@ internal sealed class ApiKeyPrompt : Form
             });
         }
 
-        flow.Controls.Add(new Label
+        AddRow(flow, new Label
         {
             Text = "Test build " + OnceTheme.BuildVersion,
             AutoSize = true,
             ForeColor = OnceTheme.Muted,
             Font = OnceTheme.Body(7.5F, FontStyle.Bold),
-            Margin = new Padding(0, OnceTheme.S(24), 0, 0),
+            Margin = new Padding(0, OnceTheme.S(20), 0, 0),
             UseCompatibleTextRendering = false,
         });
 
         panel.Controls.Add(flow);
         return panel;
+    }
+
+    private static Label Kicker(string text)
+    {
+        return new Label
+        {
+            Text = text,
+            AutoSize = true,
+            ForeColor = OnceTheme.Accent,
+            Font = OnceTheme.Body(9.5F, FontStyle.Bold),
+            Margin = Padding.Empty,
+            UseCompatibleTextRendering = false,
+        };
+    }
+
+    private static void AddRow(TableLayoutPanel table, Control control, Padding? margin = null)
+    {
+        var row = table.RowCount++;
+        table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        control.Margin = margin ?? control.Margin;
+        table.Controls.Add(control, 0, row);
     }
 }
