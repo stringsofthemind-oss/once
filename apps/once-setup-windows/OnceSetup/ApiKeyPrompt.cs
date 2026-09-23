@@ -51,7 +51,7 @@ internal sealed class ApiKeyPrompt : Form
         {
             try
             {
-                var clipboardText = Clipboard.GetText()?.Trim() ?? string.Empty;
+                var clipboardText = System.Windows.Forms.Clipboard.GetText()?.Trim() ?? string.Empty;
                 if (clipboardText.Length > 0)
                 {
                     _apiKey.Text = clipboardText;
