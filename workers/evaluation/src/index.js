@@ -278,18 +278,63 @@ const PAGE = `<!doctype html>
 <meta name="robots" content="noindex,nofollow">
 <title>Once technical evaluation</title>
 <style>
-:root{color-scheme:dark}body{margin:0;background:#05090e;color:#edf8f3;font:15px/1.6 system-ui,sans-serif}main{width:min(760px,calc(100% - 36px));margin:0 auto;padding:72px 0}.mark{color:#39f0a0;font-weight:850;letter-spacing:.08em}h1{font-size:clamp(38px,7vw,58px);line-height:1;margin:.25em 0}.muted{color:#8da0ad}.card{margin-top:30px;padding:28px;border:1px solid #1e3340;border-radius:18px;background:#09111a}.note{color:#f1c86c}button{padding:14px 19px;border:0;border-radius:10px;background:#39f0a0;color:#04120b;font-weight:850;cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}pre{white-space:pre-wrap;word-break:break-word;padding:16px;border-radius:12px;background:#03070a;color:#b9dccb}a{color:#44d0ff}
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#05090e;color:#edf8f3;font:15px/1.6 system-ui,sans-serif}main{width:min(820px,calc(100% - 36px));margin:0 auto;padding:72px 0}.mark{color:#39f0a0;font-weight:850;letter-spacing:.08em}h1{font-size:clamp(38px,7vw,58px);line-height:1;margin:.25em 0}h2{font-size:21px;margin:28px 0 8px}.muted{color:#8da0ad}.card{margin-top:30px;padding:28px;border:1px solid #1e3340;border-radius:18px;background:#09111a}.note{color:#f1c86c}.success{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border:1px solid #246c50;border-radius:999px;background:#0d2b20;color:#79f2b7;font-weight:800}.step{margin-top:24px;padding-top:20px;border-top:1px solid #172a35}.copyrow{display:flex;gap:10px;align-items:stretch;margin:10px 0}.copyvalue{flex:1;display:flex;align-items:center;min-width:0;padding:13px 14px;border:1px solid #1e3340;border-radius:10px;background:#03070a;color:#b9dccb;font:14px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere}.primary,.copybtn{padding:13px 17px;border:0;border-radius:10px;background:#39f0a0;color:#04120b;font-weight:850;cursor:pointer}.copybtn{white-space:nowrap;background:#153344;color:#dff8ed;border:1px solid #285268}.primary:disabled,.copybtn:disabled{opacity:.55;cursor:not-allowed}.warning{padding:12px 14px;border:1px solid #5f5027;border-radius:10px;background:#1a170d;color:#f1c86c}.done{margin-top:26px;padding:18px;border:1px solid #246c50;border-radius:12px;background:#091b15}.small{font-size:13px}a{color:#44d0ff}@media(max-width:620px){.copyrow{flex-direction:column}.copybtn{width:100%}}
 </style>
 </head>
 <body>
 <main>
 <div class="mark">1× ONCE / TECHNICAL EVALUATION</div>
 <h1>Try Once without checkout.</h1>
-<p class="muted">No card and no Stripe Checkout screen. When enabled by the operator, this creates a one-day Stripe test-mode trial behind the scenes, then uses the same Once entitlement and API-key path as the normal sandbox. Admission limits protect the evaluation service from automated abuse.</p>
+<p class="muted">No card and no Stripe Checkout screen. This creates a one-day Stripe test-mode trial behind the scenes, then uses the normal Once entitlement and API-key path. Admission limits protect the evaluation service from automated abuse.</p>
 <div class="card">
-<button id="activate">Start technical evaluation</button>
+<button id="activate" class="primary">Start technical evaluation</button>
 <p id="status" class="muted">Test mode only. Nothing is charged.</p>
-<pre id="result" hidden></pre>
+
+<div id="result" hidden>
+  <div class="success">✓ Evaluation active</div>
+  <p><strong>Your Once evaluation is ready.</strong> Keep this page open until you finish the four steps below.</p>
+
+  <div class="step">
+    <h2>Step 1 — Copy your API key</h2>
+    <p>Click <strong>Copy API key</strong>. The box contains only your key. Do not add <code>ONCE_API_KEY=</code> and do not copy any install command with it.</p>
+    <div class="copyrow">
+      <code id="apiKey" class="copyvalue"></code>
+      <button id="copyApiKey" class="copybtn" type="button">Copy API key</button>
+    </div>
+    <p class="warning small">Your key starts with <strong>once_test_</strong>. It is shown once. Keep it private and do not close this page until setup is complete.</p>
+  </div>
+
+  <div class="step">
+    <h2>Step 2 — Open your project terminal</h2>
+    <p>Open PowerShell, Terminal, or the terminal inside VS Code. Go to the folder containing the project you want Once to protect.</p>
+    <p class="muted small">If you are not sure whether you are in the right folder, stop here and check before continuing. The next commands install Once into the current project.</p>
+  </div>
+
+  <div class="step">
+    <h2>Step 3 — Install Once</h2>
+    <p>Copy this command, paste it into your project terminal, press Enter, and wait for it to finish.</p>
+    <div class="copyrow">
+      <code id="installCommand" class="copyvalue">npm install @once-agent/sdk</code>
+      <button id="copyInstall" class="copybtn" type="button">Copy command</button>
+    </div>
+  </div>
+
+  <div class="step">
+    <h2>Step 4 — Connect this project to Once</h2>
+    <p>After Step 3 finishes, copy and run this command in the same terminal:</p>
+    <div class="copyrow">
+      <code id="setupCommand" class="copyvalue">npx once setup .</code>
+      <button id="copySetup" class="copybtn" type="button">Copy command</button>
+    </div>
+    <p>Follow the instructions shown in your terminal. When setup asks for your Once API key, paste <strong>only the key from Step 1</strong> — the value beginning with <code>once_test_</code>.</p>
+  </div>
+
+  <div class="done">
+    <strong>What happens next?</strong>
+    <p>When setup completes, this project is connected to Once and you can start protecting consequential actions against duplicate execution.</p>
+    <p class="muted small">Your technical evaluation lasts 24 hours. No card is required and nothing will be charged.</p>
+  </div>
+</div>
 </div>
 <p class="note">The API key is displayed once. Store it securely if you continue the evaluation.</p>
 </main>
@@ -297,11 +342,34 @@ const PAGE = `<!doctype html>
 const button=document.getElementById("activate");
 const status=document.getElementById("status");
 const result=document.getElementById("result");
+const apiKey=document.getElementById("apiKey");
+const copyApiKey=document.getElementById("copyApiKey");
+const copyInstall=document.getElementById("copyInstall");
+const copySetup=document.getElementById("copySetup");
+const installCommand=document.getElementById("installCommand");
+const setupCommand=document.getElementById("setupCommand");
 let evaluationId=localStorage.getItem("once_evaluation_id");
 if(!evaluationId){evaluationId=crypto.randomUUID();localStorage.setItem("once_evaluation_id",evaluationId)}
+
+async function copyText(value,control,successLabel){
+  const original=control.textContent;
+  try{
+    await navigator.clipboard.writeText(value);
+    control.textContent=successLabel;
+    setTimeout(()=>{control.textContent=original},1600);
+  }catch{
+    control.textContent="Copy failed — select the text";
+    setTimeout(()=>{control.textContent=original},2200);
+  }
+}
+
+copyApiKey.addEventListener("click",()=>copyText(apiKey.textContent,copyApiKey,"Copied ✓"));
+copyInstall.addEventListener("click",()=>copyText(installCommand.textContent,copyInstall,"Copied ✓"));
+copySetup.addEventListener("click",()=>copyText(setupCommand.textContent,copySetup,"Copied ✓"));
+
 button.addEventListener("click",async()=>{
   button.disabled=true;
-  status.textContent="Creating test evaluation entitlement…";
+  status.textContent="Creating your test evaluation…";
   result.hidden=true;
   try{
     const response=await fetch("/api/evaluate",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({evaluation_id:evaluationId})});
@@ -313,6 +381,15 @@ button.addEventListener("click",async()=>{
         button.disabled=false;
         return;
       }
+      if(body.error==="evaluation_expired"){
+        localStorage.removeItem("once_evaluation_id");
+        evaluationId=crypto.randomUUID();
+        localStorage.setItem("once_evaluation_id",evaluationId);
+        status.textContent="Your previous evaluation ID expired. A new evaluation is ready to start.";
+        button.textContent="Start new evaluation";
+        button.disabled=false;
+        return;
+      }
       if(body.error==="evaluation_rate_limited"||body.error==="evaluation_capacity_reached"){
         status.textContent=body.message||"Evaluation capacity is temporarily limited. Try again later.";
         button.disabled=false;
@@ -320,10 +397,14 @@ button.addEventListener("click",async()=>{
       }
       throw new Error(body.error||"evaluation_failed");
     }
-    status.textContent="Evaluation activated. Copy the API key now; it is shown once.";
+    if(typeof body.api_key!=="string"||!body.api_key.startsWith("once_test_")){
+      throw new Error("evaluation_key_invalid");
+    }
+    apiKey.textContent=body.api_key;
+    status.textContent="Evaluation activated. Follow Steps 1–4 below.";
+    button.hidden=true;
     result.hidden=false;
-    result.textContent="ONCE_API_KEY="+body.api_key+"\\n\\nnpm install @once-agent/sdk\\nnpx once setup .";
-    button.textContent="Activated";
+    copyApiKey.focus();
   }catch(error){
     status.textContent="Activation failed: "+error.message;
     button.disabled=false;
