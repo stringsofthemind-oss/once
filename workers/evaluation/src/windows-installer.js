@@ -6,6 +6,7 @@ $ErrorActionPreference = "Stop"
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 [System.Windows.Forms.Application]::EnableVisualStyles()
+$nl = [Environment]::NewLine
 
 function Show-OnceMessage {
   param(
@@ -32,7 +33,8 @@ function Get-ValidOnceKeyFromClipboard {
   $value = [System.Windows.Forms.Clipboard]::GetText().Trim()
 
   if ($value -notmatch '^once_test_[A-Za-z0-9_-]{32,128}$') {
-    Show-OnceMessage -Text "Once could not find a valid evaluation API key on your clipboard.`r`n`r`nGo back to the Once evaluation page, click Copy API key, then run OnceSetup again." -Icon ([System.Windows.Forms.MessageBoxIcon]::Warning) | Out-Null
+    $text = "Once could not find a valid evaluation API key on your clipboard." + $nl + $nl + "Go back to the Once evaluation page, click Copy API key, then run OnceSetup again."
+    Show-OnceMessage -Text $text -Icon ([System.Windows.Forms.MessageBoxIcon]::Warning) | Out-Null
     exit 2
   }
 
@@ -69,7 +71,8 @@ function Get-NodeTools {
   }
 
   if (-not $node -or -not $npm) {
-    $answer = Show-OnceMessage -Text "Once automatic setup currently needs Node.js 18 or newer.`r`n`r`nNode.js was not found on this computer.`r`n`r`nOpen the Node.js download page now?" -Buttons ([System.Windows.Forms.MessageBoxButtons]::YesNo) -Icon ([System.Windows.Forms.MessageBoxIcon]::Warning)
+    $text = "Once automatic setup currently needs Node.js 18 or newer." + $nl + $nl + "Node.js was not found on this computer." + $nl + $nl + "Open the Node.js download page now?"
+    $answer = Show-OnceMessage -Text $text -Buttons ([System.Windows.Forms.MessageBoxButtons]::YesNo) -Icon ([System.Windows.Forms.MessageBoxIcon]::Warning)
     if ($answer -eq [System.Windows.Forms.DialogResult]::Yes) {
       Start-Process "https://nodejs.org/en/download"
     }
@@ -139,7 +142,8 @@ function Choose-ExistingProject {
       return $root
     }
 
-    $choice = Show-OnceMessage -Text "That folder does not contain package.json, so Once cannot safely identify it as a Node.js project.`r`n`r`nChoose another folder?" -Buttons ([System.Windows.Forms.MessageBoxButtons]::YesNo) -Icon ([System.Windows.Forms.MessageBoxIcon]::Warning)
+    $text = "That folder does not contain package.json, so Once cannot safely identify it as a Node.js project." + $nl + $nl + "Choose another folder?"
+    $choice = Show-OnceMessage -Text $text -Buttons ([System.Windows.Forms.MessageBoxButtons]::YesNo) -Icon ([System.Windows.Forms.MessageBoxIcon]::Warning)
     if ($choice -ne [System.Windows.Forms.DialogResult]::Yes) {
       return $null
     }
@@ -169,7 +173,8 @@ function Confirm-KeyPersistence {
     return $true
   }
 
-  $choice = Show-OnceMessage -Text "This project already has a different Once API key in .env.`r`n`r`nReplace it with this evaluation key?" -Buttons ([System.Windows.Forms.MessageBoxButtons]::YesNo) -Icon ([System.Windows.Forms.MessageBoxIcon]::Warning)
+  $message = "This project already has a different Once API key in .env." + $nl + $nl + "Replace it with this evaluation key?"
+  $choice = Show-OnceMessage -Text $message -Buttons ([System.Windows.Forms.MessageBoxButtons]::YesNo) -Icon ([System.Windows.Forms.MessageBoxIcon]::Warning)
   return $choice -eq [System.Windows.Forms.DialogResult]::Yes
 }
 
@@ -189,10 +194,10 @@ function Save-OnceKey {
     $envText = [regex]::Replace($envText, '(?m)^ONCE_API_KEY=.*$', ("ONCE_API_KEY=" + $ApiKey))
   }
   else {
-    if ($envText.Length -gt 0 -and -not $envText.EndsWith("`n")) {
-      $envText += "`r`n"
+    if ($envText.Length -gt 0 -and -not $envText.EndsWith($nl)) {
+      $envText += $nl
     }
-    $envText += "ONCE_API_KEY=" + $ApiKey + "`r`n"
+    $envText += "ONCE_API_KEY=" + $ApiKey + $nl
   }
 
   Write-Utf8NoBom -Path $envPath -Text $envText
@@ -212,10 +217,10 @@ function Save-OnceKey {
   }
 
   if (-not $hasEnvIgnore) {
-    if ($ignoreText.Length -gt 0 -and -not $ignoreText.EndsWith("`n")) {
-      $ignoreText += "`r`n"
+    if ($ignoreText.Length -gt 0 -and -not $ignoreText.EndsWith($nl)) {
+      $ignoreText += $nl
     }
-    $ignoreText += ".env`r`n"
+    $ignoreText += ".env" + $nl
     Write-Utf8NoBom -Path $ignorePath -Text $ignoreText
   }
 }
@@ -319,7 +324,8 @@ try {
 
   $tools = Get-NodeTools
 
-  $mode = Show-OnceMessage -Text "Where should Once be installed?`r`n`r`nYES — Create a safe Once demo project for me (recommended for first-time evaluation).`r`n`r`nNO — Let me choose an existing Node.js project.`r`n`r`nCANCEL — Exit without changing anything." -Buttons ([System.Windows.Forms.MessageBoxButtons]::YesNoCancel) -Icon ([System.Windows.Forms.MessageBoxIcon]::Question)
+  $modeText = "Where should Once be installed?" + $nl + $nl + "YES — Create a safe Once demo project for me (recommended for first-time evaluation)." + $nl + $nl + "NO — Let me choose an existing Node.js project." + $nl + $nl + "CANCEL — Exit without changing anything."
+  $mode = Show-OnceMessage -Text $modeText -Buttons ([System.Windows.Forms.MessageBoxButtons]::YesNoCancel) -Icon ([System.Windows.Forms.MessageBoxIcon]::Question)
 
   $isDemo = $false
   $root = $null
@@ -343,7 +349,7 @@ try {
     exit 0
   }
 
-  $confirmText = "Once is ready to set up this folder:`r`n`r`n" + $root + "`r`n`r`nIt will:`r`n• install @once-agent/sdk`r`n• save your evaluation key to .env`r`n• add .env to .gitignore`r`n• verify the Once connection`r`n`r`nIt will not modify your application source code.`r`n`r`nContinue?"
+  $confirmText = "Once is ready to set up this folder:" + $nl + $nl + $root + $nl + $nl + "It will:" + $nl + "• install @once-agent/sdk" + $nl + "• save your evaluation key to .env" + $nl + "• add .env to .gitignore" + $nl + "• verify the Once connection" + $nl + $nl + "It will not modify your application source code." + $nl + $nl + "Continue?"
   $confirm = Show-OnceMessage -Text $confirmText -Buttons ([System.Windows.Forms.MessageBoxButtons]::YesNo) -Icon ([System.Windows.Forms.MessageBoxIcon]::Question)
   if ($confirm -ne [System.Windows.Forms.DialogResult]::Yes) {
     exit 0
@@ -355,14 +361,14 @@ try {
 
   if ($isDemo) {
     Run-OnceDemo -Root $root -Node $tools.Node -ApiKey $apiKey
-    $doneText = "Once is installed and connected.`r`n`r`nThe demo also proved the safety behavior:`r`n✓ first action executed`r`n✓ retry was suppressed`r`n✓ side effects stayed at 1`r`n`r`nDemo folder:`r`n" + $root + "`r`n`r`nOpen the demo folder now?"
+    $doneText = "Once is installed and connected." + $nl + $nl + "The demo also proved the safety behavior:" + $nl + "✓ first action executed" + $nl + "✓ retry was suppressed" + $nl + "✓ side effects stayed at 1" + $nl + $nl + "Demo folder:" + $nl + $root + $nl + $nl + "Open the demo folder now?"
     $open = Show-OnceMessage -Text $doneText -Buttons ([System.Windows.Forms.MessageBoxButtons]::YesNo) -Icon ([System.Windows.Forms.MessageBoxIcon]::Information)
     if ($open -eq [System.Windows.Forms.DialogResult]::Yes) {
       Start-Process explorer.exe $root
     }
   }
   else {
-    $doneText = "Once is installed and connected to this project.`r`n`r`n✓ SDK installed`r`n✓ API key saved securely in .env`r`n✓ .env added to .gitignore`r`n✓ Once API connection verified`r`n`r`nNo application source files were changed.`r`n`r`nProject:`r`n" + $root
+    $doneText = "Once is installed and connected to this project." + $nl + $nl + "✓ SDK installed" + $nl + "✓ API key saved securely in .env" + $nl + "✓ .env added to .gitignore" + $nl + "✓ Once API connection verified" + $nl + $nl + "No application source files were changed." + $nl + $nl + "Project:" + $nl + $root
     Show-OnceMessage -Text $doneText -Icon ([System.Windows.Forms.MessageBoxIcon]::Information) | Out-Null
   }
 
@@ -371,7 +377,7 @@ try {
   exit 0
 }
 catch {
-  $message = "Once setup stopped safely.`r`n`r`n" + $_.Exception.Message + "`r`n`r`nNo retry or hidden recovery action will be attempted automatically."
+  $message = "Once setup stopped safely." + $nl + $nl + $_.Exception.Message + $nl + $nl + "No retry or hidden recovery action will be attempted automatically."
   Show-OnceMessage -Text $message -Icon ([System.Windows.Forms.MessageBoxIcon]::Error) | Out-Null
   exit 1
 }
