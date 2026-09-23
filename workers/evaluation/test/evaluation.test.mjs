@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import worker from "../src/index.js";
 
 const EVALUATION_ID = "123e4567-e89b-42d3-a456-426614174000";
+const CLIENT_IP = "203.0.113.10";
 
 function makeEnv({
   enabled = true,
@@ -10,6 +11,8 @@ function makeEnv({
   priceId = "price_eval_pro",
   entitlementFetch,
   claimFetch,
+  admissionFetch,
+  admissionSecret = "test-admission-secret-0123456789abcdef",
 } = {}) {
   const entitlement = entitlementFetch || (async () => Response.json({
     found: true,
@@ -31,10 +34,29 @@ function makeEnv({
     warning: "Copy this API key now.",
   }));
 
+  const admission = admissionFetch || (async () => Response.json({
+    allowed: true,
+    retry: false,
+    evaluation_expires_at: "2099-01-01T00:00:00.000Z",
+  }));
+
   return {
     EVALUATION_BYPASS_ENABLED: enabled ? "true" : "false",
     STRIPE_SECRET_KEY: stripeKey,
     STRIPE_PRICE_PRO: priceId,
+    EVALUATION_ADMISSION_SECRET: admissionSecret,
+    EVALUATION_MAX_PER_CLIENT_24H: "3",
+    EVALUATION_GLOBAL_MAX_24H: "100",
+    EVALUATION_ADMISSION: {
+      idFromName(name) {
+        assert.equal(name, "once-evaluation-admission-v1");
+        return "evaluation-admission-id";
+      },
+      get(id) {
+        assert.equal(id, "evaluation-admission-id");
+        return { fetch: admission };
+      },
+    },
     Q18_TRUTH: {
       idFromName(name) {
         assert.equal(name, "once-q18-authoritative-ledger-v1");
@@ -89,11 +111,14 @@ function installStripeMock({
   };
 }
 
-async function postEvaluate(env, evaluationId = EVALUATION_ID) {
+async function postEvaluate(env, evaluationId = EVALUATION_ID, clientIp = CLIENT_IP) {
+  const headers = new Headers({ "content-type": "application/json" });
+  if (clientIp) headers.set("cf-connecting-ip", clientIp);
+
   return worker.fetch(
     new Request("https://evaluate.onceexec.test/api/evaluate", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers,
       body: JSON.stringify({ evaluation_id: evaluationId }),
     }),
     env,
@@ -128,6 +153,16 @@ test("live Stripe keys are refused before activation", async () => {
   assert.match(await response.text(), /evaluation_requires_stripe_test_key/);
 });
 
+test("missing admission secret fails closed before activation", async () => {
+  const response = await worker.fetch(
+    new Request("https://evaluate.onceexec.test/"),
+    makeEnv({ admissionSecret: "too-short" }),
+  );
+
+  assert.equal(response.status, 503);
+  assert.match(await response.text(), /evaluation_admission_secret_missing/);
+});
+
 test("invalid evaluation identity is rejected before Stripe", async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async () => {
@@ -140,6 +175,77 @@ test("invalid evaluation identity is rejected before Stripe", async () => {
     assert.deepEqual(await response.json(), { error: "invalid_evaluation_id" });
   } finally {
     globalThis.fetch = originalFetch;
+  }
+});
+
+test("missing Cloudflare client identity fails closed before Stripe", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    throw new Error("Stripe must not be reached without client admission identity");
+  };
+
+  try {
+    const response = await postEvaluate(makeEnv(), EVALUATION_ID, null);
+    assert.equal(response.status, 403);
+    const body = await response.json();
+    assert.equal(body.error, "evaluation_client_identity_unavailable");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("admission rate limit blocks Stripe provisioning and preserves Retry-After", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    throw new Error("Stripe must not be reached after admission denial");
+  };
+
+  try {
+    const env = makeEnv({
+      admissionFetch: async () => Response.json(
+        {
+          error: "evaluation_rate_limited",
+          message: "This client has reached the 24-hour evaluation admission limit.",
+        },
+        {
+          status: 429,
+          headers: { "retry-after": "3600" },
+        },
+      ),
+    });
+
+    const response = await postEvaluate(env);
+    assert.equal(response.status, 429);
+    assert.equal(response.headers.get("retry-after"), "3600");
+    assert.equal((await response.json()).error, "evaluation_rate_limited");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("admission pseudonymizes the client address before it reaches durable state", async () => {
+  const stripe = installStripeMock();
+  let admittedBody = null;
+
+  try {
+    const env = makeEnv({
+      admissionFetch: async (request) => {
+        admittedBody = await request.json();
+        return Response.json({
+          allowed: true,
+          retry: false,
+          evaluation_expires_at: "2099-01-01T00:00:00.000Z",
+        });
+      },
+    });
+
+    const response = await postEvaluate(env);
+    assert.equal(response.status, 200);
+    assert.equal(admittedBody.evaluation_id, EVALUATION_ID);
+    assert.match(admittedBody.client_key, /^[0-9a-f]{64}$/);
+    assert.equal(admittedBody.client_key.includes(CLIENT_IP), false);
+  } finally {
+    stripe.restore();
   }
 });
 
