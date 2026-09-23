@@ -368,7 +368,7 @@ try {
     }
   }
   else {
-    $doneText = "Once is installed and connected to this project." + $nl + $nl + "✓ SDK installed" + $nl + "✓ API key saved securely in .env" + $nl + "✓ .env added to .gitignore" + $nl + "✓ Once API connection verified" + $nl + $nl + "No application source files were changed." + $nl + $nl + "Project:" + $nl + $root
+    $doneText = "Once is installed and connected to this project." + $nl + $nl + "✓ SDK installed" + $nl + "✓ API key saved locally in .env" + $nl + "✓ .env added to .gitignore" + $nl + "✓ Once API connection verified" + $nl + $nl + "No application source files were changed." + $nl + $nl + "Project:" + $nl + $root
     Show-OnceMessage -Text $doneText -Icon ([System.Windows.Forms.MessageBoxIcon]::Information) | Out-Null
   }
 
@@ -377,6 +377,11 @@ try {
   exit 0
 }
 catch {
+  $apiKey = $null
+  try {
+    [System.Windows.Forms.Clipboard]::Clear()
+  }
+  catch {}
   $message = "Once setup stopped safely." + $nl + $nl + $_.Exception.Message + $nl + $nl + "No retry or hidden recovery action will be attempted automatically."
   Show-OnceMessage -Text $message -Icon ([System.Windows.Forms.MessageBoxIcon]::Error) | Out-Null
   exit 1
@@ -387,7 +392,7 @@ const BATCH = [
   "@echo off",
   "setlocal",
   'set "ONCE_INSTALLER=%~f0"',
-  'powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "$text=[System.IO.File]::ReadAllText($env:ONCE_INSTALLER);$marker=\'#__ONCE_POWERSHELL__#\';$index=$text.IndexOf($marker);if($index -lt 0){throw \'Installer payload missing.\'};Invoke-Expression $text.Substring($index+$marker.Length)"',
+  'powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "$text=[System.IO.File]::ReadAllText($env:ONCE_INSTALLER);$marker=\'#__ONCE_POWERSHELL__#\';$index=$text.LastIndexOf($marker);if($index -lt 0){throw \'Installer payload missing.\'};Invoke-Expression $text.Substring($index+$marker.Length)"',
   'set "ONCE_EXIT=%ERRORLEVEL%"',
   "endlocal & exit /b %ONCE_EXIT%",
   POWERSHELL_MARKER,
