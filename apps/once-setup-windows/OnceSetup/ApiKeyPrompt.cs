@@ -17,11 +17,12 @@ internal sealed class ApiKeyPrompt : Form
         ClientSize = new Size(620, 245);
         AutoScaleMode = AutoScaleMode.Dpi;
 
+        var messageFont = SystemFonts.MessageBoxFont ?? SystemFonts.DefaultFont;
         var title = new Label
         {
             Text = "Paste your Once evaluation API key",
             AutoSize = true,
-            Font = new Font(SystemFonts.MessageBoxFont.FontFamily, 14, FontStyle.Bold),
+            Font = new Font(messageFont.FontFamily, 14, FontStyle.Bold),
             Location = new Point(24, 22),
         };
 
@@ -50,12 +51,13 @@ internal sealed class ApiKeyPrompt : Form
         {
             try
             {
-                if (Clipboard.ContainsText())
+                var clipboardText = Clipboard.GetText()?.Trim() ?? string.Empty;
+                if (clipboardText.Length > 0)
                 {
-                    _apiKey.Text = Clipboard.GetText().Trim();
+                    _apiKey.Text = clipboardText;
                     _apiKey.SelectionStart = _apiKey.TextLength;
-                    _apiKey.Focus();
                 }
+                _apiKey.Focus();
             }
             catch
             {
