@@ -124,19 +124,6 @@ internal sealed class SetupProgressForm : Form
         Application.DoEvents();
     }
 
-    internal void ShowVerifyStage()
-    {
-        Text = "Verifying Once";
-        foreach (Control control in Controls)
-        {
-            if (control is StepBar)
-            {
-                // Step bar is created by the theme and remains visually consistent.
-                break;
-            }
-        }
-    }
-
     private static string StripPrefix(string text)
     {
         return text.Length >= 3 && (text[0] == '✓' || text[0] == '●' || text[0] == '○')
