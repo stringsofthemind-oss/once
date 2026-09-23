@@ -96,6 +96,25 @@ function Invoke-CurlJson {
   }
 }
 
+function Get-OptionalPropertyValue {
+  param(
+    [object]$Object,
+    [Parameter(Mandatory = $true)]
+    [string]$Name
+  )
+
+  if ($null -eq $Object) {
+    return $null
+  }
+
+  $property = $Object.PSObject.Properties[$Name]
+  if ($null -eq $property) {
+    return $null
+  }
+
+  return $property.Value
+}
+
 $evaluationDir = Split-Path -Parent (Split-Path -Parent $PSCommandPath)
 Assert-True ($CustomerId -match '^cus_[A-Za-z0-9]+$') "CustomerId does not look like a Stripe customer ID."
 
@@ -105,7 +124,7 @@ if (-not $npx) {
 }
 Assert-True ($null -ne $npx) "npx was not found in PATH."
 
-$previewName = "once-e2e-" + [guid]::NewGuid().ToString("N").Substring(0, 12)
+$previewName = "once-e2e-frictionless-test"
 $token = ([guid]::NewGuid().ToString("N") + [guid]::NewGuid().ToString("N"))
 $tempConfig = Join-Path $evaluationDir ("wrangler.preview-e2e." + [guid]::NewGuid().ToString("N") + ".json")
 $previewCreated = $false
@@ -168,18 +187,44 @@ try {
     throw "wrangler preview failed with exit code $LASTEXITCODE"
   }
 
+  # A successful Wrangler command means a Preview may now exist, even if
+  # parsing its returned JSON fails. Mark it immediately so finally cleans up.
+  $previewCreated = $true
+
   $previewResult = $previewOutput | ConvertFrom-Json
   $previewUrl = $null
 
-  if ($previewResult.preview_urls -and $previewResult.preview_urls.Count -gt 0) {
-    $previewUrl = [string]$previewResult.preview_urls[0]
-  }
-  elseif ($previewResult.preview -and $previewResult.preview.urls -and $previewResult.preview.urls.Count -gt 0) {
-    $previewUrl = [string]$previewResult.preview.urls[0]
+  $topLevelUrls = Get-OptionalPropertyValue -Object $previewResult -Name "preview_urls"
+  if ($topLevelUrls -and @($topLevelUrls).Count -gt 0) {
+    $previewUrl = [string]@($topLevelUrls)[0]
   }
 
-  Assert-True (-not [string]::IsNullOrWhiteSpace($previewUrl)) "Wrangler did not return a Preview URL."
-  $previewCreated = $true
+  if ([string]::IsNullOrWhiteSpace($previewUrl)) {
+    $previewObject = Get-OptionalPropertyValue -Object $previewResult -Name "preview"
+    $nestedUrls = Get-OptionalPropertyValue -Object $previewObject -Name "urls"
+    if ($nestedUrls -and @($nestedUrls).Count -gt 0) {
+      $previewUrl = [string]@($nestedUrls)[0]
+    }
+  }
+
+  if ([string]::IsNullOrWhiteSpace($previewUrl)) {
+    $singularPreviewUrl = Get-OptionalPropertyValue -Object $previewResult -Name "preview_url"
+    if (-not [string]::IsNullOrWhiteSpace([string]$singularPreviewUrl)) {
+      $previewUrl = [string]$singularPreviewUrl
+    }
+  }
+
+  if ([string]::IsNullOrWhiteSpace($previewUrl)) {
+    $plainUrl = Get-OptionalPropertyValue -Object $previewResult -Name "url"
+    if (-not [string]::IsNullOrWhiteSpace([string]$plainUrl)) {
+      $previewUrl = [string]$plainUrl
+    }
+  }
+
+  if ([string]::IsNullOrWhiteSpace($previewUrl)) {
+    $shape = @($previewResult.PSObject.Properties.Name) -join ", "
+    throw "Wrangler did not return a recognized Preview URL. JSON properties: $shape. Raw output: $($previewOutput -join ' ')"
+  }
 
   Write-Host "Preview created: $previewName" -ForegroundColor Green
   Write-Host "Waiting for Preview health..."
