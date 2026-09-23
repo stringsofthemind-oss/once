@@ -1,3 +1,10 @@
+import {
+  assertAdmissionConfiguration,
+  enforceEvaluationAdmission,
+} from "./admission.js";
+
+export { EvaluationAdmission } from "./admission.js";
+
 const ENTITLEMENT_POLL_ATTEMPTS = 32;
 const ENTITLEMENT_POLL_DELAY_MS = 250;
 
@@ -47,6 +54,8 @@ function assertConfiguration(env) {
   if (!env.Q18_TRUTH || !env.SANDBOX_CLAIMS) {
     throw new Error("evaluation_runtime_binding_missing");
   }
+
+  assertAdmissionConfiguration(env);
 }
 
 function stripeForm(fields) {
@@ -226,6 +235,11 @@ async function activateEvaluation(request, env) {
     return json({ error: "invalid_evaluation_id" }, 400);
   }
 
+  const admissionDenied = await enforceEvaluationAdmission(request, env, evaluationId);
+  if (admissionDenied) {
+    return admissionDenied;
+  }
+
   const evaluation = await createOrRecoverEvaluationSubscription(env, evaluationId);
   const entitlement = await waitForEntitlement(env, evaluation.customerId);
 
@@ -271,7 +285,7 @@ const PAGE = `<!doctype html>
 <main>
 <div class="mark">1× ONCE / TECHNICAL EVALUATION</div>
 <h1>Try Once without checkout.</h1>
-<p class="muted">No card and no Stripe Checkout screen. When enabled by the operator, this creates a one-day Stripe test-mode trial behind the scenes, then uses the same Once entitlement and API-key path as the normal sandbox.</p>
+<p class="muted">No card and no Stripe Checkout screen. When enabled by the operator, this creates a one-day Stripe test-mode trial behind the scenes, then uses the same Once entitlement and API-key path as the normal sandbox. Admission limits protect the evaluation service from automated abuse.</p>
 <div class="card">
 <button id="activate">Start technical evaluation</button>
 <p id="status" class="muted">Test mode only. Nothing is charged.</p>
@@ -296,6 +310,11 @@ button.addEventListener("click",async()=>{
       if(body.error==="evaluation_entitlement_pending"){
         status.textContent=body.message;
         button.textContent="Retry activation";
+        button.disabled=false;
+        return;
+      }
+      if(body.error==="evaluation_rate_limited"||body.error==="evaluation_capacity_reached"){
+        status.textContent=body.message||"Evaluation capacity is temporarily limited. Try again later.";
         button.disabled=false;
         return;
       }
@@ -345,6 +364,7 @@ export default {
         status: "online",
         enabled: true,
         stripe_mode: "test_required",
+        admission_control: "durable_object",
       });
     }
 
