@@ -12,27 +12,41 @@ internal sealed class SetupProgressForm : Form
         ControlBox = false;
         AutoScroll = false;
 
-        var body = new FlowLayoutPanel
+        var viewport = new Panel
         {
-            FlowDirection = FlowDirection.TopDown,
-            WrapContents = false,
+            Dock = DockStyle.Fill,
             AutoScroll = true,
-            Padding = new Padding(OnceTheme.S(54), OnceTheme.S(36), OnceTheme.S(54), OnceTheme.S(44)),
             BackColor = OnceTheme.Background,
+            Padding = new Padding(OnceTheme.S(36)),
         };
 
-        body.Controls.Add(OnceTheme.Heading("INSTALLING ONCE"));
-        var intro = OnceTheme.Paragraph("Setting up Once in your project and preparing the safety verification.");
-        body.Controls.Add(intro);
-
-        var card = new Panel
+        var content = new TableLayoutPanel
         {
-            Width = OnceTheme.MaxContentWidth,
-            Height = OnceTheme.S(330),
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 1,
+            RowCount = 0,
+            BackColor = OnceTheme.Background,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty,
+        };
+        content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+
+        AddRow(content, OnceTheme.Heading("INSTALLING ONCE", 21F), Bottom(12));
+        var intro = OnceTheme.Paragraph("Setting up Once in your project and preparing the safety verification.");
+        AddRow(content, intro, Bottom(24));
+
+        var card = new TableLayoutPanel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 1,
+            RowCount = 0,
             BackColor = OnceTheme.Surface,
             Padding = new Padding(OnceTheme.S(28)),
-            Margin = new Padding(0, 0, 0, OnceTheme.S(20)),
+            Margin = Padding.Empty,
         };
+        card.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
 
         var items = new[]
         {
@@ -52,71 +66,66 @@ internal sealed class SetupProgressForm : Form
                 AutoSize = true,
                 ForeColor = OnceTheme.Muted,
                 Font = OnceTheme.Body(10F),
-                Location = new Point(OnceTheme.S(28), OnceTheme.S(28 + i * 48)),
+                Margin = new Padding(0, 0, 0, OnceTheme.S(16)),
+                UseCompatibleTextRendering = false,
             };
             _statusLabels[i] = label;
-            card.Controls.Add(label);
+            AddRow(card, label);
         }
 
         _progress = new ProgressBar
         {
-            Width = OnceTheme.MaxContentWidth - OnceTheme.S(56),
-            Height = OnceTheme.S(16),
+            Dock = DockStyle.Top,
+            Height = OnceTheme.S(18),
             Minimum = 0,
             Maximum = 100,
             Value = 5,
             Style = ProgressBarStyle.Continuous,
-            Location = new Point(OnceTheme.S(28), OnceTheme.S(276)),
+            Margin = new Padding(0, OnceTheme.S(8), 0, 0),
         };
-        card.Controls.Add(_progress);
+        AddRow(card, _progress);
+        AddRow(content, card, Bottom(20));
 
         _detail = new Label
         {
             AutoSize = true,
-            MaximumSize = new Size(OnceTheme.MaxContentWidth, 0),
             ForeColor = OnceTheme.Muted,
             Font = OnceTheme.Body(9.5F),
             Margin = Padding.Empty,
+            MaximumSize = new Size(OnceTheme.MaxContentWidth, 0),
+            UseCompatibleTextRendering = false,
         };
+        AddRow(content, _detail);
 
-        var resizing = false;
-        void LayoutContent()
+        viewport.Controls.Add(content);
+
+        void Reflow()
         {
-            if (resizing || body.ClientSize.Width <= 0)
+            if (viewport.ClientSize.Width <= 0)
             {
                 return;
             }
 
-            resizing = true;
-            try
-            {
-                var minimumInset = OnceTheme.S(54);
-                var available = Math.Max(OnceTheme.S(420), body.ClientSize.Width - minimumInset * 2);
-                var width = Math.Min(OnceTheme.MaxContentWidth, available);
-                var horizontalInset = Math.Max(minimumInset, (body.ClientSize.Width - width) / 2);
-                body.Padding = new Padding(horizontalInset, OnceTheme.S(36), horizontalInset, OnceTheme.S(44));
-
-                card.Width = width;
-                _progress.Width = Math.Max(OnceTheme.S(260), width - OnceTheme.S(56));
-                _detail.MaximumSize = new Size(width, 0);
-                intro.MaximumSize = new Size(width, 0);
-            }
-            finally
-            {
-                resizing = false;
-            }
+            var available = Math.Max(OnceTheme.S(560), viewport.ClientSize.Width - viewport.Padding.Horizontal);
+            var width = Math.Min(OnceTheme.S(1040), available);
+            content.MinimumSize = new Size(width, 0);
+            content.MaximumSize = new Size(width, 0);
+            content.Left = Math.Max(viewport.Padding.Left, (viewport.ClientSize.Width - width) / 2);
+            content.Top = viewport.Padding.Top;
+            card.MinimumSize = new Size(width, 0);
+            card.MaximumSize = new Size(width, 0);
+            intro.MaximumSize = new Size(width, 0);
+            _detail.MaximumSize = new Size(width, 0);
         }
 
-        body.Controls.Add(card);
-        body.Controls.Add(_detail);
-        body.SizeChanged += (_, _) => LayoutContent();
+        viewport.SizeChanged += (_, _) => Reflow();
 
-        Controls.Add(OnceTheme.CreateChrome(body, 3));
+        Controls.Add(OnceTheme.CreateChrome(viewport, 3));
         Shown += (_, _) =>
         {
             OnceTheme.FitToWorkingArea(this);
-            LayoutContent();
-            body.PerformLayout();
+            Reflow();
+            viewport.PerformLayout();
         };
     }
 
@@ -154,6 +163,16 @@ internal sealed class SetupProgressForm : Form
         _detail.Text = detail ?? string.Empty;
         Refresh();
         Application.DoEvents();
+    }
+
+    private static Padding Bottom(int value) => new(0, 0, 0, OnceTheme.S(value));
+
+    private static void AddRow(TableLayoutPanel table, Control control, Padding? margin = null)
+    {
+        var row = table.RowCount++;
+        table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        control.Margin = margin ?? control.Margin;
+        table.Controls.Add(control, 0, row);
     }
 
     private static string StripPrefix(string text)
