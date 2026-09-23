@@ -6,6 +6,8 @@ internal static class OnceTheme
 
     internal static int MaxContentWidth => S(1120);
     internal static int MaxChromeWidth => S(1240);
+    internal static int MaxStepperWidth => S(860);
+    internal static string BuildVersion => typeof(OnceTheme).Assembly.GetName().Version?.ToString() ?? "dev";
 
     internal static readonly Color Background = Color.FromArgb(4, 9, 13);
     internal static readonly Color Surface = Color.FromArgb(8, 18, 24);
@@ -41,8 +43,8 @@ internal static class OnceTheme
         form.ForeColor = Text;
         form.Font = Body();
 
-        // Once owns its layout metrics. Disabling WinForms autoscaling avoids
-        // coordinates being multiplied a second time on high-DPI displays.
+        // Once owns its layout metrics. PerMonitorV2 is declared at the app
+        // level, so WinForms must not multiply the same coordinates again.
         form.AutoScaleMode = AutoScaleMode.None;
 
         form.ShowInTaskbar = true;
@@ -62,10 +64,10 @@ internal static class OnceTheme
             BackColor = Background,
         };
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, S(82)));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, S(94)));
         if (activeStep.HasValue)
         {
-            root.RowStyles.Add(new RowStyle(SizeType.Absolute, S(92)));
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute, S(90)));
         }
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
@@ -87,53 +89,7 @@ internal static class OnceTheme
         return root;
     }
 
-    internal static Panel CreateTopBar(string title = "Once Setup")
-    {
-        var bar = new Panel
-        {
-            BackColor = Color.FromArgb(5, 15, 20),
-            Margin = Padding.Empty,
-            Padding = Padding.Empty,
-        };
-
-        var badge = new Label
-        {
-            Text = "1x",
-            AutoSize = false,
-            Width = S(46),
-            Height = S(38),
-            TextAlign = ContentAlignment.MiddleCenter,
-            BackColor = AccentDeep,
-            ForeColor = Accent,
-            Font = Body(10.5F, FontStyle.Bold),
-        };
-
-        var name = new Label
-        {
-            Text = title,
-            AutoSize = true,
-            ForeColor = Text,
-            Font = Body(12F, FontStyle.Bold),
-        };
-
-        void LayoutBrand()
-        {
-            var available = Math.Max(S(320), bar.ClientSize.Width - S(48));
-            var canvas = Math.Min(MaxChromeWidth, available);
-            var left = Math.Max(S(24), (bar.ClientSize.Width - canvas) / 2);
-            var top = Math.Max(S(12), (bar.ClientSize.Height - badge.Height) / 2);
-
-            badge.Location = new Point(left, top);
-            name.Location = new Point(
-                left + badge.Width + S(18),
-                Math.Max(S(10), (bar.ClientSize.Height - name.PreferredHeight) / 2));
-        }
-
-        bar.Controls.Add(badge);
-        bar.Controls.Add(name);
-        bar.SizeChanged += (_, _) => LayoutBrand();
-        return bar;
-    }
+    internal static Control CreateTopBar(string title = "Once Setup") => new BrandBar(title);
 
     internal static Control CreateStepBar(int activeStep)
     {
@@ -152,6 +108,7 @@ internal static class OnceTheme
             ForeColor = Text,
             Font = Display(size),
             Margin = new Padding(0, 0, 0, S(12)),
+            UseCompatibleTextRendering = false,
         };
     }
 
@@ -165,25 +122,26 @@ internal static class OnceTheme
             ForeColor = Muted,
             Font = Body(10.5F),
             Margin = new Padding(0, 0, 0, S(20)),
+            UseCompatibleTextRendering = false,
         };
     }
 
     internal static Button PrimaryButton(string text, int width = 180)
     {
-        using var measureFont = Body(10.5F, FontStyle.Bold);
-        var measuredWidth = TextRenderer.MeasureText(text, measureFont).Width + S(46);
         var button = new Button
         {
             Text = text,
-            AutoSize = false,
-            Width = Math.Max(S(width), measuredWidth),
-            Height = S(56),
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            MinimumSize = new Size(S(width), S(60)),
             FlatStyle = FlatStyle.Flat,
             BackColor = Accent,
             ForeColor = Color.FromArgb(2, 18, 16),
             Font = Body(10.5F, FontStyle.Bold),
             Cursor = Cursors.Hand,
-            Padding = new Padding(S(8), 0, S(8), 0),
+            Padding = new Padding(S(28), S(10), S(28), S(10)),
+            TextAlign = ContentAlignment.MiddleCenter,
+            UseCompatibleTextRendering = false,
         };
         button.FlatAppearance.BorderSize = 0;
         button.FlatAppearance.MouseOverBackColor = Color.FromArgb(76, 247, 177);
@@ -193,20 +151,20 @@ internal static class OnceTheme
 
     internal static Button SecondaryButton(string text, int width = 150)
     {
-        using var measureFont = Body(10.5F, FontStyle.Bold);
-        var measuredWidth = TextRenderer.MeasureText(text, measureFont).Width + S(46);
         var button = new Button
         {
             Text = text,
-            AutoSize = false,
-            Width = Math.Max(S(width), measuredWidth),
-            Height = S(56),
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            MinimumSize = new Size(S(width), S(60)),
             FlatStyle = FlatStyle.Flat,
             BackColor = SurfaceRaised,
             ForeColor = Text,
             Font = Body(10.5F, FontStyle.Bold),
             Cursor = Cursors.Hand,
-            Padding = new Padding(S(8), 0, S(8), 0),
+            Padding = new Padding(S(28), S(10), S(28), S(10)),
+            TextAlign = ContentAlignment.MiddleCenter,
+            UseCompatibleTextRendering = false,
         };
         button.FlatAppearance.BorderColor = Border;
         button.FlatAppearance.BorderSize = 1;
@@ -260,7 +218,71 @@ internal static class OnceTheme
             // Keep the DPI-derived/default value.
         }
 
-        return Math.Clamp(scale, 1F, 1.65F);
+        return Math.Clamp(scale, 1F, 1.50F);
+    }
+
+    private sealed class BrandBar : Control
+    {
+        private readonly string _title;
+
+        internal BrandBar(string title)
+        {
+            _title = title;
+            DoubleBuffered = true;
+            BackColor = Color.FromArgb(5, 15, 20);
+            Margin = Padding.Empty;
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+            var g = e.Graphics;
+            g.Clear(BackColor);
+
+            var available = Math.Max(S(360), Width - S(48));
+            var span = Math.Min(MaxChromeWidth, available);
+            var left = (Width - span) / 2;
+
+            var badgeWidth = S(46);
+            var badgeHeight = S(38);
+            var badgeTop = Math.Max(S(12), (Height - badgeHeight) / 2);
+            var badgeRect = new Rectangle(left, badgeTop, badgeWidth, badgeHeight);
+
+            using (var badgeBrush = new SolidBrush(AccentDeep))
+            {
+                g.FillRectangle(badgeBrush, badgeRect);
+            }
+
+            using var badgeFont = Body(10.5F, FontStyle.Bold);
+            TextRenderer.DrawText(
+                g,
+                "1x",
+                badgeFont,
+                badgeRect,
+                Accent,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+
+            using var titleFont = Body(12F, FontStyle.Bold);
+            var titleLeft = badgeRect.Right + S(18);
+            var titleRect = new Rectangle(titleLeft, 0, Math.Max(S(240), span / 2), Height);
+            TextRenderer.DrawText(
+                g,
+                _title,
+                titleFont,
+                titleRect,
+                Text,
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding | TextFormatFlags.EndEllipsis);
+
+            using var buildFont = Body(7.5F, FontStyle.Bold);
+            var buildRect = new Rectangle(left + span / 2, 0, span / 2, Height);
+            TextRenderer.DrawText(
+                g,
+                "TEST BUILD  " + BuildVersion,
+                buildFont,
+                buildRect,
+                Muted,
+                TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding | TextFormatFlags.EndEllipsis);
+        }
     }
 
     private sealed class StepBar : Control
@@ -282,10 +304,10 @@ internal static class OnceTheme
             g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
 
             var available = Math.Max(S(360), Width - S(72));
-            var span = Math.Min(MaxChromeWidth, available);
+            var span = Math.Min(MaxStepperWidth, available);
             var left = (Width - span) / 2F;
             var right = left + span;
-            var y = S(25);
+            var y = S(24);
             var spacing = Math.Max(1F, (right - left) / (Steps.Length - 1));
 
             using var pendingPen = new Pen(Border, Math.Max(2F, F(1.5F)));
@@ -333,7 +355,7 @@ internal static class OnceTheme
                 using var labelFont = Body(8.5F, active ? FontStyle.Bold : FontStyle.Regular);
                 using var labelBrush = new SolidBrush(active ? OnceTheme.Text : Muted);
                 var labelSize = g.MeasureString(Steps[i], labelFont);
-                g.DrawString(Steps[i], labelFont, labelBrush, x - labelSize.Width / 2, S(49));
+                g.DrawString(Steps[i], labelFont, labelBrush, x - labelSize.Width / 2, S(47));
             }
         }
     }
