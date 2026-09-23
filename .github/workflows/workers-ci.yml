@@ -96,5 +96,8 @@ jobs:
       - name: Validate evaluation Worker syntax
         run: node --check src/index.js
 
+      - name: Run evaluation Worker regressions
+        run: npm test
+
       - name: Run evaluation Worker dry-run
         run: npx --yes wrangler@4.135.0 deploy --dry-run --config wrangler.jsonc
