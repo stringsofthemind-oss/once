@@ -186,7 +186,7 @@ internal static class SetupDialogs
             {
                 try
                 {
-                    Clipboard.SetText("node .\\once-demo.mjs");
+                    System.Windows.Forms.Clipboard.SetText("node .\\once-demo.mjs");
                     copyProof.Text = "Copied ✓";
                 }
                 catch
