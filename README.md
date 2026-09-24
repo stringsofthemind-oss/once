@@ -1,5 +1,11 @@
 # @once-agent/sdk
 
+> **Local source preview:** This branch adds `protectLocal` for protecting an
+> existing async function on one machine without an API key or registered
+> provider. It is not in the published SDK 0.1.6 package. See the
+> [local function guide](./examples/local-function/README.md) for its exact
+> safety boundary and a first effect-count check.
+
 ## Once — AI Agent Execution Safety
 
 **MCP idempotency and safe retries for consequential AI agent writes.**
