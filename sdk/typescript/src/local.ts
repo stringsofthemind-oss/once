@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
+import { types } from "node:util";
 import { canonicalizeConnectPayload, fingerprintConnectPayload } from "./connect/binding.js";
 
 type JsonObject = Record<string, unknown>;
@@ -12,7 +13,7 @@ export type LocalObservation<T> =
 export interface LocalProtectionOptions<A extends unknown[], T> {
   /** Stable identity of one intended external effect, shared by every retry. */
   id: (...args: A) => string;
-  /** The complete effect-bearing payload. Exclude transport-only values. */
+  /** Complete effect-bearing plain-data payload. Exclude transport-only values. */
   payload: (...args: A) => JsonObject;
   /** Absolute or project-relative path. Defaults to .once/operations.sqlite. */
   statePath?: string;
@@ -37,21 +38,101 @@ type Row = {
   lease_until: number | null;
 };
 
+// Local mode accepts JSON-like data with no hidden behavior. Callable/provider
+// handles may travel through arguments by identity, but cannot be payloads or
+// receipts. The caller must keep their effect-bearing state stable.
+function copyData(value: unknown, allowHandles = false, seen = new Set<object>(), location = "$", freeze = false): unknown {
+  if (value === null || typeof value === "string" || typeof value === "boolean") return value;
+  if (typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0)) return value;
+  if (allowHandles && (value === undefined || typeof value === "bigint" || typeof value === "symbol")) return value;
+  if (allowHandles && typeof value === "function") return value;
+  if (typeof value !== "object") {
+    throw new LocalProtectionError("UNSUPPORTED_VALUE", `Unsupported local data at ${location}.`);
+  }
+  if (types.isProxy(value)) {
+    throw new LocalProtectionError("UNSUPPORTED_VALUE", `Proxy at ${location} is unsupported.`);
+  }
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null && prototype !== Array.prototype) {
+    if (allowHandles) return value;
+    throw new LocalProtectionError("UNSUPPORTED_VALUE", `Unsupported object at ${location}.`);
+  }
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const keys = Reflect.ownKeys(descriptors);
+  if (keys.includes("toJSON")) {
+    throw new LocalProtectionError("UNSUPPORTED_VALUE", `Serialization hook at ${location} is unsupported.`);
+  }
+  if (keys.some(key => typeof key === "symbol")) {
+    throw new LocalProtectionError("UNSUPPORTED_VALUE", `Symbol property at ${location} is unsupported.`);
+  }
+  if (keys.some(key => !("value" in descriptors[key as string]) ||
+      (!(Array.isArray(value) && key === "length") && !descriptors[key as string].enumerable))) {
+    throw new LocalProtectionError("UNSUPPORTED_VALUE", `Accessor or hidden property at ${location} is unsupported.`);
+  }
+  if (allowHandles && !Array.isArray(value) &&
+      keys.some(key => typeof descriptors[key as string].value === "function")) return value;
+  if (seen.has(value)) {
+    throw new LocalProtectionError("UNSUPPORTED_VALUE", `Cyclic local data at ${location} is unsupported.`);
+  }
+  seen.add(value);
+  try {
+    if (Array.isArray(value)) {
+      if (prototype !== Array.prototype) {
+        throw new LocalProtectionError("UNSUPPORTED_VALUE", `Unsupported array at ${location}.`);
+      }
+      const array = value as unknown[];
+      if (keys.length !== array.length + 1 ||
+          Array.from({ length: array.length }, (_, index) => String(index))
+            .some(index => !Object.prototype.hasOwnProperty.call(descriptors, index))) {
+        throw new LocalProtectionError("UNSUPPORTED_VALUE", `Sparse or extended array at ${location} is unsupported.`);
+      }
+      const result = array.map((_, index) => copyData(descriptors[String(index)].value, allowHandles, seen, `${location}[${index}]`, freeze));
+      return freeze ? Object.freeze(result) : result;
+    }
+    const result: Record<string, unknown> = {};
+    for (const key of keys as string[]) {
+      Object.defineProperty(result, key, {
+        value: copyData(descriptors[key].value, allowHandles, seen, `${location}.${key}`, freeze),
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      });
+    }
+    return freeze ? Object.freeze(result) : result;
+  } finally {
+    seen.delete(value);
+  }
+}
+
 function encodeResult(value: unknown): string {
-  // The existing canonicalizer rejects cycles, undefined nested values,
-  // nonfinite numbers, exotic objects, and prototype-bearing class instances.
-  canonicalizeConnectPayload({ value: value === undefined ? null : value });
-  return JSON.stringify({ hasValue: value !== undefined, value });
+  const envelope = value === undefined
+    ? { hasValue: false }
+    : { hasValue: true, value: copyData(value) };
+  return canonicalizeConnectPayload(envelope);
 }
 
 function decodeResult<T>(encoded: string): T {
-  const envelope = JSON.parse(encoded) as { hasValue: boolean; value?: T };
-  return (envelope.hasValue ? envelope.value : undefined) as T;
+  try {
+    const envelope = JSON.parse(encoded) as { hasValue?: unknown; value?: T };
+    if (envelope === null || typeof envelope !== "object" || Array.isArray(envelope) ||
+        typeof envelope.hasValue !== "boolean" ||
+        (envelope.hasValue && !Object.prototype.hasOwnProperty.call(envelope, "value")) ||
+        (!envelope.hasValue && Object.prototype.hasOwnProperty.call(envelope, "value")) ||
+        Object.keys(envelope).length !== (envelope.hasValue ? 2 : 1)) {
+      throw new Error("Malformed receipt envelope.");
+    }
+    const validated = copyData(envelope) as { hasValue: boolean; value?: T };
+    return (validated.hasValue ? validated.value : undefined) as T;
+  } catch (cause) {
+    throw new LocalProtectionError("STATE_UNAVAILABLE", "The stored local receipt is malformed. No operation was dispatched.", { cause });
+  }
 }
 
 /**
- * Protect an existing async operation on one machine without changing its
- * arguments. SQLite is durable and coordinates processes sharing this file.
+ * Protect an existing async operation on one machine while keeping its call
+ * shape and dynamic receiver. Ordinary data arguments are snapshotted and
+ * frozen; opaque handles keep their identity. SQLite coordinates processes
+ * sharing the same durable local file.
  * Uncertain outcomes remain blocked; this wrapper never redispatches after
  * an ambiguous attempt, even if a lookup reports ABSENT.
  */
@@ -68,12 +149,13 @@ export function protectLocal<A extends unknown[], T>(
     throw new LocalProtectionError("INVALID_LEASE", "leaseMs must be a positive integer in milliseconds.");
   }
 
-  return async (...args: A): Promise<T> => {
-    const id = options.id(...args);
+  return async function (this: unknown, ...args: A): Promise<T> {
+    const callArgs = copyData(args, true, new Set<object>(), "$args", true) as A;
+    const id = options.id(...callArgs);
     if (typeof id !== "string" || id.trim() === "") {
       throw new LocalProtectionError("INVALID_ID", "A stable nonempty logical action id is required. Reuse it for retries and choose a new one for a separate intentional action.");
     }
-    const payload = options.payload(...args);
+    const payload = copyData(options.payload(...callArgs)) as JsonObject;
     const fingerprint = fingerprintConnectPayload(payload);
     if (Number(process.versions.node.split(".")[0]) < 24 ||
         (Number(process.versions.node.split(".")[0]) === 24 && Number(process.versions.node.split(".")[1]) < 15)) {
@@ -85,12 +167,15 @@ export function protectLocal<A extends unknown[], T>(
     } catch (cause) {
       throw new LocalProtectionError("SQLITE_UNAVAILABLE", "Node SQLite is unavailable. Enable node:sqlite or use the hosted Once execution path; the operation was not dispatched.", { cause });
     }
-    let db: InstanceType<typeof DatabaseSync>;
+    let db!: InstanceType<typeof DatabaseSync>;
     try {
       mkdirSync(path.dirname(statePath), { recursive: true });
       db = new DatabaseSync(statePath, { timeout: 30_000 });
       db.exec("PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; CREATE TABLE IF NOT EXISTS local_operations (id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('CLAIMED','UNKNOWN','CONFIRMED')), result_json TEXT, owner TEXT, lease_until INTEGER);");
     } catch (cause) {
+      if (db) {
+        try { db.close(); } catch { /* Preserve the initialization error. */ }
+      }
       throw new LocalProtectionError("STATE_UNAVAILABLE", `Cannot open durable Once state at ${statePath}. The operation was not dispatched. Restore access to this same file before retrying.`, { cause });
     }
 
@@ -128,7 +213,7 @@ export function protectLocal<A extends unknown[], T>(
         }
         let observation: LocalObservation<T>;
         try {
-          observation = await options.reconcile({ id, payload });
+          observation = await options.reconcile({ id, payload: copyData(payload) as JsonObject });
         } catch (cause) {
           throw new LocalProtectionError("UNKNOWN", `Provider truth for ${id} is unavailable. No second write was dispatched.`, { cause });
         }
@@ -155,9 +240,27 @@ export function protectLocal<A extends unknown[], T>(
         return decodeResult<T>(resultJson);
       }
 
+      // Recheck handles whose state the selectors might have read while the
+      // claim was being established. A changed claim stays uncertain.
+      let currentFingerprint: string;
+      try {
+        if (options.id(...callArgs) !== id) {
+          throw new Error("Logical action id changed.");
+        }
+        currentFingerprint = fingerprintConnectPayload(
+          copyData(options.payload(...callArgs)) as JsonObject,
+        );
+      } catch (cause) {
+        db.prepare("UPDATE local_operations SET state='UNKNOWN',owner=NULL,lease_until=NULL WHERE id=? AND state='CLAIMED' AND owner=?").run(id, owner);
+        throw new LocalProtectionError("PAYLOAD_DRIFT", `Payload of ${id} changed before dispatch. No operation was dispatched.`, { cause });
+      }
+      if (currentFingerprint !== fingerprint) {
+        db.prepare("UPDATE local_operations SET state='UNKNOWN',owner=NULL,lease_until=NULL WHERE id=? AND state='CLAIMED' AND owner=?").run(id, owner);
+        throw new LocalProtectionError("PAYLOAD_DRIFT", `Payload of ${id} changed before dispatch. No operation was dispatched.`);
+      }
       let result: T;
       try {
-        result = await operation(...args);
+        result = await operation.apply(this, callArgs);
       } catch (cause) {
         db.prepare("UPDATE local_operations SET state='UNKNOWN',owner=NULL,lease_until=NULL WHERE id=? AND state='CLAIMED' AND owner=?").run(id, owner);
         throw new LocalProtectionError("UNKNOWN", `Operation ${id} threw after dispatch; its external outcome may be unknown. Reconcile provider truth before retrying.`, { cause });
@@ -174,7 +277,7 @@ export function protectLocal<A extends unknown[], T>(
       if (update.changes !== 1) {
         throw new LocalProtectionError("EXECUTION_RIGHT_LOST", `Operation ${id} completed after its claim changed. Reconcile provider truth before retrying.`);
       }
-      return result;
+      return decodeResult<T>(resultJson);
     } finally {
       db.close();
     }

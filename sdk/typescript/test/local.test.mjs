@@ -205,3 +205,205 @@ test("concurrent reconciliation returns the durable winner's receipt", async t =
   assert.deepEqual(await pending, { receipt: "winner" });
   assert.equal(count(f.effectsPath), 1);
 });
+
+test("F1 immediate and nested argument mutation cannot change dispatched values", async t => {
+  const f = fixture(t);
+  const run = wrapped(f, async input => {
+    effect(f.effectsPath, { amount: input.amount, nested: input.nested.value });
+    return { amount: input.amount, nested: input.nested.value };
+  }, { payload: input => ({ amount: input.amount, nested: input.nested.value }) });
+  const input = { id: "A", amount: 100, nested: { value: "original" } };
+  const pending = run(input);
+  input.amount = 125;
+  input.nested.value = "changed";
+  assert.deepEqual(await pending, { amount: 100, nested: "original" });
+  assert.deepEqual(JSON.parse(readFileSync(f.effectsPath, "utf8")), [{ amount: 100, nested: "original" }]);
+  assert.deepEqual(await run({ id: "A", amount: 100, nested: { value: "original" } }), { amount: 100, nested: "original" });
+  await assert.rejects(run(input), { code: "CONFLICT" });
+  assert.equal(count(f.effectsPath), 1);
+});
+
+test("F1 operation cannot mutate snapshotted consequential data", async t => {
+  const f = fixture(t);
+  const run = wrapped(f, async input => {
+    input.nested.amount = 125;
+    effect(f.effectsPath, input.nested.amount);
+    return {};
+  }, { payload: input => ({ amount: input.nested.amount }) });
+  const input = { id: "A", nested: { amount: 100 } };
+  await assert.rejects(run(input), { code: "UNKNOWN" });
+  await assert.rejects(run(input), { code: "UNKNOWN" });
+  assert.equal(count(f.effectsPath), 0);
+});
+
+test("F1 reconciliation sees invocation snapshot after caller mutation", async t => {
+  const f = fixture(t);
+  const first = wrapped(f, async () => { effect(f.effectsPath, 100); throw new Error("lost"); }, {
+    payload: input => ({ nested: input.nested }),
+  });
+  await assert.rejects(first({ id: "A", nested: { amount: 100 } }), { code: "UNKNOWN" });
+  let observed;
+  const retry = wrapped(f, async () => { throw new Error("must not dispatch"); }, {
+    payload: input => ({ nested: input.nested }),
+    reconcile: ({ payload }) => {
+      observed = payload;
+      return { state: "ABSENT" };
+    },
+  });
+  const input = { id: "A", nested: { amount: 100 } };
+  const pending = retry(input);
+  input.nested.amount = 125;
+  await assert.rejects(pending, { code: "UNKNOWN" });
+  assert.deepEqual(observed, { nested: { amount: 100 } });
+  assert.equal(count(f.effectsPath), 1);
+});
+
+test("F2 sparse, accessor, hidden, symbol, and extended payload forms fail before claim", async t => {
+  const f = fixture(t);
+  const run = wrapped(f, async () => { effect(f.effectsPath, 1); return {}; }, {
+    payload: input => ({ items: input.items }),
+  });
+  for (const items of [
+    Array(1),
+    Object.defineProperty([], "extra", { value: 1, enumerable: true }),
+    Object.defineProperty({}, "hidden", { value: 1 }),
+    { [Symbol("hidden")]: 1 },
+    Object.defineProperty({}, "value", { get() { throw new Error("getter invoked"); }, enumerable: true }),
+    Object.defineProperty({}, "toJSON", { value() { return {}; } }),
+    new Proxy({}, { ownKeys() { throw new Error("proxy trap invoked"); } }),
+  ]) {
+    await assert.rejects(run({ id: "A", items }), { code: "UNSUPPORTED_VALUE" });
+  }
+  assert.equal(count(f.effectsPath), 0);
+  assert.deepEqual(await run({ id: "A", items: [] }), {});
+  assert.equal(count(f.effectsPath), 1);
+});
+
+test("F3 hidden toJSON and changing getter results leave one uncertain effect", async t => {
+  for (const makeResult of [
+    () => Object.defineProperty({ receipt: "real" }, "toJSON", { value() { return { receipt: "fake" }; } }),
+    () => Object.defineProperty({}, "receipt", { enumerable: true, get() { return "changing"; } }),
+  ]) {
+    const f = fixture(t);
+    const run = wrapped(f, async () => { effect(f.effectsPath, 100); return makeResult(); });
+    const input = { id: "A", amount: 100 };
+    await assert.rejects(run(input), { code: "UNREPLAYABLE_RESULT" });
+    await assert.rejects(run(input), { code: "UNKNOWN" });
+    assert.equal(count(f.effectsPath), 1);
+  }
+});
+
+test("F3 initial success and replay have equivalent observable receipt data", async t => {
+  const f = fixture(t);
+  const run = wrapped(f, async () => {
+    effect(f.effectsPath, 100);
+    return { nested: { receipt: "real" }, list: [1, null, "ok"] };
+  });
+  const input = { id: "A", amount: 100 };
+  const initial = await run(input);
+  const replay = await run(input);
+  assert.deepEqual(initial, replay);
+  assert.equal(JSON.stringify(initial), JSON.stringify(replay));
+  assert.equal(count(f.effectsPath), 1);
+});
+
+test("F4 receiver-dependent method retains dynamic this", async t => {
+  const f = fixture(t);
+  const object = {
+    prefix: "receipt",
+    async run(input) {
+      effect(f.effectsPath, input.amount);
+      return { receipt: `${this.prefix}-${input.amount}` };
+    },
+  };
+  object.run = wrapped(f, object.run);
+  assert.deepEqual(await object.run({ id: "A", amount: 100 }), { receipt: "receipt-100" });
+  assert.deepEqual(await object.run({ id: "A", amount: 100 }), { receipt: "receipt-100" });
+  assert.equal(count(f.effectsPath), 1);
+});
+
+test("provider handle in an argument retains identity while data is snapshotted", async t => {
+  const f = fixture(t);
+  const provider = {
+    async create(input) {
+      effect(f.effectsPath, input.amount);
+      return { receipt: "provider" };
+    },
+  };
+  const run = wrapped(f, async input => {
+    assert.equal(input.provider, provider);
+    return input.provider.create({ amount: input.amount });
+  });
+  const input = { id: "A", amount: 100, provider };
+  const pending = run(input);
+  input.amount = 125;
+  assert.deepEqual(await pending, { receipt: "provider" });
+  assert.deepEqual(JSON.parse(readFileSync(f.effectsPath, "utf8")), [100]);
+});
+
+test("live operation beyond lease expiry blocks retry and loses confirmation right", async t => {
+  const f = fixture(t);
+  let release, entered;
+  const gate = new Promise(resolve => { release = resolve; });
+  const started = new Promise(resolve => { entered = resolve; });
+  const first = wrapped(f, async () => {
+    entered();
+    await gate;
+    effect(f.effectsPath, 100);
+    return { receipt: "late" };
+  }, { leaseMs: 1 });
+  const retry = wrapped(f, async () => { effect(f.effectsPath, "duplicate"); return {}; }, {
+    leaseMs: 1,
+    reconcile: () => ({ state: "ABSENT" }),
+  });
+  const input = { id: "A", amount: 100 };
+  const pending = first(input);
+  await started;
+  await new Promise(resolve => setTimeout(resolve, 10));
+  await assert.rejects(retry(input), { code: "UNKNOWN" });
+  release();
+  await assert.rejects(pending, { code: "EXECUTION_RIGHT_LOST" });
+  assert.deepEqual(JSON.parse(readFileSync(f.effectsPath, "utf8")), [100]);
+});
+
+test("malformed persisted receipt blocks replay without dispatch", async t => {
+  const f = fixture(t);
+  const run = wrapped(f, async () => { effect(f.effectsPath, 100); return { receipt: "real" }; });
+  const input = { id: "A", amount: 100 };
+  await run(input);
+  const { DatabaseSync } = await import("node:sqlite");
+  const db = new DatabaseSync(f.statePath);
+  db.prepare("UPDATE local_operations SET result_json=? WHERE id=?").run('{"hasValue":true,"value":{"receipt":1', "A");
+  db.close();
+  await assert.rejects(run(input), { code: "STATE_UNAVAILABLE" });
+  assert.equal(count(f.effectsPath), 1);
+});
+
+test("corrupt SQLite state blocks dispatch", async t => {
+  const f = fixture(t);
+  writeFileSync(f.statePath, "not a SQLite database");
+  const run = wrapped(f, async () => { effect(f.effectsPath, 100); return {}; });
+  await assert.rejects(run({ id: "A", amount: 100 }), { code: "STATE_UNAVAILABLE" });
+  assert.equal(count(f.effectsPath), 0);
+});
+
+test("claim failure and confirmation write failure never fall through to another effect", async t => {
+  const f = fixture(t);
+  const { DatabaseSync } = await import("node:sqlite");
+  const db = new DatabaseSync(f.statePath);
+  db.exec("CREATE TABLE local_operations (id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('CLAIMED','UNKNOWN','CONFIRMED')), result_json TEXT, owner TEXT, lease_until INTEGER)");
+  db.exec("CREATE TRIGGER reject_claim BEFORE INSERT ON local_operations BEGIN SELECT RAISE(ABORT, 'claim failed'); END");
+  db.close();
+  const run = wrapped(f, async () => { effect(f.effectsPath, 100); return { ok: true }; }, { leaseMs: 1 });
+  const input = { id: "A", amount: 100 };
+  await assert.rejects(run(input), { code: "STATE_UNAVAILABLE" });
+  assert.equal(count(f.effectsPath), 0);
+  const db2 = new DatabaseSync(f.statePath);
+  db2.exec("DROP TRIGGER reject_claim");
+  db2.exec("CREATE TRIGGER reject_confirmation BEFORE UPDATE OF state ON local_operations WHEN NEW.state='CONFIRMED' BEGIN SELECT RAISE(ABORT, 'confirmation failed'); END");
+  db2.close();
+  await assert.rejects(run(input));
+  await new Promise(resolve => setTimeout(resolve, 10));
+  await assert.rejects(run(input), { code: "UNKNOWN" });
+  assert.equal(count(f.effectsPath), 1);
+});

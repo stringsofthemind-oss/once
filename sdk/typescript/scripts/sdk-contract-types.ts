@@ -17,6 +17,18 @@ const protectedExisting: (input: ExistingInput) => Promise<{ receipt: string }> 
 
 void protectedExisting;
 
+const receiver = {
+  prefix: "order",
+  async run(this: { prefix: string }, input: { id: string; amount: number }) {
+    return { receipt: `${this.prefix}:${input.amount}` };
+  },
+};
+receiver.run = protectLocal(receiver.run, {
+  id: input => input.id,
+  payload: input => ({ amount: input.amount }),
+});
+void receiver;
+
 declare const once: Once;
 
 async function contract(): Promise<void> {
