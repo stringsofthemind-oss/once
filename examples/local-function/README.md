@@ -20,6 +20,26 @@ const createOrder = protectLocal(
 // Existing callers still call createOrder({ provider, orderId, amountCents }).
 ```
 
+If the existing application builds a tool with `createOrderTool({ provider })`,
+keep that factory signature and wrap its async operation inside the factory:
+
+```ts
+function createOrderTool({ provider }) {
+  return {
+    execute: protectLocal(
+      input => provider.createOrder(input),
+      {
+        id: input => `create-order:${input.orderId}`,
+        payload: input => ({ orderId: input.orderId, amountCents: input.amountCents }),
+      },
+    ),
+  };
+}
+```
+
+Existing callers can still use `createOrderTool({ provider })` and then
+`tool.execute(input)`; the provider object does not need a new alias.
+
 The default state file is `.once/operations.sqlite` under the process's
 working directory, resolved when the wrapper is created. Keep that directory
 durable and shared by every process on the **same machine** that can call this

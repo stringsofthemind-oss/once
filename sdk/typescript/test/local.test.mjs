@@ -55,6 +55,29 @@ test("four-case identity and effect count, including representation order", asyn
   assert.equal(count(f.effectsPath), 3);
 });
 
+test("existing provider-taking tool factory keeps its caller contract", async t => {
+  const f = fixture(t);
+  const provider = {
+    async create({ id, amount }) {
+      effect(f.effectsPath, { id, amount });
+      return { providerReceipt: id };
+    },
+  };
+  function createTool({ provider }) {
+    return {
+      execute: protectLocal(input => provider.create(input), {
+        statePath: f.statePath,
+        id: input => `create:${input.id}`,
+        payload: input => ({ id: input.id, amount: input.amount }),
+      }),
+    };
+  }
+  const tool = createTool({ provider });
+  assert.deepEqual(await tool.execute({ id: "A", amount: 100 }), { providerReceipt: "A" });
+  assert.deepEqual(await tool.execute({ id: "A", amount: 100 }), { providerReceipt: "A" });
+  assert.equal(count(f.effectsPath), 1);
+});
+
 test("lost response fails closed, then provider confirmation replays", async t => {
   const f = fixture(t);
   const input = { id: "A", amount: 100 };
