@@ -5,17 +5,17 @@ import {
   ConnectBindingError,
   bindConnectOperation,
   fingerprintConnectPayload,
-} from "../../src/connect/binding.js";
+} from "../../dist/connect/binding.js";
 
 import {
   ConnectExecutionError,
   executeConnectOperation,
-} from "../../src/connect/execute.js";
+} from "../../dist/connect/execute.js";
 
 import {
   ConnectKernelError,
   executeConnectWithOnce,
-} from "../../src/connect/kernel.js";
+} from "../../dist/connect/kernel.js";
 
 const protectedSafety = Object.freeze({
   changesExternalState: true,
