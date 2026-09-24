@@ -127,38 +127,27 @@ internal static class SetupDialogs
         using var form = CreateShell("Once Setup complete");
         var viewport = CreateBody(out var content, 1060);
 
-        var badge = new Label
-        {
-            Text = "1x",
-            AutoSize = false,
-            Width = OnceTheme.S(90),
-            Height = OnceTheme.S(76),
-            TextAlign = ContentAlignment.MiddleCenter,
-            BackColor = OnceTheme.AccentDeep,
-            ForeColor = OnceTheme.Accent,
-            Font = OnceTheme.Body(18F, FontStyle.Bold),
-            Margin = Padding.Empty,
-            UseCompatibleTextRendering = false,
-        };
-        AddRow(content, badge, Bottom(18));
-        AddRow(content, OnceTheme.Heading("ONCE IS READY", 23F), Bottom(10));
+        AddRow(content, OnceTheme.Heading("ONCE IS READY", 23F), Bottom(8));
         AddRow(content, OnceTheme.Paragraph(
             isDemo
                 ? "Installed, connected, and verified. The retry-suppression proof passed."
-                : "Installed, connected, and verified. You're ready to integrate Once into this project."), Bottom(22));
+                : "Installed, connected, and verified. You're ready to integrate Once into this project."), Bottom(18));
 
         var statusText = isDemo
-            ? "✓ API connection — Connected\n✓ Project — Demo project\n✓ Safety behavior — Verified, duplicate suppressed\n✓ Side effects — Stayed at 1"
-            : "✓ API connection — Connected\n✓ SDK — Installed\n✓ Environment — Key stored in .env\n✓ Source files — Unchanged";
-        AddRow(content, InfoCard("VERIFICATION", statusText), Bottom(16));
-        AddRow(content, InfoCard(isDemo ? "DEMO FOLDER" : "PROJECT", root), Bottom(16));
+            ? "✓ API connection        Connected\n✓ Demo project          Ready\n✓ Duplicate execution   Suppressed\n✓ Side effects          1"
+            : "✓ API connection        Connected\n✓ SDK                   Installed\n✓ Environment           Key stored in .env\n✓ Source files          Unchanged";
+        AddRow(content, InfoCard("VERIFICATION", statusText), Bottom(14));
 
         var nextStep = isDemo
-            ? "Run the proof again any time from this demo folder:\nnode .\\once-demo.mjs\n\nA passing run prints ONCE_DEMO_PASS."
-            : "Open this project and integrate the Once SDK around consequential side-effecting operations that may be retried. Your application source has not been modified by setup.";
-        AddRow(content, InfoCard("NEXT STEP", nextStep), Bottom(22));
+            ? "Run the proof again:\nnode .\\once-demo.mjs\n\nPassing result: ONCE_DEMO_PASS"
+            : "Integrate the Once SDK around consequential side-effecting operations that may be retried. Setup did not modify your application source.";
+        AddRow(content, CompletionInfoPair(
+            isDemo ? "DEMO FOLDER" : "PROJECT",
+            root,
+            "NEXT STEP",
+            nextStep), Bottom(16));
 
-        var buttons = ButtonRow();
+        var secondaryActions = ButtonRow();
         var openFolder = OnceTheme.SecondaryButton(isDemo ? "Open demo folder" : "Open project folder", 250);
         openFolder.Margin = new Padding(0, 0, OnceTheme.S(14), 0);
         openFolder.Click += (_, _) =>
@@ -176,17 +165,16 @@ internal static class SetupDialogs
                 // Completion remains successful if Explorer cannot be opened.
             }
         };
-        buttons.Controls.Add(openFolder);
+        secondaryActions.Controls.Add(openFolder);
 
         if (isDemo)
         {
             var copyProof = OnceTheme.SecondaryButton("Copy proof command", 245);
-            copyProof.Margin = new Padding(0, 0, OnceTheme.S(14), 0);
             copyProof.Click += (_, _) =>
             {
                 try
                 {
-                    System.Windows.Forms.Clipboard.SetText("node .\\once-demo.mjs");
+                    System.Windows.Forms.Clipboard.SetDataObject("node .\\once-demo.mjs", true);
                     copyProof.Text = "Copied ✓";
                 }
                 catch
@@ -194,13 +182,29 @@ internal static class SetupDialogs
                     copyProof.Text = "Copy failed";
                 }
             };
-            buttons.Controls.Add(copyProof);
+            secondaryActions.Controls.Add(copyProof);
         }
+        AddRow(content, secondaryActions, Bottom(12));
+
+        var finishRow = new TableLayoutPanel
+        {
+            Tag = "full",
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 2,
+            RowCount = 1,
+            BackColor = OnceTheme.Background,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty,
+        };
+        finishRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        finishRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
         var finish = OnceTheme.PrimaryButton("Finish setup  →", 235);
+        finish.Margin = Padding.Empty;
         finish.Click += (_, _) => form.Close();
-        buttons.Controls.Add(finish);
-        AddRow(content, buttons);
+        finishRow.Controls.Add(finish, 1, 0);
+        AddRow(content, finishRow);
 
         ShowPage(form, viewport, 5);
     }
@@ -341,6 +345,14 @@ internal static class SetupDialogs
         {
             OnceTheme.FitToWorkingArea(form);
             viewport.PerformLayout();
+            form.ActiveControl = null;
+            viewport.AutoScrollPosition = Point.Empty;
+
+            form.BeginInvoke(new Action(() =>
+            {
+                form.ActiveControl = null;
+                viewport.AutoScrollPosition = Point.Empty;
+            }));
         };
         form.ShowDialog();
     }
@@ -379,6 +391,41 @@ internal static class SetupDialogs
         button.FlatAppearance.BorderSize = recommended ? 2 : 1;
         button.FlatAppearance.MouseOverBackColor = Color.FromArgb(12, 43, 45);
         return button;
+    }
+
+    private static TableLayoutPanel CompletionInfoPair(
+        string leftTitle,
+        string leftContent,
+        string rightTitle,
+        string rightContent)
+    {
+        var pair = new TableLayoutPanel
+        {
+            Tag = "full",
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 2,
+            RowCount = 1,
+            BackColor = OnceTheme.Background,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty,
+        };
+        pair.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+        pair.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+
+        var left = InfoCard(leftTitle, leftContent);
+        left.Tag = null;
+        left.Dock = DockStyle.Fill;
+        left.Margin = new Padding(0, 0, OnceTheme.S(8), 0);
+
+        var right = InfoCard(rightTitle, rightContent);
+        right.Tag = null;
+        right.Dock = DockStyle.Fill;
+        right.Margin = new Padding(OnceTheme.S(8), 0, 0, 0);
+
+        pair.Controls.Add(left, 0, 0);
+        pair.Controls.Add(right, 1, 0);
+        return pair;
     }
 
     private static TableLayoutPanel InfoCard(string title, string content)
