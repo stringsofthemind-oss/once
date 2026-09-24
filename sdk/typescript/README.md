@@ -1,8 +1,9 @@
 # @once-agent/sdk
 
-> **Source preview:** `protectLocal` wraps an existing async function using a
-> durable same-machine SQLite file. It requires Node.js 24.15 or later and is
-> not in published SDK 0.1.6. See the [local function guide](../../examples/local-function/README.md).
+> **Local protection:** `protectLocal` wraps an existing async function using a
+> durable same-machine SQLite file. This feature requires Node.js 24.15 or
+> later. See the local function guide:
+> https://github.com/stringsofthemind-oss/once/blob/main/examples/local-function/README.md
 
 
 <!-- ONCE_STRIPE_SANDBOX_NOTICE -->
