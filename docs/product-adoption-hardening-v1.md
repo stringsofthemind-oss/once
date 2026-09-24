@@ -40,8 +40,10 @@ local wrapper works across hosts or providers.
 | Local wrapper over built-in SQLite | Keep async arguments; two safety selectors | One-machine only; ambiguity blocks without authoritative truth | Implement as opt-in first-value path. |
 
 The local wrapper writes a `CLAIMED` record transactionally before dispatch.
-It binds the ID to a canonical payload fingerprint and stores a JSON-safe
-result on confirmation. A retry of `CONFIRMED` replays; an in-flight retry
+It validates a narrow plain-data domain before claim creation, snapshots
+ordinary data arguments, binds the ID to the existing Connect payload
+fingerprint, and persists one validated receipt representation on confirmation.
+A retry of `CONFIRMED` replays; an in-flight retry
 blocks; an expired, failed, or crashed claim becomes `UNKNOWN`. An optional
 provider lookup may confirm the result. `UNKNOWN` and `CONFLICT` never
 authorize dispatch. An `ABSENT` lookup also does not authorize redispatch in
@@ -53,9 +55,13 @@ The default file is `.once/operations.sqlite`; explicit `statePath` is an
 override for applications with unstable working directories. SQLite WAL,
 full synchronous mode, and `BEGIN IMMEDIATE` coordinate cooperating local
 processes using the same durable file. The path must be kept across restarts.
-This is not shared multi-host coordination, provider atomicity, or a universal
-exactly-once claim. The wrapped async function must be the route used by all
-callers; another direct call can bypass it.
+This requires a local filesystem supporting SQLite locks and WAL; network
+filesystems are unsupported. It is not shared multi-host coordination, provider
+atomicity, or a universal exactly-once claim. The wrapped async function must
+be the route used by all callers; another direct call can bypass it. The
+wrapper controls one wrapper dispatch, not internal retries or multiple effects
+inside the function. Opaque provider handles retain identity and their
+effect-bearing state must remain stable during a call.
 
 The design follows a narrow lesson from [Stripe's idempotent request contract](https://docs.stripe.com/api/idempotent_requests):
 bind one retry identity to one parameter set and reject drift. Stripe's
@@ -112,11 +118,12 @@ The built-in SQLite API is a Node 24 release candidate, so a dedicated Node
 24.15 CI gate is needed. A provider object can still be called directly from
 unwrapped code. The default path can be lost on ephemeral deployment volumes.
 Long-running calls may outlive a claim lease; the wrapper then blocks or
-reconciles rather than redispatching. Result replay supports JSON-safe values,
-not class instances or streams. A resolved result must represent confirmed
-provider completion, rather than mere queue acceptance. Provider lookup
-callbacks are application
-supplied and must be authoritative; a stale or dishonest `CONFIRMED` response
+reconciles rather than redispatching, and a live owner can lose its right to
+confirm. Result replay supports validated plain-data values, not class
+instances, accessors, serialization hooks, or streams. A resolved result must
+represent confirmed provider completion, rather than mere queue acceptance.
+Provider lookup callbacks are application supplied and must be authoritative;
+a stale or dishonest `CONFIRMED` response
 can misreport the result. The local wrapper does not yet offer safe liveness
 after authoritative `ABSENT`; a provider-idempotent integration would need a
 separate protocol and hostile tests.

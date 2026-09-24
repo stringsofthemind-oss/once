@@ -1,7 +1,8 @@
 # Once — Agent-Readable Product Guide
 
 > Source-branch preview: For an existing async consequential function on one
-> machine, `protectLocal` can preserve its arguments and use local durable
+> machine, `protectLocal` preserves the call shape and dynamic receiver while
+> snapshotting ordinary data arguments before dispatch. It uses local durable
 > SQLite without an API key or provider registration. It is **not** in the
 > published SDK 0.1.6 package. Read the repository's
 > `examples/local-function/README.md` before using it. Choose a stable logical
