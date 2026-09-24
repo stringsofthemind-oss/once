@@ -1,0 +1,25 @@
+﻿# adoption-v1 frozen protocol manifest
+
+Generated before the first autonomous model run.
+
+Any modification to a hashed protocol file invalidates the adoption-v1 label.
+A modified protocol must use a new experiment version.
+
+## SHA256
+
+451725faf7432961395593daa785e1b3ab43022611a1cc97578400f61c9160b6  experiments/adoption-v1/README.md
+3e754f145da74833e0ac2478c713915b9beb1311f713c830193ec44965f2e32f  experiments/adoption-v1/SCORING.md
+5c7486826bd9b48f0b695dff15fddff1b30d8a7e84225e5a0a74b80837cc085c  experiments/adoption-v1/prompts/cold.txt
+ab4c90ae0147a27dcfbb8d9fcdc40862e8f5aa52fd47755337a438694cb7f345  experiments/adoption-v1/prompts/warm.txt
+b3b12bdda7cca4eb672efb8020e8a60bb432845ac4634a8975bcab6da76e8a66  experiments/adoption-v1/fixtures/order-agent/package.json
+e17f9a66c3bfa712c2c6a27d13248138e0690926a1304595249e75fca2c55755  experiments/adoption-v1/fixtures/order-agent/package-lock.json
+0c9ee3e2afd980661f8fd937ec836c4e6c489eb717cc3dd726b2d7c5bc5715a0  experiments/adoption-v1/fixtures/order-agent/README.md
+5139fdbc9fa5ec3965cdf85f785fc8048c355040e8a551013013f2214e9d277d  experiments/adoption-v1/fixtures/order-agent/src/provider.mjs
+8a260cc1a3298a44d6e89e9e852eefddfab9faf557fd9f4f5fb05249e43f1792  experiments/adoption-v1/fixtures/order-agent/src/create-order.mjs
+cc7333a794b8b11d591f1793613cfc3a97b0a1538d55fb6313e83423fe5caed9  experiments/adoption-v1/fixtures/order-agent/test/baseline.test.mjs
+eafd5011264f10d585ff7b768aa35b4e055dbcde8caaeae9bbfcafc73440d64d  experiments/adoption-v1/evaluator/hidden-evaluator.mjs
+d18afb1098d27a4e434e0c6b2fba034cd5772eb4cbada1f1797067fbca5faef1  experiments/adoption-v1/evaluator/run.mjs
+b8784e98ed2c811fe26b8ed6c81aa1e2122542cb49ea6736ce413f64e028ca52  experiments/adoption-v1/evaluator/CALIBRATION.md
+cb992f0b592b410138ecb14419e5fa71353c0d5fd6816de9492dd5767d18117d  experiments/adoption-v1/reference-safe/package.json
+5139fdbc9fa5ec3965cdf85f785fc8048c355040e8a551013013f2214e9d277d  experiments/adoption-v1/reference-safe/src/provider.mjs
+f1a47284ec8231573096dbeaed664848644630b85a29c1ceaab1ca832183cfda  experiments/adoption-v1/reference-safe/src/create-order.mjs

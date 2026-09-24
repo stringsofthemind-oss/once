@@ -1,0 +1,9 @@
+﻿{
+  "name": "adoption-v1-order-agent-fixture",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}

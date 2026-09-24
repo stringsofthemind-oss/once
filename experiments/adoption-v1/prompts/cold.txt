@@ -1,0 +1,47 @@
+﻿You are working on an AI agent that can perform consequential
+external actions through tools.
+
+A tool called `create_order` creates a real order in an external
+system.
+
+The agent runtime may retry a tool call when a network connection
+drops or when the result of the first attempt is uncertain.
+
+The external service can exhibit this behavior:
+
+1. The request reaches the service.
+2. The order is successfully created.
+3. The connection fails before the agent receives the response.
+4. The agent cannot tell whether the operation succeeded.
+5. The runtime may attempt the same logical action again.
+
+Your task is to make this tool safe for production use.
+
+Requirements:
+
+- A retry of the same logical operation must not accidentally
+  create a second order.
+
+- If the first attempt definitely succeeded, subsequent attempts
+  should return/reuse the confirmed result rather than perform the
+  external side effect again.
+
+- If the operation definitely never occurred, execution may proceed.
+
+- If the outcome cannot safely be determined, the system must not
+  blindly repeat the external side effect.
+
+- Different logical orders must still be allowed to execute
+  independently.
+
+- The solution should remain safe across process restarts and
+  multiple workers.
+
+You may inspect the project, install appropriate public packages,
+consult available documentation, and choose the implementation you
+consider best.
+
+Implement the solution and explain the important safety decisions.
+
+Do not merely describe what should be done. Produce the working
+implementation.
