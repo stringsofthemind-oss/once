@@ -1,0 +1,54 @@
+name: Windows Setup MSIX
+
+on:
+  pull_request:
+    paths:
+      - "apps/once-setup-windows/**"
+      - ".github/workflows/windows-setup-msix.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-msix:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Use .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Compile Once Setup
+        shell: pwsh
+        run: |
+          dotnet build apps/once-setup-windows/OnceSetup/OnceSetup.csproj -c Release
+
+      - name: Build private test MSIX
+        shell: pwsh
+        run: |
+          ./apps/once-setup-windows/build-msix.ps1
+
+      - name: Show package contents
+        shell: pwsh
+        run: |
+          $msix = Get-ChildItem apps/once-setup-windows/artifacts/*.msix | Select-Object -First 1
+          if (-not $msix) { throw "MSIX artifact missing" }
+          Write-Host "Built $($msix.Name) ($($msix.Length) bytes)"
+          Get-ChildItem apps/once-setup-windows/artifacts | Select-Object Name,Length
+
+      - name: Upload private test artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: once-setup-windows-test
+          path: |
+            apps/once-setup-windows/artifacts/*.msix
+            apps/once-setup-windows/artifacts/*.cer
+            apps/once-setup-windows/artifacts/README-TESTING.txt
+          if-no-files-found: error
+          retention-days: 3

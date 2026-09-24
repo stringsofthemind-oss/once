@@ -1,0 +1,9 @@
+{
+  "name": "once-evaluation-worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/evaluation.test.mjs test/admission.test.mjs test/onboarding-page.test.mjs"
+  }
+}

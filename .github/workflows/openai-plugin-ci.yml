@@ -1,3 +1,4 @@
+# PR #46 full-regression trigger only; workflow behavior unchanged.
 name: OpenAI Plugin CI
 
 on:

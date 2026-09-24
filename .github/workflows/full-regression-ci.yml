@@ -1,0 +1,113 @@
+name: Full Regression CI
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  typescript-sdk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: sdk/typescript
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: sdk/typescript/package-lock.json
+      - run: npm ci
+      - name: Run TypeScript release suite
+        run: npm run test:release
+      - name: Run TypeScript SDK safety regressions
+        run: |
+          npm run build
+          node ./scripts/safety-regression.mjs
+
+  python-sdk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Python SDK
+        run: python -m pip install -e ./sdk/python
+      - name: Run Python SDK regressions
+        run: python -m unittest discover -s sdk/python/tests -p 'test*.py' -v
+
+  mcp-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: mcp
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mcp/package-lock.json
+      - run: npm ci
+      - name: Typecheck MCP package
+        run: npm run typecheck
+      - name: Build MCP package
+        run: npm run build
+      - name: Run MCP smoke test
+        run: npm run smoke
+
+  openai-plugin-static:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate Once OpenAI/Codex plugin package
+        run: node scripts/validate-openai-plugin.mjs
+      - name: Validate autonomous discovery runner syntax
+        run: node --check scripts/run-codex-autonomous-discovery.mjs
+      - name: Validate autonomous discovery cases
+        run: node -e "const fs=require('fs'); const p='plugins/openai/once/evals/autonomous-discovery-cases.json'; const x=JSON.parse(fs.readFileSync(p,'utf8')); if(!Array.isArray(x.cases)||x.cases.length<8) process.exit(1); console.log('AUTONOMOUS DISCOVERY CASES: PASS', x.cases.length);"
+      - name: Test autonomous discovery harness without API calls
+        run: node scripts/test-codex-autonomous-discovery-harness.mjs
+
+  codex-plugin-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install current Codex CLI baseline
+        run: npm install --global @openai/codex@0.155.1
+      - name: Confirm Codex CLI version
+        run: codex --version
+      - name: Add repository marketplace
+        run: codex plugin marketplace add "$GITHUB_WORKSPACE"
+      - name: Confirm Once is discoverable
+        run: codex plugin list
+      - name: Install Once from repository marketplace
+        run: codex plugin add once@once-agent
+      - name: Confirm Once is installed
+        run: codex plugin list
