@@ -42,11 +42,7 @@ internal static class OnceTheme
         form.BackColor = Background;
         form.ForeColor = Text;
         form.Font = Body();
-
-        // Once owns its layout metrics. PerMonitorV2 is declared at the app
-        // level, so WinForms must not multiply the same coordinates again.
         form.AutoScaleMode = AutoScaleMode.None;
-
         form.ShowInTaskbar = true;
         form.MaximizeBox = true;
         form.MinimizeBox = true;
@@ -270,7 +266,7 @@ internal static class OnceTheme
                 _title,
                 titleFont,
                 titleRect,
-                Text,
+                OnceTheme.Text,
                 TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding | TextFormatFlags.EndEllipsis);
 
             using var buildFont = Body(7.5F, FontStyle.Bold);
