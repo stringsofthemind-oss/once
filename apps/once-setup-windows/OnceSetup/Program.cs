@@ -3,11 +3,14 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Threading;
 
 namespace OnceSetup;
 
 internal static class Program
 {
+    private const string SingleInstanceMutexName = @"Local\Once.Setup.Windows.SingleInstance";
+
     private static readonly Regex EvaluationKeyPattern = new(
         "^once_test_[A-Za-z0-9_-]{32,128}$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
@@ -15,6 +18,19 @@ internal static class Program
     [STAThread]
     private static async Task Main()
     {
+        using var singleInstance = new Mutex(
+            initiallyOwned: true,
+            name: SingleInstanceMutexName,
+            createdNew: out var isFirstInstance);
+
+        // A second launch used to leave an older setup page open behind the
+        // current one. Treat the installer as one wizard: only one process may
+        // own the setup flow at a time.
+        if (!isFirstInstance)
+        {
+            return;
+        }
+
         ApplicationConfiguration.Initialize();
 
         try
@@ -29,6 +45,8 @@ internal static class Program
                 }
                 apiKey = prompt.ApiKey;
             }
+
+            CloseOpenSetupWindows();
 
             if (!EvaluationKeyPattern.IsMatch(apiKey))
             {
@@ -71,6 +89,7 @@ internal static class Program
             }
 
             var mode = SetupDialogs.ChooseProjectMode();
+            CloseOpenSetupWindows();
             if (mode == ProjectMode.Cancel)
             {
                 return;
@@ -87,14 +106,17 @@ internal static class Program
             {
                 return;
             }
+            CloseOpenSetupWindows();
 
             if (!SetupDialogs.ConfirmSetup(root, isDemo))
             {
                 return;
             }
+            CloseOpenSetupWindows();
 
             using var progress = new SetupProgressForm();
             progress.Show();
+            progress.BringToFront();
             progress.SetStage(0, "Checking Node.js and the selected project...");
             Application.DoEvents();
 
@@ -107,6 +129,7 @@ internal static class Program
 
             if (install.ExitCode != 0)
             {
+                progress.Hide();
                 progress.Close();
                 throw new InvalidOperationException(
                     "The Once SDK installation did not complete successfully.\n\n" + install.Output);
@@ -118,6 +141,7 @@ internal static class Program
             progress.SetStage(3, "Verifying the Once API connection... This network check can take up to 15 seconds.");
             if (!await VerifyApiKeyAsync(apiKey))
             {
+                progress.Hide();
                 progress.Close();
                 throw new InvalidOperationException("The Once API connection could not be verified after installation.");
             }
@@ -134,21 +158,53 @@ internal static class Program
             progress.SetStage(5, isDemo
                 ? "Safety behavior verified: duplicate execution was suppressed."
                 : "Once is connected to this project.");
+            progress.Hide();
             progress.Close();
+            Application.DoEvents();
 
             Clipboard.Clear();
+            CloseOpenSetupWindows();
             SetupDialogs.ShowCompletion(root, isDemo);
         }
         catch (Exception ex)
         {
+            CloseOpenSetupWindows();
             SetupDialogs.ShowError(
                 "SETUP STOPPED SAFELY",
                 ex.Message + "\n\nNo hidden retry or recovery action was attempted.");
         }
         finally
         {
+            CloseOpenSetupWindows();
             Cursor.Current = Cursors.Default;
+            Application.Exit();
         }
+    }
+
+    private static void CloseOpenSetupWindows()
+    {
+        var openForms = Application.OpenForms.Cast<Form>().ToArray();
+        foreach (var form in openForms)
+        {
+            if (form.IsDisposed)
+            {
+                continue;
+            }
+
+            try
+            {
+                form.Hide();
+                form.Close();
+            }
+            catch
+            {
+                // Transition cleanup must never turn a successful setup step
+                // into a failure. The single-instance guard prevents a second
+                // setup process from creating another page stack.
+            }
+        }
+
+        Application.DoEvents();
     }
 
     private static async Task<bool> VerifyApiKeyAsync(string apiKey)
