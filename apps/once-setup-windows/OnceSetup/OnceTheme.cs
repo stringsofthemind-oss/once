@@ -249,14 +249,23 @@ internal static class OnceTheme
                 g.FillRectangle(badgeBrush, badgeRect);
             }
 
-            using var badgeFont = Body(10.5F, FontStyle.Bold);
-            TextRenderer.DrawText(
-                g,
-                "1x",
-                badgeFont,
-                badgeRect,
-                Accent,
-                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+            // Draw the compact Once mark with GDI+ rather than TextRenderer. At
+            // 125–150% Windows scaling TextRenderer + NoPadding can place the
+            // glyph baseline too low and clip the lower quarter of the mark.
+            using var badgeFont = Body(10F, FontStyle.Bold);
+            using var badgeTextBrush = new SolidBrush(Accent);
+            using var badgeFormat = new StringFormat
+            {
+                Alignment = StringAlignment.Center,
+                LineAlignment = StringAlignment.Center,
+                FormatFlags = StringFormatFlags.NoWrap,
+            };
+            var badgeTextRect = new RectangleF(
+                badgeRect.X,
+                badgeRect.Y - S(1),
+                badgeRect.Width,
+                badgeRect.Height);
+            g.DrawString("1x", badgeFont, badgeTextBrush, badgeTextRect, badgeFormat);
 
             using var titleFont = Body(12F, FontStyle.Bold);
             var titleLeft = badgeRect.Right + S(18);
