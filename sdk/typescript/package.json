@@ -1,6 +1,6 @@
 {
   "name": "@once-agent/sdk",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Execution safety for side-effecting AI agent tools.",
   "type": "module",
   "main": "./dist/index.js",
