@@ -170,7 +170,7 @@ internal static class SetupDialogs
         if (isDemo)
         {
             var saveProof = OnceTheme.SecondaryButton("Save proof report", 245);
-            saveProof.Click += (_, _) => SaveProofReport(form, root, saveProof);
+            saveProof.Click += async (_, _) => await SaveProofReportAsync(root, saveProof);
             secondaryActions.Controls.Add(saveProof);
         }
         AddRow(content, secondaryActions, Bottom(12));
@@ -198,49 +198,47 @@ internal static class SetupDialogs
         ShowPage(form, viewport, 5);
     }
 
-    private static void SaveProofReport(Form owner, string root, Button button)
+    private static async Task SaveProofReportAsync(string root, Button button)
     {
+        button.Enabled = false;
+        button.Text = "Saving report...";
+
         try
         {
             var downloads = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                 "Downloads");
+            var targetDirectory = Directory.Exists(downloads) ? downloads : root;
+            var fileName = $"Once-Proof-Report-{DateTime.UtcNow:yyyyMMdd-HHmmssfff}.txt";
+            var path = Path.Combine(targetDirectory, fileName);
+            var report = BuildProofReport(root);
 
-            using var dialog = new SaveFileDialog
-            {
-                Title = "Save Once proof report",
-                Filter = "Text report (*.txt)|*.txt|All files (*.*)|*.*",
-                DefaultExt = "txt",
-                AddExtension = true,
-                RestoreDirectory = true,
-                FileName = $"Once-Proof-Report-{DateTime.UtcNow:yyyyMMdd-HHmmss}.txt",
-                InitialDirectory = Directory.Exists(downloads) ? downloads : root,
-            };
+            await File.WriteAllTextAsync(path, report);
 
-            if (dialog.ShowDialog(owner) != DialogResult.OK)
-            {
-                return;
-            }
-
-            File.WriteAllText(dialog.FileName, BuildProofReport(root));
-            button.Text = "Report saved ✓";
-
-            try
-            {
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = dialog.FileName,
-                    UseShellExecute = true,
-                });
-            }
-            catch
-            {
-                // The report is still successfully saved if Windows cannot open it automatically.
-            }
+            button.Tag = path;
+            button.Text = Directory.Exists(downloads)
+                ? "Saved to Downloads ✓"
+                : "Report saved ✓";
         }
         catch
         {
-            button.Text = "Save failed";
+            try
+            {
+                var fallback = Path.Combine(
+                    root,
+                    $"Once-Proof-Report-{DateTime.UtcNow:yyyyMMdd-HHmmssfff}.txt");
+                await File.WriteAllTextAsync(fallback, BuildProofReport(root));
+                button.Tag = fallback;
+                button.Text = "Saved in demo folder ✓";
+            }
+            catch
+            {
+                button.Text = "Save failed";
+            }
+        }
+        finally
+        {
+            button.Enabled = true;
         }
     }
 
