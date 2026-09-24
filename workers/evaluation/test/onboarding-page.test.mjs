@@ -48,8 +48,10 @@ test("activated onboarding isolates the API key and makes automatic Windows setu
   assert.match(page, /apiKey\.textContent=body\.api_key/);
   assert.doesNotMatch(page, /result\.textContent=/);
 
-  assert.match(page, /id="installWindows"[^>]*>Install Once on Windows<\/button>/);
-  assert.match(page, /navigator\.clipboard\.writeText\(key\)/);
+  assert.match(page, /id="installWindows"[^>]*>Download OnceSetup<\/button>/);
+  assert.match(page, /first click <strong>Copy API key<\/strong>/);
+  assert.match(page, /id="installWindows"[^>]*>Download OnceSetup<\/button>/);
+  assert.doesNotMatch(page, /navigator\.clipboard\.writeText\(key\)/);
   assert.match(page, /link\.href="\/install\/windows\.cmd"/);
   assert.match(page, /link\.download="OnceSetup\.cmd"/);
   assert.match(page, /Choose <strong>Yes<\/strong> for a safe demo project/);
