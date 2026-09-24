@@ -60,7 +60,7 @@ test("activated onboarding isolates the API key and makes automatic Windows setu
   assert.match(page, /npx once setup \./);
 
   assert.match(page, /button\.hidden=true/);
-  assert.match(page, /âœ“ Evaluation active/);
+  assert.match(page, /✓ Evaluation active/);
 });
 
 test("Windows installer download is generic, non-secret, and attachment-only", async () => {
