@@ -41,7 +41,7 @@ function attachment(body, filename, contentType = "application/octet-stream") {
 }
 
 function enabled(env) {
-  return String(env.EVALUATION_BYPASS_ENABLED || "")
+  return String(env.PUBLIC_EVALUATION_ENABLED || "")
     .trim()
     .toLowerCase() === "true";
 }
@@ -501,7 +501,7 @@ export default {
 
     if (request.method === "GET" && url.pathname === "/health") {
       return json({
-        service: "once-evaluation-bypass",
+        service: "once-public-evaluation",
         status: "online",
         enabled: true,
         stripe_mode: "test_required",

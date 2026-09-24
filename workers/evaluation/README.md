@@ -1,6 +1,6 @@
-# Once frictionless evaluation worker
+# Once public evaluation worker
 
-This is an isolated experiment for reducing first-use friction without weakening the existing Once entitlement or API-key checks.
+This Worker provides controlled public technical evaluation of Once without weakening the existing entitlement or API-key checks.
 
 ## Intended flow
 
@@ -15,7 +15,7 @@ When explicitly enabled by the operator:
 
 ## Safety boundaries
 
-- `EVALUATION_BYPASS_ENABLED` defaults to `false`.
+- `PUBLIC_EVALUATION_ENABLED` defaults to `false`.
 - The Worker refuses Stripe keys that are not test-mode keys.
 - No runtime entitlement check is bypassed.
 - The existing Playground Worker is unchanged.
@@ -49,6 +49,23 @@ Configurable limits:
 
 If the admission binding, secret, or limits are invalid, activation fails closed.
 
-## Remaining public-activation gate
+## Public evaluation release controls
 
-The admission layer removes the anonymous unlimited-provisioning path, but public activation still requires an explicit operator decision and final review. The experiment currently uses the existing Pro sandbox entitlement for the one-day technical evaluation, so the public URL should remain disabled until the branch is reviewed, the admission secret is configured, the final CI pass is green, and the operator separately approves merge/deployment/routing.
+Public evaluation remains disabled by default and must be enabled explicitly by an operator only after release review.
+
+Before enabling:
+
+- confirm `EVALUATION_ADMISSION_SECRET` is configured as a Worker secret;
+- confirm `STRIPE_SECRET_KEY` is a Stripe test or restricted-test secret;
+- confirm the admission limits are intentionally configured;
+- confirm CI is green for the exact release commit;
+- verify `/health` before exposing the evaluation route.
+
+Emergency shutdown:
+
+1. Set `PUBLIC_EVALUATION_ENABLED` to `false`.
+2. Deploy the evaluation Worker configuration.
+3. Verify the public evaluation endpoints return `404`.
+4. Leave Q18, SandboxClaim, and existing issued sandbox credentials untouched; disabling evaluation stops new admissions rather than rewriting authoritative state.
+
+The public evaluation uses the existing Pro sandbox entitlement for a one-day technical evaluation. Enabling or routing the Worker remains a separate operator action from merging code.

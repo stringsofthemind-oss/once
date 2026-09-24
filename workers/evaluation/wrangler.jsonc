@@ -1,11 +1,11 @@
 {
-  "name": "once-evaluation-bypass",
+  "name": "once-public-evaluation",
   "main": "src/index.js",
   "workers_dev": true,
   "preview_urls": true,
   "compatibility_date": "2026-09-18",
   "vars": {
-    "EVALUATION_BYPASS_ENABLED": "false",
+    "PUBLIC_EVALUATION_ENABLED": "false",
     "STRIPE_PRICE_PRO": "price_1UGqPRAHX5spO4zqQcuRzi3S",
     "EVALUATION_MAX_PER_CLIENT_24H": "3",
     "EVALUATION_GLOBAL_MAX_24H": "100"
