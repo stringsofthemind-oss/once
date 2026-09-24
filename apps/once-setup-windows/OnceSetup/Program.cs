@@ -136,8 +136,8 @@ internal static class Program
                 : "Once is connected to this project.");
             progress.Close();
 
-            SetupDialogs.ShowCompletion(root, isDemo);
             Clipboard.Clear();
+            SetupDialogs.ShowCompletion(root, isDemo);
         }
         catch (Exception ex)
         {
