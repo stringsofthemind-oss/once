@@ -1021,6 +1021,9 @@ export {
 
 export default Once;
 
+export { protectLocal, LocalProtectionError } from "./local.js";
+export type { LocalProtectionOptions, LocalObservation } from "./local.js";
+
 /*
  * Once Connect
  *
