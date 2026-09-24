@@ -21,3 +21,6 @@ Thumbs.db
 
 # Wrangler local secrets
 workers/evaluation/.dev.vars
+
+# Wrangler local deployment state
+workers/evaluation/.wrangler/
