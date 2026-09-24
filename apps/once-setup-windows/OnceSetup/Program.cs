@@ -98,7 +98,7 @@ internal static class Program
             progress.SetStage(0, "Checking Node.js and the selected project...");
             Application.DoEvents();
 
-            progress.SetStage(1, "Installing @once-agent/sdk...");
+            progress.SetStage(1, "Installing @once-agent/sdk... The first install can take a little while.");
             var install = RunProcess(
                 "cmd.exe",
                 $"/d /s /c \"\"{npm}\" install @once-agent/sdk\"",
@@ -115,7 +115,7 @@ internal static class Program
             progress.SetStage(2, "Saving the evaluation key to .env and protecting it with .gitignore...");
             SaveKey(root, apiKey);
 
-            progress.SetStage(3, "Verifying the Once API connection...");
+            progress.SetStage(3, "Verifying the Once API connection... This network check can take up to 15 seconds.");
             if (!await VerifyApiKeyAsync(apiKey))
             {
                 progress.Close();
@@ -123,7 +123,7 @@ internal static class Program
             }
 
             progress.SetStage(4, isDemo
-                ? "Running the first-action and retry-suppression proof..."
+                ? "Running the first-action and retry-suppression proof... This usually completes in a few seconds."
                 : "Final verification complete. No application source files were changed.");
 
             if (isDemo)
@@ -311,7 +311,24 @@ internal static class Program
         var demoPath = Path.Combine(root, "once-demo.mjs");
         const string demo = """
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { Once } from "@once-agent/sdk";
+
+if (!process.env.ONCE_API_KEY) {
+  try {
+    const envText = readFileSync(new URL("./.env", import.meta.url), "utf8");
+    const keyLine = envText.split(/\r?\n/).find((line) => line.startsWith("ONCE_API_KEY="));
+    if (keyLine) {
+      process.env.ONCE_API_KEY = keyLine.slice("ONCE_API_KEY=".length).trim();
+    }
+  } catch {
+    // The installer supplies ONCE_API_KEY directly during setup.
+  }
+}
+
+if (!process.env.ONCE_API_KEY) {
+  throw new Error("missing_once_api_key");
+}
 
 const once = new Once({ baseUrl: "https://api.onceexec.com" });
 const operationId = "installer-demo-" + randomUUID().replaceAll("-", "");
