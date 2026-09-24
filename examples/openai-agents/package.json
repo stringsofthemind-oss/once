@@ -8,7 +8,7 @@
     "start": "node --env-file=.env index.mjs"
   },
   "dependencies": {
-    "@once-agent/sdk": "^0.1.5",
+    "@once-agent/sdk": "^0.1.6",
     "@openai/agents": "latest",
     "zod": "^4.0.0"
   }
