@@ -1,6 +1,6 @@
 {
   "name": "@once-agent/sdk",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Execution safety for side-effecting AI agent tools.",
   "type": "module",
   "main": "./dist/index.js",
@@ -48,7 +48,8 @@
     "build:cjs": "tsc -p tsconfig.cjs.json && node ./scripts/write-cjs-package.mjs",
     "test:runtime-setup": "npm run build && node ./scripts/runtime-setup-regression.mjs",
     "test:activation": "npm run build && node ./scripts/activation-regression.mjs",
-    "test:setup-persistence": "npm run build && node ./scripts/setup-persistence-regression.mjs"
+    "test:setup-persistence": "npm run build && node ./scripts/setup-persistence-regression.mjs",
+    "prepack": "npm run build"
   },
   "keywords": [
     "ai",
