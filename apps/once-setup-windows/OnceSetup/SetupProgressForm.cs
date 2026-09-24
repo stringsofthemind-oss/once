@@ -32,9 +32,9 @@ internal sealed class SetupProgressForm : Form
         };
         content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
 
-        AddRow(content, OnceTheme.Heading("INSTALLING ONCE", 21F), Bottom(12));
+        AddRow(content, OnceTheme.Heading("INSTALLING ONCE", 21F), GapBelow(12));
         var intro = OnceTheme.Paragraph("Setting up Once in your project and preparing the safety verification.");
-        AddRow(content, intro, Bottom(24));
+        AddRow(content, intro, GapBelow(24));
 
         var card = new TableLayoutPanel
         {
@@ -84,7 +84,7 @@ internal sealed class SetupProgressForm : Form
             Margin = new Padding(0, OnceTheme.S(8), 0, 0),
         };
         AddRow(card, _progress);
-        AddRow(content, card, Bottom(20));
+        AddRow(content, card, GapBelow(20));
 
         _detail = new Label
         {
@@ -165,7 +165,7 @@ internal sealed class SetupProgressForm : Form
         Application.DoEvents();
     }
 
-    private static Padding Bottom(int value) => new(0, 0, 0, OnceTheme.S(value));
+    private static Padding GapBelow(int value) => new(0, 0, 0, OnceTheme.S(value));
 
     private static void AddRow(TableLayoutPanel table, Control control, Padding? margin = null)
     {
