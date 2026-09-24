@@ -41,7 +41,7 @@ function attachment(body, filename, contentType = "application/octet-stream") {
 }
 
 function enabled(env) {
-  return String(env.EVALUATION_BYPASS_ENABLED || "")
+  return String(env.PUBLIC_EVALUATION_ENABLED || "")
     .trim()
     .toLowerCase() === "true";
 }
@@ -296,7 +296,7 @@ const PAGE = `<!doctype html>
 </head>
 <body>
 <main>
-<div class="mark">1× ONCE / TECHNICAL EVALUATION</div>
+<div class="mark">1Ã— ONCE / TECHNICAL EVALUATION</div>
 <h1>Try Once without checkout.</h1>
 <p class="muted">No card and no Stripe Checkout screen. This creates a one-day Stripe test-mode trial behind the scenes, then uses the normal Once entitlement and API-key path. Admission limits protect the evaluation service from automated abuse.</p>
 <div class="card">
@@ -304,7 +304,7 @@ const PAGE = `<!doctype html>
 <p id="status" class="muted">Test mode only. Nothing is charged.</p>
 
 <div id="result" hidden>
-  <div class="success">✓ Evaluation active</div>
+  <div class="success">âœ“ Evaluation active</div>
   <p><strong>Your Once evaluation is ready.</strong> The easy Windows setup below is designed so you do not need to know PowerShell, npm, or which commands to type.</p>
 
   <div class="step">
@@ -338,7 +338,7 @@ const PAGE = `<!doctype html>
 
   <div class="done">
     <strong>What the automatic setup does for you</strong>
-    <p>✓ checks your Once key<br>✓ checks Node.js<br>✓ installs <code>@once-agent/sdk</code><br>✓ saves the key to <code>.env</code><br>✓ adds <code>.env</code> to <code>.gitignore</code><br>✓ verifies the Once API connection</p>
+    <p>âœ“ checks your Once key<br>âœ“ checks Node.js<br>âœ“ installs <code>@once-agent/sdk</code><br>âœ“ saves the key to <code>.env</code><br>âœ“ adds <code>.env</code> to <code>.gitignore</code><br>âœ“ verifies the Once API connection</p>
     <p>If you choose the recommended demo, it also performs a real Once safety test: the first action executes, the retry is suppressed, and side effects stay at 1.</p>
     <p class="muted small">Your technical evaluation lasts 24 hours. No card is required and nothing will be charged.</p>
   </div>
@@ -389,9 +389,9 @@ async function copyText(value,control,successLabel){
   }
 }
 
-copyApiKey.addEventListener("click",()=>copyText(apiKey.textContent,copyApiKey,"Copied ✓"));
-copyInstall.addEventListener("click",()=>copyText(installCommand.textContent,copyInstall,"Copied ✓"));
-copySetup.addEventListener("click",()=>copyText(setupCommand.textContent,copySetup,"Copied ✓"));
+copyApiKey.addEventListener("click",()=>copyText(apiKey.textContent,copyApiKey,"Copied âœ“"));
+copyInstall.addEventListener("click",()=>copyText(installCommand.textContent,copyInstall,"Copied âœ“"));
+copySetup.addEventListener("click",()=>copyText(setupCommand.textContent,copySetup,"Copied âœ“"));
 
 installWindows.addEventListener("click",async()=>{
   const key=apiKey.textContent.trim();
@@ -401,7 +401,7 @@ installWindows.addEventListener("click",async()=>{
   }
 
   installWindows.disabled=true;
-  installStatus.textContent="Copying your API key and preparing OnceSetup…";
+  installStatus.textContent="Copying your API key and preparing OnceSetupâ€¦";
 
   try{
     await navigator.clipboard.writeText(key);
@@ -425,7 +425,7 @@ installWindows.addEventListener("click",async()=>{
 
 button.addEventListener("click",async()=>{
   button.disabled=true;
-  status.textContent="Creating your test evaluation…";
+  status.textContent="Creating your test evaluationâ€¦";
   result.hidden=true;
   try{
     const response=await fetch("/api/evaluate",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({evaluation_id:evaluationId})});
@@ -501,7 +501,7 @@ export default {
 
     if (request.method === "GET" && url.pathname === "/health") {
       return json({
-        service: "once-evaluation-bypass",
+        service: "once-public-evaluation",
         status: "online",
         enabled: true,
         stripe_mode: "test_required",

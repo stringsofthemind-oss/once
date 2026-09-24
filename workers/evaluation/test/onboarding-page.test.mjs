@@ -8,7 +8,7 @@ import worker from "../src/index.js";
 
 function pageEnv() {
   return {
-    EVALUATION_BYPASS_ENABLED: "true",
+    PUBLIC_EVALUATION_ENABLED: "true",
     STRIPE_SECRET_KEY: "sk_test_once_eval",
     STRIPE_PRICE_PRO: "price_eval_pro",
     EVALUATION_ADMISSION_SECRET: "test-admission-secret-0123456789abcdef",
@@ -60,7 +60,7 @@ test("activated onboarding isolates the API key and makes automatic Windows setu
   assert.match(page, /npx once setup \./);
 
   assert.match(page, /button\.hidden=true/);
-  assert.match(page, /✓ Evaluation active/);
+  assert.match(page, /âœ“ Evaluation active/);
 });
 
 test("Windows installer download is generic, non-secret, and attachment-only", async () => {

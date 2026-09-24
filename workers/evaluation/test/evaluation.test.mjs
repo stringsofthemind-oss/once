@@ -41,7 +41,7 @@ function makeEnv({
   }));
 
   return {
-    EVALUATION_BYPASS_ENABLED: enabled ? "true" : "false",
+    PUBLIC_EVALUATION_ENABLED: enabled ? "true" : "false",
     STRIPE_SECRET_KEY: stripeKey,
     STRIPE_PRICE_PRO: priceId,
     EVALUATION_ADMISSION_SECRET: admissionSecret,
