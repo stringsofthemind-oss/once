@@ -1,5 +1,5 @@
 import { Buffer } from "node:buffer";
-﻿import { createHash } from "node:crypto";
+import { createHash } from "node:crypto";
 import {
   createOnceFetchInterceptor,
   type OnceFetchInstallation,
@@ -1069,3 +1069,14 @@ export {
 export type {
   ConnectKernelInput
 } from "./connect/kernel.js";
+
+export {
+  OpenAIAgentsConnectError,
+  executeOpenAIAgentsConnectTool
+} from "./connect/openai-agents.js";
+
+export type {
+  OpenAIAgentsToolInput,
+  OpenAIAgentsAction,
+  OpenAIAgentsConnectToolInput
+} from "./connect/openai-agents.js";
