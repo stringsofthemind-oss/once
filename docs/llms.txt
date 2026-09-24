@@ -22,7 +22,7 @@ Repository:
 https://github.com/stringsofthemind-oss/once
 
 SDK: @once-agent/sdk
-SOURCE PREVIEW (not in published SDK 0.1.6): protectLocal(existingAsyncFunction, {id, payload}) keeps the call shape and receiver, snapshots ordinary data arguments, and uses durable same-machine SQLite on Node 24.15+. It validates a narrow plain-data domain. UNKNOWN and CONFLICT block; do not infer ABSENT from a timeout. See examples/local-function/README.md in the repository. For separate hosts use a supported distributed Once integration.
+LOCAL PROTECTION (published in SDK 0.1.7): protectLocal(existingAsyncFunction, {id, payload}) keeps the call shape and receiver, snapshots ordinary data arguments, and uses durable same-machine SQLite on Node 24.15+. It validates a narrow plain-data domain. UNKNOWN and CONFLICT block; do not infer ABSENT from a timeout. See examples/local-function/README.md in the repository. For separate hosts use a supported distributed Once integration.
 MCP package: @once-agent/mcp
 MCP Registry: io.github.stringsofthemind-oss/once
 

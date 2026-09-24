@@ -1,7 +1,7 @@
 # Protect an existing async function on one machine
 
-This example uses the **source checkout** of the TypeScript SDK. `protectLocal`
-is not part of the published `@once-agent/sdk` 0.1.6 package yet.
+`protectLocal` is available in the published `@once-agent/sdk` 0.1.7 package.
+This guide covers its durable same-machine SQLite safety boundary.
 
 ```ts
 import { protectLocal } from "@once-agent/sdk";
