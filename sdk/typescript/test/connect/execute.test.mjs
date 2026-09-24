@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {
   ConnectExecutionError,
   executeConnectOperation,
-} from "../../src/connect/execute.js";
+} from "../../dist/connect/execute.js";
 
 const protectedSafety = {
   changesExternalState: true,

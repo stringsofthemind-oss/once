@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   CONNECT_DECISION,
   classifyConnectOperation,
-} from "../../src/connect/classifier.js";
+} from "../../dist/connect/classifier.js";
 
 test("protects only when all four Once routing conditions hold", () => {
   const result = classifyConnectOperation({

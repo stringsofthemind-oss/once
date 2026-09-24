@@ -6,7 +6,7 @@ import {
   assertConnectBindingMatch,
   bindConnectOperation,
   fingerprintConnectPayload,
-} from "../../src/connect/binding.js";
+} from "../../dist/connect/binding.js";
 
 test("identical consequential payloads produce identical fingerprints", () => {
   const a = fingerprintConnectPayload({

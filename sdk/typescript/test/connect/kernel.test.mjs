@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {
   ConnectKernelError,
   executeConnectWithOnce,
-} from "../../src/connect/kernel.js";
+} from "../../dist/connect/kernel.js";
 
 const protectedSafety = {
   changesExternalState: true,

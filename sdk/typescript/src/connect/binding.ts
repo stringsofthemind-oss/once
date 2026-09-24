@@ -1,19 +1,36 @@
 ﻿import { createHash } from "node:crypto";
 
+export type ConnectPayload =
+  Record<string, unknown>;
+
+export interface ConnectBinding {
+  operationId: string;
+  payloadFingerprint: string;
+}
+
 export class ConnectBindingError extends Error {
-  constructor(message, code) {
+  readonly code: string;
+
+  constructor(
+    message: string,
+    code: string,
+  ) {
     super(message);
     this.name = "ConnectBindingError";
     this.code = code;
   }
 }
 
-function canonicalize(value, path = "$") {
+function canonicalize(
+  value: unknown,
+  path = "$",
+): string {
   if (value === null) {
     return "null";
   }
 
-  const type = typeof value;
+  const type =
+    typeof value;
 
   if (type === "string") {
     return JSON.stringify(value);
@@ -24,32 +41,42 @@ function canonicalize(value, path = "$") {
   }
 
   if (type === "number") {
-    if (!Number.isFinite(value)) {
+    const numberValue =
+      value as number;
+
+    if (!Number.isFinite(numberValue)) {
       throw new ConnectBindingError(
         `Unsupported non-finite number at ${path}.`,
         "UNSUPPORTED_PAYLOAD_VALUE",
       );
     }
 
-    if (Object.is(value, -0)) {
+    if (Object.is(numberValue, -0)) {
       return "0";
     }
 
-    return JSON.stringify(value);
+    return JSON.stringify(numberValue);
   }
 
   if (Array.isArray(value)) {
     return "[" +
       value
         .map((item, index) =>
-          canonicalize(item, `${path}[${index}]`),
+          canonicalize(
+            item,
+            `${path}[${index}]`,
+          ),
         )
         .join(",") +
       "]";
   }
 
   if (type === "object") {
-    const prototype = Object.getPrototypeOf(value);
+    const objectValue =
+      value as Record<string, unknown>;
+
+    const prototype =
+      Object.getPrototypeOf(objectValue);
 
     if (
       prototype !== Object.prototype &&
@@ -61,13 +88,14 @@ function canonicalize(value, path = "$") {
       );
     }
 
-    const keys = Object.keys(value).sort();
+    const keys =
+      Object.keys(objectValue).sort();
 
     return "{" +
       keys
         .map((key) =>
           `${JSON.stringify(key)}:${canonicalize(
-            value[key],
+            objectValue[key],
             `${path}.${key}`,
           )}`,
         )
@@ -81,7 +109,9 @@ function canonicalize(value, path = "$") {
   );
 }
 
-export function canonicalizeConnectPayload(payload) {
+export function canonicalizeConnectPayload(
+  payload: ConnectPayload,
+): string {
   if (
     payload === null ||
     typeof payload !== "object" ||
@@ -96,14 +126,20 @@ export function canonicalizeConnectPayload(payload) {
   return canonicalize(payload);
 }
 
-export function fingerprintConnectPayload(payload) {
+export function fingerprintConnectPayload(
+  payload: ConnectPayload,
+): string {
   const canonical =
     canonicalizeConnectPayload(payload);
 
-  const digest = createHash("sha256")
-    .update("once-connect-payload-v1\0", "utf8")
-    .update(canonical, "utf8")
-    .digest("hex");
+  const digest =
+    createHash("sha256")
+      .update(
+        "once-connect-payload-v1\0",
+        "utf8",
+      )
+      .update(canonical, "utf8")
+      .digest("hex");
 
   return `once-connect-payload-v1:${digest}`;
 }
@@ -111,7 +147,10 @@ export function fingerprintConnectPayload(payload) {
 export function bindConnectOperation({
   operationId,
   payload,
-}) {
+}: {
+  operationId: string;
+  payload: ConnectPayload;
+}): Readonly<ConnectBinding> {
   if (
     typeof operationId !== "string" ||
     operationId.trim() === ""
@@ -130,9 +169,9 @@ export function bindConnectOperation({
 }
 
 export function assertConnectBindingMatch(
-  previousBinding,
-  nextBinding,
-) {
+  previousBinding: ConnectBinding,
+  nextBinding: ConnectBinding,
+): true {
   if (
     previousBinding.operationId !==
     nextBinding.operationId

@@ -3,8 +3,39 @@
   ConnectExecutionError,
 } from "./execute.js";
 
+import type {
+  ConnectSafetyDeclaration,
+} from "./classifier.js";
+
+import type {
+  ConnectPayload,
+} from "./binding.js";
+
+interface OnceConnectClient {
+  execute(input: {
+    operationId: string;
+    provider: string;
+    action: Record<string, unknown>;
+  }): Promise<unknown>;
+}
+
+export interface ConnectKernelInput<T = unknown> {
+  once: OnceConnectClient | null | undefined;
+  provider: string;
+  safety: ConnectSafetyDeclaration;
+  operationId: string;
+  payload: ConnectPayload;
+  action: Record<string, unknown> | null;
+  bypass?: () => Promise<T> | T;
+}
+
 export class ConnectKernelError extends Error {
-  constructor(message, code) {
+  readonly code: string;
+
+  constructor(
+    message: string,
+    code: string,
+  ) {
     super(message);
     this.name = "ConnectKernelError";
     this.code = code;
@@ -18,7 +49,7 @@ export class ConnectKernelError extends Error {
  * This adapter deliberately contains no execution-state machine,
  * replay logic, reconciliation logic, or truth semantics.
  */
-export async function executeConnectWithOnce({
+export async function executeConnectWithOnce<T = unknown>({
   once,
   provider,
   safety,
@@ -26,7 +57,7 @@ export async function executeConnectWithOnce({
   payload,
   action,
   bypass,
-}) {
+}: ConnectKernelInput<T>): Promise<T | unknown> {
   if (
     !once ||
     typeof once.execute !== "function"
@@ -37,7 +68,7 @@ export async function executeConnectWithOnce({
     );
   }
 
-  return executeConnectOperation({
+  return executeConnectOperation<T | unknown>({
     safety,
     operationId,
     payload,
@@ -67,8 +98,11 @@ export async function executeConnectWithOnce({
       }
 
       return once.execute({
-        operationId: context.operationId,
+        operationId:
+          context.operationId,
+
         provider,
+
         action,
       });
     },

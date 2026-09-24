@@ -3,12 +3,43 @@
   classifyConnectOperation,
 } from "./classifier.js";
 
+import type {
+  ConnectClassification,
+  ConnectSafetyDeclaration,
+} from "./classifier.js";
+
 import {
   bindConnectOperation,
 } from "./binding.js";
 
+import type {
+  ConnectPayload,
+} from "./binding.js";
+
+export interface ConnectProtectedContext {
+  operationId: string;
+  payload: ConnectPayload;
+  payloadFingerprint: string;
+  classification: Readonly<ConnectClassification>;
+}
+
+export interface ConnectExecutionInput<T = unknown> {
+  safety: ConnectSafetyDeclaration;
+  operationId: string;
+  payload: ConnectPayload;
+  bypass?: () => Promise<T> | T;
+  protect?: (
+    context: ConnectProtectedContext,
+  ) => Promise<T> | T;
+}
+
 export class ConnectExecutionError extends Error {
-  constructor(message, code) {
+  readonly code: string;
+
+  constructor(
+    message: string,
+    code: string,
+  ) {
     super(message);
     this.name = "ConnectExecutionError";
     this.code = code;
@@ -24,13 +55,13 @@ export class ConnectExecutionError extends Error {
  * Protected execution is delegated to the existing Once
  * runtime/kernel supplied by the caller.
  */
-export async function executeConnectOperation({
+export async function executeConnectOperation<T = unknown>({
   safety,
   operationId,
   payload,
   bypass,
   protect,
-}) {
+}: ConnectExecutionInput<T>): Promise<T> {
   const classification =
     classifyConnectOperation(safety);
 
@@ -58,14 +89,6 @@ export async function executeConnectOperation({
     return await bypass();
   }
 
-  /*
-   * Binding is intentionally performed before handing
-   * control to the existing Once execution kernel.
-   *
-   * This proves that protected work has both stable
-   * logical identity and a consequential-payload
-   * fingerprint before execution can begin.
-   */
   const binding =
     bindConnectOperation({
       operationId,
