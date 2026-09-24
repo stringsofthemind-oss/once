@@ -1,5 +1,5 @@
 import { Buffer } from "node:buffer";
-﻿import { createHash } from "node:crypto";
+import { createHash } from "node:crypto";
 import {
   createOnceFetchInterceptor,
   type OnceFetchInstallation,
@@ -1020,3 +1020,63 @@ export {
 } from "./runtime/identity.js";
 
 export default Once;
+
+/*
+ * Once Connect
+ *
+ * Framework-neutral execution-safety boundary for agent/tool integrations.
+ * Protected execution delegates to the existing Once kernel.
+ */
+export {
+  CONNECT_DECISION,
+  classifyConnectOperation
+} from "./connect/classifier.js";
+
+export type {
+  ConnectDecision,
+  ConnectSafetyDeclaration,
+  ConnectClassification
+} from "./connect/classifier.js";
+
+export {
+  ConnectBindingError,
+  canonicalizeConnectPayload,
+  fingerprintConnectPayload,
+  bindConnectOperation,
+  assertConnectBindingMatch
+} from "./connect/binding.js";
+
+export type {
+  ConnectPayload,
+  ConnectBinding
+} from "./connect/binding.js";
+
+export {
+  ConnectExecutionError,
+  executeConnectOperation
+} from "./connect/execute.js";
+
+export type {
+  ConnectProtectedContext,
+  ConnectExecutionInput
+} from "./connect/execute.js";
+
+export {
+  ConnectKernelError,
+  executeConnectWithOnce
+} from "./connect/kernel.js";
+
+export type {
+  ConnectKernelInput
+} from "./connect/kernel.js";
+
+export {
+  OpenAIAgentsConnectError,
+  executeOpenAIAgentsConnectTool
+} from "./connect/openai-agents.js";
+
+export type {
+  OpenAIAgentsToolInput,
+  OpenAIAgentsAction,
+  OpenAIAgentsConnectToolInput
+} from "./connect/openai-agents.js";

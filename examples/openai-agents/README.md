@@ -16,89 +16,46 @@ Without stable operation identity and provider reconciliation, the same real-wor
 
 ## The Once pattern
 
+The OpenAI Agents tool crosses the Once Connect boundary:
+
 ```js
 const operationId = Once.id(
   "refund",
   orderId
 );
 
-await once.execute({
-  operationId,
-  provider,
-  action: {
-    type: "refund",
-    order_id: orderId
-  }
-});
+const result =
+  await executeOpenAIAgentsConnectTool({
+    once,
+    provider,
+    safety: {
+      changesExternalState: true,
+      retryPossible: true,
+      ambiguousOutcomePossible: true,
+      duplicateUndesirable: true
+    },
+    operationId,
+    input: {
+      orderId
+    },
+    action: {
+      type: "refund",
+      order_id: orderId
+    }
+  });
 ```
 
-The important rule:
+The adapter routes consequential tool calls through Once Connect before they reach the existing Once execution kernel.
 
-> A retry of the same logical operation must reuse the same operation ID.
+The logical operation identity is derived from the real-world refund, not from an individual model tool-call ID. That means a retry can refer to the same operation.
 
-## Install
+## Run the example
 
-Requires Node.js 22 or later for the current OpenAI Agents SDK.
-
-```bash
-npm install
-```
-
-Copy the environment template:
+Configure `ONCE_PROVIDER_ALIAS` for a supported Once provider, then run:
 
 ```powershell
-Copy-Item .env.example .env
+npm install
+npm start order_123
 ```
 
-Configure:
-
-```text
-OPENAI_API_KEY=...
-ONCE_API_KEY=...
-ONCE_PROVIDER_ALIAS=...
-```
-
-The provider alias must refer to a supported provider configured with Once.
-
-## Run
-
-```bash
-npm start
-```
-
-Or choose an order ID:
-
-```bash
-npm start -- order_4821
-```
-
-The example asks the OpenAI agent to perform the same logical refund twice.
-
-Both calls derive their identity from:
-
-```js
-Once.id("refund", orderId)
-```
-
-so a retry does not become a new logical operation merely because the agent called the tool again.
-
-## What Once does
-
-Once combines:
-
-- stable operation identity
-- durable operation state
-- supported provider execution
-- provider reconciliation
-- conservative handling of uncertain outcomes
-
-Once does not claim universal exactly-once execution.
-
-Its safety properties depend on the configured provider integration and the authority of provider truth available for reconciliation.
-
-## Links
-
-- Once: https://onceexec.com/
-- AI agent retry safety: https://onceexec.com/ai-agent-retry-safety/
-- npm: `@once-agent/sdk`
-- MCP: `@once-agent/mcp`
+The example sends the same logical refund request twice so the integration can be observed across an initial request and a retry.
