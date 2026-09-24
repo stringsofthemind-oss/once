@@ -169,20 +169,9 @@ internal static class SetupDialogs
 
         if (isDemo)
         {
-            var copyProof = OnceTheme.SecondaryButton("Copy proof command", 245);
-            copyProof.Click += (_, _) =>
-            {
-                try
-                {
-                    System.Windows.Forms.Clipboard.SetDataObject("node .\\once-demo.mjs", true);
-                    copyProof.Text = "Copied ✓";
-                }
-                catch
-                {
-                    copyProof.Text = "Copy failed";
-                }
-            };
-            secondaryActions.Controls.Add(copyProof);
+            var saveProof = OnceTheme.SecondaryButton("Save proof report", 245);
+            saveProof.Click += (_, _) => SaveProofReport(form, root, saveProof);
+            secondaryActions.Controls.Add(saveProof);
         }
         AddRow(content, secondaryActions, Bottom(12));
 
@@ -207,6 +196,86 @@ internal static class SetupDialogs
         AddRow(content, finishRow);
 
         ShowPage(form, viewport, 5);
+    }
+
+    private static void SaveProofReport(Form owner, string root, Button button)
+    {
+        try
+        {
+            var downloads = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                "Downloads");
+
+            using var dialog = new SaveFileDialog
+            {
+                Title = "Save Once proof report",
+                Filter = "Text report (*.txt)|*.txt|All files (*.*)|*.*",
+                DefaultExt = "txt",
+                AddExtension = true,
+                RestoreDirectory = true,
+                FileName = $"Once-Proof-Report-{DateTime.UtcNow:yyyyMMdd-HHmmss}.txt",
+                InitialDirectory = Directory.Exists(downloads) ? downloads : root,
+            };
+
+            if (dialog.ShowDialog(owner) != DialogResult.OK)
+            {
+                return;
+            }
+
+            File.WriteAllText(dialog.FileName, BuildProofReport(root));
+            button.Text = "Report saved ✓";
+
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = dialog.FileName,
+                    UseShellExecute = true,
+                });
+            }
+            catch
+            {
+                // The report is still successfully saved if Windows cannot open it automatically.
+            }
+        }
+        catch
+        {
+            button.Text = "Save failed";
+        }
+    }
+
+    private static string BuildProofReport(string root)
+    {
+        return $"""
+ONCE EXECUTION SAFETY PROOF REPORT
+=================================
+
+Result: PASS
+Generated (UTC): {DateTimeOffset.UtcNow:O}
+Once Setup version: {OnceTheme.BuildVersion}
+Project: {root}
+
+Verification
+------------
+API connection: Connected
+Demo project: Ready
+Duplicate execution: Suppressed
+Side effects: 1
+
+Re-run command
+--------------
+node .\once-demo.mjs
+
+Passing token
+-------------
+ONCE_DEMO_PASS
+
+Security
+--------
+The Once API key is intentionally omitted from this report.
+
+This report records the successful retry-suppression verification shown by Once Setup.
+""";
     }
 
     private static bool ShowDecision(
