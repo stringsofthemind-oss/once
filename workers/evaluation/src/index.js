@@ -319,8 +319,8 @@ const PAGE = `<!doctype html>
 
   <div class="step">
     <h2>Step 2 — Let Once install itself</h2>
-    <p>On Windows, click the button below. It copies your API key to the clipboard and downloads the Once setup launcher. The launcher reads the key from your clipboard, so you do not have to paste commands into PowerShell.</p>
-    <button id="installWindows" class="installbtn" type="button">Install Once on Windows</button>
+    <p>On Windows, first click <strong>Copy API key</strong> above. Then click the button below to download the Once setup launcher. The launcher reads the key from your clipboard, so you do not have to paste commands into PowerShell.</p>
+    <button id="installWindows" class="installbtn" type="button">Download OnceSetup</button>
     <p id="installStatus" class="muted small">Automatic installer: Windows + Node.js 18 or newer.</p>
   </div>
 
@@ -401,15 +401,7 @@ installWindows.addEventListener("click",async()=>{
   }
 
   installWindows.disabled=true;
-  installStatus.textContent="Copying your API key and preparing OnceSetup…";
-
-  try{
-    await navigator.clipboard.writeText(key);
-  }catch{
-    installStatus.textContent="Your browser blocked clipboard access. Click Copy API key first, then click Install Once again.";
-    installWindows.disabled=false;
-    return;
-  }
+  installStatus.textContent="Preparing OnceSetup…";
 
   const link=document.createElement("a");
   link.href="/install/windows.cmd";
@@ -418,7 +410,7 @@ installWindows.addEventListener("click",async()=>{
   link.click();
   link.remove();
 
-  installStatus.textContent="OnceSetup.cmd downloaded. Open it from your Downloads list and follow the buttons. Your API key is already on the clipboard.";
+  installStatus.textContent="OnceSetup.cmd downloaded. Open it from your Downloads list and follow the buttons. If setup says the key is missing, click Copy API key above and run OnceSetup again.";
   installWindows.textContent="Download OnceSetup again";
   installWindows.disabled=false;
 });
