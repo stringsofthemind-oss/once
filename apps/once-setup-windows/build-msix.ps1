@@ -1,5 +1,5 @@
 param(
-  [string]$Version = "0.1.4.0",
+  [string]$Version = "0.1.5.0",
   [string]$Publisher = "CN=Once Test",
   [string]$OutputDirectory = ""
 )
