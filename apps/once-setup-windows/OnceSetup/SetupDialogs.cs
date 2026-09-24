@@ -142,16 +142,24 @@ internal static class SetupDialogs
         };
         AddRow(content, badge, Bottom(18));
         AddRow(content, OnceTheme.Heading("ONCE IS READY", 23F), Bottom(10));
-        AddRow(content, OnceTheme.Paragraph("Installed, connected, and verified. You're all set."), Bottom(22));
+        AddRow(content, OnceTheme.Paragraph(
+            isDemo
+                ? "Installed, connected, and verified. The retry-suppression proof passed."
+                : "Installed, connected, and verified. You're ready to integrate Once into this project."), Bottom(22));
 
         var statusText = isDemo
             ? "✓ API connection — Connected\n✓ Project — Demo project\n✓ Safety behavior — Verified, duplicate suppressed\n✓ Side effects — Stayed at 1"
             : "✓ API connection — Connected\n✓ SDK — Installed\n✓ Environment — Key stored in .env\n✓ Source files — Unchanged";
         AddRow(content, InfoCard("VERIFICATION", statusText), Bottom(16));
-        AddRow(content, InfoCard(isDemo ? "DEMO FOLDER" : "PROJECT", root), Bottom(22));
+        AddRow(content, InfoCard(isDemo ? "DEMO FOLDER" : "PROJECT", root), Bottom(16));
+
+        var nextStep = isDemo
+            ? "Run the proof again any time from this demo folder:\nnode .\\once-demo.mjs\n\nA passing run prints ONCE_DEMO_PASS."
+            : "Open this project and integrate the Once SDK around consequential side-effecting operations that may be retried. Your application source has not been modified by setup.";
+        AddRow(content, InfoCard("NEXT STEP", nextStep), Bottom(22));
 
         var buttons = ButtonRow();
-        var openFolder = OnceTheme.SecondaryButton("Open project folder", 260);
+        var openFolder = OnceTheme.SecondaryButton(isDemo ? "Open demo folder" : "Open project folder", 250);
         openFolder.Margin = new Padding(0, 0, OnceTheme.S(14), 0);
         openFolder.Click += (_, _) =>
         {
@@ -168,10 +176,29 @@ internal static class SetupDialogs
                 // Completion remains successful if Explorer cannot be opened.
             }
         };
+        buttons.Controls.Add(openFolder);
+
+        if (isDemo)
+        {
+            var copyProof = OnceTheme.SecondaryButton("Copy proof command", 245);
+            copyProof.Margin = new Padding(0, 0, OnceTheme.S(14), 0);
+            copyProof.Click += (_, _) =>
+            {
+                try
+                {
+                    Clipboard.SetText("node .\\once-demo.mjs");
+                    copyProof.Text = "Copied ✓";
+                }
+                catch
+                {
+                    copyProof.Text = "Copy failed";
+                }
+            };
+            buttons.Controls.Add(copyProof);
+        }
 
         var finish = OnceTheme.PrimaryButton("Finish setup  →", 235);
         finish.Click += (_, _) => form.Close();
-        buttons.Controls.Add(openFolder);
         buttons.Controls.Add(finish);
         AddRow(content, buttons);
 
