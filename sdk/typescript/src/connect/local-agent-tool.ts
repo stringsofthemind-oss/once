@@ -4,6 +4,11 @@ import {
   type ConnectSafetyDeclaration,
 } from "./classifier.js";
 import {
+  CONNECT_TOOL_DECISION,
+  classifyConnectTool,
+  type ConnectToolDescriptor,
+} from "./tool-classifier.js";
+import {
   protectLocal,
   type LocalObservation,
 } from "../local.js";
@@ -22,6 +27,22 @@ export interface LocalAgentToolContract<Input, Result> {
   /** One intentional action ID, reused for retries. Required when protected. */
   id?: (input: Input) => string;
   /** Every input that can change the external effect. Required when protected. */
+  payload?: (input: Input) => EffectPayload;
+  /** Durable same-machine SQLite file, shared by all callers of this tool. */
+  statePath?: string;
+  /** Read-only, authoritative provider lookup for an uncertain outcome. */
+  reconcile?: (context: {
+    id: string;
+    payload: EffectPayload;
+  }) => Promise<LocalObservation<Result>> | LocalObservation<Result>;
+}
+
+export interface AutoLocalAgentToolContract<Input, Result> {
+  /** Tool metadata used by Once Connect to infer PROTECT/BYPASS/UNKNOWN. */
+  descriptor: ConnectToolDescriptor;
+  /** One intentional action ID, reused for retries. Required when inferred protected. */
+  id?: (input: Input) => string;
+  /** Every input that can change the external effect. Required when inferred protected. */
   payload?: (input: Input) => EffectPayload;
   /** Durable same-machine SQLite file, shared by all callers of this tool. */
   statePath?: string;
@@ -113,4 +134,63 @@ export function connectLocalAgentTool<Input, Result>(
   return {
     execute: (input) => protectedExecute(input),
   };
+}
+
+const AUTO_PROTECTED_SAFETY: ConnectSafetyDeclaration = Object.freeze({
+  changesExternalState: true,
+  retryPossible: true,
+  ambiguousOutcomePossible: true,
+  duplicateUndesirable: true,
+});
+
+const AUTO_BYPASS_SAFETY: ConnectSafetyDeclaration = Object.freeze({
+  changesExternalState: false,
+  retryPossible: false,
+  ambiguousOutcomePossible: false,
+  duplicateUndesirable: false,
+});
+
+/**
+ * Connect a local agent tool using its descriptor instead of a hand-authored
+ * four-boolean safety declaration.
+ *
+ * Automatic routing is intentionally conservative:
+ * - PROTECT -> delegate to the existing protected local connector;
+ * - BYPASS -> delegate to the existing bypass path;
+ * - UNKNOWN -> refuse connection until the tool is clarified.
+ *
+ * Inferred protection does not weaken operation identity requirements. A
+ * protected tool still needs a stable intent ID and complete effect payload.
+ */
+export function connectLocalAgentToolAuto<Input, Result>(
+  tool: AgentTool<Input, Result>,
+  contract: AutoLocalAgentToolContract<Input, Result>,
+): AgentTool<Input, Result> {
+  if (!contract || !contract.descriptor) {
+    throw new AgentToolConnectionError(
+      "UNKNOWN_TOOL_SAFETY",
+      "Once Connect needs a tool descriptor before automatic routing can be established.",
+    );
+  }
+
+  const classification = classifyConnectTool(contract.descriptor);
+
+  if (classification.decision === CONNECT_TOOL_DECISION.UNKNOWN) {
+    throw new AgentToolConnectionError(
+      "UNKNOWN_TOOL_SAFETY",
+      `Once Connect cannot safely auto-route ${contract.descriptor.name || "this tool"}: ${classification.reason}.`,
+    );
+  }
+
+  return connectLocalAgentTool(tool, {
+    name: contract.descriptor.name,
+    safety:
+      classification.decision === CONNECT_TOOL_DECISION.PROTECT
+        ? AUTO_PROTECTED_SAFETY
+        : AUTO_BYPASS_SAFETY,
+    id: contract.id,
+    payload: contract.payload,
+    statePath: contract.statePath,
+    reconcile: contract.reconcile,
+  });
 }
