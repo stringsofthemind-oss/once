@@ -23,6 +23,10 @@ All notable changes to the Once SDK are documented here.
 - Framework adapters preserve same-named tools as distinct observations when their safe descriptions, schemas, or metadata differ instead of collapsing them by name alone.
 - Phase 11D execution observation with `EXECUTED` Tool Graph evidence, observed call counters/outcomes/timing, and action-priority recomputation after real execution evidence.
 - Observation-only execution adapters for OpenAI Agents lifecycle events, Vercel AI SDK completed-step results, LangChain/LangGraph tool callbacks, and OpenTelemetry GenAI `execute_tool` spans.
+- Phase 11E selective Gateway routing through the public `@once-agent/sdk/gateway` ESM/CommonJS/TypeScript subpath, with deterministic `DIRECT`, `PROTECT`, and fail-closed `BLOCK` routes for the runtime-selected tool subset.
+- Phase 11E local Gateway broker through `connectLocalGatewayToolsetAuto`, delegating protected execution to the existing Connect/`protectLocal` engine rather than introducing a second execution engine.
+- Exact Tool Graph-to-Gateway binding by canonical tool name plus descriptor fingerprint, preserving strong discovery/execution evidence for reporting without allowing that evidence to downgrade a planned protection route.
+- Structural OpenAI Agents FunctionTool Gateway integration through `connectOpenAIAgentsFunctionToolsGatewayAuto` without adding a hard `@openai/agents` dependency or expanding the supplied model-visible tool subset.
 
 ### Safety and validation
 
@@ -41,6 +45,10 @@ All notable changes to the Once SDK are documented here.
 - Phase 11D observers do not wrap or invoke tools to learn that they ran, and do not retain tool arguments/results, prompts, exception text, auth, provider/model metadata, callbacks, or arbitrary runtime objects.
 - Execution promotion requires exact Tool Graph correlation plus a safe descriptor fingerprint; duplicate or ambiguous name-only telemetry fails closed rather than promoting the wrong tool.
 - Phase 11D is release-gated by an end-to-end `RUNTIME_REGISTERED -> MODEL_VISIBLE -> EXECUTED` evidence ladder and a fresh packed-tarball ESM/CommonJS/TypeScript execution-observation consumer.
+- Phase 11E never converts `BLOCK` into direct execution, never injects the global Tool Graph into model context, and refuses partial wiring when any selected tool remains unresolved.
+- Phase 11E Tool Graph binding fails closed on missing, stale, fingerprint-mismatched, or ambiguous records; Tool Graph evidence can increase urgency/confidence but cannot weaken `PROTECT`.
+- Phase 11E OpenAI Gateway proof keeps transport/tool-call IDs separate from logical Once operation identity; retries with different transport IDs but the same trusted intent replay one confirmed protected effect.
+- Phase 11E is release-gated by a fresh packed Node.js 24.15 customer-artifact regression proving mixed `DIRECT`/`PROTECT` routing, one protected effect across retries, changed-payload conflict blocking, exact Tool Graph binding, OpenAI structural integration, and durable local SQLite state.
 - CrewAI, LlamaIndex, and Agno runtime adapters are explicitly deferred to the later discovery backlog rather than blocking Phase 11D execution observation.
 - No universal exactly-once claim is made; local automatic protection remains same-machine SQLite coordination and ambiguous outcomes still require authoritative reconciliation where applicable.
 
