@@ -11,12 +11,21 @@ import type {
 
 type JsonRecord = Record<string, unknown>;
 
-export type LangChainRuntimeToolObservation = RuntimeToolObservation & {
-  framework: "langchain";
-  origin: RuntimeToolObservation["origin"] & {
-    source: "langchain.tools" | "langchain.bindTools";
+type BaseRuntimeObservation = Omit<
+  RuntimeToolObservation,
+  "framework" | "origin" | "safeMetadata"
+>;
+
+export type LangChainRuntimeToolObservation =
+  BaseRuntimeObservation & {
+    framework: "langchain";
+    origin: Omit<RuntimeToolObservation["origin"], "source"> & {
+      source: "langchain.tools" | "langchain.bindTools";
+    };
+    safeMetadata?: NonNullable<RuntimeToolObservation["safeMetadata"]> & {
+      returnDirect?: boolean;
+    };
   };
-};
 
 export type LangChainRegisteredToolSnapshot = {
   framework: "langchain";
@@ -224,9 +233,10 @@ function observeLangChainTool(
     ownDataValue(tool, "func"),
   ].some(value => typeof value === "function");
 
+  const rawReturnDirect = ownDataValue(tool, "returnDirect");
   const returnDirect =
-    typeof ownDataValue(tool, "returnDirect") === "boolean"
-      ? ownDataValue(tool, "returnDirect") as boolean
+    typeof rawReturnDirect === "boolean"
+      ? rawReturnDirect
       : undefined;
 
   const namespace =
@@ -236,7 +246,9 @@ function observeLangChainTool(
     ? "function"
     : "structured_tool";
 
-  const safeMetadata = {
+  const safeMetadata: NonNullable<
+    LangChainRuntimeToolObservation["safeMetadata"]
+  > = {
     autoExecutable,
     ...(schemaOpaque ? { schemaOpaque: true } : {}),
     ...(returnDirect !== undefined ? { returnDirect } : {}),
@@ -287,7 +299,7 @@ function observeLangChainTool(
     ...(schema !== undefined ? { inputSchema: schema } : {}),
     safeMetadata,
     once,
-  } as LangChainRuntimeToolObservation;
+  };
 }
 
 function discover(
