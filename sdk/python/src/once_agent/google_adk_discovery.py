@@ -132,11 +132,13 @@ def _is_opaque_tool_source(value: Any) -> bool:
     except (AttributeError, TypeError):
         class_dict = {}
 
+    # These identify a source that must be resolved before concrete tools are
+    # known. BaseTool itself may expose process_llm_request, so that method is
+    # intentionally NOT a toolset marker.
     callable_markers = (
         "get_tools",
         "list_tools",
         "canonical_tools",
-        "process_llm_request",
     )
 
     for key in callable_markers:
