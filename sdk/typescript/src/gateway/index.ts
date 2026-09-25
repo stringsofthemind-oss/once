@@ -10,6 +10,10 @@ export {
   connectLocalGatewayToolsetAuto,
 } from "./local-toolset.js";
 
+export {
+  bindGatewayPlanToToolGraph,
+} from "./tool-graph-binding.js";
+
 export type {
   GatewayRoute,
   GatewayPlanEntry,
@@ -21,3 +25,11 @@ export type {
   LocalGatewayToolsetOptions,
   ConnectedLocalGatewayToolset,
 } from "./local-toolset.js";
+
+export type {
+  GatewayToolGraphBinding,
+  GatewayToolGraphBindingStatus,
+  BoundGatewayPlanEntry,
+  BoundGatewayPlanSummary,
+  BoundGatewayPlan,
+} from "./tool-graph-binding.js";

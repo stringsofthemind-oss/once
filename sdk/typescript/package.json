@@ -43,7 +43,7 @@
     "test:agent-discovery": "node ./scripts/agent-discovery-regression.mjs",
     "test:doctor": "npm run build && node ./scripts/doctor-adoption-regression.mjs",
     "test:tool-discovery": "npm run build && node ./scripts/tool-discovery-regression.mjs && node ./scripts/mcp-live-discovery-regression.mjs && node ./scripts/mcp-tool-refresh-regression.mjs && node ./scripts/runtime-tool-discovery-regression.mjs && node ./scripts/vercel-runtime-tool-discovery-regression.mjs && node ./scripts/langchain-runtime-discovery-regression.mjs && node ./scripts/execution-observation-regression.mjs && node ./scripts/openai-agents-execution-observer-regression.mjs && node ./scripts/vercel-execution-observer-regression.mjs && node ./scripts/langchain-execution-observer-regression.mjs && node ./scripts/otel-execution-observer-regression.mjs && node ./scripts/phase11d-evidence-ladder-regression.mjs",
-    "test:gateway": "npm run build && node ./scripts/gateway-planner-regression.mjs && node ./scripts/gateway-broker-regression.mjs",
+    "test:gateway": "npm run build && node ./scripts/gateway-planner-regression.mjs && node ./scripts/gateway-broker-regression.mjs && node ./scripts/gateway-tool-graph-binding-regression.mjs",
     "routing:check": "node ./scripts/agent-routing-conformance.mjs",
     "routing:cases": "node ./scripts/agent-routing-conformance.mjs --emit-cases",
     "test:routing-conformance": "node ./scripts/agent-routing-conformance-regression.mjs",

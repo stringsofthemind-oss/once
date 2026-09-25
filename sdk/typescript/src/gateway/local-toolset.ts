@@ -9,14 +9,25 @@ import {
   planGatewayToolset,
   type GatewayPlan,
 } from "./planner.js";
+import {
+  bindGatewayPlanToToolGraph,
+  type BoundGatewayPlan,
+  type GatewayToolGraphBinding,
+} from "./tool-graph-binding.js";
 
-export type LocalGatewayToolsetOptions = AutoLocalAgentToolsetOptions;
+export interface LocalGatewayToolsetOptions
+  extends AutoLocalAgentToolsetOptions {
+  /** Optional exact Tool Graph identities for the selected runtime subset. */
+  toolGraphBindings?: readonly GatewayToolGraphBinding[];
+}
 
 export interface ConnectedLocalGatewayToolset<
   T extends LocalAgentToolRegistry,
 > {
   /** Frozen gateway route plan for exactly the supplied runtime-selected subset. */
   plan: Readonly<GatewayPlan>;
+  /** Exact Tool Graph binding result when bindings were supplied. */
+  binding?: BoundGatewayPlan;
   /** Frozen registry. Expose this registry to the runtime instead of the originals. */
   tools: Readonly<ConnectedLocalAgentToolRegistry<T>>;
 }
@@ -31,6 +42,12 @@ export class GatewayConnectionError extends Error {
 function blockedSummary(plan: Readonly<GatewayPlan>): string {
   return plan.blocked
     .map(entry => `${entry.name ?? `#${entry.index}`}:${entry.connectReason}`)
+    .join(", ");
+}
+
+function bindingBlockedSummary(plan: BoundGatewayPlan): string {
+  return plan.blocked
+    .map(entry => `${entry.name ?? `#${entry.index}`}:${entry.bindingStatus}`)
     .join(", ");
 }
 
@@ -71,8 +88,8 @@ function verifyConnectAgreement(
  * Wire a complete runtime-selected local tool subset through the Once Gateway.
  *
  * This function intentionally contains no execution engine. It performs a
- * gateway preflight, then delegates all registry validation and wrapper
- * creation to the existing Connect toolset path.
+ * gateway preflight, optionally binds exact Tool Graph identity, then delegates
+ * registry validation and wrapper creation to the existing Connect toolset.
  *
  * A selected subset containing BLOCK cannot be partially wired. Returning a
  * mixed registry would leave an unprotected bypass surface for unresolved
@@ -107,11 +124,30 @@ export function connectLocalGatewayToolsetAuto<
     );
   }
 
+  let binding: BoundGatewayPlan | undefined;
+  if (options.toolGraphBindings !== undefined) {
+    if (!Array.isArray(options.toolGraphBindings)) {
+      throw new GatewayConnectionError(
+        "INVALID_TOOL_GRAPH_BINDINGS",
+        "Once Gateway Tool Graph bindings must be an array of safe identity records.",
+      );
+    }
+
+    binding = bindGatewayPlanToToolGraph(plan, options.toolGraphBindings);
+    if (!binding.ready) {
+      throw new GatewayConnectionError(
+        "GATEWAY_TOOL_GRAPH_BLOCKED",
+        `Once Gateway refuses wiring because selected tools do not match exact Tool Graph identity: ${bindingBlockedSummary(binding)}.`,
+      );
+    }
+  }
+
   const connected = connectLocalAgentToolsetAuto(tools, options);
   verifyConnectAgreement(plan, connected.plan);
 
   return Object.freeze({
     plan,
+    ...(binding ? { binding } : {}),
     tools: connected.tools,
   });
 }
