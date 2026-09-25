@@ -5,6 +5,12 @@ on:
     paths:
       - "examples/agno-hostile-retry/**"
       - ".github/workflows/agno-hostile-retry.yml"
+  push:
+    branches:
+      - evidence/agno-hostile-retry-v1
+    paths:
+      - "examples/agno-hostile-retry/**"
+      - ".github/workflows/agno-hostile-retry.yml"
   workflow_dispatch:
 
 permissions:
