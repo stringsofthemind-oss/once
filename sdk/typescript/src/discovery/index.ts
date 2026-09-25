@@ -22,6 +22,10 @@ export {
   createOpenAIAgentsExecutionObserver,
 } from "../openai-agents-execution-observer.js";
 
+export {
+  observeVercelAiSdkStepExecutions,
+} from "../vercel-execution-observer.js";
+
 export type {
   RuntimeToolFramework,
   RuntimeToolSource,
