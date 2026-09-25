@@ -13,6 +13,7 @@ internal sealed class MonitorSettings
     public bool ActivityNotifications { get; set; }
     public bool AutomaticDiscovery { get; set; } = true;
     public int RefreshSeconds { get; set; } = 30;
+    public bool WelcomeShown { get; set; }
 }
 
 internal sealed record StartupPreferenceResult(
