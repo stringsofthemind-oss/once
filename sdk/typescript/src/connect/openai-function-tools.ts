@@ -16,11 +16,20 @@ import {
 } from "./toolset.js";
 import {
   AgentToolConnectionError,
-  type LocalObservation,
 } from "./local-agent-tool.js";
+import {
+  OpenAIAgentsConnectError,
+} from "./openai-agents.js";
 import type {
   ConnectManifestPlan,
 } from "./manifest.js";
+import type {
+  LocalObservation,
+} from "../local.js";
+
+export {
+  OpenAIAgentsConnectError,
+} from "./openai-agents.js";
 
 export type OpenAIAgentsParsedToolInput =
   Record<string, unknown>;
@@ -103,6 +112,18 @@ function isObject(
   return value !== null &&
     typeof value === "object" &&
     !Array.isArray(value);
+}
+
+function isFunctionToolLike(
+  value: unknown,
+): value is OpenAIAgentsFunctionToolLike {
+  return isObject(value) &&
+    value.type === "function" &&
+    typeof value.name === "string" &&
+    value.name.trim() !== "" &&
+    typeof value.description === "string" &&
+    Object.prototype.hasOwnProperty.call(value, "parameters") &&
+    typeof value.invoke === "function";
 }
 
 function parseProtectedInput(
@@ -234,9 +255,12 @@ function cloneFunctionToolWithInvoke<
   invoke: T["invoke"],
 ): T {
   const descriptors = Object.getOwnPropertyDescriptors(tool);
-  const originalInvoke = descriptors.invoke;
+  const originalInvoke = Object.getOwnPropertyDescriptor(
+    tool,
+    "invoke",
+  );
 
-  delete descriptors.invoke;
+  Reflect.deleteProperty(descriptors, "invoke");
 
   const clone = Object.create(
     Object.getPrototypeOf(tool),
@@ -247,23 +271,10 @@ function cloneFunctionToolWithInvoke<
     value: invoke,
     enumerable: originalInvoke?.enumerable ?? true,
     configurable: originalInvoke?.configurable ?? true,
-    writable:
-      "writable" in (originalInvoke ?? {})
-        ? Boolean(originalInvoke?.writable)
-        : true,
+    writable: originalInvoke?.writable ?? true,
   });
 
   return clone;
-}
-
-export class OpenAIAgentsConnectError extends Error {
-  constructor(
-    message: string,
-    readonly code: string,
-  ) {
-    super(message);
-    this.name = "OpenAIAgentsConnectError";
-  }
 }
 
 /**
@@ -301,16 +312,9 @@ export function connectOpenAIAgentsFunctionToolsAuto<
   const originals = new Map<string, OpenAIAgentsFunctionToolLike>();
 
   for (const candidate of tools) {
-    if (
-      !isObject(candidate) ||
-      candidate.type !== "function" ||
-      typeof candidate.name !== "string" ||
-      candidate.name.trim() === "" ||
-      typeof candidate.description !== "string" ||
-      typeof candidate.invoke !== "function"
-    ) {
+    if (!isFunctionToolLike(candidate)) {
       throw new OpenAIAgentsConnectError(
-        "Once Connect v1 supports only OpenAI Agents FunctionTool objects with name, description and invoke.",
+        "Once Connect v1 supports only OpenAI Agents FunctionTool objects with name, description, parameters and invoke.",
         "UNSUPPORTED_OPENAI_TOOL_TYPE",
       );
     }
@@ -407,7 +411,7 @@ export function connectOpenAIAgentsFunctionToolsAuto<
 
     return cloneFunctionToolWithInvoke(
       tool,
-      wrappedInvoke as T[number]["invoke"],
+      wrappedInvoke as typeof tool.invoke,
     );
   }) as unknown as {
     [K in keyof T]: T[K]
