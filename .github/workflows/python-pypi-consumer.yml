@@ -1,0 +1,41 @@
+name: Python Public Consumer Proof
+
+on:
+  pull_request:
+    paths:
+      - "README.md"
+      - "docs/agent.md"
+      - "docs/llms.txt"
+      - "docs/index.html"
+      - "sdk/python/README.md"
+      - "scripts/verify-python-pypi-consumer.py"
+      - ".github/workflows/python-pypi-consumer.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-pypi-consumer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Use Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Create clean consumer environment
+        shell: bash
+        run: |
+          python -m venv "$RUNNER_TEMP/once-python-consumer"
+          source "$RUNNER_TEMP/once-python-consumer/bin/activate"
+          python -m pip install --upgrade pip
+          python -m pip install "once-agent-sdk==0.1.1"
+          python "$GITHUB_WORKSPACE/scripts/verify-python-pypi-consumer.py"
