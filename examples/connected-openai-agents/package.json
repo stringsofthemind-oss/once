@@ -1,0 +1,12 @@
+{
+  "name": "once-connected-openai-agents",
+  "private": true,
+  "type": "module",
+  "scripts": { "verify": "node verify.mjs", "benchmark": "node benchmark.mjs" },
+  "engines": { "node": ">=24.15.0" },
+  "dependencies": {
+    "@once-agent/sdk": "0.1.11",
+    "@openai/agents": "0.18.0",
+    "zod": "4.6.5"
+  }
+}
