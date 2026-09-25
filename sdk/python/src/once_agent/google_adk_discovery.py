@@ -127,15 +127,26 @@ def _namespace(runtime_name: Optional[str]) -> str:
 
 def _is_opaque_tool_source(value: Any) -> bool:
     data = _instance_dict(value)
-    if not data:
-        return False
+    try:
+        class_dict = type(value).__dict__
+    except (AttributeError, TypeError):
+        class_dict = {}
+
     callable_markers = (
         "get_tools",
         "list_tools",
         "canonical_tools",
         "process_llm_request",
     )
-    return any(callable(data.get(key)) for key in callable_markers)
+
+    for key in callable_markers:
+        if callable(data.get(key)):
+            return True
+        descriptor = class_dict.get(key) if isinstance(class_dict, Mapping) else None
+        if callable(descriptor):
+            return True
+
+    return False
 
 
 def _registered_items(value: Any) -> Tuple[Iterable[Any], int]:
