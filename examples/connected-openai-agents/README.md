@@ -31,3 +31,14 @@ machine. Multi-host deployments need a separate supported integration.
 A scripted model validates framework integration, not whether a live LLM
 will choose the right tool or reliably understand user intent. A live model
 run requires API credentials and separate verification.
+
+## Measure local boundary latency
+
+Run `npm run benchmark` to report the median and p95 latency for 100 distinct
+confirmed claims and 100 confirmed replays on your machine. This times the
+published Once wrapper with a zero-latency fake provider. It excludes model
+latency, actual provider/network latency, concurrent writes, and ambiguous
+outcomes requiring a provider truth lookup. Treat these as local measurements,
+not production service guarantees. SQLite protects effects durably, so
+connection and disk contention can increase latency; an unresolved outcome
+may remain blocked until provider truth is available.
