@@ -269,13 +269,71 @@ If the answer is yes, reuse the same operation ID.
 
 The package includes the `once` CLI.
 
-A typical workflow is:
+Start with Doctor:
 
-```text
-setup -> scan -> protect -> apply -> doctor
+```bash
+npx once doctor .
 ```
 
-### 1. Set up Once
+Doctor is local and read-only by default. It does not require `ONCE_API_KEY`, does not upload source code, and does not change source files. It reports detected project metadata and likely consequential-operation candidates, then prints the exact `once protect` command for the next step.
+
+A typical first-run workflow is:
+
+```text
+doctor -> protect -> setup/integrate -> apply (when eligible)
+```
+
+### 1. Diagnose locally
+
+```bash
+npx once doctor .
+```
+
+Generate a review plan and per-callsite integration snippets without changing source:
+
+```bash
+npx once doctor . --protect
+```
+
+To explicitly verify a configured hosted Once connection as well:
+
+```bash
+npx once doctor . --connection
+```
+
+Hosted connection verification requires `ONCE_API_KEY`. The default Doctor scan does not.
+
+### 2. Review protection candidates
+
+```bash
+npx once protect .
+```
+
+Include all confidence levels:
+
+```bash
+npx once protect . --all
+```
+
+Write a review plan:
+
+```bash
+npx once protect . --all --write-plan
+```
+
+This can create:
+
+```text
+.once/protect-plan.json
+```
+
+Generate per-callsite integration guidance:
+
+```bash
+npx once protect . --all --snippets
+```
+
+### 3. Set up Once when integration requires it
 
 ```bash
 npx once setup .
@@ -301,55 +359,23 @@ Preview setup without making changes:
 npx once setup . --plan
 ```
 
-### 2. Scan for consequential operations
+### 4. Use the standalone scanner when you want raw scan output
 
 ```bash
 npx once scan .
 ```
 
-The scanner looks locally for likely side-effecting operations that may benefit from Once protection.
+The scanner looks locally for likely side-effecting operations that may benefit from Once protection. Source code is reviewed locally by the CLI and is not uploaded.
 
-Source code is reviewed locally by the CLI. The scanner does not require uploading your source code.
+### 5. Preview or apply an eligible transformation
 
-### 3. Review protection candidates
-
-```bash
-npx once protect .
-```
-
-Include all confidence levels:
-
-```bash
-npx once protect . --all
-```
-
-Write a review plan:
-
-```bash
-npx once protect . --all --write-plan
-```
-
-This can create:
-
-```text
-.once/protect-plan.json
-```
-
-### 4. Preview a patch
+Preview a patch without modifying application source:
 
 ```bash
 npx once protect . --all --patch
 ```
 
-This generates a reviewable patch preview without directly modifying the application source.
-
-You can also generate integration guidance:
-
-```bash
-npx once protect . --all --snippets
-```
-
-### 5. Apply an eligible transformation
+Apply exactly one eligible, revalidated transformation:
 
 ```bash
 npx once protect . --apply
@@ -362,14 +388,6 @@ Automatic application only proceeds for a narrowly supported callsite that is fu
 The apply engine checks the source fingerprint, recomputes the proposed transformation, verifies TypeScript, writes a backup, uses a temporary file, verifies the result, and rolls back if post-write validation fails.
 
 If there are zero or multiple PATCHABLE candidates, automatic apply is rejected rather than guessing.
-
-### 6. Verify the connection
-
-```bash
-npx once doctor
-```
-
-`doctor` verifies that the SDK can reach the configured Once service.
 
 ## protect status meanings
 
@@ -515,5 +533,4 @@ That is the failure mode Once is built to address.
 ## License
 
 MIT
-
 
