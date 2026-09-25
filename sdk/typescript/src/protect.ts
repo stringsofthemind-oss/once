@@ -384,6 +384,21 @@ function buildIntegrationSnippet(
     `Preserve the original operation semantics.`,
     `Use one stable operationId for each real-world action.`,
     `Retries of that same action must reuse the same operationId.`,
+    ...(candidate.automation_status === "ADAPTER_REQUIRED"
+      ? [
+          ``,
+          `NEXT STEPS FOR ADAPTER_REQUIRED`,
+          `-------------------------------`,
+          `No automatic source rewrite is available for this callsite.`,
+          `For a controlled first proof with a fake effect on one machine, see:`,
+          `https://github.com/stringsofthemind-oss/once/tree/main/examples/local-function`,
+          `That Node 24.15+ proof needs no API key; it is not a production`,
+          `integration and does not coordinate separate hosts.`,
+          `For the real operation, first establish a supported provider adapter`,
+          `or capability that preserves the exact effect and recovery semantics.`,
+          `Do not replace the original call merely because it was detected.`,
+        ]
+      : []),
     ``,
     `Configured provider: ${providerName}`,
     ``,
@@ -1177,6 +1192,27 @@ export async function runProtect(
         }`
       );
     }
+  }
+
+  if (
+    candidates.some(
+      candidate =>
+        candidate.automation_status === "ADAPTER_REQUIRED"
+    )
+  ) {
+    console.log("");
+    console.log(
+      "ADAPTER_REQUIRED: No automatic rewrite is available for these operations."
+    );
+    console.log(
+      "For a controlled fake-effect proof on one machine (Node 24.15+, no API key):"
+    );
+    console.log(
+      "https://github.com/stringsofthemind-oss/once/tree/main/examples/local-function"
+    );
+    console.log(
+      "A real operation needs a supported integration preserving its exact effect and recovery semantics."
+    );
   }
 
   console.log("");
