@@ -71,19 +71,28 @@ internal sealed class MonitorApplicationContext : ApplicationContext
 
     private async Task InitializeAsync()
     {
-        _settings.StartWithWindows =
-            await MonitorSettingsStore.IsStartWithWindowsEnabledAsync();
-
-        if (!_settings.WelcomeShown && _settings.NotificationsEnabled)
+        try
         {
-            ShowNotification(
-                "Once Monitor is ready",
-                "Look for the 1x icon in the Windows system tray. Click it to view local Once status, tools, Doctor, and settings.",
-                ToolTipIcon.Info);
-            _settings.WelcomeShown = true;
+            _settings.StartWithWindows =
+                await MonitorSettingsStore.IsStartWithWindowsEnabledAsync();
+
+            if (!_settings.WelcomeShown && _settings.NotificationsEnabled)
+            {
+                ShowNotification(
+                    "Once Monitor is ready",
+                    "Look for the 1x icon in the Windows system tray. Click it to view local Once status, tools, Doctor, and settings.",
+                    ToolTipIcon.Info);
+                _settings.WelcomeShown = true;
+            }
+
+            MonitorSettingsStore.Save(_settings);
+        }
+        catch
+        {
+            // Preferences are assistive state. A settings persistence problem
+            // must not crash the tray process or affect Once protection.
         }
 
-        MonitorSettingsStore.Save(_settings);
         await RefreshAsync();
     }
 
@@ -147,6 +156,14 @@ internal sealed class MonitorApplicationContext : ApplicationContext
             _previousExecutionEvidence = nextExecution;
             _previousAttention = nextAttention;
         }
+        catch
+        {
+            _state = new MonitorLoadResult(
+                null,
+                "Once Monitor could not refresh local status. Protection was not changed.");
+            _panel.ApplyState(_state);
+            UpdateTrayFromState();
+        }
         finally
         {
             _refreshing = false;
@@ -155,23 +172,34 @@ internal sealed class MonitorApplicationContext : ApplicationContext
 
     private async Task SaveSettingsAsync(MonitorSettings settings)
     {
-        var startup =
-            await MonitorSettingsStore.ApplyStartWithWindowsAsync(
-                settings.StartWithWindows);
+        try
+        {
+            var startup =
+                await MonitorSettingsStore.ApplyStartWithWindowsAsync(
+                    settings.StartWithWindows);
 
-        settings.StartWithWindows = startup.Enabled;
+            settings.StartWithWindows = startup.Enabled;
 
-        if (!startup.Applied && !string.IsNullOrWhiteSpace(startup.Error))
+            if (!startup.Applied && !string.IsNullOrWhiteSpace(startup.Error))
+            {
+                ShowNotification(
+                    "Once Monitor startup setting not changed",
+                    startup.Error,
+                    ToolTipIcon.Warning,
+                    respectNotificationPreference: false);
+            }
+
+            MonitorSettingsStore.Save(settings);
+            ResetRefreshTimer();
+        }
+        catch
         {
             ShowNotification(
-                "Once Monitor startup setting not changed",
-                startup.Error,
+                "Once Monitor settings were not saved",
+                "Windows could not persist the Monitor preference change. Once protection was not changed.",
                 ToolTipIcon.Warning,
                 respectNotificationPreference: false);
         }
-
-        MonitorSettingsStore.Save(settings);
-        ResetRefreshTimer();
     }
 
     private void ResetRefreshTimer()
