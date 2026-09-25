@@ -14,6 +14,10 @@ export {
   bindGatewayPlanToToolGraph,
 } from "./tool-graph-binding.js";
 
+export {
+  connectOpenAIAgentsFunctionToolsGatewayAuto,
+} from "./openai-function-tools.js";
+
 export type {
   GatewayRoute,
   GatewayPlanEntry,
@@ -33,3 +37,8 @@ export type {
   BoundGatewayPlanSummary,
   BoundGatewayPlan,
 } from "./tool-graph-binding.js";
+
+export type {
+  GatewayOpenAIAgentsFunctionToolsOptions,
+  GatewayOpenAIAgentsFunctionTools,
+} from "./openai-function-tools.js";
