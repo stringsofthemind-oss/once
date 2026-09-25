@@ -23,7 +23,7 @@ internal sealed class MonitorApplicationContext : ApplicationContext
             _settings,
             RefreshAsync,
             () => _statusService.RunDoctorAsync(_settings),
-            SaveSettingsAsync,
+            settings => _ = SaveSettingsAsync(settings),
             CopyDiagnostics);
 
         var menu = new ContextMenuStrip();
