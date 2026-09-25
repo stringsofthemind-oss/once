@@ -46,6 +46,16 @@ export type {
 } from "./identity.js";
 
 export {
+  resolveConnectToolEffectPayload,
+} from "./payload.js";
+
+export type {
+  ConnectPayloadSource,
+  ConnectEffectPayloadResult,
+  ResolveConnectEffectPayloadInput,
+} from "./payload.js";
+
+export {
   connectLocalAgentToolAuto,
   AgentToolConnectionError,
 } from "./local-agent-tool.js";
