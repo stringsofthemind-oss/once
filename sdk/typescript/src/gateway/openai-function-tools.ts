@@ -85,7 +85,7 @@ function bindingBlockedSummary(plan: BoundGatewayPlan): string {
 
 function verifyConnectAgreement(
   gatewayPlan: Readonly<GatewayPlan>,
-  connectEntries: readonly Readonly<{ decision: string }[],
+  connectEntries: readonly Readonly<{ decision: string }>[],
 ): void {
   if (gatewayPlan.entries.length !== connectEntries.length) {
     throw new GatewayConnectionError(
