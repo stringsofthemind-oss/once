@@ -10,9 +10,11 @@ Set-StrictMode -Version Latest
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repo = Resolve-Path (Join-Path $here "..\..")
 $project = Join-Path $here "OnceSetup\OnceSetup.csproj"
+$monitorProject = Join-Path $repo "apps\once-monitor-windows\OnceMonitor\OnceMonitor.csproj"
 $manifestSource = Join-Path $here "Packaging\AppxManifest.xml"
 $work = Join-Path $here ".msix-build"
 $publish = Join-Path $work "publish"
+$monitorPublish = Join-Path $work "monitor-publish"
 $package = Join-Path $work "package"
 
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
@@ -21,6 +23,7 @@ if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
 
 Remove-Item $work -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Path $publish -Force | Out-Null
+New-Item -ItemType Directory -Path $monitorPublish -Force | Out-Null
 New-Item -ItemType Directory -Path $package -Force | Out-Null
 New-Item -ItemType Directory -Path (Join-Path $package "Assets") -Force | Out-Null
 New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
@@ -42,6 +45,24 @@ if (-not (Test-Path $exe)) {
   throw "OnceSetup.exe was not produced."
 }
 Copy-Item $exe (Join-Path $package "OnceSetup.exe") -Force
+
+Write-Host "Publishing Once Monitor..." -ForegroundColor Cyan
+& dotnet publish $monitorProject `
+  -c Release `
+  -r win-x64 `
+  --self-contained true `
+  -p:PublishSingleFile=true `
+  -p:PublishTrimmed=false `
+  -o $monitorPublish
+if ($LASTEXITCODE -ne 0) {
+  throw "Once Monitor dotnet publish failed with exit code $LASTEXITCODE"
+}
+
+$monitorExe = Join-Path $monitorPublish "OnceMonitor.exe"
+if (-not (Test-Path $monitorExe)) {
+  throw "OnceMonitor.exe was not produced."
+}
+Copy-Item $monitorExe (Join-Path $package "OnceMonitor.exe") -Force
 
 $manifest = [System.IO.File]::ReadAllText($manifestSource)
 $manifest = $manifest.Replace('Version="0.1.0.0"', ('Version="' + $Version + '"'))
@@ -163,6 +184,8 @@ This artifact is for private development testing only.
 Files:
 - $(Split-Path $msix -Leaf)
 - OnceSetup-Test.cer (only when Publisher is CN=Once Test)
+
+The package contains both Once Setup and the Once Monitor tray companion. A successful setup registers the selected project with Monitor and starts the tray process without passing the Once API key to it.
 
 The test certificate is intentionally not embedded with a private key. For a private sideload test, trust the .cer on the test machine before opening the .msix.
 
