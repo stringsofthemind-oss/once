@@ -17,21 +17,6 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 __name(sleep, "sleep");
-
-function onceTimingNow() {
-  const clock =
-    globalThis.performance;
-
-  if (
-    clock &&
-    typeof clock.now === "function"
-  ) {
-    return clock.now();
-  }
-
-  return Date.now();
-}
-__name(onceTimingNow, "onceTimingNow");
 function stripeTimingSafeHexEqual(a, b) {
   if (typeof a !== "string" || typeof b !== "string" || a.length !== b.length) {
     return false;
@@ -2293,99 +2278,8 @@ var Q18Truth = class extends DurableObject {
     }
   }
   async fetch(request) {
-    const url = new URL(request.url);
-
-    const onceTimingEnabled =
-      request.headers.get("x-once-benchmark") ===
-      "server-timing-v1";
-
-    const onceRequestStarted =
-      onceTimingEnabled
-        ? onceTimingNow()
-        : 0;
-
-    const onceTimingScope =
-      url.pathname === "/v1/execute"
-        ? "api"
-        : url.pathname === "/execute"
-          ? "core"
-          : "do";
-
-    const onceTiming = [];
-
-    const onceRecord = (name, started) => {
-      if (!onceTimingEnabled) {
-        return;
-      }
-
-      const duration =
-        onceTimingNow() - started;
-
-      if (
-        !Number.isFinite(duration) ||
-        duration < 0
-      ) {
-        return;
-      }
-
-      onceTiming.push([
-        onceTimingScope + "_" + name,
-        duration
-      ]);
-    };
-
-    const onceRespond = response => {
-      if (!onceTimingEnabled) {
-        return response;
-      }
-
-      const metrics = [
-        ...onceTiming,
-        [
-          onceTimingScope + "_total",
-          onceTimingNow() -
-            onceRequestStarted
-        ]
-      ];
-
-      const ownHeader =
-        metrics
-          .map(
-            ([name, duration]) =>
-              name +
-              ";dur=" +
-              Number(duration).toFixed(3)
-          )
-          .join(", ");
-
-      if (ownHeader) {
-        const existing =
-          response.headers.get(
-            "server-timing"
-          );
-
-        response.headers.set(
-          "server-timing",
-          existing
-            ? existing + ", " + ownHeader
-            : ownHeader
-        );
-      }
-
-      return response;
-    };
-
-    const onceMaintenanceStarted =
-      onceTimingEnabled
-        ? onceTimingNow()
-        : 0;
-
     await this.ensureUnknownReconciliationAlarm();
-
-    onceRecord(
-      "maintenance",
-      onceMaintenanceStarted
-    );
+    const url = new URL(request.url);
     if (request.method === "POST" && url.pathname === "/stripe/event") {
       let event;
       try {
@@ -3530,11 +3424,6 @@ var Q18Truth = class extends DurableObject {
       );
     }
     if (request.method === "POST" && url.pathname === "/v1/execute") {
-      const onceAuthStarted =
-        onceTimingEnabled
-          ? onceTimingNow()
-          : 0;
-
       const authorization = request.headers.get(
         "authorization"
       ) || "";
@@ -3585,16 +3474,6 @@ var Q18Truth = class extends DurableObject {
           401
         );
       }
-      onceRecord(
-        "auth",
-        onceAuthStarted
-      );
-
-      const onceEntitlementStarted =
-        onceTimingEnabled
-          ? onceTimingNow()
-          : 0;
-
       const entitlement = [
         ...this.ctx.storage.sql.exec(
           `
@@ -3645,16 +3524,6 @@ var Q18Truth = class extends DurableObject {
           403
         );
       }
-      onceRecord(
-        "entitlement",
-        onceEntitlementStarted
-      );
-
-      const onceRateLimitStarted =
-        onceTimingEnabled
-          ? onceTimingNow()
-          : 0;
-
       const ONCE_EXECUTE_REQUESTS_PER_MINUTE = 120;
       const rateNowMs = Date.now();
       const rateWindowKey = Math.floor(
@@ -3752,17 +3621,7 @@ var Q18Truth = class extends DurableObject {
           }
         );
       }
-      onceRecord(
-        "rate_limit",
-        onceRateLimitStarted
-      );
-
       const periodKey = entitlement.current_period_end || (/* @__PURE__ */ new Date()).toISOString().slice(0, 7);
-      const onceParseStarted =
-        onceTimingEnabled
-          ? onceTimingNow()
-          : 0;
-
       const ONCE_MAX_EXECUTE_BODY_BYTES = 64 * 1024;
       const ONCE_MAX_OPERATION_ID_BYTES = 200;
       const ONCE_MAX_ACTION_BYTES = 32 * 1024;
@@ -3907,16 +3766,6 @@ var Q18Truth = class extends DurableObject {
           413
         );
       }
-      onceRecord(
-        "parse",
-        onceParseStarted
-      );
-
-      const onceSemanticLookupStarted =
-        onceTimingEnabled
-          ? onceTimingNow()
-          : 0;
-
       const semanticHash = await onceSemanticHash(
         providerName,
         semanticAction
@@ -4043,16 +3892,6 @@ var Q18Truth = class extends DurableObject {
         }
         resolvedProvider = "registered_http_v1:" + versionId;
       }
-      onceRecord(
-        "semantic_lookup",
-        onceSemanticLookupStarted
-      );
-
-      const onceMeteringStarted =
-        onceTimingEnabled
-          ? onceTimingNow()
-          : 0;
-
       const alreadyMetered = [
         ...this.ctx.storage.sql.exec(
           `
@@ -4182,16 +4021,6 @@ var Q18Truth = class extends DurableObject {
           refreshedUsage?.used || used
         );
       }
-      onceRecord(
-        "metering",
-        onceMeteringStarted
-      );
-
-      const onceSemanticCommitStarted =
-        onceTimingEnabled
-          ? onceTimingNow()
-          : 0;
-
       if (!semanticBinding) {
         const semanticCreatedAt = (/* @__PURE__ */ new Date()).toISOString();
         this.ctx.storage.sql.exec(
@@ -4283,34 +4112,18 @@ var Q18Truth = class extends DurableObject {
         keyRecord.customer_id,
         operationId
       );
-      onceRecord(
-        "semantic_commit",
-        onceSemanticCommitStarted
-      );
-
       const scopedBody = {
         ...usageBody,
         provider: resolvedProvider,
         operation_id: scopedOperationId
       };
-      const onceCoreRoundtripStarted =
-        onceTimingEnabled
-          ? onceTimingNow()
-          : 0;
-
       const downstream = await this.fetch(
         new Request(
           "https://q18.internal/execute",
           {
             method: "POST",
             headers: {
-              "content-type": "application/json",
-              ...(onceTimingEnabled
-                ? {
-                    "x-once-benchmark":
-                      "server-timing-v1"
-                  }
-                : {})
+              "content-type": "application/json"
             },
             body: JSON.stringify(
               scopedBody
@@ -4318,16 +4131,6 @@ var Q18Truth = class extends DurableObject {
           }
         )
       );
-      onceRecord(
-        "core_roundtrip",
-        onceCoreRoundtripStarted
-      );
-
-      const onceResponseStarted =
-        onceTimingEnabled
-          ? onceTimingNow()
-          : 0;
-
       const headers = new Headers(
         downstream.headers
       );
@@ -4370,31 +4173,16 @@ var Q18Truth = class extends DurableObject {
       headers.delete(
         "content-length"
       );
-      const onceCustomerResponse =
-        new Response(
-          customerResponseBody,
-          {
-            status: downstream.status,
-            statusText: downstream.statusText,
-            headers
-          }
-        );
-
-      onceRecord(
-        "response",
-        onceResponseStarted
-      );
-
-      return onceRespond(
-        onceCustomerResponse
+      return new Response(
+        customerResponseBody,
+        {
+          status: downstream.status,
+          statusText: downstream.statusText,
+          headers
+        }
       );
     }
     if (request.method === "POST" && url.pathname === "/execute") {
-      const onceCorePreflightStarted =
-        onceTimingEnabled
-          ? onceTimingNow()
-          : 0;
-
       let body;
       try {
         body = await request.json();
@@ -4645,26 +4433,11 @@ var Q18Truth = class extends DurableObject {
           );
         }
       }
-      onceRecord(
-        "preflight",
-        onceCorePreflightStarted
-      );
-
-      const onceProviderTruthStarted =
-        onceTimingEnabled
-          ? onceTimingNow()
-          : 0;
-
       let provider;
       try {
         provider = await this.getProvider(
           operationProvider,
           operationId
-        );
-
-        onceRecord(
-          "provider_truth",
-          onceProviderTruthStarted
         );
       } catch (error) {
         operation = this.getOperation(operationId);
@@ -4771,11 +4544,6 @@ var Q18Truth = class extends DurableObject {
         return json({ error: "provider_identity_conflict", operation_id: operationId }, 409);
       }
       if (provider) {
-        const onceReplayFinalizeStarted =
-          onceTimingEnabled
-            ? onceTimingNow()
-            : 0;
-
         const providerTruthReplayRequired = this.isHttpResponseReplayRequired(
           operationId
         );
@@ -4877,12 +4645,7 @@ var Q18Truth = class extends DurableObject {
             result: "already_executed"
           }
         );
-        onceRecord(
-          "replay_finalize",
-          onceReplayFinalizeStarted
-        );
-
-        const onceReplayResponse = json({
+        return json({
           operation_id: operationId,
           result: "already_executed",
           state: operation.state,
@@ -4891,10 +4654,6 @@ var Q18Truth = class extends DurableObject {
           first_executed_at: provider.executed_at,
           last_attempt_at: operation.last_attempt_at
         });
-
-        return onceRespond(
-          onceReplayResponse
-        );
       }
       if (operation && operation.state === "CONFIRMED") {
         this.ctx.storage.sql.exec(
@@ -4975,11 +4734,6 @@ WHERE operation_id = ?
           409
         );
       }
-      const onceClaimStarted =
-        onceTimingEnabled
-          ? onceTimingNow()
-          : 0;
-
       if (!operation) {
         this.insertOperation(
           operationId,
@@ -5041,22 +4795,7 @@ WHERE operation_id = ?
       }
       // Explicitly flush the durable claim before an outbound request can escape.
       // A crash after this point leaves an unreclaimable ambiguous operation.
-      onceRecord(
-        "claim",
-        onceClaimStarted
-      );
-
-      const onceClaimSyncStarted =
-        onceTimingEnabled
-          ? onceTimingNow()
-          : 0;
-
       await this.ctx.storage.sync();
-
-      onceRecord(
-        "claim_sync",
-        onceClaimSyncStarted
-      );
       if (fault === "fail_before_effect") {
         this.ctx.storage.sql.exec(
           `
@@ -5083,21 +4822,11 @@ WHERE operation_id = ?
           503
         );
       }
-      const onceProviderExecuteStarted =
-        onceTimingEnabled
-          ? onceTimingNow()
-          : 0;
-
       try {
         provider = await this.executeProvider(
           operationProvider,
           operationId,
           body.action === void 0 ? {} : body.action
-        );
-
-        onceRecord(
-          "provider_execute",
-          onceProviderExecuteStarted
         );
       } catch (error) {
         if (error?.once_failure_class === "FAILED_BEFORE_EFFECT") {
@@ -5190,11 +4919,6 @@ WHERE operation_id = ?
           503
         );
       }
-      const onceConfirmStarted =
-        onceTimingEnabled
-          ? onceTimingNow()
-          : 0;
-
       if (delayMs > 0) {
         await sleep(
           delayMs
@@ -5349,12 +5073,7 @@ WHERE operation_id = ?
           result: "executed"
         }
       );
-      onceRecord(
-        "confirm",
-        onceConfirmStarted
-      );
-
-      const onceExecutedResponse = json({
+      return json({
         operation_id: operationId,
         result: "executed",
         state: "CONFIRMED",
@@ -5362,10 +5081,6 @@ WHERE operation_id = ?
         side_effects: provider.side_effects,
         executed_at: provider.executed_at
       });
-
-      return onceRespond(
-        onceExecutedResponse
-      );
     }
     if (request.method === "GET" && url.pathname.startsWith(
       "/truth/"
