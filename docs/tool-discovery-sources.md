@@ -6,6 +6,8 @@ Purpose: define the current discovery surfaces Once should use to build a comple
 
 This is a discovery catalog, not an execution policy. Finding a tool must not automatically authorize, launch, rewrite, or protect it.
 
+Companion policy: [`tool-importance-model.md`](./tool-importance-model.md) defines effect classes, `I0–I5` consequence importance, a `0–100` action-priority score, qualification state, and the ordering Once should use to decide which discovered tools deserve attention first.
+
 ## Evidence levels
 
 Once should preserve where each tool record came from. Sources are ordered from strongest to weakest evidence of actual availability/use.
@@ -547,6 +549,8 @@ Evidence inputs:
 
 Only tools in `EXTERNAL_MUTATION` or unresolved `UNKNOWN` should proceed to the deeper Once four-condition qualification test.
 
+See [`tool-importance-model.md`](./tool-importance-model.md) for the more detailed consequence families, `I0–I5` importance bands, criticality scoring, exposure-aware action priority, and Doctor ordering policy.
+
 ## 12. Secret and trust rules
 
 Mandatory:
@@ -566,7 +570,8 @@ Mandatory:
 3. project dependency/framework detection
 4. source registration detection
 5. normalized Tool Graph JSON output
-6. `once doctor . --tools`
+6. apply the importance/action-priority policy from `tool-importance-model.md`
+7. `once doctor . --tools`
 
 ### Phase 11B — authoritative MCP enumeration
 1. connect only to already-running/trusted remote servers by default
@@ -590,6 +595,7 @@ Mandatory:
 2. OTel ingestion
 3. observed call counters/status
 4. distinguish registered/model-visible/executed
+5. recompute action priority as stronger evidence arrives
 
 ### Phase 11E — Once Gateway / broker
 Only after discovery accuracy is proven. Mirror or route tools through Once without forcing every catalog entry into model context.
@@ -604,7 +610,9 @@ For a repository and developer machine, Once should be able to answer:
 - Which subset was actually visible to the model on a given request?
 - Which tools were actually executed?
 - Which tools can mutate external state?
+- How important/critical is each tool (`I0–I5`)?
 - Which consequential tools satisfy the Once four-condition test?
+- Which tools are the highest-priority unprotected gaps right now?
 - Which qualifying tools are protected, unprotected, or unresolved?
 
 without exposing secrets and without automatically launching or mutating untrusted integrations.
