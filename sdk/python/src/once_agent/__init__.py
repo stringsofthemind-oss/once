@@ -1,11 +1,12 @@
-﻿import hashlib
+import hashlib
 import json
 import os
-import socket
 import time
-import urllib.error
 import urllib.request
 from typing import Any, Dict, Optional
+from urllib.parse import quote, urlsplit
+
+import urllib3
 
 
 DEFAULT_BASE_URL = "https://once-q18-cloud.pennywatch.workers.dev"
@@ -70,6 +71,58 @@ class Once:
 
         self.timeout = timeout
         self.network_retries = network_retries
+        self._http = self._create_http_manager()
+
+
+    def _create_http_manager(
+        self,
+    ) -> urllib3.PoolManager:
+
+        parsed = urlsplit(self.base_url)
+        proxy_url = None
+
+        if (
+            parsed.hostname
+            and not urllib.request.proxy_bypass(parsed.hostname)
+        ):
+            proxies = urllib.request.getproxies()
+            proxy_url = (
+                proxies.get(parsed.scheme)
+                or proxies.get("all")
+            )
+
+        manager_options = {
+            "num_pools": 4,
+            "maxsize": 16,
+            "block": True,
+        }
+
+        if proxy_url:
+            return urllib3.ProxyManager(
+                proxy_url,
+                **manager_options,
+            )
+
+        return urllib3.PoolManager(
+            **manager_options,
+        )
+
+
+    def close(self) -> None:
+        self._http.clear()
+
+
+    def __enter__(self) -> "Once":
+        return self
+
+
+    def __exit__(
+        self,
+        exc_type,
+        exc_value,
+        traceback,
+    ) -> None:
+        self.close()
 
 
     @staticmethod
@@ -256,8 +309,6 @@ class Once:
                 code="invalid_operation_id",
             )
 
-        from urllib.parse import quote
-
         encoded_id = quote(
             operation_id,
             safe="",
@@ -285,47 +336,46 @@ class Once:
                 separators=(",", ":"),
             ).encode("utf-8")
 
+        headers = {
+            "Authorization":
+                f"Bearer {self.api_key}",
+            "Content-Type":
+                "application/json",
+            "Accept":
+                "application/json",
+            "User-Agent":
+                "once-agent-python/0.1.0",
+        }
+
+        timeout = urllib3.Timeout(
+            connect=self.timeout,
+            read=self.timeout,
+        )
+
         last_error: Optional[Exception] = None
 
         for attempt in range(
             self.network_retries + 1
         ):
 
-            request = urllib.request.Request(
-                f"{self.base_url}{path}",
-                data=payload,
-                method=method,
-                headers={
-                    "Authorization":
-                        f"Bearer {self.api_key}",
-                    "Content-Type":
-                        "application/json",
-                    "Accept":
-                        "application/json",
-                    "User-Agent":
-                        "once-agent-python/0.1.0",
-                },
-            )
-
             try:
-                with urllib.request.urlopen(
-                    request,
-                    timeout=self.timeout,
-                ) as response:
+                response = self._http.request(
+                    method,
+                    f"{self.base_url}{path}",
+                    body=payload,
+                    headers=headers,
+                    timeout=timeout,
+                    retries=False,
+                    redirect=False,
+                    preload_content=True,
+                )
 
-                    raw = response.read().decode(
-                        "utf-8"
-                    )
+                status = int(response.status)
 
-                    if not raw:
-                        return {}
-
-                    return json.loads(raw)
-
-
-            except urllib.error.HTTPError as exc:
-
-                raw = exc.read().decode(
+                raw = (
+                    response.data
+                    or b""
+                ).decode(
                     "utf-8",
                     errors="replace",
                 )
@@ -341,48 +391,63 @@ class Once:
                         "message": raw
                     }
 
-                retry_after = None
+                if 300 <= status < 400:
+                    raise OnceError(
+                        "Once refused an unexpected HTTP redirect.",
+                        status=status,
+                        code="redirect_blocked",
+                        body=parsed,
+                    )
 
-                header = exc.headers.get(
-                    "Retry-After"
-                )
+                if not 200 <= status < 300:
+                    retry_after = None
 
-                if header is not None:
-                    try:
-                        retry_after = float(
-                            header
+                    header = response.headers.get(
+                        "Retry-After"
+                    )
+
+                    if header is not None:
+                        try:
+                            retry_after = float(header)
+                        except ValueError:
+                            pass
+
+                    if isinstance(parsed, dict):
+                        code = (
+                            parsed.get("error")
+                            or parsed.get("result")
+                            or f"http_{status}"
                         )
-                    except ValueError:
-                        pass
 
-                code = (
-                    parsed.get("error")
-                    or parsed.get("result")
-                    or f"http_{exc.code}"
-                )
+                        message = (
+                            parsed.get("message")
+                            or parsed.get("error")
+                            or parsed.get("result")
+                            or f"Once returned HTTP {status}"
+                        )
+                    else:
+                        code = f"http_{status}"
+                        message = f"Once returned HTTP {status}"
 
-                message = (
-                    parsed.get("message")
-                    or parsed.get("error")
-                    or parsed.get("result")
-                    or f"Once returned HTTP {exc.code}"
-                )
+                    raise OnceError(
+                        str(message),
+                        status=status,
+                        code=str(code),
+                        body=parsed,
+                        retry_after=retry_after,
+                    )
 
-                raise OnceError(
-                    str(message),
-                    status=exc.code,
-                    code=str(code),
-                    body=parsed,
-                    retry_after=retry_after,
-                )
+                if not raw:
+                    return {}
 
+                # Preserve previous successful-response behavior:
+                # malformed successful JSON is not silently accepted.
+                return json.loads(raw)
 
-            except (
-                urllib.error.URLError,
-                socket.timeout,
-                TimeoutError,
-            ) as exc:
+            except OnceError:
+                raise
 
+            except urllib3.exceptions.TimeoutError as exc:
                 last_error = exc
 
                 if attempt < self.network_retries:
@@ -391,25 +456,21 @@ class Once:
                     )
                     continue
 
-                reason = getattr(
-                    exc,
-                    "reason",
-                    None,
-                )
+                raise OnceTimeoutError(
+                    f"Once request timed out after {self.timeout}s"
+                ) from exc
 
-                if (
-                    isinstance(
-                        exc,
-                        (socket.timeout, TimeoutError),
+            except (
+                urllib3.exceptions.HTTPError,
+                OSError,
+            ) as exc:
+                last_error = exc
+
+                if attempt < self.network_retries:
+                    time.sleep(
+                        0.15 * (2 ** attempt)
                     )
-                    or isinstance(
-                        reason,
-                        socket.timeout,
-                    )
-                ):
-                    raise OnceTimeoutError(
-                        f"Once request timed out after {self.timeout}s"
-                    ) from exc
+                    continue
 
                 raise OnceNetworkError(
                     "Could not reach Once after safe network retries"
