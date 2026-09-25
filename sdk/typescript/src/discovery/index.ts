@@ -18,6 +18,10 @@ export {
   promoteToolExecution,
 } from "../execution-observation.js";
 
+export {
+  createOpenAIAgentsExecutionObserver,
+} from "../openai-agents-execution-observer.js";
+
 export type {
   RuntimeToolFramework,
   RuntimeToolSource,
@@ -46,3 +50,7 @@ export type {
   ExecutionPromotableTool,
   ExecutedToolObservation,
 } from "../execution-observation.js";
+
+export type {
+  OpenAIAgentsExecutionObserver,
+} from "../openai-agents-execution-observer.js";
