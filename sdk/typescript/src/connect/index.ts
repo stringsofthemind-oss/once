@@ -22,3 +22,15 @@ export type {
   ConnectToolClassificationReason,
   ConnectToolClassification,
 } from "./tool-classifier.js";
+
+export {
+  CONNECT_MANIFEST_VERSION,
+  planConnectToolManifest,
+} from "./manifest.js";
+
+export type {
+  ConnectManifestToolSource,
+  ConnectManifestPlanEntry,
+  ConnectManifestPlanSummary,
+  ConnectManifestPlan,
+} from "./manifest.js";
