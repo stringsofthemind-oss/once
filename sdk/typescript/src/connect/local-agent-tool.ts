@@ -9,6 +9,9 @@ import {
   type ConnectToolDescriptor,
 } from "./tool-classifier.js";
 import {
+  resolveConnectToolOperationIdentity,
+} from "./identity.js";
+import {
   protectLocal,
   type LocalObservation,
 } from "../local.js";
@@ -40,7 +43,7 @@ export interface LocalAgentToolContract<Input, Result> {
 export interface AutoLocalAgentToolContract<Input, Result> {
   /** Tool metadata used by Once Connect to infer PROTECT/BYPASS/UNKNOWN. */
   descriptor: ConnectToolDescriptor;
-  /** One intentional action ID, reused for retries. Required when inferred protected. */
+  /** Optional explicit stable intent identity. When omitted, Once may resolve a trustworthy identity carrier from input. */
   id?: (input: Input) => string;
   /** Every input that can change the external effect. Required when inferred protected. */
   payload?: (input: Input) => EffectPayload;
@@ -60,15 +63,6 @@ export class AgentToolConnectionError extends Error {
   }
 }
 
-/**
- * Connect one registered agent tool to Once. The agent calls execute normally;
- * classification happens for every invocation without a model-side Once call.
- *
- * The tool owner must review the safety declaration, identity and effect
- * payload. This same-machine path never auto-discovers arbitrary tools and
- * cannot coordinate hosts with separate SQLite files. Supply only the
- * returned tool to the agent; an exposed original tool remains a bypass.
- */
 export function connectLocalAgentTool<Input, Result>(
   tool: AgentTool<Input, Result>,
   contract: LocalAgentToolContract<Input, Result>,
@@ -159,8 +153,10 @@ const AUTO_BYPASS_SAFETY: ConnectSafetyDeclaration = Object.freeze({
  * - BYPASS -> delegate to the existing bypass path;
  * - UNKNOWN -> refuse connection until the tool is clarified.
  *
- * Inferred protection does not weaken operation identity requirements. A
- * protected tool still needs a stable intent ID and complete effect payload.
+ * For protected tools, effect payload selection remains explicit. Stable
+ * operation identity may be supplied by `id()` or resolved at execution time
+ * from trustworthy operation/idempotency/intent carriers in the tool input.
+ * Missing or conflicting automatic identity fails before the side effect.
  */
 export function connectLocalAgentToolAuto<Input, Result>(
   tool: AgentTool<Input, Result>,
@@ -182,13 +178,43 @@ export function connectLocalAgentToolAuto<Input, Result>(
     );
   }
 
+  if (classification.decision === CONNECT_TOOL_DECISION.BYPASS) {
+    return connectLocalAgentTool(tool, {
+      name: contract.descriptor.name,
+      safety: AUTO_BYPASS_SAFETY,
+      statePath: contract.statePath,
+    });
+  }
+
+  const identity = typeof contract.id === "function"
+    ? contract.id
+    : (input: Input): string => {
+        const result = resolveConnectToolOperationIdentity({
+          tool: contract.descriptor,
+          input,
+        });
+
+        if (result.status === "FOUND") {
+          return result.operationId;
+        }
+
+        if (result.status === "CONFLICT") {
+          throw new AgentToolConnectionError(
+            "IDENTITY_CONFLICT",
+            result.reason,
+          );
+        }
+
+        throw new AgentToolConnectionError(
+          "IDENTITY_REQUIRED",
+          result.reason,
+        );
+      };
+
   return connectLocalAgentTool(tool, {
     name: contract.descriptor.name,
-    safety:
-      classification.decision === CONNECT_TOOL_DECISION.PROTECT
-        ? AUTO_PROTECTED_SAFETY
-        : AUTO_BYPASS_SAFETY,
-    id: contract.id,
+    safety: AUTO_PROTECTED_SAFETY,
+    id: identity,
     payload: contract.payload,
     statePath: contract.statePath,
     reconcile: contract.reconcile,
