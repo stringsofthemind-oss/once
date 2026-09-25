@@ -60,6 +60,32 @@ test("contradictory annotations resolve to UNKNOWN", () => {
   assert.equal(result.reason, "CONFLICTING_SIGNALS");
 });
 
+test("mutation semantics override an unsafe read-only hint with UNKNOWN", () => {
+  const result = classifyConnectTool({
+    name: "send_email",
+    description: "Send an email to a recipient.",
+    annotations: {
+      readOnlyHint: true,
+    },
+  });
+
+  assert.equal(result.decision, CONNECT_TOOL_DECISION.UNKNOWN);
+  assert.equal(result.reason, "CONFLICTING_SIGNALS");
+});
+
+test("read semantics conflict with an explicit write hint", () => {
+  const result = classifyConnectTool({
+    name: "get_customer",
+    description: "Retrieve a customer record.",
+    annotations: {
+      readOnlyHint: false,
+    },
+  });
+
+  assert.equal(result.decision, CONNECT_TOOL_DECISION.UNKNOWN);
+  assert.equal(result.reason, "CONFLICTING_SIGNALS");
+});
+
 test("send_email is inferred as PROTECT", () => {
   const result = classifyConnectTool({
     name: "send_email",
