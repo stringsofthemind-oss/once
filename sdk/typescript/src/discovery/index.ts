@@ -14,6 +14,7 @@ export {
 export {
   observeToolExecution,
   aggregateToolExecutions,
+  executionToolFingerprint,
   promoteToolExecution,
 } from "../execution-observation.js";
 
