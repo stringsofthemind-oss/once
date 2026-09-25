@@ -1,7 +1,7 @@
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
-import { connectLocalAgentTool } from "@once-agent/sdk/connect";
+import { connectLocalAgentToolAuto } from "@once-agent/sdk/connect";
 
 const port = Number(process.env.ONCE_AGNO_PORT || "8920");
 const mode = process.env.ONCE_AGNO_MODE === "once" ? "once" : "control";
@@ -44,13 +44,16 @@ const rawTool = {
   execute: commitCharge,
 };
 
-const protectedTool = connectLocalAgentTool(rawTool, {
-  name: "charge_card",
-  safety: {
-    changesExternalState: true,
-    retryPossible: true,
-    ambiguousOutcomePossible: true,
-    duplicateUndesirable: true,
+const protectedTool = connectLocalAgentToolAuto(rawTool, {
+  descriptor: {
+    name: "charge_card",
+    description: "Charges a payment card and changes external state.",
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
+      openWorldHint: true,
+    },
   },
   id: (input) => input.operationId,
   payload: (input) => ({
