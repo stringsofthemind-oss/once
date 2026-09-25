@@ -293,6 +293,16 @@ var Q18Truth = class extends DurableObject {
 			)
 		`);
     this.ctx.storage.sql.exec(`
+                  CREATE TABLE IF NOT EXISTS confirmation_receipts (
+                          operation_id TEXT PRIMARY KEY,
+                          provider TEXT NOT NULL,
+                          side_effects INTEGER NOT NULL
+                                  CHECK(side_effects = 1),
+                          executed_at TEXT,
+                          confirmed_at TEXT NOT NULL
+                  )
+          `);
+    this.ctx.storage.sql.exec(`
 			CREATE TABLE IF NOT EXISTS http_response_replays (
 				operation_id TEXT PRIMARY KEY,
 				status INTEGER NOT NULL,
@@ -1002,6 +1012,191 @@ var Q18Truth = class extends DurableObject {
       )
     ][0];
   }
+  // ==========================================================
+  // DURABLE CONFIRMATION RECEIPTS
+  // ==========================================================
+  //
+  // A receipt is written only after authoritative provider proof
+  // or successful provider execution has established exactly one
+  // external effect.
+  //
+  // Receipt absence NEVER authorizes execution.
+  // Receipt presence is only a replay/suppression optimisation.
+  // ==========================================================
+  getConfirmationReceipt(operationId) {
+    const normalizedOperationId = String(
+      operationId || ""
+    ).trim();
+
+    if (!normalizedOperationId) {
+      throw new Error(
+        "confirmation_receipt_operation_id_required"
+      );
+    }
+
+    const row = [
+      ...this.ctx.storage.sql.exec(
+        `
+                  SELECT
+                          operation_id,
+                          provider,
+                          side_effects,
+                          executed_at,
+                          confirmed_at
+                  FROM confirmation_receipts
+                  WHERE operation_id = ?
+                  LIMIT 1
+                  `,
+        normalizedOperationId
+      )
+    ][0];
+
+    if (!row) {
+      return void 0;
+    }
+
+    const sideEffects = Number(
+      row.side_effects
+    );
+
+    if (sideEffects !== 1) {
+      throw new Error(
+        "confirmation_receipt_invalid_side_effects"
+      );
+    }
+
+    return {
+      operation_id:
+        normalizedOperationId,
+
+      provider:
+        String(
+          row.provider || ""
+        ).trim().toLowerCase(),
+
+      side_effects:
+        sideEffects,
+
+      executed_at:
+        row.executed_at === null ||
+        row.executed_at === void 0
+          ? null
+          : String(
+              row.executed_at
+            ),
+
+      confirmed_at:
+        String(
+          row.confirmed_at
+        )
+    };
+  }
+
+  recordConfirmationReceipt(
+    operationId,
+    providerName,
+    proof,
+    confirmedAt =
+      (new Date()).toISOString()
+  ) {
+    const normalizedOperationId =
+      String(
+        operationId || ""
+      ).trim();
+
+    const normalizedProvider =
+      String(
+        providerName || ""
+      ).trim().toLowerCase();
+
+    const sideEffects =
+      Number(
+        proof?.side_effects
+      );
+
+    const normalizedConfirmedAt =
+      String(
+        confirmedAt || ""
+      ).trim();
+
+    if (!normalizedOperationId) {
+      throw new Error(
+        "confirmation_receipt_operation_id_required"
+      );
+    }
+
+    if (!normalizedProvider) {
+      throw new Error(
+        "confirmation_receipt_provider_required"
+      );
+    }
+
+    if (sideEffects !== 1) {
+      throw new Error(
+        "confirmation_receipt_requires_one_effect"
+      );
+    }
+
+    if (!normalizedConfirmedAt) {
+      throw new Error(
+        "confirmation_receipt_confirmed_at_required"
+      );
+    }
+
+    const rawExecutedAt =
+      proof?.executed_at ??
+      proof?.first_executed_at ??
+      null;
+
+    const executedAt =
+      rawExecutedAt === null ||
+      rawExecutedAt === void 0
+        ? null
+        : String(
+            rawExecutedAt
+          );
+
+    const existing =
+      this.getConfirmationReceipt(
+        normalizedOperationId
+      );
+
+    if (existing) {
+      if (
+        existing.provider !==
+          normalizedProvider ||
+        existing.side_effects !== 1
+      ) {
+        throw new Error(
+          "confirmation_receipt_conflict"
+        );
+      }
+
+      return existing;
+    }
+
+    this.ctx.storage.sql.exec(
+      `
+                  INSERT INTO confirmation_receipts (
+                          operation_id,
+                          provider,
+                          side_effects,
+                          executed_at,
+                          confirmed_at
+                  )
+                  VALUES (?, ?, 1, ?, ?)
+                  `,
+      normalizedOperationId,
+      normalizedProvider,
+      executedAt,
+      normalizedConfirmedAt
+    );
+
+    return this.getConfirmationReceipt(
+      normalizedOperationId
+    );
+  }
+
   // ==========================================================
   // READ INDEPENDENT EXTERNAL PROVIDER TRUTH
   // ==========================================================
@@ -2091,6 +2286,17 @@ var Q18Truth = class extends DurableObject {
             const confirmed = this.getOperation(
               operationId
             );
+
+            try {
+              this.recordConfirmationReceipt(
+                operationId,
+                providerName,
+                providerTruth,
+                (new Date()).toISOString()
+              );
+            } catch {
+            }
+
             await this.onceLog(
               "once.reconcile.confirmed",
               {
@@ -4433,6 +4639,111 @@ var Q18Truth = class extends DurableObject {
           );
         }
       }
+      // Fast replay is permitted only when BOTH:
+      //
+      // 1. the durable operation ledger is CONFIRMED
+      // 2. an immutable confirmation receipt proves one effect
+      //
+      // If HTTP replay is required, its durable response envelope
+      // must also exist. Any missing evidence falls through to the
+      // existing external provider-truth path.
+      if (
+        operation &&
+        operation.state === "CONFIRMED"
+      ) {
+        let localReceipt;
+
+        try {
+          localReceipt =
+            this.getConfirmationReceipt(
+              operationId
+            );
+        } catch {
+          localReceipt = void 0;
+        }
+
+        const localReplayRequired =
+          this.isHttpResponseReplayRequired(
+            operationId
+          );
+
+        const localReplayAvailable =
+          !localReplayRequired ||
+          Boolean(
+            this.getHttpResponseReplay(
+              operationId
+            )
+          );
+
+        if (
+          localReceipt &&
+          localReceipt.provider ===
+            operationProvider &&
+          localReceipt.side_effects === 1 &&
+          localReplayAvailable
+        ) {
+          this.ctx.storage.sql.exec(
+            `
+                          UPDATE operations
+                          SET
+                                  attempts =
+                                      attempts + 1,
+                                  last_attempt_at = ?
+                          WHERE operation_id = ?
+                          `,
+            now,
+            operationId
+          );
+
+          operation =
+            this.getOperation(
+              operationId
+            );
+
+          await this.onceLog(
+            "once.execute.already_confirmed",
+            {
+              operationId,
+              provider:
+                operationProvider,
+              state:
+                "CONFIRMED",
+              attempts:
+                operation
+                  ? operation.attempts
+                  : 0,
+              status:
+                200,
+              result:
+                "already_executed"
+            }
+          );
+
+          return json({
+            operation_id:
+              operationId,
+
+            result:
+              "already_executed",
+
+            state:
+              "CONFIRMED",
+
+            attempts:
+              operation.attempts,
+
+            side_effects:
+              localReceipt.side_effects,
+
+            first_executed_at:
+              localReceipt.executed_at,
+
+            last_attempt_at:
+              operation.last_attempt_at
+          });
+        }
+      }
+
       let provider;
       try {
         provider = await this.getProvider(
@@ -4544,6 +4855,19 @@ var Q18Truth = class extends DurableObject {
         return json({ error: "provider_identity_conflict", operation_id: operationId }, 409);
       }
       if (provider) {
+        // Provider truth is authoritative proof of one effect.
+        // Persist it as an optimisation receipt. Failure to cache
+        // must never change the existing safety path.
+        try {
+          this.recordConfirmationReceipt(
+            operationId,
+            operationProvider,
+            provider,
+            now
+          );
+        } catch {
+        }
+
         const providerTruthReplayRequired = this.isHttpResponseReplayRequired(
           operationId
         );
@@ -5062,6 +5386,20 @@ WHERE operation_id = ?
       operation = this.getOperation(
         operationId
       );
+
+      // Confirmation itself remains authoritative even if this
+      // optimisation receipt cannot be written. In that case the
+      // next retry simply falls back to provider truth.
+      try {
+        this.recordConfirmationReceipt(
+          operationId,
+          operationProvider,
+          provider,
+          now
+        );
+      } catch {
+      }
+
       await this.onceLog(
         "once.execute.confirmed",
         {
