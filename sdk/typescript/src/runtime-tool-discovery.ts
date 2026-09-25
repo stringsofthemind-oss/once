@@ -10,7 +10,14 @@ type JsonRecord = Record<string, unknown>;
 
 export type RuntimeToolFramework =
   | "openai-agents"
-  | "openai-responses";
+  | "openai-responses"
+  | "vercel-ai-sdk";
+
+export type RuntimeToolSource =
+  | "agent.tools"
+  | "responses.tools"
+  | "vercel.toolset"
+  | "vercel.generation.tools";
 
 export type RuntimeToolObservation = {
   toolId: string;
@@ -22,8 +29,9 @@ export type RuntimeToolObservation = {
   framework: RuntimeToolFramework;
   origin: {
     kind: "runtime";
-    source: "agent.tools" | "responses.tools";
+    source: RuntimeToolSource;
     agentName?: string;
+    runtimeName?: string;
     index: number;
   };
   evidence: {
@@ -41,6 +49,9 @@ export type RuntimeToolObservation = {
     serverLabel?: string;
     namespace?: string;
     deferLoading?: boolean;
+    autoExecutable?: boolean;
+    schemaOpaque?: boolean;
+    providerDefined?: boolean;
   };
   once: ToolImportanceAssessment;
 };
@@ -66,6 +77,27 @@ export type OpenAIResponsesToolSnapshot = {
   secretValuesRetained: false;
 };
 
+export type VercelAiSdkRegisteredToolSnapshot = {
+  framework: "vercel-ai-sdk";
+  runtimeName?: string;
+  registeredToolCount: number;
+  tools: RuntimeToolObservation[];
+  externalCallsMade: false;
+  toolInvocationsMade: false;
+  secretValuesRetained: false;
+};
+
+export type VercelAiSdkModelVisibleToolSnapshot = {
+  framework: "vercel-ai-sdk";
+  runtimeName?: string;
+  modelVisibleToolCount: number;
+  activeToolFilterApplied: boolean;
+  tools: RuntimeToolObservation[];
+  externalCallsMade: false;
+  toolInvocationsMade: false;
+  secretValuesRetained: false;
+};
+
 export type MergedRuntimeToolSnapshot = {
   tools: RuntimeToolObservation[];
 };
@@ -80,6 +112,17 @@ function asRecord(value: unknown): JsonRecord | undefined {
   }
 
   return undefined;
+}
+
+function ownDataValue(
+  record: JsonRecord | undefined,
+  key: string,
+): unknown {
+  if (!record) return undefined;
+  const descriptor = Object.getOwnPropertyDescriptor(record, key);
+  return descriptor && "value" in descriptor
+    ? descriptor.value
+    : undefined;
 }
 
 function stableId(prefix: string, value: unknown): string {
@@ -173,7 +216,7 @@ function readOnlyHintForType(type: string): boolean | undefined {
 
 function observation(
   tool: unknown,
-  framework: RuntimeToolFramework,
+  framework: "openai-agents" | "openai-responses",
   evidence: "RUNTIME_REGISTERED" | "MODEL_VISIBLE",
   source: "agent.tools" | "responses.tools",
   index: number,
@@ -221,9 +264,7 @@ function observation(
     },
     visibility: {
       configured: true,
-      runtimeRegistered:
-        evidence === "RUNTIME_REGISTERED" ||
-        evidence === "MODEL_VISIBLE",
+      runtimeRegistered: true,
       modelVisible: evidence === "MODEL_VISIBLE",
       executed: false,
     },
@@ -318,6 +359,263 @@ export function discoverOpenAIResponsesModelVisibleTools(
   };
 }
 
+const secretNamePattern =
+  /(?:^|[_-])(authorization|api[_-]?key|token|password|passwd|secret|credential|cookie)(?:$|[_-])/i;
+
+const secretValueKeywords = new Set([
+  "default",
+  "example",
+  "examples",
+  "const",
+]);
+
+function safeJsonData(
+  value: unknown,
+  depth = 0,
+  seen: Set<object> = new Set(),
+  secretContext = false,
+): unknown | undefined {
+  if (value === null) return null;
+  if (typeof value === "string" || typeof value === "boolean") {
+    return secretContext ? "<redacted>" : value;
+  }
+  if (typeof value === "number") {
+    return Number.isFinite(value)
+      ? (secretContext ? "<redacted>" : value)
+      : undefined;
+  }
+  if (typeof value !== "object" || depth > 12) return undefined;
+
+  const objectValue = value as object;
+  if (seen.has(objectValue)) return undefined;
+  seen.add(objectValue);
+
+  try {
+    if (Array.isArray(value)) {
+      const output: unknown[] = [];
+      for (let index = 0; index < value.length; index++) {
+        const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+        if (!descriptor || !("value" in descriptor)) return undefined;
+        const item = safeJsonData(
+          descriptor.value,
+          depth + 1,
+          seen,
+          secretContext,
+        );
+        if (item === undefined) return undefined;
+        output.push(item);
+      }
+      return output;
+    }
+
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) {
+      return undefined;
+    }
+
+    const output: JsonRecord = {};
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    for (const [key, descriptor] of Object.entries(descriptors)) {
+      if (!("value" in descriptor)) continue;
+      if (descriptor.value === undefined) continue;
+
+      const keySecret = secretContext || secretNamePattern.test(key);
+      if (keySecret && secretValueKeywords.has(key.toLowerCase())) {
+        output[key] = "<redacted>";
+        continue;
+      }
+
+      const child = safeJsonData(
+        descriptor.value,
+        depth + 1,
+        seen,
+        keySecret,
+      );
+      if (child !== undefined) output[key] = child;
+    }
+
+    return output;
+  } finally {
+    seen.delete(objectValue);
+  }
+}
+
+function vercelToolEntries(toolSet: unknown): Array<[string, JsonRecord]> {
+  const record = asRecord(toolSet);
+  if (!record) return [];
+
+  const descriptors = Object.getOwnPropertyDescriptors(record);
+  const entries: Array<[string, JsonRecord]> = [];
+
+  for (const [name, descriptor] of Object.entries(descriptors)) {
+    if (!("value" in descriptor)) continue;
+    const tool = asRecord(descriptor.value);
+    if (tool) entries.push([name, tool]);
+  }
+
+  return entries;
+}
+
+function vercelToolSetFromInput(input: unknown): JsonRecord | undefined {
+  const record = asRecord(input);
+  if (!record) return undefined;
+
+  const tools = asRecord(ownDataValue(record, "tools"));
+  return tools ?? record;
+}
+
+function vercelActiveTools(input: unknown): Set<string> | undefined {
+  const record = asRecord(input);
+  if (!record || !asRecord(ownDataValue(record, "tools"))) return undefined;
+
+  const candidates = [
+    ownDataValue(record, "activeTools"),
+    ownDataValue(record, "experimental_activeTools"),
+  ];
+
+  for (const candidate of candidates) {
+    if (!Array.isArray(candidate)) continue;
+    const names = candidate.filter(
+      (value): value is string => typeof value === "string",
+    );
+    return new Set(names);
+  }
+
+  return undefined;
+}
+
+function vercelToolObservation(
+  name: string,
+  tool: JsonRecord,
+  evidence: "RUNTIME_REGISTERED" | "MODEL_VISIBLE",
+  source: "vercel.toolset" | "vercel.generation.tools",
+  index: number,
+  runtimeName?: string,
+): RuntimeToolObservation {
+  const explicitType = stringValue(ownDataValue(tool, "type"));
+  const type = explicitType ?? "function";
+  const description =
+    stringValue(ownDataValue(tool, "description")) ?? "";
+  const rawSchema =
+    ownDataValue(tool, "inputSchema") ??
+    ownDataValue(tool, "parameters");
+  const schema = safeJsonData(rawSchema);
+  const schemaOpaque = rawSchema !== undefined && schema === undefined;
+  const autoExecutable =
+    typeof ownDataValue(tool, "execute") === "function";
+  const providerDefined =
+    Boolean(explicitType && explicitType.toLowerCase().includes("provider"));
+  const namespace = `vercel-ai-sdk/${runtimeName ?? "runtime"}`;
+
+  const metadata: NonNullable<RuntimeToolObservation["safeMetadata"]> = {
+    autoExecutable,
+    ...(schemaOpaque ? { schemaOpaque: true } : {}),
+    ...(providerDefined ? { providerDefined: true } : {}),
+  };
+
+  return {
+    toolId: stableId("tool", {
+      framework: "vercel-ai-sdk",
+      namespace,
+      name,
+      type,
+    }),
+    namespacedName: `${namespace}/${name}`,
+    canonicalName: name,
+    displayName: name,
+    description,
+    toolType: type,
+    framework: "vercel-ai-sdk",
+    origin: {
+      kind: "runtime",
+      source,
+      ...(runtimeName ? { runtimeName } : {}),
+      index,
+    },
+    evidence: {
+      level: evidence,
+      source: `${namespace}:${source}`,
+    },
+    visibility: {
+      configured: true,
+      runtimeRegistered: true,
+      modelVisible: evidence === "MODEL_VISIBLE",
+      executed: false,
+    },
+    ...(schema !== undefined ? { inputSchema: schema } : {}),
+    safeMetadata: metadata,
+    once: assessToolImportance({
+      name,
+      description,
+      sourceCategory: type,
+      evidence,
+      readOnlyHint:
+        /(?:^|[_-])(?:web[_-]?search|file[_-]?search)(?:$|[_-])/i.test(name)
+          ? true
+          : undefined,
+    }),
+  };
+}
+
+export function discoverVercelAiSdkRegisteredTools(
+  toolSetOrRequest: unknown,
+  runtimeName?: string,
+): VercelAiSdkRegisteredToolSnapshot {
+  const toolSet = vercelToolSetFromInput(toolSetOrRequest);
+  const tools = vercelToolEntries(toolSet)
+    .map(([name, tool], index) =>
+      vercelToolObservation(
+        name,
+        tool,
+        "RUNTIME_REGISTERED",
+        "vercel.toolset",
+        index,
+        runtimeName,
+      ),
+    );
+
+  return {
+    framework: "vercel-ai-sdk",
+    ...(runtimeName ? { runtimeName } : {}),
+    registeredToolCount: tools.length,
+    tools,
+    externalCallsMade: false,
+    toolInvocationsMade: false,
+    secretValuesRetained: false,
+  };
+}
+
+export function discoverVercelAiSdkModelVisibleTools(
+  requestOrTools: unknown,
+  runtimeName?: string,
+): VercelAiSdkModelVisibleToolSnapshot {
+  const toolSet = vercelToolSetFromInput(requestOrTools);
+  const activeTools = vercelActiveTools(requestOrTools);
+  const entries = vercelToolEntries(toolSet)
+    .filter(([name]) => !activeTools || activeTools.has(name));
+  const tools = entries.map(([name, tool], index) =>
+    vercelToolObservation(
+      name,
+      tool,
+      "MODEL_VISIBLE",
+      "vercel.generation.tools",
+      index,
+      runtimeName,
+    ),
+  );
+
+  return {
+    framework: "vercel-ai-sdk",
+    ...(runtimeName ? { runtimeName } : {}),
+    modelVisibleToolCount: tools.length,
+    activeToolFilterApplied: Boolean(activeTools),
+    tools,
+    externalCallsMade: false,
+    toolInvocationsMade: false,
+    secretValuesRetained: false,
+  };
+}
+
 const evidenceRank: Record<ToolEvidenceLevel, number> = {
   REGISTRY_CANDIDATE: 0,
   SOURCE_DISCOVERED: 1,
@@ -342,6 +640,8 @@ export function mergeRuntimeToolEvidence(
   ...snapshots: Array<
     OpenAIAgentRuntimeSnapshot |
     OpenAIResponsesToolSnapshot |
+    VercelAiSdkRegisteredToolSnapshot |
+    VercelAiSdkModelVisibleToolSnapshot |
     MergedRuntimeToolSnapshot
   >
 ): MergedRuntimeToolSnapshot {
