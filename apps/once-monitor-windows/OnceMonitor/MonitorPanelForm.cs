@@ -363,24 +363,6 @@ internal sealed class MonitorPanelForm : Form
             BackColor = MonitorTheme.Background,
         };
 
-        var run = MonitorTheme.Button("Run Doctor", async (_, _) =>
-        {
-            run.Enabled = false;
-            doctor.Text = "Running local read-only Once Doctor...";
-            try
-            {
-                doctor.Text = await _runDoctorAsync();
-            }
-            finally
-            {
-                run.Enabled = true;
-            }
-        });
-        run.Location = new Point(0, 0);
-
-        var copy = MonitorTheme.Button("Copy diagnostics", (_, _) => _copyDiagnostics());
-        copy.Location = new Point(112, 0);
-
         var doctor = new TextBox
         {
             Multiline = true,
@@ -396,6 +378,25 @@ internal sealed class MonitorPanelForm : Form
             Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
             Text = "Doctor is local and read-only. Run it when you want a detailed project and tool-safety check.",
         };
+
+        var run = MonitorTheme.Button("Run Doctor", (_, _) => { });
+        run.Location = new Point(0, 0);
+        run.Click += async (_, _) =>
+        {
+            run.Enabled = false;
+            doctor.Text = "Running local read-only Once Doctor...";
+            try
+            {
+                doctor.Text = await _runDoctorAsync();
+            }
+            finally
+            {
+                run.Enabled = true;
+            }
+        };
+
+        var copy = MonitorTheme.Button("Copy diagnostics", (_, _) => _copyDiagnostics());
+        copy.Location = new Point(112, 0);
 
         panel.Controls.Add(run);
         panel.Controls.Add(copy);
