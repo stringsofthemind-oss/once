@@ -1,0 +1,34 @@
+{
+  "schema_version": "once-performance-raw-evidence-manifest-v1",
+  "date": "2026-09-25",
+  "production_runtime_commit": "f404f9b0f999eb198c408161b6d1f0d4fa605ca1",
+  "repository_main_at_phase8": "280f4b5be5ab2da56f963c3431219ab1ceb9fc2a",
+  "archive": {
+    "name": "once-phase6-phase8-raw-evidence-2026-09-25.zip",
+    "bytes": 9718,
+    "sha256": "f6fe2741c5f27830dc18856c012226f4f04e44456e94482d0595d912c4cd4cf3"
+  },
+  "files": [
+    {
+      "name": "Once-Phase8-Transport-Audit-20260925-072902.json",
+      "bytes": 41089,
+      "sha256": "7f23bbb9b0ea02d14e456cae69065f9b01aa4f0d6408607717feac55c4f0efdd"
+    },
+    {
+      "name": "Once-Phase8-Transport-Audit-20260925-072902.txt",
+      "bytes": 7166,
+      "sha256": "8b5f690f26c7c9e0a663613afed69b80142626e569c4b6aa025399a5b865f7a6"
+    },
+    {
+      "name": "Once-Phase6-Hotfix-Proof-20260925-065530.txt",
+      "bytes": 1376,
+      "sha256": "e18e4f201aa7588dd189798464ebef21e26301c1f2d8dec38ab3ef6fadd0547b"
+    },
+    {
+      "name": "Once-Phase6-Production-Timing-20260925-065530.txt",
+      "bytes": 14530,
+      "sha256": "52782a7ee99b0e435c114b1a631fdb34f532cfc868a35f417d166335eac6e704"
+    }
+  ],
+  "note": "Archive members are byte-for-byte copies of the uploaded production evidence artifacts."
+}
