@@ -5,10 +5,13 @@ import path from "node:path";
 import test from "node:test";
 
 import {
-  AgentToolConnectionError,
   LocalProtectionError,
-  connectLocalAgentToolAuto,
 } from "@once-agent/sdk";
+
+import {
+  AgentToolConnectionError,
+  connectLocalAgentToolAuto,
+} from "@once-agent/sdk/connect";
 
 const [major, minor] = process.versions.node.split(".").map(Number);
 const localReady = major > 24 || (major === 24 && minor >= 15);
