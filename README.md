@@ -1,12 +1,11 @@
 # @once-agent/sdk
 
-> **Automatic Connect release candidate:** repository `main` contains the tested
+> **Automatic Connect:** `@once-agent/sdk@0.1.12` publishes the tested
 > `@once-agent/sdk/connect` path for classifying supported agent tools as
 > `BYPASS`, `PROTECT`, or fail-closed `UNKNOWN`, then wiring whole local tool
 > registries with trusted logical identity and effect binding. It also includes
-> direct OpenAI Agents FunctionTool wrapping. The currently published npm
-> package remains `@once-agent/sdk@0.1.11` until the next SDK release is
-> explicitly published. See [the automatic Connect guide](./docs/CONNECT_AUTO.md).
+> direct OpenAI Agents FunctionTool wrapping. See
+> [the automatic Connect guide](./docs/CONNECT_AUTO.md).
 
 > **Local protection:** `protectLocal` protects an existing async function on one
 > machine without an API key or registered provider and is available in
@@ -24,8 +23,9 @@ Once helps protect supported refunds, bookings, payments and other externally vi
 - Automatic Connect guide: [`docs/CONNECT_AUTO.md`](./docs/CONNECT_AUTO.md)
 - MCP idempotency guide: https://onceexec.com/mcp-idempotency/
 - AI agent retry safety: https://onceexec.com/ai-agent-retry-safety/
-- MCP package: `@once-agent/mcp`
-- Python SDK: `pip install once-agent-sdk`
+- TypeScript SDK: [`@once-agent/sdk@0.1.12`](https://www.npmjs.com/package/@once-agent/sdk)
+- Python SDK: [`once-agent-sdk==0.1.1`](https://pypi.org/project/once-agent-sdk/)
+- MCP package: `@once-agent/mcp@0.1.3`
 - MCP Registry: `io.github.stringsofthemind-oss/once`
 
 ```bash
@@ -37,8 +37,8 @@ npx -y @once-agent/mcp
 ## Automatic agent-tool protection
 
 For applications that already have an agent tool registry or function-tool list,
-the automatic Connect release candidate moves the integration boundary from
-manual per-tool routing toward whole-toolset assessment and fail-closed wiring.
+automatic Connect moves the integration boundary from manual per-tool routing
+toward whole-toolset assessment and fail-closed wiring.
 
 ```ts
 import {
@@ -54,22 +54,23 @@ complete effect binding. Automatic local protection uses durable same-machine
 SQLite on Node.js 24.15+; it is not a multi-host or universal exactly-once
 guarantee.
 
-The same release candidate also provides structural wrapping for OpenAI Agents
+The published path also provides structural wrapping for OpenAI Agents
 FunctionTools through `connectOpenAIAgentsFunctionToolsAuto`, without making
 `@openai/agents` a runtime dependency of the Once SDK.
 
 ## Reproduced across frameworks
 
-**Different framework. Different retry machinery. Same recovery protocol. Same one-effect invariant.**
+**Different framework. Different retry machinery. Same one-effect invariant.**
 
-Once's framework-neutral recovery core has been exercised against two independent execution models using hard process termination after an external effect becomes durable.
+Once's framework-neutral safety boundary has been exercised against independent execution models and retry mechanisms.
 
 | Evidence lab | Failure boundary | Without protection | With Once |
 | --- | --- | --- | --- |
 | [LangGraph hostile-retry lab](./examples/langgraph-retry-lab/) | `StateGraph` + `SqliteSaver`, hard process death, fresh-process resume | naive retry can produce **2 external effects** | **1 external effect**, reconciliation to `CONFIRMED` |
 | [CrewAI hostile-retry lab](./examples/crewai-retry-lab/) | native `BaseTool` → structured-tool execution, hard process death, fresh-process redispatch | control produces **2 external effects** | **1 external effect**, reconciliation to `CONFIRMED` |
+| [Agno hostile-retry lab](./examples/agno-hostile-retry/) | `Agent(retries=2)`, successful tool followed by model HTTP 500 | control produces **3 external effects** | released `@once-agent/sdk@0.1.12` receives all 3 calls and commits **1 external effect** |
 
-Both labs also exercise the ambiguous-outcome path:
+The LangGraph and CrewAI labs also exercise the ambiguous-outcome path:
 
 ```text
 external effect commits
@@ -89,15 +90,15 @@ UNKNOWN → CONFIRMED
 no second external effect
 ```
 
-The recovery core used by both experiments is the same framework-neutral implementation under [`sdk/python/src/once_agent/`](./sdk/python/src/once_agent/).
+The recovery core used by those experiments is the same framework-neutral implementation under [`sdk/python/src/once_agent/`](./sdk/python/src/once_agent/).
 
 > **Checkpoint state tells you what the workflow remembers. Reconciliation tells you what reality did.**
 
 ### What this demonstrates
 
-The same recovery protocol preserved the one-effect invariant under the tested LangGraph and CrewAI failure models without changing the core between frameworks.
+The tested safety boundary preserved the one-effect invariant under the measured framework failure models without requiring the framework itself to stop retrying.
 
-This is not a claim of universal "exactly once" execution. Safe recovery still depends on durable operation identity, durable local state, and authoritative provider reconciliation or equivalent downstream guarantees.
+This is not a claim of universal "exactly once" execution. Safe recovery still depends on durable operation identity, durable state, and authoritative provider reconciliation or equivalent downstream guarantees where the outcome is ambiguous.
 
 ## Framework integrations
 
@@ -106,6 +107,7 @@ This is not a claim of universal "exactly once" execution. Safe recovery still d
 - **LangChain / LangGraph** — [safe retries for consequential agent tools](./examples/langchain/)
 - **CrewAI** — [safe retries for consequential agent tools](./examples/crewai/)
 - **Microsoft Agent Framework** — [safe retries for consequential agent tools](./examples/microsoft-agent-framework/)
+- **Agno** — [hostile-retry evidence](./examples/agno-hostile-retry/)
 
 ## MCP host integrations
 
@@ -138,8 +140,6 @@ claude plugin install once@once-agent
 This installs the Once Claude Code plugin, which exposes `@once-agent/mcp` through MCP.
 
 Plugin source: [`plugins/claude-code/once`](./plugins/claude-code/once/)
-
-
 
 <!-- ONCE_STRIPE_SANDBOX_NOTICE -->
 
@@ -179,11 +179,24 @@ Typical examples include:
 
 ## Install
 
+TypeScript / JavaScript:
+
 ```bash
 npm install @once-agent/sdk
 ```
 
-Requires Node.js 18 or later.
+Python:
+
+```bash
+pip install once-agent-sdk
+```
+
+Published packages:
+
+- npm: https://www.npmjs.com/package/@once-agent/sdk
+- PyPI: https://pypi.org/project/once-agent-sdk/
+
+The standard TypeScript client requires Node.js 18 or later. Automatic same-machine local protection requires Node.js 24.15+.
 
 ## Configure
 
@@ -195,14 +208,15 @@ ONCE_API_KEY=your_api_key
 
 > **Node note:** saving `ONCE_API_KEY` in `.env` does not make vanilla Node load it automatically. Use your framework/runtime's environment loader, export the variable before starting the process, or on supported Node versions run your application with `node --env-file=.env <your-entry-file>`.
 
-
-`new Once()` reads `ONCE_API_KEY` automatically.
+`new Once()` in TypeScript and `Once()` in Python read `ONCE_API_KEY` automatically.
 
 Do not commit API keys to source control.
 
 ## 60-second quick start
 
 First configure a provider with `once setup .`, or use a provider alias already registered with your Once account.
+
+### TypeScript
 
 ```ts
 import { Once } from "@once-agent/sdk";
@@ -230,11 +244,33 @@ async function main() {
 main().catch(console.error);
 ```
 
+### Python
+
+```python
+from once_agent import Once
+
+once = Once()
+operation_id = Once.id("refund", "order_123")
+
+result = once.execute(
+    operation_id=operation_id,
+    provider="my-provider",
+    action={
+        "type": "refund",
+        "order_id": "123",
+    },
+)
+
+print(result["state"])
+```
+
 Replace `my-provider` with the provider alias configured for your Once account.
 
-## The important part: operationId
+## The important part: operation ID
 
 For the same logical operation, reuse the same operation ID on every retry.
+
+TypeScript:
 
 ```ts
 const operationId = Once.id(
@@ -243,7 +279,13 @@ const operationId = Once.id(
 );
 ```
 
-The same supported inputs produce the same deterministic ID.
+Python:
+
+```python
+operation_id = Once.id("refund", "order_123")
+```
+
+The same supported inputs produce the same deterministic ID in both SDKs.
 
 Different logical operations should use different semantic inputs:
 
@@ -274,7 +316,7 @@ Once may preserve an operation as uncertain rather than assume that another exec
 
 ## Retries
 
-Retries reuse the same `operationId`:
+TypeScript retries reuse the same `operationId`:
 
 ```ts
 await once.execute({
@@ -284,14 +326,32 @@ await once.execute({
 });
 ```
 
+Python retries reuse the same `operation_id`:
+
+```python
+once.execute(
+    operation_id=operation_id,
+    provider="my-provider",
+    action=action,
+)
+```
+
 ## Check operation truth
 
-You can inspect the durable state of an operation later:
+You can inspect the durable state of an operation later.
+
+TypeScript:
 
 ```ts
 const truth = await once.truth(operationId);
-
 console.log(truth.ledger_state);
+```
+
+Python:
+
+```python
+truth = once.truth(operation_id)
+print(truth["ledger_state"])
 ```
 
 This is useful after an ambiguous request, or when another process needs to determine the durable state of an existing operation.
@@ -359,7 +419,7 @@ If the answer is yes, reuse the same operation ID.
 
 ## CLI workflow
 
-The package includes the `once` CLI.
+The TypeScript package includes the `once` CLI.
 
 A typical workflow is:
 

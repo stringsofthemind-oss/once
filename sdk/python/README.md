@@ -12,6 +12,8 @@ Examples include refunds, payments, payouts, bookings, orders, provisioning, dep
 pip install once-agent-sdk
 ```
 
+Published package: https://pypi.org/project/once-agent-sdk/
+
 ## Quick start
 
 ```python
@@ -61,6 +63,7 @@ Execution safety depends on stable operation identity, durable Once state, the p
 
 ## Links
 
+- PyPI: https://pypi.org/project/once-agent-sdk/
 - Website: https://onceexec.com/
 - GitHub: https://github.com/stringsofthemind-oss/once
 - Agent guide: https://onceexec.com/agent.md

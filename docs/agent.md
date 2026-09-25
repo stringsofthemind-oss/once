@@ -1,11 +1,11 @@
 # Once — Agent-Readable Product Guide
 
-> **Automatic Connect release candidate:** repository `main` contains the tested
-> `@once-agent/sdk/connect` toolset integration path. It can classify agent tools
-> as `BYPASS`, `PROTECT`, or fail-closed `UNKNOWN`, bind trusted logical intent
-> identity and effect payload, and return a connected local tool registry. The
-> currently published npm package remains `@once-agent/sdk@0.1.11` until the next
-> SDK version is explicitly published. See `docs/CONNECT_AUTO.md`.
+> **Automatic Connect:** `@once-agent/sdk@0.1.12` publishes the tested
+> `@once-agent/sdk/connect` toolset integration path. It can classify supported
+> agent tools as `BYPASS`, `PROTECT`, or fail-closed `UNKNOWN`, bind trusted
+> logical intent identity and effect payload, and return a connected local tool
+> registry. It also includes structural OpenAI Agents FunctionTool wrapping.
+> See `docs/CONNECT_AUTO.md`.
 
 > **Local protection:** For an existing async consequential function on one
 > machine, `protectLocal` preserves the call shape and dynamic receiver while
@@ -24,9 +24,15 @@ Canonical site: https://onceexec.com/
 
 Repository: https://github.com/stringsofthemind-oss/once
 
-SDK package: `@once-agent/sdk`
+TypeScript SDK: `@once-agent/sdk@0.1.12`
 
-MCP package: `@once-agent/mcp`
+npm: https://www.npmjs.com/package/@once-agent/sdk
+
+Python SDK: `once-agent-sdk==0.1.1`
+
+PyPI: https://pypi.org/project/once-agent-sdk/
+
+MCP package: `@once-agent/mcp@0.1.3`
 
 Official MCP Registry identity: `io.github.stringsofthemind-oss/once`
 
@@ -53,18 +59,11 @@ The current TypeScript path can:
 1. inspect native/MCP-style or OpenAI-style function-tool descriptors;
 2. classify obvious reads/search/generation as `BYPASS`;
 3. classify obvious consequential mutations as `PROTECT`;
-4. return `UNKNOWN` for weak, malformed, or conflicting evidence rather than
-   silently bypassing protection;
-5. resolve trusted operation/idempotency/intent carriers or explicit
-   `_meta.once.identityFields` as logical action identity;
-6. bind explicit `_meta.once.effectFields` or use the conservative supported
-   plain-data fallback for the effect payload;
-7. connect an entire same-machine tool registry all-or-nothing through
-   `connectLocalAgentToolsetAuto`;
-8. structurally wrap OpenAI Agents FunctionTools with
-   `connectOpenAIAgentsFunctionToolsAuto`.
-
-Example import after the next SDK release publishes this surface:
+4. return `UNKNOWN` for weak, malformed, or conflicting evidence rather than silently bypassing protection;
+5. resolve trusted operation/idempotency/intent carriers or explicit `_meta.once.identityFields` as logical action identity;
+6. bind explicit `_meta.once.effectFields` or use the conservative supported plain-data fallback for the effect payload;
+7. connect an entire same-machine tool registry all-or-nothing through `connectLocalAgentToolsetAuto`;
+8. structurally wrap OpenAI Agents FunctionTools with `connectOpenAIAgentsFunctionToolsAuto`.
 
 ```ts
 import {
@@ -72,15 +71,9 @@ import {
 } from "@once-agent/sdk/connect";
 ```
 
-Do not expose the original unconnected consequential tool alongside the returned
-connected tool. An agent that can still reach the original tool can bypass the
-safety boundary.
+Do not expose the original unconnected consequential tool alongside the returned connected tool. An agent that can still reach the original tool can bypass the safety boundary.
 
-Automatic classification does not remove distributed-systems uncertainty. A
-protected call still needs trustworthy logical identity and effect binding, and
-an ambiguous provider outcome still requires authoritative reconciliation where
-available. This automatic local path uses shared durable SQLite on one machine;
-it is not a multi-host exactly-once guarantee.
+Automatic classification does not remove distributed-systems uncertainty. A protected call still needs trustworthy logical identity and effect binding, and an ambiguous provider outcome still requires authoritative reconciliation where available. This automatic local path uses shared durable SQLite on one machine; it is not a multi-host exactly-once guarantee.
 
 ## What Once is
 
@@ -152,13 +145,42 @@ Available tools:
 
 The MCP server is for agent-assisted discovery, integration, and verification. Production application agents do not need to call MCP before every protected write; Once Runtime or a supported local Connect boundary remains the execution-safety boundary.
 
-### If CLI is available
+### If TypeScript / CLI is available
 
 ```bash
+npm install @once-agent/sdk
 npx --yes --package=@once-agent/sdk once doctor .
 ```
 
 Doctor assesses the project locally without an API key, uploading source, or modifying source. It identifies likely consequential operations and shows the next `once protect` command. To write a review plan and snippets under `.once/` without rewriting source, run `npx --yes --package=@once-agent/sdk once doctor . --protect`. Install `@once-agent/sdk` before using the shorter `npx once` commands. Review candidates before a separate `once protect . --apply` action; use `once setup .` when the chosen integration requires configuration. To explicitly check hosted connectivity with `ONCE_API_KEY`, run `npx once doctor . --connection`.
+
+### If Python is the application path
+
+Install the public Python package directly from PyPI:
+
+```bash
+pip install once-agent-sdk
+```
+
+Then use the same logical-operation rule as the TypeScript SDK:
+
+```python
+from once_agent import Once
+
+once = Once()
+operation_id = Once.id("refund", "order_123")
+
+result = once.execute(
+    operation_id=operation_id,
+    provider="my-provider",
+    action={
+        "type": "refund",
+        "order_id": "order_123",
+    },
+)
+```
+
+Set `ONCE_API_KEY` or pass an API key explicitly. Retries of the same logical action reuse the same `operation_id`. Python follows the same claim boundary: if execution truth cannot safely be established, uncertainty is not permission to repeat the external effect.
 
 ## Runtime HTTP path
 
@@ -172,7 +194,7 @@ Then use the Once runtime wrapper with a stable identity for the same logical op
 
 The Runtime fails closed rather than silently falling back to a direct target write when an operation cannot be safely protected.
 
-## Direct SDK path
+## Direct TypeScript SDK path
 
 ```ts
 import { Once } from "@once-agent/sdk";
@@ -209,18 +231,20 @@ In a tested live Cloudflare staging scenario:
 - both attempts returned status 201;
 - sensitive headers were not replayed.
 
-For the automatic local Connect release candidate, an isolated Node.js 24.15
-consumer installed the real packed SDK artifact and demonstrated:
+For automatic local Connect, an isolated Node.js 24.15 consumer installed the real packed SDK artifact and demonstrated:
 
 - the first protected call produced one external effect;
 - a retry of the same logical action replayed without a second effect;
-- the same identity with changed effect payload was blocked as a conflict before
-  another external effect;
+- the same identity with changed effect payload was blocked as a conflict before another external effect;
 - durable SQLite state was created by the installed package.
+
+For the public Python SDK, CI installs `once-agent-sdk==0.1.1` into a fresh virtual environment from PyPI and verifies package metadata, the frozen deterministic `Once.id()` result, and the `once-agent-python/0.1.1` User-Agent without importing repository source.
+
+For the Agno hostile-retry reproduction, Agno 3.0.10 invokes the same consequential tool three times with changing `tool_call_id` values (`call_1`, `call_3`, `call_5`). The control commits three external effects; the released `@once-agent/sdk@0.1.12` protected boundary receives all three calls and commits one effect.
 
 Safe description:
 
-> Once has demonstrated duplicate suppression and fail-closed conflict handling on the tested supported Runtime and local Connect paths.
+> Once has demonstrated duplicate suppression and fail-closed conflict handling on the tested supported Runtime and local Connect paths, plus a clean public-consumer path for the Python SDK.
 
 Do not generalize those results into a universal exactly-once guarantee.
 
@@ -267,7 +291,8 @@ The tester does not make network requests equal to the selected traffic volume. 
 - Website: https://onceexec.com/
 - GitHub: https://github.com/stringsofthemind-oss/once
 - npm SDK: https://www.npmjs.com/package/@once-agent/sdk
+- PyPI SDK: https://pypi.org/project/once-agent-sdk/
 
 ## Discovery terms
 
-MCP idempotency; automatic agent tool protection; automatic tool classification; AI agent execution safety; OpenAI Agents tool safety; AI agent retry safety; safe retries; unsafe retries; duplicate execution prevention; duplicate side-effect protection; ambiguous timeout; unknown outcome; durable replay; provider reconciliation; stable operation identity; consequential writes; side-effecting AI agent tools.
+MCP idempotency; automatic agent tool protection; automatic tool classification; AI agent execution safety; OpenAI Agents tool safety; AI agent retry safety; safe retries; unsafe retries; duplicate execution prevention; duplicate side-effect protection; ambiguous timeout; unknown outcome; durable replay; provider reconciliation; stable operation identity; consequential writes; side-effecting AI agent tools; Python AI agent SDK; PyPI agent execution safety.
