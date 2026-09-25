@@ -64,3 +64,15 @@ export type {
   AgentTool,
   AutoLocalAgentToolContract,
 } from "./local-agent-tool.js";
+
+export {
+  connectLocalAgentToolsetAuto,
+} from "./toolset.js";
+
+export type {
+  LocalAgentToolRegistry,
+  ConnectedLocalAgentToolRegistry,
+  AutoLocalAgentToolsetOverride,
+  AutoLocalAgentToolsetOptions,
+  ConnectedLocalAgentToolset,
+} from "./toolset.js";
