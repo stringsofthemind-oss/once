@@ -42,13 +42,14 @@
     "test:dataset-progress": "npm run build && node ./scripts/dataset-progress-regression.mjs",
     "test:agent-discovery": "node ./scripts/agent-discovery-regression.mjs",
     "test:doctor": "npm run build && node ./scripts/doctor-adoption-regression.mjs",
+    "test:monitor": "npm run build && node ./scripts/monitor-snapshot-regression.mjs",
     "test:tool-discovery": "npm run build && node ./scripts/tool-discovery-regression.mjs && node ./scripts/mcp-live-discovery-regression.mjs && node ./scripts/mcp-tool-refresh-regression.mjs && node ./scripts/runtime-tool-discovery-regression.mjs && node ./scripts/vercel-runtime-tool-discovery-regression.mjs && node ./scripts/langchain-runtime-discovery-regression.mjs && node ./scripts/execution-observation-regression.mjs && node ./scripts/openai-agents-execution-observer-regression.mjs && node ./scripts/vercel-execution-observer-regression.mjs && node ./scripts/langchain-execution-observer-regression.mjs && node ./scripts/otel-execution-observer-regression.mjs && node ./scripts/phase11d-evidence-ladder-regression.mjs",
     "test:gateway": "npm run build && node ./scripts/gateway-planner-regression.mjs && node ./scripts/gateway-broker-regression.mjs && node ./scripts/gateway-tool-graph-binding-regression.mjs && node ./scripts/gateway-openai-function-tools-regression.mjs",
     "routing:check": "node ./scripts/agent-routing-conformance.mjs",
     "routing:cases": "node ./scripts/agent-routing-conformance.mjs --emit-cases",
     "test:routing-conformance": "node ./scripts/agent-routing-conformance-regression.mjs",
     "test:contract": "npm run build && tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --strict --types node ./scripts/sdk-contract-types.ts && node ./scripts/sdk-contract-runtime.mjs",
-    "test:release": "npm run benchmark:scan && npm run test:benchmark && npm run test:trace && npm run test:dataset-seal && npm run test:dataset-progress && npm run test:agent-discovery && npm run test:doctor && npm run test:tool-discovery && npm run test:gateway && npm run test:routing-conformance && npm run test:scanner-declarations && npm run test:contract && npm run test:protect && npm run test:capabilities && npm run test:transformer && npm run test:binding && npm run test:patch-planner && npm run test:transformer-protect && npm run test:apply && npm run test:id-conformance && npm run test:consumer && npm run test:connect-package && npm run test:discovery-package && npm run test:gateway-package && npm run test:activation && npm run test:package && npm run test:runtime-setup && npm run test:connect",
+    "test:release": "npm run benchmark:scan && npm run test:benchmark && npm run test:trace && npm run test:dataset-seal && npm run test:dataset-progress && npm run test:agent-discovery && npm run test:doctor && npm run test:monitor && npm run test:tool-discovery && npm run test:gateway && npm run test:routing-conformance && npm run test:scanner-declarations && npm run test:contract && npm run test:protect && npm run test:capabilities && npm run test:transformer && npm run test:binding && npm run test:patch-planner && npm run test:transformer-protect && npm run test:apply && npm run test:id-conformance && npm run test:consumer && npm run test:connect-package && npm run test:discovery-package && npm run test:gateway-package && npm run test:activation && npm run test:package && npm run test:runtime-setup && npm run test:connect",
     "test:local": "npm run build && node --test ./test/local.test.mjs ./test/connect/local-agent-tool.test.mjs ./test/gateway/local-gateway-toolset.test.mjs ./test/gateway/openai-function-tools-gateway.test.mjs",
     "test:connect": "npm run build && node --test ./test/connect/*.test.mjs",
     "test:connect-package": "node ./scripts/connect-package-regression.mjs",
@@ -100,14 +101,14 @@
   },
   "bin": {
     "once": "dist/cli.js",
+    "once-monitor": "dist/monitor-cli.js",
     "once-dataset": "dist/dataset-cli.js"
   },
   "dependencies": {
     "typescript": "^5.9.0"
   },
   "repository": {
-    "type": "git",
-    "url": "git+https://github.com/stringsofthemind-oss/once.git"
+    "type": "git+https://github.com/stringsofthemind-oss/once.git"
   },
   "homepage": "https://onceexec.com/",
   "bugs": {
