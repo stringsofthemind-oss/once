@@ -8,7 +8,7 @@
     "deploy:production": "node ../../scripts/deploy-worker.cjs runtime production",
     "dev": "wrangler dev",
     "start": "wrangler dev",
-    "test": "node --test test/safety.test.mjs && node test/credential-free-lost-ack-proof.mjs"
+    "test": "node --test test/safety.test.mjs test/public-stats-contract.test.mjs && node test/credential-free-lost-ack-proof.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.135.0"
