@@ -21,6 +21,8 @@ All notable changes to the Once SDK are documented here.
 - Public `@once-agent/sdk/discovery` ESM, CommonJS, and TypeScript subpath for dependency-free structural runtime observation.
 - Phase 11C priority framework adapters for OpenAI Agents/Responses, Vercel AI SDK, LangChain/LangGraph, Pydantic AI, Google ADK/Gemini, Strands Agents, and Microsoft Semantic Kernel.
 - Framework adapters preserve same-named tools as distinct observations when their safe descriptions, schemas, or metadata differ instead of collapsing them by name alone.
+- Phase 11D execution observation with `EXECUTED` Tool Graph evidence, observed call counters/outcomes/timing, and action-priority recomputation after real execution evidence.
+- Observation-only execution adapters for OpenAI Agents lifecycle events, Vercel AI SDK completed-step results, LangChain/LangGraph tool callbacks, and OpenTelemetry GenAI `execute_tool` spans.
 
 ### Safety and validation
 
@@ -36,6 +38,9 @@ All notable changes to the Once SDK are documented here.
 - Phase 11C framework adapters observe already-existing registration/model-request state only: they do not invoke tools, run agents/graphs, call models/providers, resolve external toolsets, evaluate framework execution filters, or treat framework hints as a security boundary.
 - Runtime discovery keeps getter-backed or non-plain framework internals inert/opaque, redacts secret-like schema and metadata values, and counts unresolved runtime sources instead of guessing.
 - The packaged `@once-agent/sdk/discovery` contract is release-gated through clean-tarball TypeScript, ESM, and CommonJS consumers.
+- Phase 11D observers do not wrap or invoke tools to learn that they ran, and do not retain tool arguments/results, prompts, exception text, auth, provider/model metadata, callbacks, or arbitrary runtime objects.
+- Execution promotion requires exact Tool Graph correlation plus a safe descriptor fingerprint; duplicate or ambiguous name-only telemetry fails closed rather than promoting the wrong tool.
+- Phase 11D is release-gated by an end-to-end `RUNTIME_REGISTERED -> MODEL_VISIBLE -> EXECUTED` evidence ladder and a fresh packed-tarball ESM/CommonJS/TypeScript execution-observation consumer.
 - CrewAI, LlamaIndex, and Agno runtime adapters are explicitly deferred to the later discovery backlog rather than blocking Phase 11D execution observation.
 - No universal exactly-once claim is made; local automatic protection remains same-machine SQLite coordination and ambiguous outcomes still require authoritative reconciliation where applicable.
 
