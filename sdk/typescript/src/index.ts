@@ -1083,3 +1083,13 @@ export type {
   OpenAIAgentsAction,
   OpenAIAgentsConnectToolInput
 } from "./connect/openai-agents.js";
+
+export {
+  connectLocalAgentTool,
+  AgentToolConnectionError
+} from "./connect/local-agent-tool.js";
+
+export type {
+  AgentTool,
+  LocalAgentToolContract
+} from "./connect/local-agent-tool.js";
