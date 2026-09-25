@@ -56,6 +56,19 @@ export type {
 } from "./payload.js";
 
 export {
+  CONNECT_PREFLIGHT_VERSION,
+  prepareConnectToolCall,
+} from "./preflight.js";
+
+export type {
+  ConnectToolPreflightDecision,
+  ConnectToolPreflightCode,
+  ConnectPreflightPayloadSource,
+  PrepareConnectToolCallInput,
+  ConnectToolPreflightResult,
+} from "./preflight.js";
+
+export {
   connectLocalAgentToolAuto,
   AgentToolConnectionError,
 } from "./local-agent-tool.js";
