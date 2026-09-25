@@ -142,6 +142,11 @@ class SemanticKernelDiscoveryTests(unittest.TestCase):
         self.assertFalse(email_observation.executed)
         self.assertEqual(email_observation.plugin_name, "Customer")
         self.assertEqual(email_observation.safe_metadata["is_asynchronous"], True)
+        secret_parameter = next(
+            item for item in email_observation.parameters
+            if item["name"] == "api_key"
+        )
+        self.assertEqual(secret_parameter["default_value"], "<redacted>")
 
         search_observation = next(
             item for item in snapshot.tools
@@ -159,7 +164,6 @@ class SemanticKernelDiscoveryTests(unittest.TestCase):
         ):
             self.assertNotIn(secret, serialized)
         self.assertNotIn("authorization", serialized.lower())
-        self.assertNotIn("api_key", serialized.lower())
         self.assertNotIn("client", serialized.lower())
 
     def test_already_filtered_metadata_is_model_visible(self):
