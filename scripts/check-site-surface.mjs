@@ -12,7 +12,8 @@ const pageAnalytics = read("docs/page-analytics.js");
 const app = read("docs/app.js");
 const styles = read("docs/styles.css");
 const wrangler = read("workers/runtime/wrangler.jsonc");
-const publicEntry = read("workers/runtime/src/public-entry.js");
+const runtimeEntry = read("workers/runtime/src/index.js");
+const runtimeCore = read("workers/runtime/src/runtime-core.js");
 
 const pythonVersion = pythonProject.match(/^version\s*=\s*"([^"]+)"/m)?.[1];
 assert.ok(pythonVersion, "could not read Python SDK version");
@@ -50,20 +51,32 @@ assert.ok(
 
 assert.match(
   wrangler,
-  /"main"\s*:\s*"src\/public-entry\.js"/,
-  "runtime wrangler config must keep the public stats wrapper as its entrypoint",
+  /"main"\s*:\s*"src\/index\.js"/,
+  "runtime wrangler config must keep the guarded src/index.js entrypoint",
 );
 
 assert.match(
-  publicEntry,
+  runtimeEntry,
+  /from\s+"\.\/runtime-core\.js"/,
+  "runtime public edge must delegate to the preserved runtime core",
+);
+
+assert.match(
+  runtimeEntry,
   /PUBLIC_STATS_PATH\s*=\s*"\/v1\/public\/stats"/,
   "runtime public stats route is missing",
 );
 
 assert.match(
-  publicEntry,
+  runtimeEntry,
   /SELECT COUNT\(\*\) AS protected_operations\s+FROM operations/s,
   "runtime public stats must derive from the durable operations ledger",
+);
+
+assert.match(
+  runtimeCore,
+  /class extends DurableObject|class Q18Truth/,
+  "preserved runtime core is missing the Durable Object engine",
 );
 
 const heartbeatRule = styles.match(/\.once-network::before\s*\{([\s\S]*?)\n\}/)?.[1] ?? "";
