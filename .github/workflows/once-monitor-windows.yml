@@ -1,0 +1,91 @@
+name: Once Monitor Windows
+
+on:
+  pull_request:
+    paths:
+      - "apps/once-monitor-windows/**"
+      - "sdk/typescript/src/monitor-*.ts"
+      - "sdk/typescript/scripts/monitor-snapshot-regression.mjs"
+      - "sdk/typescript/package.json"
+      - "sdk/typescript/package-lock.json"
+      - ".github/workflows/once-monitor-windows.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  monitor-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: sdk/typescript/package-lock.json
+
+      - name: Install SDK dependencies
+        working-directory: sdk/typescript
+        run: npm ci
+
+      - name: Run secret-minimal Monitor snapshot proof
+        working-directory: sdk/typescript
+        run: npm run test:monitor
+
+  windows-monitor:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Use .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Compile Once Monitor
+        shell: pwsh
+        run: |
+          dotnet build apps/once-monitor-windows/OnceMonitor/OnceMonitor.csproj -c Release
+
+      - name: Publish self-contained Once Monitor
+        shell: pwsh
+        run: |
+          dotnet publish apps/once-monitor-windows/OnceMonitor/OnceMonitor.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -o apps/once-monitor-windows/artifacts
+
+      - name: Run native Monitor self-test
+        shell: pwsh
+        run: |
+          $exe = Resolve-Path 'apps/once-monitor-windows/artifacts/OnceMonitor.exe'
+          $process = Start-Process -FilePath $exe -ArgumentList '--self-test' -Wait -PassThru
+          if ($process.ExitCode -ne 0) {
+            throw "Once Monitor self-test failed with exit code $($process.ExitCode)."
+          }
+          Write-Host "PASS: native Once Monitor self-test"
+
+      - name: Verify artifact
+        shell: pwsh
+        run: |
+          $exe = Get-Item 'apps/once-monitor-windows/artifacts/OnceMonitor.exe'
+          if ($exe.Length -lt 1MB) { throw 'OnceMonitor.exe is unexpectedly small.' }
+          Write-Host "Built $($exe.Name) ($($exe.Length) bytes)"
+
+      - name: Upload private Windows test artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: once-monitor-windows-test
+          path: apps/once-monitor-windows/artifacts/OnceMonitor.exe
+          if-no-files-found: error
+          retention-days: 3

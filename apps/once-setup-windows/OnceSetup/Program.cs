@@ -162,6 +162,12 @@ internal static class Program
             progress.Close();
             Application.DoEvents();
 
+            // Hand only the already-selected local project path to the optional
+            // customer-facing Monitor. API keys and provider payloads never
+            // cross this boundary, and Monitor failure never invalidates a
+            // successful Once installation.
+            MonitorRegistration.TryRegisterAndStart(root);
+
             Clipboard.Clear();
             CloseOpenSetupWindows();
             SetupDialogs.ShowCompletion(root, isDemo);
