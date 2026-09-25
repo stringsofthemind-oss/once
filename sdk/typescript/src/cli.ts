@@ -44,6 +44,14 @@ import {
   printMcpLiveDiscoveryReport
 } from "./mcp-live-report.js";
 
+import {
+  watchMcpToolListOnce
+} from "./mcp-tool-refresh.js";
+
+import {
+  printMcpToolRefreshReport
+} from "./mcp-tool-refresh-report.js";
+
 function printHelp(): void {
   console.log("");
   console.log("Once");
@@ -52,7 +60,7 @@ function printHelp(): void {
   console.log("Commands:");
 
   console.log(
-    "  once doctor [directory] [--protect] [--connection] [--tools] [--tools-live=<host/name>]"
+    "  once doctor [directory] [--protect] [--connection] [--tools] [--tools-live=<host/name>] [--tools-watch-ms=<ms>]"
   );
   console.log(
     "      Run the low-friction local safety check. No API key required."
@@ -70,7 +78,10 @@ function printHelp(): void {
     "      Use --tools-live=<host/name> with --tools to explicitly enumerate one configured remote HTTP MCP server. Repeat to select more than one."
   );
   console.log(
-    "      Live tool enumeration never launches configured stdio servers and does not follow redirects."
+    "      Use --tools-watch-ms=<50..60000> with exactly one --tools-live target to wait for one modern MCP tool-list change, refresh tools/list, report the diff, then exit."
+  );
+  console.log(
+    "      Live tool enumeration/watch never launches configured stdio servers and does not follow redirects."
   );
 
   console.log("");
@@ -143,6 +154,9 @@ function printHelp(): void {
     "  once doctor . --tools --tools-live=cursor/docs"
   );
   console.log(
+    "  once doctor . --tools --tools-live=cursor/docs --tools-watch-ms=5000"
+  );
+  console.log(
     "  once doctor . --protect"
   );
   console.log(
@@ -204,9 +218,28 @@ async function main(): Promise<void> {
           )
           .filter(Boolean);
 
+      const watchArgument =
+        args.find(
+          value =>
+            value.startsWith("--tools-watch-ms=")
+        );
+
+      const watchMs =
+        watchArgument
+          ? Number(
+              watchArgument.substring("--tools-watch-ms=".length)
+            )
+          : undefined;
+
       if (args.includes("--tools-live")) {
         throw new Error(
           "--tools-live requires an explicit configured server selector. Example: --tools-live=cursor/docs"
+        );
+      }
+
+      if (args.includes("--tools-watch-ms")) {
+        throw new Error(
+          "--tools-watch-ms requires a bounded millisecond value. Example: --tools-watch-ms=5000"
         );
       }
 
@@ -216,6 +249,18 @@ async function main(): Promise<void> {
       ) {
         throw new Error(
           "--tools-live must be used with --tools so the configured server inventory is reviewed before live enumeration."
+        );
+      }
+
+      if (watchArgument && liveSelectors.length !== 1) {
+        throw new Error(
+          "--tools-watch-ms requires exactly one --tools-live=<host/name> target."
+        );
+      }
+
+      if (watchArgument && !Number.isFinite(watchMs)) {
+        throw new Error(
+          "--tools-watch-ms must be a finite millisecond value."
         );
       }
 
@@ -248,6 +293,19 @@ async function main(): Promise<void> {
             );
 
           printMcpLiveDiscoveryReport(live);
+
+          if (watchArgument && watchMs !== undefined) {
+            const refresh =
+              await watchMcpToolListOnce(
+                requestedPath,
+                discovery.configuredSources,
+                liveSelectors[0]!,
+                live,
+                { watchMs }
+              );
+
+            printMcpToolRefreshReport(refresh);
+          }
         }
       }
 
