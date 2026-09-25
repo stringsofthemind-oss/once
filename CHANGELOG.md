@@ -2,7 +2,7 @@
 
 All notable changes to the Once SDK are documented here.
 
-## Unreleased
+## 0.1.12 - 2026-09-25
 
 ### Added
 
@@ -86,7 +86,7 @@ All notable changes to the Once SDK are documented here.
 - `once doctor [directory]` as a local, read-only adoption front door.
 - Default Doctor assessment requires no `ONCE_API_KEY`, uploads no source code, and does not modify application source.
 - Doctor reports detected project tooling and likely consequential-operation candidates.
-- `once doctor . --protect` generates a review plan and per-callsite snippets without rewriting source.
+- `once doctor . --protect` generates a review plan and per-callsite integration snippets without rewriting source.
 - `once doctor . --connection` explicitly verifies hosted Once connectivity.
 - Doctor adoption regression coverage is included in the SDK release suite.
 
