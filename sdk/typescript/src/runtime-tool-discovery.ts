@@ -328,6 +328,16 @@ const evidenceRank: Record<ToolEvidenceLevel, number> = {
   EXECUTED: 6,
 };
 
+function runtimeCorrelationKey(tool: RuntimeToolObservation): string {
+  return JSON.stringify({
+    name: tool.canonicalName,
+    type: tool.toolType,
+    description: tool.description,
+    inputSchema: tool.inputSchema,
+    safeMetadata: tool.safeMetadata,
+  });
+}
+
 export function mergeRuntimeToolEvidence(
   ...snapshots: Array<
     OpenAIAgentRuntimeSnapshot |
@@ -339,7 +349,7 @@ export function mergeRuntimeToolEvidence(
 
   for (const snapshot of snapshots) {
     for (const tool of snapshot.tools) {
-      const key = `${tool.canonicalName}\u0000${tool.toolType}`;
+      const key = runtimeCorrelationKey(tool);
       const current = merged.get(key);
 
       if (
@@ -355,7 +365,8 @@ export function mergeRuntimeToolEvidence(
   return {
     tools: [...merged.values()].sort((left, right) =>
       left.canonicalName.localeCompare(right.canonicalName) ||
-      left.toolType.localeCompare(right.toolType),
+      left.toolType.localeCompare(right.toolType) ||
+      left.description.localeCompare(right.description),
     ),
   };
 }
