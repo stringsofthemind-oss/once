@@ -1,6 +1,6 @@
 {
   "name": "once-q18-cloud",
-  "main": "src/public-entry.js",
+  "main": "src/index.js",
   "workers_dev": true,
   "preview_urls": true,
   "compatibility_date": "2026-09-16",
