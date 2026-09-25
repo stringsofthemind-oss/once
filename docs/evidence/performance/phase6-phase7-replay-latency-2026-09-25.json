@@ -1,0 +1,110 @@
+{
+  "schema_version": "once-performance-evidence-v1",
+  "evidence_id": "once-phase7-confirmed-replay-2026-09-25",
+  "date": "2026-09-25",
+  "scope": "Production confirmed-replay latency and safety evidence for the Phase 7 durable local confirmation receipt optimization.",
+  "production": {
+    "endpoint": "https://api.onceexec.com/v1/execute",
+    "provider": "blind_test",
+    "phase6_measured_commit": "9cc225e6cda2ce83e67417b5c9dfaf73f9952aed",
+    "phase7_production_commit": "f404f9b0f999eb198c408161b6d1f0d4fa605ca1",
+    "phase7_implementation_commit": "09e2553c5d20939c88f142c46015eb94fe52a576",
+    "phase7_pull_request": 78
+  },
+  "phase6": {
+    "comparable_replay_mean_ms": 74.10,
+    "server_side_replay_ms": 21.95,
+    "provider_truth_ms": 21.95,
+    "interpretation": "Temporary Server-Timing instrumentation identified the external provider-truth lookup as the dominant removable replay cost."
+  },
+  "phase7_local_microbenchmark": {
+    "samples_per_path": 2000,
+    "fast_confirmed_receipt": {
+      "mean_ms": 0.198,
+      "p50_ms": 0.174,
+      "p95_ms": 0.288,
+      "p99_ms": 0.684,
+      "min_ms": 0.137,
+      "max_ms": 1.331,
+      "provider_truth_calls": 0
+    },
+    "confirmed_provider_truth": {
+      "mean_ms": 0.255,
+      "p50_ms": 0.221,
+      "p95_ms": 0.341,
+      "p99_ms": 1.575,
+      "min_ms": 0.178,
+      "max_ms": 3.637,
+      "provider_truth_calls": 2000
+    },
+    "provider_execute_calls": 0,
+    "mean_saving_ms": 0.058,
+    "local_core_reduction_percent": 22.61
+  },
+  "phase7_safety_validation": {
+    "runtime_tests_passed": 24,
+    "runtime_tests_failed": 0,
+    "credential_free_lost_ack_exactly_one_external_effect": true,
+    "worker_dry_run_passed": true,
+    "fresh_production_result": {
+      "http": 200,
+      "result": "executed",
+      "state": "CONFIRMED",
+      "side_effects": 1
+    },
+    "exact_replay_result": {
+      "http": 200,
+      "result": "already_executed",
+      "state": "CONFIRMED",
+      "side_effects": 1
+    },
+    "additional_exact_replays": 20,
+    "duplicate_external_effects_observed": 0
+  },
+  "phase7_comparable_production_benchmark": {
+    "client_method": "single Node process using fetch with connection reuse",
+    "replay_warmups": 3,
+    "measured_replays": 20,
+    "fresh_ms": 423.42,
+    "warmup_ms": [54.62, 59.48, 52.82],
+    "samples_ms": [54.55, 53.06, 58.72, 62.00, 52.36, 44.82, 45.47, 50.87, 44.02, 48.55, 53.45, 47.07, 45.46, 47.59, 48.17, 55.96, 42.46, 52.19, 51.82, 41.68],
+    "mean_ms": 50.01,
+    "p50_ms": 48.55,
+    "p95_ms": 58.72,
+    "p99_ms": 58.72,
+    "min_ms": 41.68,
+    "max_ms": 62.00,
+    "phase6_mean_ms": 74.10,
+    "absolute_improvement_ms": 24.09,
+    "relative_reduction_percent": 32.51,
+    "external_effects": 1,
+    "duplicate_external_effects": 0
+  },
+  "non_comparable_diagnostic": {
+    "client_method": "PowerShell loop launching a new curl.exe process per request",
+    "mean_ms": 127.21,
+    "p50_ms": 126.15,
+    "p95_ms": 156.05,
+    "p99_ms": 156.05,
+    "min_ms": 107.97,
+    "max_ms": 160.15,
+    "used_for_phase6_phase7_comparison": false,
+    "reason": "Client methodology differs materially from the persistent-Node Phase 6 benchmark."
+  },
+  "fast_path_contract": {
+    "requires_confirmed_ledger_state": true,
+    "requires_matching_immutable_confirmation_receipt": true,
+    "requires_http_replay_envelope_when_configured": true,
+    "receipt_absence_authorizes_execution": false,
+    "unknown_or_executing_uses_fast_path": false,
+    "legacy_confirmed_without_receipt_falls_back_to_provider_truth": true
+  },
+  "limitations": [
+    "Single client/network environment.",
+    "Twenty measured exact replays in the comparable production run.",
+    "Synthetic blind_test provider rather than every supported provider.",
+    "Point-in-time production observations from 2026-09-25.",
+    "Network, edge routing, geography, congestion, and provider behavior can change independently of Once.",
+    "Zero duplicates in these tests is not a claim of universal exactly-once execution under all possible failures."
+  ]
+}
