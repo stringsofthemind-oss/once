@@ -150,14 +150,21 @@ test("retrieve_document is inferred as BYPASS", () => {
   );
 });
 
-test("generation-only tools remain UNKNOWN without a trusted read-only declaration", () => {
-  const result = classifyConnectTool({
-    name: "generate_report",
-    description: "Generate a report from supplied text.",
-  });
+test("generation-only tools are inferred as BYPASS", () => {
+  for (const name of [
+    "generate_report",
+    "summarize_document",
+    "translate_text",
+    "calculate_total",
+  ]) {
+    const result = classifyConnectTool({ name });
 
-  assert.equal(result.decision, CONNECT_TOOL_DECISION.UNKNOWN);
-  assert.equal(result.reason, "INSUFFICIENT_EVIDENCE");
+    assert.equal(
+      result.decision,
+      CONNECT_TOOL_DECISION.BYPASS,
+      name,
+    );
+  }
 });
 
 test("mixed get-or-create semantics resolve to UNKNOWN", () => {
