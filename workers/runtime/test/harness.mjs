@@ -1,4 +1,4 @@
-// Executes the checked-in Worker against real SQLite, without network or Cloudflare.
+// Executes the checked-in Worker runtime core against real SQLite, without network or Cloudflare.
 // Models SQL transactions, not Cloudflare output gates or lifecycle scheduling.
 import { readFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
@@ -6,7 +6,7 @@ import vm from 'node:vm';
 import { webcrypto } from 'node:crypto';
 
 export async function loadRuntime() {
-  const source = (await readFile(new URL('../src/index.js', import.meta.url), 'utf8'))
+  const source = (await readFile(new URL('../src/runtime-core.js', import.meta.url), 'utf8'))
     .replace('import { DurableObject } from "cloudflare:workers";', '')
     .replace(/export \{[\s\S]*?\};\s*\/\/# sourceMappingURL=index.js.map\s*$/, 'globalThis.Runtime = Q18Truth; globalThis.worker = index_default;');
   const context = vm.createContext({
