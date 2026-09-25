@@ -59,6 +59,56 @@
   }
 
   // --------------------------------------------------------
+  // ONCE HEARTBEAT VISIBILITY OVERRIDE
+  // --------------------------------------------------------
+  // The base stylesheet owns cadence and reduced-motion policy.
+  // This late override only makes the 1-second ambient heartbeat
+  // unmistakably visible and gives it the Once red heartbeat colour.
+
+  const heartbeatStyle = document.createElement("style");
+  heartbeatStyle.dataset.onceHeartbeat = "red-visible-v2";
+  heartbeatStyle.textContent = `
+.once-network::before{
+  width:210px;
+  height:150px;
+  background:
+    radial-gradient(
+      ellipse,
+      rgba(255,59,77,.62) 0%,
+      rgba(255,59,77,.34) 34%,
+      rgba(255,59,77,.13) 58%,
+      rgba(255,59,77,0) 80%
+    ) !important;
+  box-shadow:
+    0 0 30px rgba(255,59,77,.24),
+    0 0 58px rgba(255,59,77,.12);
+  filter:blur(1px);
+}
+
+.once-network-value{
+  text-shadow:
+    0 0 28px rgba(255,59,77,.20);
+}
+
+@keyframes once-network-heartbeat{
+  0%,100%{
+    opacity:.44;
+    transform:
+      translate(-50%,-50%)
+      scale(.86);
+  }
+
+  50%{
+    opacity:.94;
+    transform:
+      translate(-50%,-50%)
+      scale(1.08);
+  }
+}
+`;
+  document.head.append(heartbeatStyle);
+
+  // --------------------------------------------------------
   // LIVE COUNTER LAST-KNOWN FALLBACK
   // --------------------------------------------------------
 
