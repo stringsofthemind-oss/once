@@ -64,6 +64,8 @@
   // Keep the existing one-second cadence and reduced-motion
   // policy, but present the Once heartbeat as a monitor trace:
   // faint red baseline + sharp ECG spike + bright one-second beat.
+  // A real protected-operation increase uses a contrasting cyan
+  // event ripple so heartbeat and usage are visually distinct.
 
   const heartbeatStyle = document.createElement("style");
   heartbeatStyle.dataset.onceHeartbeat = "monitor-red-v4";
@@ -126,6 +128,21 @@
     1s
     linear
     infinite;
+}
+
+.once-network.operation-confirmed::after{
+  border:2px solid #43d7ff !important;
+  background:
+    radial-gradient(
+      circle,
+      rgba(67,215,255,.24) 0%,
+      rgba(67,215,255,.10) 42%,
+      rgba(67,215,255,0) 72%
+    );
+  box-shadow:
+    0 0 12px rgba(67,215,255,.96),
+    0 0 30px rgba(67,215,255,.58),
+    0 0 54px rgba(67,215,255,.28);
 }
 
 .once-network-value{
