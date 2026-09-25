@@ -44,7 +44,10 @@ test("consequential tool with trustworthy identity is ready to protect", () => {
   assert.equal(result.identitySource, "input:idempotencyKey");
   assert.equal(result.payloadSource, "full_input");
   assert.match(result.operationId, /^send_email:[a-f0-9]{32}$/);
-  assert.match(result.payloadFingerprint, /^[a-f0-9]{64}$/);
+  assert.match(
+    result.payloadFingerprint,
+    /^once-connect-payload-v1:[a-f0-9]{64}$/,
+  );
   assert.deepEqual(result.payload, {
     body: "Invoice",
     idempotencyKey: "invoice-42",
