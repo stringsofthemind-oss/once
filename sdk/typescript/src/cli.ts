@@ -36,6 +36,14 @@ import {
   printToolDiscoveryReport
 } from "./tool-report.js";
 
+import {
+  discoverLiveMcpTools
+} from "./mcp-live-discovery.js";
+
+import {
+  printMcpLiveDiscoveryReport
+} from "./mcp-live-report.js";
+
 function printHelp(): void {
   console.log("");
   console.log("Once");
@@ -44,7 +52,7 @@ function printHelp(): void {
   console.log("Commands:");
 
   console.log(
-    "  once doctor [directory] [--protect] [--connection] [--tools]"
+    "  once doctor [directory] [--protect] [--connection] [--tools] [--tools-live=<host/name>]"
   );
   console.log(
     "      Run the low-friction local safety check. No API key required."
@@ -57,6 +65,12 @@ function printHelp(): void {
   );
   console.log(
     "      Use --tools to inventory local/configured tool surfaces and rank source-discovered capabilities."
+  );
+  console.log(
+    "      Use --tools-live=<host/name> with --tools to explicitly enumerate one configured remote HTTP MCP server. Repeat to select more than one."
+  );
+  console.log(
+    "      Live tool enumeration never launches configured stdio servers and does not follow redirects."
   );
 
   console.log("");
@@ -126,6 +140,9 @@ function printHelp(): void {
     "  once doctor . --tools"
   );
   console.log(
+    "  once doctor . --tools --tools-live=cursor/docs"
+  );
+  console.log(
     "  once doctor . --protect"
   );
   console.log(
@@ -175,6 +192,33 @@ async function main(): Promise<void> {
             !value.startsWith("--")
         ) ?? ".";
 
+      const liveSelectors =
+        args
+          .filter(
+            value =>
+              value.startsWith("--tools-live=")
+          )
+          .map(
+            value =>
+              value.substring("--tools-live=".length).trim()
+          )
+          .filter(Boolean);
+
+      if (args.includes("--tools-live")) {
+        throw new Error(
+          "--tools-live requires an explicit configured server selector. Example: --tools-live=cursor/docs"
+        );
+      }
+
+      if (
+        liveSelectors.length > 0 &&
+        !args.includes("--tools")
+      ) {
+        throw new Error(
+          "--tools-live must be used with --tools so the configured server inventory is reviewed before live enumeration."
+        );
+      }
+
       await runDoctor(
         requestedPath,
         {
@@ -194,6 +238,17 @@ async function main(): Promise<void> {
         printToolDiscoveryReport(
           discovery
         );
+
+        if (liveSelectors.length > 0) {
+          const live =
+            await discoverLiveMcpTools(
+              requestedPath,
+              discovery.configuredSources,
+              liveSelectors
+            );
+
+          printMcpLiveDiscoveryReport(live);
+        }
       }
 
       return;
