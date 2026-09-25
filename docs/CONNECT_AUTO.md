@@ -1,11 +1,12 @@
 # Once Connect — automatic tool protection
 
-> **Release status:** this guide documents the automatic Connect APIs currently
-> on the repository `main` branch. They are **not included in the published
-> `@once-agent/sdk@0.1.11` package**. Keep using the published 0.1.11 examples
-> until a later package release explicitly includes these APIs.
+> **Release-candidate status:** the automatic Connect APIs are implemented on
+> repository `main` and have passed source, packed-package, ESM/CommonJS, and
+> Node.js 24.15 protected-execution release gates. The currently published npm
+> package remains `@once-agent/sdk@0.1.11` until the next SDK release is
+> explicitly versioned and published.
 
-Once Connect is moving the integration boundary from:
+Once Connect moves the integration boundary from:
 
 > “the developer decides which calls need Once and wires each one manually”
 
@@ -289,9 +290,20 @@ Do not present this local path as multi-host exactly-once execution. A
 multi-process or multi-host architecture needs a supported shared/durable
 integration appropriate to that deployment.
 
+## Release validation
+
+The automatic Connect release candidate has been tested at three layers:
+
+1. source-tree classifier, identity, payload, registry, and framework regressions;
+2. a clean `npm pack` consumer proving TypeScript, ESM, and CommonJS
+   `@once-agent/sdk/connect` imports;
+3. a clean Node.js 24.15 consumer installing the packed artifact and proving one
+   protected effect, confirmed replay without a second effect, changed-payload
+   conflict blocking, and durable SQLite state.
+
 ## Current integration ladder
 
-The automatic Connect stack on `main` now provides:
+The automatic Connect stack now provides:
 
 ```text
 tool descriptor
