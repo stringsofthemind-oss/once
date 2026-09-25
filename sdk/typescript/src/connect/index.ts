@@ -36,6 +36,16 @@ export type {
 } from "./manifest.js";
 
 export {
+  resolveConnectToolOperationIdentity,
+} from "./identity.js";
+
+export type {
+  ConnectIdentitySource,
+  ConnectIdentityResult,
+  ResolveConnectIdentityInput,
+} from "./identity.js";
+
+export {
   connectLocalAgentToolAuto,
   AgentToolConnectionError,
 } from "./local-agent-tool.js";
