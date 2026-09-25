@@ -26,6 +26,10 @@ export {
   observeVercelAiSdkStepExecutions,
 } from "../vercel-execution-observer.js";
 
+export {
+  createLangChainExecutionObserver,
+} from "../langchain-execution-observer.js";
+
 export type {
   RuntimeToolFramework,
   RuntimeToolSource,
@@ -58,3 +62,7 @@ export type {
 export type {
   OpenAIAgentsExecutionObserver,
 } from "../openai-agents-execution-observer.js";
+
+export type {
+  LangChainExecutionObserver,
+} from "../langchain-execution-observer.js";
