@@ -1,12 +1,11 @@
 """Secret-minimal adapters for deferred Python agent frameworks.
 
-These helpers observe already-materialized framework state only. They do not
+These helpers inspect already-materialized framework state only. They do not
 import CrewAI, LlamaIndex, or Agno; call models/providers/MCP; resolve dynamic
 tool factories; invoke tools; or retain tool arguments/results/errors.
 
-Execution observation requires the caller to provide the exact discovered tool
-observation. Name-only telemetry is therefore never used to choose between
-same-named tools.
+Execution observation requires the exact discovered tool observation, so
+name-only telemetry never chooses between same-named tools.
 """
 
 from __future__ import annotations
@@ -27,7 +26,6 @@ _READ_ONLY_NAME = re.compile(
     r"(?:^|[_-])(search|lookup|retrieve|fetch|get|list|read|find|query)(?:$|[_-])",
     re.IGNORECASE,
 )
-
 _FRAMEWORKS = {"crewai", "llamaindex", "agno"}
 
 
@@ -97,6 +95,27 @@ def _instance_dict(value: Any) -> Mapping[str, Any]:
     except (AttributeError, TypeError):
         return {}
     return raw if isinstance(raw, dict) else {}
+
+
+def _class_dict(value: Any) -> Mapping[str, Any]:
+    try:
+        raw = type(value).__dict__
+    except (AttributeError, TypeError):
+        return {}
+    return raw if isinstance(raw, Mapping) else {}
+
+
+def _has_callable_marker(value: Any, keys: Iterable[str]) -> bool:
+    """Detect a resolver/factory without binding or invoking descriptors."""
+    data = _instance_dict(value)
+    class_data = _class_dict(value)
+    for key in keys:
+        if callable(data.get(key)):
+            return True
+        descriptor = class_data.get(key)
+        if callable(descriptor):
+            return True
+    return False
 
 
 def _safe_json(value: Any, depth: int = 0, secret_context: bool = False) -> Any:
@@ -190,7 +209,9 @@ def _metadata_data(value: Any) -> Mapping[str, Any]:
     return {}
 
 
-def _raw_tool_parts(value: Any) -> Tuple[Optional[str], str, Optional[Any], str, Dict[str, Any]]:
+def _raw_tool_parts(
+    value: Any,
+) -> Tuple[Optional[str], str, Optional[Any], str, Dict[str, Any]]:
     function_name, function_description = _function_identity(value)
     data = _instance_dict(value)
 
@@ -252,12 +273,38 @@ def _raw_tool_parts(value: Any) -> Tuple[Optional[str], str, Optional[Any], str,
         elif metadata:
             tool_type = "framework_tool"
         else:
-            tool_type = type(value).__name__ if not isinstance(value, Mapping) else "tool"
+            tool_type = (
+                type(value).__name__
+                if not isinstance(value, Mapping)
+                else "tool"
+            )
 
     combined = dict(_safe_metadata(data))
     combined.update(_safe_metadata(metadata))
 
-    return name, description if isinstance(description, str) else "", schema, tool_type, combined
+    return (
+        name,
+        description if isinstance(description, str) else "",
+        schema,
+        tool_type,
+        combined,
+    )
+
+
+def _mapping_items(raw: Mapping[Any, Any]) -> List[Any]:
+    items: List[Any] = []
+    for map_name, item in raw.items():
+        if isinstance(item, Mapping) and not any(
+            isinstance(item.get(candidate), str) and item.get(candidate).strip()
+            for candidate in ("name", "tool_name", "function_name")
+        ):
+            copied = dict(item)
+            if isinstance(map_name, str):
+                copied["name"] = map_name
+            items.append(copied)
+        else:
+            items.append(item)
+    return items
 
 
 def _iter_container(value: Any, keys: Tuple[str, ...]) -> Tuple[List[Any], int]:
@@ -270,30 +317,19 @@ def _iter_container(value: Any, keys: Tuple[str, ...]) -> Tuple[List[Any], int]:
         if isinstance(raw, (list, tuple)):
             return list(raw), 0
         if isinstance(raw, Mapping):
-            items: List[Any] = []
-            for map_name, item in raw.items():
-                if isinstance(item, Mapping) and not any(
-                    isinstance(item.get(candidate), str) and item.get(candidate).strip()
-                    for candidate in ("name", "tool_name", "function_name")
-                ):
-                    copy = dict(item)
-                    if isinstance(map_name, str):
-                        copy["name"] = map_name
-                    items.append(copy)
-                else:
-                    items.append(item)
-            return items, 0
+            return _mapping_items(raw), 0
 
-    # A callable factory/tool resolver is an opaque source; never call it.
-    for key in keys:
-        if callable(data.get(key)):
-            return [], 1
+    # A callable factory/tool resolver is an opaque source; never bind/call it.
+    if _has_callable_marker(value, keys):
+        return [], 1
     return [], 0
 
 
 def _agno_expand_registered(items: Iterable[Any]) -> Tuple[List[Any], int]:
     expanded: List[Any] = []
     opaque = 0
+    resolver_keys = ("get_tools", "get_functions", "list_tools")
+
     for item in items:
         function_name, _ = _function_identity(item)
         if function_name:
@@ -303,29 +339,18 @@ def _agno_expand_registered(items: Iterable[Any]) -> Tuple[List[Any], int]:
         data = _instance_dict(item)
         functions = data.get("functions")
         if isinstance(functions, Mapping):
-            for map_name, function in functions.items():
-                if isinstance(function, Mapping) and not any(
-                    isinstance(function.get(candidate), str) and function.get(candidate).strip()
-                    for candidate in ("name", "tool_name", "function_name")
-                ):
-                    copy = dict(function)
-                    if isinstance(map_name, str):
-                        copy["name"] = map_name
-                    expanded.append(copy)
-                else:
-                    expanded.append(function)
+            expanded.extend(_mapping_items(functions))
             continue
 
-        # A toolkit/factory whose concrete functions are not already materialized
-        # is recorded as opaque rather than resolved.
-        if any(
-            callable(data.get(key))
-            for key in ("get_tools", "get_functions", "list_tools")
-        ):
+        # A toolkit/factory whose concrete functions are not already
+        # materialized stays opaque. Check both own fields and class-defined
+        # methods without binding/invoking descriptors.
+        if _has_callable_marker(item, resolver_keys):
             opaque += 1
             continue
 
         expanded.append(item)
+
     return expanded, opaque
 
 
@@ -373,7 +398,9 @@ def _observe_tools(
                 executed=False,
                 parameters_json_schema=schema,
                 safe_metadata=metadata,
-                read_only_hint=True if _READ_ONLY_NAME.search(name) else None,
+                read_only_hint=(
+                    True if _READ_ONLY_NAME.search(name) else None
+                ),
             )
         )
 
@@ -436,7 +463,7 @@ def discover_crewai_registered_tools(
     agent_or_tools: Any,
     runtime_name: Optional[str] = None,
 ) -> FrameworkRuntimeSnapshot:
-    """Observe already-attached CrewAI BaseTool-like entries without running them."""
+    """Observe attached CrewAI BaseTool-like entries without running them."""
     return _discover_registered(
         "crewai",
         agent_or_tools,
@@ -450,7 +477,7 @@ def discover_crewai_model_visible_tools(
     materialized_tools: Any,
     runtime_name: Optional[str] = None,
 ) -> FrameworkRuntimeSnapshot:
-    """Observe the already-materialized CrewAI tool definitions supplied to an LLM."""
+    """Observe already-materialized CrewAI model tool definitions."""
     return _discover_visible(
         "crewai",
         materialized_tools,
@@ -464,7 +491,7 @@ def discover_llamaindex_registered_tools(
     agent_or_tools: Any,
     runtime_name: Optional[str] = None,
 ) -> FrameworkRuntimeSnapshot:
-    """Observe already-attached LlamaIndex BaseTool-like entries without calling metadata serializers."""
+    """Observe attached LlamaIndex BaseTool-like entries without serializers."""
     return _discover_registered(
         "llamaindex",
         agent_or_tools,
@@ -478,7 +505,7 @@ def discover_llamaindex_model_visible_tools(
     materialized_tools: Any,
     runtime_name: Optional[str] = None,
 ) -> FrameworkRuntimeSnapshot:
-    """Observe already-built LlamaIndex model tool definitions without calling to_openai_tool()."""
+    """Observe already-built LlamaIndex model tool definitions."""
     return _discover_visible(
         "llamaindex",
         materialized_tools,
@@ -492,7 +519,7 @@ def discover_agno_registered_tools(
     agent_or_tools: Any,
     runtime_name: Optional[str] = None,
 ) -> FrameworkRuntimeSnapshot:
-    """Observe Agno Agent.tools and already-materialized Toolkit functions without resolving factories."""
+    """Observe Agno Agent.tools/materialized Toolkit functions only."""
     return _discover_registered(
         "agno",
         agent_or_tools,
@@ -545,7 +572,11 @@ def _execution(
         return None
 
     parts = tool.namespaced_name.split("/", 2)
-    runtime_name = parts[1] if len(parts) >= 3 and parts[1] != "runtime" else None
+    runtime_name = (
+        parts[1]
+        if len(parts) >= 3 and parts[1] != "runtime"
+        else None
+    )
 
     return FrameworkExecutionObservation(
         tool_id=tool.tool_id,
@@ -563,7 +594,7 @@ def observe_crewai_execution(
     event: Any,
     tool: FrameworkToolObservation,
 ) -> Optional[FrameworkExecutionObservation]:
-    """Consume an existing CrewAI tool-usage terminal event without retaining payloads."""
+    """Consume an existing CrewAI terminal tool-usage event."""
     data = _instance_dict(event)
     event_type = data.get("type") or data.get("event")
 
@@ -622,7 +653,7 @@ def observe_agno_execution(
 ) -> Optional[FrameworkExecutionObservation]:
     """Consume an existing Agno ToolCallCompleted/ToolCallError event.
 
-    Agno's transport/model ``tool_call_id`` is deliberately ignored and never
+    Agno's transport/model tool_call_id is deliberately ignored and never
     copied into the observation.
     """
     data = _instance_dict(event)
@@ -632,7 +663,11 @@ def observe_agno_execution(
     if event_type == "ToolCallError":
         status = "FAILED"
     elif event_type == "ToolCallCompleted":
-        status = "FAILED" if nested.get("tool_call_error") is True else "SUCCEEDED"
+        status = (
+            "FAILED"
+            if nested.get("tool_call_error") is True
+            else "SUCCEEDED"
+        )
     else:
         return None
 
