@@ -11,6 +11,13 @@ export {
   discoverLangChainModelVisibleTools,
 } from "../langchain-runtime-discovery.js";
 
+export {
+  observeToolExecution,
+  aggregateToolExecutions,
+  executionToolFingerprint,
+  promoteToolExecution,
+} from "../execution-observation.js";
+
 export type {
   RuntimeToolFramework,
   RuntimeToolSource,
@@ -27,3 +34,15 @@ export type {
   LangChainRegisteredToolSnapshot,
   LangChainModelVisibleToolSnapshot,
 } from "../langchain-runtime-discovery.js";
+
+export type {
+  ToolExecutionStatus,
+  ToolExecutionSource,
+  ToolExecutionObservationInput,
+  ToolExecutionObservation,
+  ToolExecutionObservationResult,
+  ToolExecutionSummary,
+  ToolExecutionAggregate,
+  ExecutionPromotableTool,
+  ExecutedToolObservation,
+} from "../execution-observation.js";
