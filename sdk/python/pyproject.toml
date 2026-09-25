@@ -8,6 +8,9 @@ version = "0.1.0"
 description = "Execution safety for side-effecting AI agent tools."
 readme = "README.md"
 requires-python = ">=3.9"
+dependencies = [
+  "urllib3>=2.2,<3",
+]
 license = { text = "MIT" }
 authors = [
   { name = "Once" }
