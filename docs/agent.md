@@ -4,7 +4,7 @@
 > machine, `protectLocal` preserves the call shape and dynamic receiver while
 > snapshotting ordinary data arguments before dispatch. It uses local durable
 > SQLite without an API key or provider registration and is available in
-> `@once-agent/sdk` 0.1.7. Read the repository's
+> `@once-agent/sdk`. Read the repository's
 > `examples/local-function/README.md` before using it. Choose a stable logical
 > action ID and complete effect-bearing payload. UNKNOWN and CONFLICT block;
 > local state does not coordinate separate hosts.
@@ -109,14 +109,10 @@ The MCP server is for agent-assisted discovery, integration, and verification. P
 ### If CLI is available
 
 ```bash
-npm install @once-agent/sdk
-npx once scan .
-npx once setup .
-npx once protect . --apply
-npx once doctor
+npx once doctor .
 ```
 
-`once scan` is the safest first action because it is assessment-oriented rather than mutating application code.
+Doctor assesses the project locally without an API key, uploading source, or modifying source. It identifies likely consequential operations and shows the next `once protect` command. To write a review plan and snippets under `.once/` without rewriting source, run `npx once doctor . --protect`. Review candidates before a separate `once protect . --apply` action; use `once setup .` when the chosen integration requires configuration. To explicitly check hosted connectivity with `ONCE_API_KEY`, run `npx once doctor . --connection`.
 
 ## Runtime HTTP path
 

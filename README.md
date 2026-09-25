@@ -2,7 +2,7 @@
 
 > **Local protection:** `protectLocal` protects an existing async function on one
 > machine without an API key or registered provider and is available in
-> `@once-agent/sdk` 0.1.7. See the
+> `@once-agent/sdk`. See the
 > [local function guide](./examples/local-function/README.md) for its exact
 > safety boundary and a first effect-count check.
 
@@ -331,24 +331,18 @@ The package includes the `once` CLI.
 A typical workflow is:
 
 ```text
-setup -> scan -> protect -> apply -> doctor
+doctor -> review -> protect -> setup/integrate where needed -> first protected action
 ```
 
-### 1. Set up Once
+### 1. Assess the project locally
 
 ```bash
-npx once setup .
+npx once doctor .
 ```
 
-Setup can install/configure the SDK, verify your API key, register a supported provider, and prepare local Once configuration.
+Doctor identifies likely consequential operations and shows the next protection command. It needs no API key, does not upload source, and does not modify source. To write a review plan and snippets under `.once/` without rewriting source, run `npx once doctor . --protect`.
 
-Preview setup without making changes:
-
-```bash
-npx once setup . --plan
-```
-
-### 2. Scan for consequential operations
+### 2. Scan for consequential operations (optional)
 
 ```bash
 npx once scan .
@@ -396,7 +390,21 @@ You can also generate integration guidance:
 npx once protect . --all --snippets
 ```
 
-### 5. Apply an eligible transformation
+### 5. Set up Once when needed
+
+```bash
+npx once setup .
+```
+
+Setup can install/configure the SDK, verify your API key, register a supported provider, and prepare local Once configuration.
+
+Preview setup without making changes:
+
+```bash
+npx once setup . --plan
+```
+
+### 6. Apply an eligible transformation
 
 ```bash
 npx once protect . --apply
@@ -410,13 +418,13 @@ The apply engine checks the source fingerprint, recomputes the proposed transfor
 
 If there are zero or multiple PATCHABLE candidates, automatic apply is rejected rather than guessing.
 
-### 6. Verify the connection
+### Check hosted connectivity when needed
 
 ```bash
-npx once doctor
+npx once doctor . --connection
 ```
 
-`doctor` verifies that the SDK can reach the configured Once service.
+This explicit connection check requires `ONCE_API_KEY`; the default local assessment does not.
 
 ## protect status meanings
 

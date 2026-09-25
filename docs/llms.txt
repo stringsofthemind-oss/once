@@ -22,7 +22,7 @@ Repository:
 https://github.com/stringsofthemind-oss/once
 
 SDK: @once-agent/sdk
-LOCAL PROTECTION (published in SDK 0.1.7): protectLocal(existingAsyncFunction, {id, payload}) keeps the call shape and receiver, snapshots ordinary data arguments, and uses durable same-machine SQLite on Node 24.15+. It validates a narrow plain-data domain. UNKNOWN and CONFLICT block; do not infer ABSENT from a timeout. See examples/local-function/README.md in the repository. For separate hosts use a supported distributed Once integration.
+LOCAL PROTECTION: protectLocal(existingAsyncFunction, {id, payload}) keeps the call shape and receiver, snapshots ordinary data arguments, and uses durable same-machine SQLite on Node 24.15+. It validates a narrow plain-data domain. UNKNOWN and CONFLICT block; do not infer ABSENT from a timeout. See examples/local-function/README.md in the repository. For separate hosts use a supported distributed Once integration.
 MCP package: @once-agent/mcp
 MCP Registry: io.github.stringsofthemind-oss/once
 
@@ -56,11 +56,9 @@ Use setup/apply mutation tools only after explicit user approval.
 
 If CLI is available:
 
-npm install @once-agent/sdk
-npx once scan .
-npx once setup .
-npx once protect . --apply
-npx once doctor
+npx once doctor .
+
+Doctor assesses the project locally without an API key, uploading source, or modifying source. It identifies likely consequential operations and shows the next once protect command. Use npx once doctor . --protect to write a review plan and snippets under .once/ without rewriting source. Review candidates before a separate once protect . --apply action; use once setup . when the chosen integration requires configuration. Use npx once doctor . --connection to explicitly check hosted connectivity with ONCE_API_KEY.
 
 CORE SAFETY MODEL
 
