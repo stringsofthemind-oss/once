@@ -10,7 +10,8 @@
   },
   "include": [
     "src/index.ts",
-    "src/connect/index.ts"
+    "src/connect/index.ts",
+    "src/discovery/index.ts"
   ],
   "exclude": [
     "src/**/*.before-*.ts"
