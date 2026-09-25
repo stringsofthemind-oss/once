@@ -3,6 +3,7 @@ import test from 'node:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { loadRuntime, storage, deferred, execute } from './harness.mjs';
 
@@ -194,7 +195,7 @@ for (const boundary of ['before_dispatch', 'after_effect']) {
     try {
       const crash = spawnSync(
         process.execPath,
-        [new URL('./crash-child.mjs', import.meta.url).pathname, dir, boundary],
+        [fileURLToPath(new URL('./crash-child.mjs', import.meta.url)), dir, boundary],
         { env: {}, encoding: 'utf8' }
       );
       assert.equal(crash.status, 77, crash.stderr);
