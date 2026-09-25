@@ -245,6 +245,13 @@ test('reconciliation alarm redelivery only confirms; never dispatches', async ()
   await runtime.alarm();
   await runtime.alarm();
   assert.equal(runtime.getOperation('race').state, 'CONFIRMED');
+
+  const receipt =
+    runtime.getConfirmationReceipt('race');
+
+  assert.equal(receipt.side_effects, 1);
+  assert.equal(receipt.provider, 'blind_test');
+
   store.db.close();
 });
 
@@ -285,6 +292,297 @@ test('provider requests do not follow redirects and have an abort deadline', asy
   await assert.rejects(
     runtime.getHttpV1Provider('race'),
     /http_v1_truth_http_302/
+  );
+
+  store.db.close();
+});
+
+
+test('confirmed replay uses durable local receipt without provider I/O', async () => {
+  const { Runtime } = await loadRuntime();
+  const store = storage();
+  const runtime = new Runtime({ storage: store }, {});
+
+  let truthCalls = 0;
+  let effects = 0;
+
+  runtime.getProvider = async () => {
+    ++truthCalls;
+    return undefined;
+  };
+
+  runtime.executeProvider = async () => ({
+    side_effects: ++effects,
+    executed_at: '2026-09-25T07:00:00.000Z'
+  });
+
+  const fresh =
+    await execute(runtime);
+
+  const freshBody =
+    await fresh.json();
+
+  assert.equal(fresh.status, 200);
+  assert.equal(freshBody.result, 'executed');
+  assert.equal(freshBody.state, 'CONFIRMED');
+  assert.equal(freshBody.side_effects, 1);
+  assert.equal(effects, 1);
+  assert.equal(truthCalls, 1);
+
+  const receipt =
+    runtime.getConfirmationReceipt('race');
+
+  assert.equal(receipt.provider, 'blind_test');
+  assert.equal(receipt.side_effects, 1);
+  assert.equal(
+    receipt.executed_at,
+    '2026-09-25T07:00:00.000Z'
+  );
+
+  runtime.getProvider = async () => {
+    ++truthCalls;
+    throw new Error(
+      'provider truth must not run on fast replay'
+    );
+  };
+
+  runtime.executeProvider = async () => {
+    throw new Error(
+      'provider execute must not run on replay'
+    );
+  };
+
+  const replayResponse =
+    await execute(runtime);
+
+  const replayBody =
+    await replayResponse.json();
+
+  assert.equal(replayResponse.status, 200);
+  assert.equal(
+    replayBody.result,
+    'already_executed'
+  );
+  assert.equal(
+    replayBody.state,
+    'CONFIRMED'
+  );
+  assert.equal(
+    replayBody.side_effects,
+    1
+  );
+  assert.equal(
+    replayBody.first_executed_at,
+    '2026-09-25T07:00:00.000Z'
+  );
+
+  assert.equal(
+    truthCalls,
+    1,
+    'fast replay must make zero additional truth calls'
+  );
+
+  assert.equal(
+    effects,
+    1,
+    'fast replay must make zero additional effects'
+  );
+
+  store.db.close();
+});
+
+
+test('legacy confirmed operation backfills receipt once then fast-replays locally', async () => {
+  const { Runtime } = await loadRuntime();
+  const store = storage();
+  const runtime = new Runtime({ storage: store }, {});
+
+  const now =
+    '2026-09-25T07:01:00.000Z';
+
+  runtime.insertOperation(
+    'legacy',
+    'CONFIRMED',
+    now,
+    'blind_test'
+  );
+
+  assert.equal(
+    runtime.getConfirmationReceipt('legacy'),
+    undefined
+  );
+
+  let truthCalls = 0;
+
+  runtime.getProvider = async () => {
+    ++truthCalls;
+
+    return {
+      side_effects: 1,
+      executed_at:
+        '2026-09-25T06:59:00.000Z'
+    };
+  };
+
+  runtime.executeProvider = async () => {
+    throw new Error(
+      'confirmed legacy operation must never execute'
+    );
+  };
+
+  const firstReplay =
+    await execute(
+      runtime,
+      'legacy'
+    );
+
+  const firstBody =
+    await firstReplay.json();
+
+  assert.equal(firstReplay.status, 200);
+  assert.equal(
+    firstBody.result,
+    'already_executed'
+  );
+  assert.equal(truthCalls, 1);
+
+  const receipt =
+    runtime.getConfirmationReceipt(
+      'legacy'
+    );
+
+  assert.equal(
+    receipt.side_effects,
+    1
+  );
+
+  assert.equal(
+    receipt.executed_at,
+    '2026-09-25T06:59:00.000Z'
+  );
+
+  runtime.getProvider = async () => {
+    ++truthCalls;
+
+    throw new Error(
+      'backfilled receipt should suppress provider truth'
+    );
+  };
+
+  const secondReplay =
+    await execute(
+      runtime,
+      'legacy'
+    );
+
+  const secondBody =
+    await secondReplay.json();
+
+  assert.equal(
+    secondReplay.status,
+    200
+  );
+
+  assert.equal(
+    secondBody.result,
+    'already_executed'
+  );
+
+  assert.equal(
+    secondBody.side_effects,
+    1
+  );
+
+  assert.equal(
+    truthCalls,
+    1,
+    'only the first legacy replay may query provider truth'
+  );
+
+  store.db.close();
+});
+
+
+test('receipt cannot bypass a missing required HTTP replay', async () => {
+  const { Runtime } = await loadRuntime();
+  const store = storage();
+  const runtime = new Runtime({ storage: store }, {});
+
+  const now =
+    '2026-09-25T07:02:00.000Z';
+
+  runtime.insertOperation(
+    'race',
+    'CONFIRMED',
+    now,
+    registered
+  );
+
+  runtime.recordConfirmationReceipt(
+    'race',
+    registered,
+    {
+      side_effects: 1,
+      executed_at:
+        '2026-09-25T07:01:00.000Z'
+    },
+    now
+  );
+
+  runtime.requireHttpResponseReplay(
+    'race',
+    now
+  );
+
+  runtime.getRegisteredHttpV1Config =
+    async () => httpConfig;
+
+  let truthCalls = 0;
+
+  runtime.getProvider = async () => {
+    ++truthCalls;
+
+    return {
+      side_effects: 1,
+      executed_at:
+        '2026-09-25T07:01:00.000Z'
+    };
+  };
+
+  runtime.executeProvider = async () => {
+    throw new Error(
+      'missing HTTP replay may not execute'
+    );
+  };
+
+  const response =
+    await execute(
+      runtime,
+      'race',
+      {
+        provider: registered,
+        action: httpAction
+      }
+    );
+
+  const body =
+    await response.json();
+
+  assert.equal(response.status, 409);
+  assert.equal(
+    body.result,
+    'replay_required_missing'
+  );
+
+  assert.equal(
+    runtime.getOperation('race').state,
+    'UNKNOWN'
+  );
+
+  assert.equal(
+    truthCalls,
+    1,
+    'missing required replay must fall through to provider truth'
   );
 
   store.db.close();
