@@ -11,7 +11,8 @@
   "include": [
     "src/index.ts",
     "src/connect/index.ts",
-    "src/discovery/index.ts"
+    "src/discovery/index.ts",
+    "src/gateway/index.ts"
   ],
   "exclude": [
     "src/**/*.before-*.ts"
