@@ -92,9 +92,10 @@ function normalizeTool(tool: unknown): NormalizedConnectManifestTool {
     tool.function.name.trim().length > 0
   ) {
     const fn = tool.function;
+    const name = tool.function.name;
 
     const descriptor: ConnectToolDescriptor = {
-      name: fn.name,
+      name,
       ...(typeof fn.description === "string"
         ? { description: fn.description }
         : {}),
@@ -105,7 +106,7 @@ function normalizeTool(tool: unknown): NormalizedConnectManifestTool {
 
     return {
       descriptor,
-      name: fn.name,
+      name,
       source: "openai_function",
     };
   }
