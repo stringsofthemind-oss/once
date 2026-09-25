@@ -28,6 +28,14 @@ import {
   runTraceFetch
 } from "./trace.js";
 
+import {
+  discoverToolGraph
+} from "./tool-discovery.js";
+
+import {
+  printToolDiscoveryReport
+} from "./tool-report.js";
+
 function printHelp(): void {
   console.log("");
   console.log("Once");
@@ -36,7 +44,7 @@ function printHelp(): void {
   console.log("Commands:");
 
   console.log(
-    "  once doctor [directory] [--protect] [--connection]"
+    "  once doctor [directory] [--protect] [--connection] [--tools]"
   );
   console.log(
     "      Run the low-friction local safety check. No API key required."
@@ -46,6 +54,9 @@ function printHelp(): void {
   );
   console.log(
     "      Use --connection to also verify the hosted Once API connection."
+  );
+  console.log(
+    "      Use --tools to inventory local/configured tool surfaces and rank source-discovered capabilities."
   );
 
   console.log("");
@@ -112,6 +123,9 @@ function printHelp(): void {
     "  once doctor ."
   );
   console.log(
+    "  once doctor . --tools"
+  );
+  console.log(
     "  once doctor . --protect"
   );
   console.log(
@@ -170,6 +184,17 @@ async function main(): Promise<void> {
             args.includes("--connection")
         }
       );
+
+      if (args.includes("--tools")) {
+        const discovery =
+          await discoverToolGraph(
+            requestedPath
+          );
+
+        printToolDiscoveryReport(
+          discovery
+        );
+      }
 
       return;
     }
