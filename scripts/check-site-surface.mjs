@@ -88,25 +88,37 @@ assert.match(
 
 assert.match(
   pageAnalytics,
-  /heartbeatStyle\.dataset\.onceHeartbeat\s*=\s*"red-visible-v2"/,
-  "visible red Once heartbeat override is missing",
+  /heartbeatStyle\.dataset\.onceHeartbeat\s*=\s*"monitor-red-v4"/,
+  "red heartbeat monitor override is missing",
 );
 
 assert.match(
   pageAnalytics,
-  /rgba\(255,59,77,\.62\)/,
-  "Once heartbeat must retain its visible red centre bloom",
+  /class\", \"once-heartbeat-monitor\"/,
+  "heartbeat monitor SVG is missing",
 );
 
 assert.match(
   pageAnalytics,
-  /50%\{[\s\S]*?opacity:\.94;[\s\S]*?scale\(1\.08\)/,
-  "Once heartbeat peak visibility must remain clearly noticeable",
+  /M0 38 H78 L91 38 L101 29 L111 51 L123 8 L135 61 L149 24 L162 38 H300/,
+  "heartbeat monitor ECG trace shape is missing",
+);
+
+assert.match(
+  pageAnalytics,
+  /stroke:#ff3040/,
+  "heartbeat monitor must retain a bright red trace",
+);
+
+assert.match(
+  pageAnalytics,
+  /once-heartbeat-monitor-sweep\s*1s\s*linear\s*infinite/s,
+  "heartbeat monitor sweep must remain exactly one second",
 );
 
 const visibleVersionLine =
   `TS SDK ${siteTs} · PY SDK ${sitePython} · MCP ${siteMcp}`;
 
 console.log(
-  `PASS site surface: ${visibleVersionLine}; live counter route present; heartbeat=1s red-visible`,
+  `PASS site surface: ${visibleVersionLine}; live counter route present; heartbeat=1s red-monitor`,
 );
