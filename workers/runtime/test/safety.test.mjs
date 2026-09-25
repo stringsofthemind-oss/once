@@ -248,16 +248,44 @@ test('reconciliation alarm redelivery only confirms; never dispatches', async ()
   store.db.close();
 });
 
-test('provider requests disallow redirects and have an abort deadline', async () => {
+test('provider requests do not follow redirects and have an abort deadline', async () => {
   const c = await loadRuntime();
   const store = storage();
   const runtime = new c.Runtime({ storage: store }, {});
   runtime.getHttpV1Config = () => ({ baseUrl: 'https://adapter.test', token: 'fixture' });
+
+  let mode = 'normal';
+
   c.fetch = async (_url, options) => {
-    assert.equal(options.redirect, 'error');
+    assert.equal(options.redirect, 'manual');
     assert.ok(options.signal instanceof AbortSignal);
-    return Response.json({ provider_executed: false, side_effects: 0 });
+
+    if (mode === 'redirect') {
+      return new Response(null, {
+        status: 302,
+        headers: {
+          location: 'https://redirected.test/'
+        }
+      });
+    }
+
+    return Response.json({
+      provider_executed: false,
+      side_effects: 0
+    });
   };
-  assert.equal(await runtime.getHttpV1Provider('race'), undefined);
+
+  assert.equal(
+    await runtime.getHttpV1Provider('race'),
+    undefined
+  );
+
+  mode = 'redirect';
+
+  await assert.rejects(
+    runtime.getHttpV1Provider('race'),
+    /http_v1_truth_http_302/
+  );
+
   store.db.close();
 });

@@ -1024,7 +1024,7 @@ var Q18Truth = class extends DurableObject {
     const response = await fetch(
       "https://q18-blind-provider.pennywatch.workers.dev/truth/" + encodeURIComponent(operationId),
       {
-        redirect: "error",
+        redirect: "manual",
         signal: AbortSignal.timeout(10000),
         method: "GET"
       }
@@ -1056,7 +1056,7 @@ var Q18Truth = class extends DurableObject {
     const response = await fetch(
       "https://q18-blind-provider.pennywatch.workers.dev/execute",
       {
-        redirect: "error",
+        redirect: "manual",
         signal: AbortSignal.timeout(10000),
         method: "POST",
         headers: {
@@ -1296,7 +1296,7 @@ var Q18Truth = class extends DurableObject {
         operationId
       ),
       {
-        redirect: "error",
+        redirect: "manual",
         signal: AbortSignal.timeout(10000),
         method: "GET",
         headers: {
@@ -1331,7 +1331,7 @@ var Q18Truth = class extends DurableObject {
     const response = await fetch(
       config.baseUrl + "/execute",
       {
-        redirect: "error",
+        redirect: "manual",
         signal: AbortSignal.timeout(10000),
         method: "POST",
         headers: {
@@ -1434,7 +1434,7 @@ var Q18Truth = class extends DurableObject {
     const response = await fetch(
       url.toString(),
       {
-        redirect: "error",
+        redirect: "manual",
         signal: AbortSignal.timeout(10000),
         method: "GET",
         headers: {
@@ -1537,7 +1537,7 @@ var Q18Truth = class extends DurableObject {
     const response = await fetch(
       "https://api.stripe.com/v1/customers",
       {
-        redirect: "error",
+        redirect: "manual",
         signal: AbortSignal.timeout(10000),
         method: "POST",
         headers: {
