@@ -63,9 +63,12 @@ internal sealed class MonitorStatusService
 
             if (result.ExitCode != 0)
             {
+                // Do not surface arbitrary local CLI stderr in the compact
+                // status surface or copied diagnostics. Doctor is the explicit
+                // local diagnostic view when a customer wants detailed output.
                 return new MonitorLoadResult(
                     null,
-                    CleanError(result.StandardError, "Once Monitor snapshot could not be created."));
+                    "Once Monitor snapshot could not be created. Run Doctor for local diagnostic detail.");
             }
 
             var snapshot = JsonSerializer.Deserialize<MonitorSnapshot>(
@@ -200,22 +203,6 @@ internal sealed class MonitorStatusService
             && !snapshot.Privacy.SecretValuesIncluded
             && !snapshot.Privacy.PayloadsIncluded
             && !snapshot.Privacy.AbsolutePathsIncluded;
-    }
-
-    private static string CleanError(string value, string fallback)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return fallback;
-        }
-
-        var firstLine = value
-            .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-            .FirstOrDefault();
-
-        return string.IsNullOrWhiteSpace(firstLine)
-            ? fallback
-            : firstLine.Trim();
     }
 
     private static string? FindOnPath(string fileName)
