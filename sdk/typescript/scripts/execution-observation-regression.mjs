@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   aggregateToolExecutions,
   discoverOpenAIResponsesModelVisibleTools,
+  executionToolFingerprint,
   observeToolExecution,
   promoteToolExecution,
 } from "../dist/discovery/index.js";
@@ -171,12 +172,16 @@ assert.ok(target);
 assert.ok(neighbor);
 assert.equal(target.evidence.level, "MODEL_VISIBLE");
 assert.equal(target.visibility.executed, false);
+const targetFingerprint = executionToolFingerprint(target);
+const neighborFingerprint = executionToolFingerprint(neighbor);
+assert.notEqual(targetFingerprint, neighborFingerprint);
 
 const targetAggregate = aggregateToolExecutions([
   {
     eventId: "evt-target",
     toolId: target.toolId,
     namespacedName: target.namespacedName,
+    descriptorFingerprint: targetFingerprint,
     canonicalName: target.canonicalName,
     source: "framework_callback",
     status: "SUCCEEDED",
@@ -197,11 +202,25 @@ assert.equal(
   true,
 );
 assert.equal(promoteToolExecution(neighbor, targetSummary), undefined);
-console.log("PASS - exact identity promotes only the executed Tool Graph entry");
+console.log("PASS - descriptor fingerprint isolates same-name tool collisions");
+
+const noFingerprint = aggregateToolExecutions([
+  {
+    toolId: target.toolId,
+    namespacedName: target.namespacedName,
+    canonicalName: target.canonicalName,
+    source: "adapter",
+    status: "SUCCEEDED",
+    observedAt: "2026-09-25T12:03:30.000Z",
+  },
+]);
+assert.equal(promoteToolExecution(target, noFingerprint.summaries[0]), undefined);
+console.log("PASS - promotion fails closed without descriptor fingerprint");
 
 const nameOnlyAggregate = aggregateToolExecutions([
   {
     namespacedName: target.namespacedName,
+    descriptorFingerprint: targetFingerprint,
     canonicalName: target.canonicalName,
     source: "adapter",
     status: "SUCCEEDED",
@@ -216,6 +235,6 @@ assert.equal(
   ),
   undefined,
 );
-console.log("PASS - namespaced correlation is accepted, bare names are not");
+console.log("PASS - namespaced + descriptor correlation works without bare-name fallback");
 
 console.log("execution observation regression: PASS");
