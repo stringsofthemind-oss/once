@@ -10,6 +10,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist-cjs/index.js"
+    },
+    "./connect": {
+      "types": "./dist/connect/index.d.ts",
+      "import": "./dist/connect/index.js",
+      "require": "./dist-cjs/connect/index.js"
     }
   },
   "files": [
