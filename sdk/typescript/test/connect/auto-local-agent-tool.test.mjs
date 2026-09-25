@@ -5,6 +5,10 @@ import path from "node:path";
 import test from "node:test";
 
 import {
+  LocalProtectionError,
+} from "@once-agent/sdk";
+
+import {
   AgentToolConnectionError,
   connectLocalAgentToolAuto,
 } from "@once-agent/sdk/connect";
@@ -38,14 +42,12 @@ function countEffects(file) {
 
 test("automatic read-only routing bypasses Once protection", async () => {
   let calls = 0;
-  const tool = {
+  const connected = connectLocalAgentToolAuto({
     async execute(input) {
       calls += 1;
       return { query: input.query, calls };
     },
-  };
-
-  const connected = connectLocalAgentToolAuto(tool, {
+  }, {
     descriptor: {
       name: "search_web",
       description: "Search the public web.",
@@ -59,38 +61,10 @@ test("automatic read-only routing bypasses Once protection", async () => {
   assert.equal(calls, 1);
 });
 
-test("automatic consequential routing still requires an explicit effect payload", () => {
-  const tool = {
-    async execute() {
-      return { ok: true };
-    },
-  };
-
-  assert.throws(
-    () => connectLocalAgentToolAuto(tool, {
-      descriptor: {
-        name: "send_email",
-        description: "Send an email to a recipient.",
-      },
-    }),
-    error =>
-      error instanceof AgentToolConnectionError &&
-      error.code === "PROTECTION_REQUIRED",
-  );
-});
-
 test("UNKNOWN tool semantics refuse automatic connection", () => {
-  const tool = {
-    async execute() {
-      return { ok: true };
-    },
-  };
-
   assert.throws(
-    () => connectLocalAgentToolAuto(tool, {
-      descriptor: {
-        name: "frobnicate_account",
-      },
+    () => connectLocalAgentToolAuto({ async execute() { return { ok: true }; } }, {
+      descriptor: { name: "frobnicate_account" },
     }),
     error =>
       error instanceof AgentToolConnectionError &&
@@ -98,20 +72,12 @@ test("UNKNOWN tool semantics refuse automatic connection", () => {
   );
 });
 
-test("conflicting metadata refuses automatic connection", () => {
-  const tool = {
-    async execute() {
-      return { ok: true };
-    },
-  };
-
+test("conflicting safety metadata refuses automatic connection", () => {
   assert.throws(
-    () => connectLocalAgentToolAuto(tool, {
+    () => connectLocalAgentToolAuto({ async execute() { return { ok: true }; } }, {
       descriptor: {
         name: "send_email",
-        annotations: {
-          readOnlyHint: true,
-        },
+        annotations: { readOnlyHint: true },
       },
     }),
     error =>
@@ -120,20 +86,14 @@ test("conflicting metadata refuses automatic connection", () => {
   );
 });
 
-test("manual identity remains supported for protected tools", { skip: !localReady }, async (t) => {
+test("manual identity and payload remain supported", { skip: !localReady }, async (t) => {
   const f = fixture(t);
-
-  const tool = {
+  const connected = connectLocalAgentToolAuto({
     async execute(input) {
-      appendEffect(f.effectsPath, {
-        intent: input.intent,
-        destination: input.destination,
-      });
+      appendEffect(f.effectsPath, input.destination);
       return { receipt: `mail-${countEffects(f.effectsPath)}` };
     },
-  };
-
-  const connected = connectLocalAgentToolAuto(tool, {
+  }, {
     descriptor: {
       name: "send_email",
       description: "Send an email to a recipient.",
@@ -157,27 +117,44 @@ test("manual identity remains supported for protected tools", { skip: !localRead
   assert.equal(countEffects(f.effectsPath), 1);
 });
 
-test("idempotency carrier automatically supplies protected operation identity", { skip: !localReady }, async (t) => {
+test("protected tool can use automatic identity and automatic full-input payload", { skip: !localReady }, async (t) => {
   const f = fixture(t);
-
-  const tool = {
+  const connected = connectLocalAgentToolAuto({
     async execute(input) {
-      appendEffect(f.effectsPath, {
-        destination: input.destination,
-      });
+      appendEffect(f.effectsPath, input.destination);
       return { receipt: `mail-${countEffects(f.effectsPath)}` };
     },
-  };
-
-  const connected = connectLocalAgentToolAuto(tool, {
+  }, {
     descriptor: {
       name: "send_email",
       description: "Send an email to a recipient.",
     },
-    payload: input => ({
-      destination: input.destination,
-      body: input.body,
-    }),
+    statePath: f.statePath,
+  });
+
+  const input = {
+    idempotencyKey: "invoice-42",
+    destination: "test@example.invalid",
+    body: "Invoice 42",
+  };
+
+  assert.deepEqual(await connected.execute(input), { receipt: "mail-1" });
+  assert.deepEqual(await connected.execute({ ...input }), { receipt: "mail-1" });
+  assert.equal(countEffects(f.effectsPath), 1);
+});
+
+test("full-input payload binding fails closed when retry metadata changes", { skip: !localReady }, async (t) => {
+  const f = fixture(t);
+  const connected = connectLocalAgentToolAuto({
+    async execute(input) {
+      appendEffect(f.effectsPath, input.destination);
+      return { receipt: `mail-${countEffects(f.effectsPath)}` };
+    },
+  }, {
+    descriptor: {
+      name: "send_email",
+      description: "Send an email to a recipient.",
+    },
     statePath: f.statePath,
   });
 
@@ -188,19 +165,53 @@ test("idempotency carrier automatically supplies protected operation identity", 
     attempt: 1,
   };
 
-  const retry = {
-    ...first,
-    attempt: 2,
-  };
-
   assert.deepEqual(await connected.execute(first), { receipt: "mail-1" });
-  assert.deepEqual(await connected.execute(retry), { receipt: "mail-1" });
+
+  await assert.rejects(
+    connected.execute({ ...first, attempt: 2 }),
+    error => error instanceof LocalProtectionError && error.code === "CONFLICT",
+  );
+
   assert.equal(countEffects(f.effectsPath), 1);
 });
 
-test("descriptor identityFields can automatically supply composite identity", { skip: !localReady }, async (t) => {
+test("descriptor effectFields allow retry metadata to vary without payload drift", { skip: !localReady }, async (t) => {
   const f = fixture(t);
+  const connected = connectLocalAgentToolAuto({
+    async execute(input) {
+      appendEffect(f.effectsPath, input.destination);
+      return { receipt: `mail-${countEffects(f.effectsPath)}` };
+    },
+  }, {
+    descriptor: {
+      name: "send_email",
+      description: "Send an email to a recipient.",
+      _meta: {
+        once: {
+          effectFields: ["destination", "body"],
+        },
+      },
+    },
+    statePath: f.statePath,
+  });
 
+  const first = {
+    idempotencyKey: "invoice-42",
+    destination: "test@example.invalid",
+    body: "Invoice 42",
+    attempt: 1,
+  };
+
+  assert.deepEqual(await connected.execute(first), { receipt: "mail-1" });
+  assert.deepEqual(
+    await connected.execute({ ...first, attempt: 99 }),
+    { receipt: "mail-1" },
+  );
+  assert.equal(countEffects(f.effectsPath), 1);
+});
+
+test("identityFields and effectFields support callback-free composite contracts", { skip: !localReady }, async (t) => {
+  const f = fixture(t);
   const connected = connectLocalAgentToolAuto({
     async execute(input) {
       appendEffect(f.effectsPath, input.destination);
@@ -213,13 +224,10 @@ test("descriptor identityFields can automatically supply composite identity", { 
       _meta: {
         once: {
           identityFields: ["tenant", "intent"],
+          effectFields: ["destination", "body"],
         },
       },
     },
-    payload: input => ({
-      destination: input.destination,
-      body: input.body,
-    }),
     statePath: f.statePath,
   });
 
@@ -239,7 +247,6 @@ test("descriptor identityFields can automatically supply composite identity", { 
 test("missing automatic identity blocks before the side effect", { skip: !localReady }, async (t) => {
   const f = fixture(t);
   let calls = 0;
-
   const connected = connectLocalAgentToolAuto({
     async execute() {
       calls += 1;
@@ -250,10 +257,6 @@ test("missing automatic identity blocks before the side effect", { skip: !localR
       name: "send_email",
       description: "Send an email to a recipient.",
     },
-    payload: input => ({
-      destination: input.destination,
-      body: input.body,
-    }),
     statePath: f.statePath,
   });
 
@@ -266,14 +269,41 @@ test("missing automatic identity blocks before the side effect", { skip: !localR
       error instanceof AgentToolConnectionError &&
       error.code === "IDENTITY_REQUIRED",
   );
+  assert.equal(calls, 0);
+});
 
+test("non-JSON-safe automatic payload blocks before the side effect", { skip: !localReady }, async (t) => {
+  const f = fixture(t);
+  let calls = 0;
+  const connected = connectLocalAgentToolAuto({
+    async execute() {
+      calls += 1;
+      return { ok: true };
+    },
+  }, {
+    descriptor: {
+      name: "send_email",
+      description: "Send an email to a recipient.",
+    },
+    statePath: f.statePath,
+  });
+
+  await assert.rejects(
+    connected.execute({
+      idempotencyKey: "invoice-42",
+      destination: "test@example.invalid",
+      callback() {},
+    }),
+    error =>
+      error instanceof AgentToolConnectionError &&
+      error.code === "PAYLOAD_REQUIRED",
+  );
   assert.equal(calls, 0);
 });
 
 test("conflicting automatic identity carriers block before the side effect", { skip: !localReady }, async (t) => {
   const f = fixture(t);
   let calls = 0;
-
   const connected = connectLocalAgentToolAuto({
     async execute() {
       calls += 1;
@@ -284,7 +314,6 @@ test("conflicting automatic identity carriers block before the side effect", { s
       name: "charge_customer",
       description: "Charge a customer for an order.",
     },
-    payload: input => ({ amount: input.amount }),
     statePath: f.statePath,
   });
 
@@ -298,6 +327,5 @@ test("conflicting automatic identity carriers block before the side effect", { s
       error instanceof AgentToolConnectionError &&
       error.code === "IDENTITY_CONFLICT",
   );
-
   assert.equal(calls, 0);
 });

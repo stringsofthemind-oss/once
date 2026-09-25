@@ -12,6 +12,9 @@ import {
   resolveConnectToolOperationIdentity,
 } from "./identity.js";
 import {
+  resolveConnectToolEffectPayload,
+} from "./payload.js";
+import {
   protectLocal,
   type LocalObservation,
 } from "../local.js";
@@ -45,7 +48,7 @@ export interface AutoLocalAgentToolContract<Input, Result> {
   descriptor: ConnectToolDescriptor;
   /** Optional explicit stable intent identity. When omitted, Once may resolve a trustworthy identity carrier from input. */
   id?: (input: Input) => string;
-  /** Every input that can change the external effect. Required when inferred protected. */
+  /** Optional effect selector. When omitted, Once conservatively binds the full plain-object input or descriptor-declared effectFields. */
   payload?: (input: Input) => EffectPayload;
   /** Durable same-machine SQLite file, shared by all callers of this tool. */
   statePath?: string;
@@ -145,18 +148,19 @@ const AUTO_BYPASS_SAFETY: ConnectSafetyDeclaration = Object.freeze({
 });
 
 /**
- * Connect a local agent tool using its descriptor instead of a hand-authored
- * four-boolean safety declaration.
+ * Connect a local agent tool using its descriptor instead of hand-authored
+ * routing declarations.
  *
  * Automatic routing is intentionally conservative:
  * - PROTECT -> delegate to the existing protected local connector;
  * - BYPASS -> delegate to the existing bypass path;
  * - UNKNOWN -> refuse connection until the tool is clarified.
  *
- * For protected tools, effect payload selection remains explicit. Stable
- * operation identity may be supplied by `id()` or resolved at execution time
- * from trustworthy operation/idempotency/intent carriers in the tool input.
- * Missing or conflicting automatic identity fails before the side effect.
+ * For protected tools, stable identity may be supplied by `id()` or resolved
+ * from trustworthy operation/idempotency/intent carriers. Effect payload may
+ * be supplied by `payload()` or conservatively bound from the full plain-object
+ * input. `_meta.once.effectFields` can explicitly narrow that binding.
+ * Missing/invalid identity or payload fails before the side effect.
  */
 export function connectLocalAgentToolAuto<Input, Result>(
   tool: AgentTool<Input, Result>,
@@ -211,11 +215,29 @@ export function connectLocalAgentToolAuto<Input, Result>(
         );
       };
 
+  const payload = typeof contract.payload === "function"
+    ? contract.payload
+    : (input: Input): EffectPayload => {
+        const result = resolveConnectToolEffectPayload({
+          tool: contract.descriptor,
+          input,
+        });
+
+        if (result.status === "FOUND") {
+          return { ...result.payload };
+        }
+
+        throw new AgentToolConnectionError(
+          "PAYLOAD_REQUIRED",
+          result.reason,
+        );
+      };
+
   return connectLocalAgentTool(tool, {
     name: contract.descriptor.name,
     safety: AUTO_PROTECTED_SAFETY,
     id: identity,
-    payload: contract.payload,
+    payload,
     statePath: contract.statePath,
     reconcile: contract.reconcile,
   });
