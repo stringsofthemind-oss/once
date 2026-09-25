@@ -52,8 +52,10 @@ internal static class MonitorRegistration
                 CreateNoWindow = true,
                 WorkingDirectory = AppContext.BaseDirectory,
             };
-            startInfo.ArgumentList.Add("--project");
-            startInfo.ArgumentList.Add(Path.GetFullPath(projectDirectory));
+
+            // The project path has already been written to the shared local
+            // Monitor settings file. Do not duplicate it in a process command
+            // line where it would be unnecessarily visible to process viewers.
             startInfo.ArgumentList.Add("--background");
 
             Process.Start(startInfo);
