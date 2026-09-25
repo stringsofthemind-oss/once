@@ -60,7 +60,10 @@ internal static class MonitorSettingsStore
         var json = JsonSerializer.Serialize(
             settings,
             new JsonSerializerOptions { WriteIndented = true });
-        File.WriteAllText(SettingsPath, json);
+
+        var temporaryPath = SettingsPath + ".tmp";
+        File.WriteAllText(temporaryPath, json);
+        File.Move(temporaryPath, SettingsPath, overwrite: true);
     }
 
     internal static void RegisterProject(string projectDirectory)
