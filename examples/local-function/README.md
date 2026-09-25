@@ -101,6 +101,30 @@ To verify, use a test provider that counts actual external effects. Invoke
 **2**, with the last call raising `CONFLICT`. Also commit an effect then drop
 its response: a retry must remain blocked until provider truth confirms it.
 
-The runnable [`verify.mjs`](./verify.mjs) is a controlled first proof. Install
-the source package in a throwaway Node project, copy `verify.mjs` there, and
-run `node verify.mjs`. It checks the actual fake provider effect count.
+The runnable [`verify.mjs`](./verify.mjs) is a controlled first proof using a
+fake provider. It does not call a real payment or order API. With Node.js
+24.15+ installed, run it in a new throwaway directory:
+
+```bash
+mkdir once-local-proof && cd once-local-proof
+npm init -y
+npm install @once-agent/sdk@0.1.9
+curl -fsSL https://raw.githubusercontent.com/stringsofthemind-oss/once/v0.1.9/examples/local-function/verify.mjs -o verify.mjs
+node verify.mjs
+```
+
+For PowerShell:
+
+```powershell
+New-Item -ItemType Directory -Path once-local-proof | Out-Null
+Set-Location once-local-proof
+npm init -y
+npm install @once-agent/sdk@0.1.9
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/stringsofthemind-oss/once/v0.1.9/examples/local-function/verify.mjs' -OutFile verify.mjs
+node verify.mjs
+```
+
+The expected result is `2 effects`: the retry
+reuses the first result, a separate order executes, and a changed payload
+with the first order ID raises `CONFLICT`. The proof writes a local effect log
+and `.once/operations.sqlite` inside this throwaway directory.

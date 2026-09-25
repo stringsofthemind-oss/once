@@ -457,6 +457,17 @@ for (
   }
 
   if (
+    content.includes("Automation: ADAPTER_REQUIRED") &&
+    (!content.includes("controlled first proof with a fake effect") ||
+      !content.includes("not a production") ||
+      !content.includes("does not coordinate separate hosts"))
+  ) {
+    throw new Error(
+      `Adapter safety path missing from ${entry.name}`
+    );
+  }
+
+  if (
     !content.includes(
       'provider: "protect-test-provider"'
     )
