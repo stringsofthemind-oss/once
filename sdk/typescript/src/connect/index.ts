@@ -34,3 +34,13 @@ export type {
   ConnectManifestPlanSummary,
   ConnectManifestPlan,
 } from "./manifest.js";
+
+export {
+  connectLocalAgentToolAuto,
+  AgentToolConnectionError,
+} from "./local-agent-tool.js";
+
+export type {
+  AgentTool,
+  AutoLocalAgentToolContract,
+} from "./local-agent-tool.js";
