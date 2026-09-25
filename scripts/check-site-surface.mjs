@@ -116,9 +116,27 @@ assert.match(
   "heartbeat monitor sweep must remain exactly one second",
 );
 
+assert.match(
+  app,
+  /normalized > previousValue[\s\S]*?classList\.add\([\s\S]*?"operation-confirmed"/,
+  "usage pulse must remain tied to a real protected-operation count increase",
+);
+
+assert.match(
+  pageAnalytics,
+  /\.once-network\.operation-confirmed::after\{[\s\S]*?border:2px solid #43d7ff !important;/,
+  "usage-trigger pulse must remain cyan and visually distinct from the red heartbeat",
+);
+
+assert.match(
+  pageAnalytics,
+  /0 0 12px rgba\(67,215,255,\.96\)[\s\S]*?0 0 54px rgba\(67,215,255,\.28\)/,
+  "usage-trigger pulse must retain its contrasting cyan halo",
+);
+
 const visibleVersionLine =
   `TS SDK ${siteTs} · PY SDK ${sitePython} · MCP ${siteMcp}`;
 
 console.log(
-  `PASS site surface: ${visibleVersionLine}; live counter route present; heartbeat=1s red-monitor`,
+  `PASS site surface: ${visibleVersionLine}; live counter route present; heartbeat=1s red-monitor; usage-pulse=cyan`,
 );
