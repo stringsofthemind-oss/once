@@ -13,6 +13,10 @@ All notable changes to the Once SDK are documented here.
 - Whole-registry fail-closed local tool wiring through `connectLocalAgentToolsetAuto`.
 - Structural OpenAI Agents FunctionTool integration through `connectOpenAIAgentsFunctionToolsAuto` without making `@openai/agents` a runtime dependency.
 - Public `@once-agent/sdk/connect` ESM, CommonJS, and TypeScript subpath exports.
+- Phase 11A universal tool discovery through read-only `once doctor . --tools`, including major MCP host/config discovery, source/framework tool discovery, canonical Tool Graph records, effect categories, `I0–I5` criticality, and action-priority ranking.
+- Phase 11B explicit authoritative MCP enumeration with `--tools-live=<host/name>`, modern 2026-07-28 `server/discover` negotiation, legacy `initialize` fallback, bounded `tools/list` pagination, schemas, annotation hints, and `SERVER_AUTHORITATIVE` evidence.
+- Bounded modern MCP tool-list refresh with `--tools-watch-ms=<ms>` using `subscriptions/listen`; a `tools/list_changed` notification triggers an authoritative re-list and namespaced added/removed/changed diff before the command exits.
+- Stable `host/server/tool` refresh namespaces and deterministic PROJECT-before-USER configured-source precedence.
 
 ### Safety and validation
 
@@ -21,6 +25,10 @@ All notable changes to the Once SDK are documented here.
 - Automatic routing continues to fail closed when identity or effect semantics cannot be established safely.
 - Added packed-tarball regression coverage for the `@once-agent/sdk/connect` ESM/CommonJS/type contract.
 - Added packed Node.js 24.15 local-protection regression proving first execution, confirmed replay without a second effect, changed-payload conflict blocking, and durable SQLite state from an installed package artifact.
+- Plain `once doctor . --tools` remains offline; live MCP contact requires an explicit configured server selector.
+- Phase 11 live discovery never launches configured stdio server commands, never follows redirects, enforces timeout/response/page/tool bounds, and does not retain configured secret header values in discovery results.
+- Tool enumeration and refresh never invoke MCP tools or automatically apply Once protection; the release-gated regressions explicitly prove no `tools/call` occurs.
+- Modern tool watching is bounded and foreground-only; no background daemon is created. Legacy 2025-era servers remain supported for authoritative enumeration, while the bounded watch command targets the 2026-07-28 `subscriptions/listen` model.
 - No universal exactly-once claim is made; local automatic protection remains same-machine SQLite coordination and ambiguous outcomes still require authoritative reconciliation where applicable.
 
 ## 0.1.11 - 2026-09-25
