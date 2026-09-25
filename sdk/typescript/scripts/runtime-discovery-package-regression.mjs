@@ -137,6 +137,8 @@ try {
 import {
   discoverOpenAIAgentRuntime,
   discoverOpenAIResponsesModelVisibleTools,
+  discoverVercelAiSdkRegisteredTools,
+  discoverVercelAiSdkModelVisibleTools,
   mergeRuntimeToolEvidence,
 } from "@once-agent/sdk/discovery";
 
@@ -161,6 +163,43 @@ const merged = mergeRuntimeToolEvidence(registered, visible);
 if (registered.tools[0]?.evidence.level !== "RUNTIME_REGISTERED") throw new Error("bad registered evidence");
 if (visible.tools[0]?.evidence.level !== "MODEL_VISIBLE") throw new Error("bad visible evidence");
 if (merged.tools[0]?.evidence.level !== "MODEL_VISIBLE") throw new Error("bad merged evidence");
+
+let executeCount = 0;
+const vercelToolSet = {
+  send_email: {
+    description: "Send an email",
+    inputSchema: { type: "object" },
+    execute() {
+      executeCount++;
+      throw new Error("discovery must not execute");
+    },
+  },
+  web_search: {
+    description: "Search the web",
+    inputSchema: { type: "object" },
+  },
+};
+const vercelRegistered = discoverVercelAiSdkRegisteredTools(
+  vercelToolSet,
+  "consumer-runtime",
+);
+const vercelVisible = discoverVercelAiSdkModelVisibleTools(
+  {
+    tools: vercelToolSet,
+    activeTools: ["send_email"],
+  },
+  "consumer-runtime",
+);
+const vercelMerged = mergeRuntimeToolEvidence(
+  vercelRegistered,
+  vercelVisible,
+);
+if (vercelRegistered.registeredToolCount !== 2) throw new Error("bad Vercel registered count");
+if (vercelVisible.modelVisibleToolCount !== 1) throw new Error("bad Vercel visible count");
+if (vercelVisible.tools[0]?.canonicalName !== "send_email") throw new Error("bad Vercel active-tool filtering");
+if (vercelMerged.tools.find(tool => tool.canonicalName === "send_email")?.evidence.level !== "MODEL_VISIBLE") throw new Error("bad Vercel merged evidence");
+if (executeCount !== 0) throw new Error("Vercel discovery executed a tool");
+
 console.log("discovery esm consumer: PASS");
 `,
     "utf8",
@@ -179,6 +218,8 @@ console.log("discovery esm consumer: PASS");
 const {
   discoverOpenAIAgentRuntime,
   discoverOpenAIResponsesModelVisibleTools,
+  discoverVercelAiSdkRegisteredTools,
+  discoverVercelAiSdkModelVisibleTools,
 } = require("@once-agent/sdk/discovery");
 const registered = discoverOpenAIAgentRuntime({
   name: "Consumer Agent",
@@ -189,6 +230,17 @@ const visible = discoverOpenAIResponsesModelVisibleTools([
 ]);
 if (registered.tools[0]?.once.effectClass !== "READ_ONLY") throw new Error("bad CJS registered classification");
 if (visible.tools[0]?.evidence.level !== "MODEL_VISIBLE") throw new Error("bad CJS visible evidence");
+
+const toolSet = {
+  web_search: {
+    description: "Search the web",
+    inputSchema: { type: "object" },
+  },
+};
+const vercelRegistered = discoverVercelAiSdkRegisteredTools(toolSet, "cjs-runtime");
+const vercelVisible = discoverVercelAiSdkModelVisibleTools({ tools: toolSet }, "cjs-runtime");
+if (vercelRegistered.tools[0]?.framework !== "vercel-ai-sdk") throw new Error("bad CJS Vercel framework");
+if (vercelVisible.tools[0]?.evidence.level !== "MODEL_VISIBLE") throw new Error("bad CJS Vercel visible evidence");
 console.log("discovery cjs consumer: PASS");
 `,
     "utf8",
@@ -219,8 +271,12 @@ console.log("discovery cjs consumer: PASS");
 import {
   discoverOpenAIAgentRuntime,
   discoverOpenAIResponsesModelVisibleTools,
+  discoverVercelAiSdkRegisteredTools,
+  discoverVercelAiSdkModelVisibleTools,
   mergeRuntimeToolEvidence,
   type RuntimeToolObservation,
+  type VercelAiSdkRegisteredToolSnapshot,
+  type VercelAiSdkModelVisibleToolSnapshot,
 } from "@once-agent/sdk/discovery";
 
 const registered = discoverOpenAIAgentRuntime({
@@ -230,7 +286,28 @@ const registered = discoverOpenAIAgentRuntime({
 const visible = discoverOpenAIResponsesModelVisibleTools({
   tools: [{ type: "function", name: "send_email" }],
 });
-const merged = mergeRuntimeToolEvidence(registered, visible);
+const vercelRegistered: VercelAiSdkRegisteredToolSnapshot =
+  discoverVercelAiSdkRegisteredTools({
+    send_email: {
+      description: "Send an email",
+      inputSchema: { type: "object" },
+    },
+  });
+const vercelVisible: VercelAiSdkModelVisibleToolSnapshot =
+  discoverVercelAiSdkModelVisibleTools({
+    tools: {
+      send_email: {
+        description: "Send an email",
+        inputSchema: { type: "object" },
+      },
+    },
+  });
+const merged = mergeRuntimeToolEvidence(
+  registered,
+  visible,
+  vercelRegistered,
+  vercelVisible,
+);
 const first: RuntimeToolObservation | undefined = merged.tools[0];
 void first;
 `,
