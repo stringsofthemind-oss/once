@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import {
   assessToolImportance,
   type ToolEvidenceLevel,
@@ -18,6 +20,7 @@ export type ToolExecutionObservationInput = {
   eventId?: string;
   toolId?: string;
   namespacedName?: string;
+  descriptorFingerprint?: string;
   canonicalName?: string;
   framework?: string;
   runtimeName?: string;
@@ -31,6 +34,7 @@ export type ToolExecutionObservation = Readonly<{
   eventId?: string;
   toolId?: string;
   namespacedName?: string;
+  descriptorFingerprint?: string;
   canonicalName?: string;
   framework?: string;
   runtimeName?: string;
@@ -64,6 +68,7 @@ export type ToolExecutionSummary = Readonly<{
   identityKey: string;
   toolId?: string;
   namespacedName?: string;
+  descriptorFingerprint?: string;
   canonicalName?: string;
   framework?: string;
   runtimeName?: string;
@@ -92,6 +97,8 @@ export type ExecutionPromotableTool = {
   canonicalName: string;
   description?: string;
   toolType?: string;
+  inputSchema?: unknown;
+  safeMetadata?: unknown;
   evidence: {
     level: ToolEvidenceLevel;
     source: string;
@@ -165,6 +172,84 @@ function validTimestamp(value: unknown): string | undefined {
   return new Date(time).toISOString();
 }
 
+function canonicalFingerprintValue(
+  value: unknown,
+  depth = 0,
+  seen: Set<object> = new Set(),
+): unknown {
+  if (value === null || typeof value === "string" || typeof value === "boolean") {
+    return value;
+  }
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value !== "object" || depth > 12) {
+    return undefined;
+  }
+
+  const objectValue = value as object;
+  if (seen.has(objectValue)) return "<cycle>";
+  seen.add(objectValue);
+
+  try {
+    if (Array.isArray(value)) {
+      const output: unknown[] = [];
+      for (let index = 0; index < value.length; index++) {
+        const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+        output.push(
+          descriptor && "value" in descriptor
+            ? canonicalFingerprintValue(descriptor.value, depth + 1, seen)
+            : "<opaque>",
+        );
+      }
+      return output;
+    }
+
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) {
+      return "<opaque>";
+    }
+
+    const output: Record<string, unknown> = {};
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    for (const key of Object.keys(descriptors).sort()) {
+      const descriptor = descriptors[key];
+      if (!("value" in descriptor)) continue;
+      const child = canonicalFingerprintValue(
+        descriptor.value,
+        depth + 1,
+        seen,
+      );
+      if (child !== undefined) output[key] = child;
+    }
+    return output;
+  } finally {
+    seen.delete(objectValue);
+  }
+}
+
+/**
+ * Stable fingerprint of the safe descriptor already retained by discovery.
+ * This closes same-name/toolId collision risk without reading executable or
+ * getter-backed runtime state.
+ */
+export function executionToolFingerprint(
+  tool: ExecutionPromotableTool,
+): string {
+  const canonical = canonicalFingerprintValue({
+    namespacedName: tool.namespacedName,
+    canonicalName: tool.canonicalName,
+    description: tool.description ?? "",
+    toolType: tool.toolType ?? "",
+    inputSchema: tool.inputSchema,
+    safeMetadata: tool.safeMetadata,
+  });
+
+  return createHash("sha256")
+    .update(JSON.stringify(canonical))
+    .digest("hex");
+}
+
 /**
  * Convert callback/telemetry metadata into a secret-minimal execution event.
  *
@@ -233,21 +318,24 @@ export function observeToolExecution(
     });
   }
 
+  const eventId = optionalString(ownDataValue(input, "eventId"));
+  const descriptorFingerprint = optionalString(
+    ownDataValue(input, "descriptorFingerprint"),
+  );
+  const canonicalName = optionalString(
+    ownDataValue(input, "canonicalName"),
+  );
+  const framework = optionalString(ownDataValue(input, "framework"));
+  const runtimeName = optionalString(ownDataValue(input, "runtimeName"));
+
   const event: ToolExecutionObservation = Object.freeze({
-    ...(optionalString(ownDataValue(input, "eventId"))
-      ? { eventId: optionalString(ownDataValue(input, "eventId")) }
-      : {}),
+    ...(eventId ? { eventId } : {}),
     ...(toolId ? { toolId } : {}),
     ...(namespacedName ? { namespacedName } : {}),
-    ...(optionalString(ownDataValue(input, "canonicalName"))
-      ? { canonicalName: optionalString(ownDataValue(input, "canonicalName")) }
-      : {}),
-    ...(optionalString(ownDataValue(input, "framework"))
-      ? { framework: optionalString(ownDataValue(input, "framework")) }
-      : {}),
-    ...(optionalString(ownDataValue(input, "runtimeName"))
-      ? { runtimeName: optionalString(ownDataValue(input, "runtimeName")) }
-      : {}),
+    ...(descriptorFingerprint ? { descriptorFingerprint } : {}),
+    ...(canonicalName ? { canonicalName } : {}),
+    ...(framework ? { framework } : {}),
+    ...(runtimeName ? { runtimeName } : {}),
     source: source as ToolExecutionSource,
     status: status as ToolExecutionStatus,
     observedAt,
@@ -263,9 +351,12 @@ export function observeToolExecution(
 }
 
 function identityKey(event: ToolExecutionObservation): string {
-  return event.toolId
+  const identity = event.toolId
     ? `tool:${event.toolId}`
     : `name:${event.namespacedName}`;
+  return event.descriptorFingerprint
+    ? `${identity}:descriptor:${event.descriptorFingerprint}`
+    : identity;
 }
 
 function compareTimestamp(left: string, right: string): number {
@@ -334,6 +425,9 @@ export function aggregateToolExecutions(
       identityKey: key,
       ...(last.toolId ? { toolId: last.toolId } : {}),
       ...(last.namespacedName ? { namespacedName: last.namespacedName } : {}),
+      ...(last.descriptorFingerprint
+        ? { descriptorFingerprint: last.descriptorFingerprint }
+        : {}),
       ...(last.canonicalName ? { canonicalName: last.canonicalName } : {}),
       ...(last.framework ? { framework: last.framework } : {}),
       ...(last.runtimeName ? { runtimeName: last.runtimeName } : {}),
@@ -370,20 +464,30 @@ function summaryMatchesTool(
   tool: ExecutionPromotableTool,
   summary: ToolExecutionSummary,
 ): boolean {
-  if (summary.toolId) {
-    return summary.toolId === tool.toolId;
+  if (!summary.descriptorFingerprint) return false;
+  if (summary.descriptorFingerprint !== executionToolFingerprint(tool)) {
+    return false;
   }
 
-  return Boolean(
+  if (summary.toolId && summary.toolId !== tool.toolId) {
+    return false;
+  }
+
+  if (
     summary.namespacedName &&
-    summary.namespacedName === tool.namespacedName,
-  );
+    summary.namespacedName !== tool.namespacedName
+  ) {
+    return false;
+  }
+
+  return Boolean(summary.toolId || summary.namespacedName);
 }
 
 /**
  * Promote a discovered tool to EXECUTED evidence only after exact identity
- * correlation. Canonical/display names alone are never sufficient because
- * same-named tools may exist in different agents, runtimes or servers.
+ * correlation plus a safe-descriptor fingerprint match. Canonical/display
+ * names alone are never sufficient because same-named tools may exist in
+ * different agents, runtimes or servers and older discovery IDs may collide.
  */
 export function promoteToolExecution<
   T extends ExecutionPromotableTool,
