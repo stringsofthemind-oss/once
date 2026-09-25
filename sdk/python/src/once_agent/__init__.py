@@ -344,7 +344,7 @@ class Once:
             "Accept":
                 "application/json",
             "User-Agent":
-                "once-agent-python/0.1.0",
+                "once-agent-python/0.1.1",
         }
 
         timeout = urllib3.Timeout(
