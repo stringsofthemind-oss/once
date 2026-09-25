@@ -76,3 +76,16 @@ export type {
   AutoLocalAgentToolsetOptions,
   ConnectedLocalAgentToolset,
 } from "./toolset.js";
+
+export {
+  connectOpenAIAgentsFunctionToolsAuto,
+  OpenAIAgentsConnectError,
+} from "./openai-function-tools.js";
+
+export type {
+  OpenAIAgentsParsedToolInput,
+  OpenAIAgentsFunctionToolLike,
+  OpenAIAgentsFunctionToolOverride,
+  ConnectOpenAIAgentsFunctionToolsOptions,
+  ConnectedOpenAIAgentsFunctionTools,
+} from "./openai-function-tools.js";
