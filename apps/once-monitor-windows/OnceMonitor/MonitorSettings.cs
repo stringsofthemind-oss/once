@@ -1,5 +1,6 @@
 using Microsoft.Win32;
 using System.Text.Json;
+using Windows.ApplicationModel;
 
 namespace OnceMonitor;
 
@@ -14,8 +15,14 @@ internal sealed class MonitorSettings
     public int RefreshSeconds { get; set; } = 30;
 }
 
+internal sealed record StartupPreferenceResult(
+    bool Applied,
+    bool Enabled,
+    string? Error = null);
+
 internal static class MonitorSettingsStore
 {
+    private const string StartupTaskId = "OnceMonitorStartup";
     private const string StartupValueName = "Once Monitor";
     private const string StartupRegistryPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
 
@@ -67,17 +74,109 @@ internal static class MonitorSettingsStore
         Save(settings);
     }
 
-    internal static bool TrySetStartWithWindows(bool enabled, out string? error)
+    internal static async Task<StartupPreferenceResult> ApplyStartWithWindowsAsync(bool enabled)
     {
-        error = null;
+        if (HasPackageIdentity())
+        {
+            try
+            {
+                var task = await StartupTask.GetAsync(StartupTaskId);
 
+                if (!enabled)
+                {
+                    if (task.State == StartupTaskState.Enabled)
+                    {
+                        task.Disable();
+                    }
+
+                    return new StartupPreferenceResult(
+                        Applied: true,
+                        Enabled: false);
+                }
+
+                switch (task.State)
+                {
+                    case StartupTaskState.Enabled:
+                        return new StartupPreferenceResult(true, true);
+
+                    case StartupTaskState.Disabled:
+                    {
+                        var state = await task.RequestEnableAsync();
+                        return state == StartupTaskState.Enabled
+                            ? new StartupPreferenceResult(true, true)
+                            : StartupStateFailure(state);
+                    }
+
+                    case StartupTaskState.DisabledByUser:
+                        return new StartupPreferenceResult(
+                            false,
+                            false,
+                            "Windows has disabled Once Monitor in Startup apps. Re-enable it from Windows Settings > Apps > Startup.");
+
+                    case StartupTaskState.DisabledByPolicy:
+                        return new StartupPreferenceResult(
+                            false,
+                            false,
+                            "Windows policy does not allow Once Monitor to start automatically.");
+
+                    default:
+                        return StartupStateFailure(task.State);
+                }
+            }
+            catch (Exception ex)
+            {
+                return new StartupPreferenceResult(
+                    false,
+                    false,
+                    "Windows startup-task registration is unavailable: " + ex.Message);
+            }
+        }
+
+        return ApplyRegistryStartup(enabled);
+    }
+
+    internal static async Task<bool> IsStartWithWindowsEnabledAsync()
+    {
+        if (HasPackageIdentity())
+        {
+            try
+            {
+                var task = await StartupTask.GetAsync(StartupTaskId);
+                return task.State == StartupTaskState.Enabled;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        return IsRegistryStartupEnabled();
+    }
+
+    private static bool HasPackageIdentity()
+    {
+        try
+        {
+            _ = Package.Current.Id.Name;
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static StartupPreferenceResult ApplyRegistryStartup(bool enabled)
+    {
         try
         {
             using var key = Registry.CurrentUser.CreateSubKey(StartupRegistryPath, writable: true);
             if (key is null)
             {
-                error = "Windows startup settings are unavailable.";
-                return false;
+                return new StartupPreferenceResult(
+                    false,
+                    false,
+                    "Windows startup settings are unavailable.");
             }
 
             if (enabled)
@@ -85,8 +184,10 @@ internal static class MonitorSettingsStore
                 var executable = Environment.ProcessPath;
                 if (string.IsNullOrWhiteSpace(executable))
                 {
-                    error = "Once Monitor could not locate its executable.";
-                    return false;
+                    return new StartupPreferenceResult(
+                        false,
+                        false,
+                        "Once Monitor could not locate its executable.");
                 }
 
                 key.SetValue(
@@ -99,16 +200,15 @@ internal static class MonitorSettingsStore
                 key.DeleteValue(StartupValueName, throwOnMissingValue: false);
             }
 
-            return true;
+            return new StartupPreferenceResult(true, enabled);
         }
         catch (Exception ex)
         {
-            error = ex.Message;
-            return false;
+            return new StartupPreferenceResult(false, false, ex.Message);
         }
     }
 
-    internal static bool IsStartWithWindowsEnabled()
+    private static bool IsRegistryStartupEnabled()
     {
         try
         {
@@ -120,5 +220,13 @@ internal static class MonitorSettingsStore
         {
             return false;
         }
+    }
+
+    private static StartupPreferenceResult StartupStateFailure(StartupTaskState state)
+    {
+        return new StartupPreferenceResult(
+            false,
+            state == StartupTaskState.Enabled,
+            $"Windows returned startup state {state}.");
     }
 }
