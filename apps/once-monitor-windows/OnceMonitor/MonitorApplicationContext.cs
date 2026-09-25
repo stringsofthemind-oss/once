@@ -18,13 +18,12 @@ internal sealed class MonitorApplicationContext : ApplicationContext
     internal MonitorApplicationContext(MonitorSettings settings)
     {
         _settings = settings;
-        _settings.StartWithWindows = MonitorSettingsStore.IsStartWithWindowsEnabled();
 
         _panel = new MonitorPanelForm(
             _settings,
             RefreshAsync,
             () => _statusService.RunDoctorAsync(_settings),
-            SaveSettings,
+            SaveSettingsAsync,
             CopyDiagnostics);
 
         var menu = new ContextMenuStrip();
@@ -67,7 +66,15 @@ internal sealed class MonitorApplicationContext : ApplicationContext
             UpdateTrayFromState();
         };
 
-        _ = RefreshAsync();
+        _ = InitializeAsync();
+    }
+
+    private async Task InitializeAsync()
+    {
+        _settings.StartWithWindows =
+            await MonitorSettingsStore.IsStartWithWindowsEnabledAsync();
+        MonitorSettingsStore.Save(_settings);
+        await RefreshAsync();
     }
 
     private async Task RefreshAsync()
@@ -136,18 +143,21 @@ internal sealed class MonitorApplicationContext : ApplicationContext
         }
     }
 
-    private void SaveSettings(MonitorSettings settings)
+    private async Task SaveSettingsAsync(MonitorSettings settings)
     {
-        if (!MonitorSettingsStore.TrySetStartWithWindows(settings.StartWithWindows, out var startupError))
+        var startup =
+            await MonitorSettingsStore.ApplyStartWithWindowsAsync(
+                settings.StartWithWindows);
+
+        settings.StartWithWindows = startup.Enabled;
+
+        if (!startup.Applied && !string.IsNullOrWhiteSpace(startup.Error))
         {
-            settings.StartWithWindows = MonitorSettingsStore.IsStartWithWindowsEnabled();
-            if (!string.IsNullOrWhiteSpace(startupError))
-            {
-                ShowNotification(
-                    "Once Monitor setting not changed",
-                    startupError,
-                    ToolTipIcon.Warning);
-            }
+            ShowNotification(
+                "Once Monitor startup setting not changed",
+                startup.Error,
+                ToolTipIcon.Warning,
+                respectNotificationPreference: false);
         }
 
         MonitorSettingsStore.Save(settings);
@@ -183,7 +193,8 @@ internal sealed class MonitorApplicationContext : ApplicationContext
             ShowNotification(
                 "Once diagnostics unavailable",
                 "Windows did not allow access to the clipboard.",
-                ToolTipIcon.Warning);
+                ToolTipIcon.Warning,
+                respectNotificationPreference: false);
         }
     }
 
@@ -214,9 +225,13 @@ internal sealed class MonitorApplicationContext : ApplicationContext
         previous?.Dispose();
     }
 
-    private void ShowNotification(string title, string text, ToolTipIcon icon)
+    private void ShowNotification(
+        string title,
+        string text,
+        ToolTipIcon icon,
+        bool respectNotificationPreference = true)
     {
-        if (!_settings.NotificationsEnabled)
+        if (respectNotificationPreference && !_settings.NotificationsEnabled)
         {
             return;
         }
