@@ -160,7 +160,17 @@ const invoice = visible.tools.find(
 assert.ok(invoice);
 assert.equal(invoice.toolType, "function");
 assert.equal(invoice.evidence.level, "MODEL_VISIBLE");
-assert.equal(invoice.once.effectClass, "EXTERNAL_BUSINESS_MUTATION");
+assert.equal(
+  invoice.once.effectClass,
+  "UNKNOWN",
+  "adapter must preserve the existing importance model instead of inventing a framework-specific effect class",
+);
+assert.equal(invoice.once.qualification, "UNKNOWN");
+assert.notEqual(
+  invoice.once.actionPriority.band,
+  "BYPASS",
+  "unknown model-visible mutation semantics must remain visible for review rather than being silently bypassed",
+);
 
 const serialized = JSON.stringify({ registered, visible });
 for (const secret of [
