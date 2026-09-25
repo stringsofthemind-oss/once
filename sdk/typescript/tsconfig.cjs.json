@@ -9,7 +9,8 @@
     "outDir": "dist-cjs"
   },
   "include": [
-    "src/index.ts"
+    "src/index.ts",
+    "src/connect/index.ts"
   ],
   "exclude": [
     "src/**/*.before-*.ts"
