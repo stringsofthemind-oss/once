@@ -86,9 +86,27 @@ assert.match(
   "live network ambient heartbeat must remain a 1-second infinite pulse",
 );
 
+assert.match(
+  pageAnalytics,
+  /heartbeatStyle\.dataset\.onceHeartbeat\s*=\s*"red-visible-v2"/,
+  "visible red Once heartbeat override is missing",
+);
+
+assert.match(
+  pageAnalytics,
+  /rgba\(255,59,77,\.62\)/,
+  "Once heartbeat must retain its visible red centre bloom",
+);
+
+assert.match(
+  pageAnalytics,
+  /50%\{[\s\S]*?opacity:\.94;[\s\S]*?scale\(1\.08\)/,
+  "Once heartbeat peak visibility must remain clearly noticeable",
+);
+
 const visibleVersionLine =
   `TS SDK ${siteTs} · PY SDK ${sitePython} · MCP ${siteMcp}`;
 
 console.log(
-  `PASS site surface: ${visibleVersionLine}; live counter route present; heartbeat=1s`,
+  `PASS site surface: ${visibleVersionLine}; live counter route present; heartbeat=1s red-visible`,
 );
