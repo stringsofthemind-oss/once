@@ -91,29 +91,40 @@ const MUTATION_NAME_TOKENS = new Set([
 ]);
 
 const READ_ONLY_NAME_TOKENS = new Set([
+  "analyze",
+  "calculate",
   "check",
+  "compute",
+  "convert",
   "describe",
   "fetch",
   "find",
+  "format",
+  "generate",
   "get",
   "history",
   "inspect",
   "list",
   "lookup",
   "metrics",
+  "parse",
   "preview",
   "read",
+  "render",
   "retrieve",
   "search",
   "show",
   "stats",
   "status",
+  "summarize",
+  "translate",
+  "validate",
   "view",
 ]);
 
 const MUTATION_DESCRIPTION_PATTERNS = [
   /\b(adds?|creates?|updates?|deletes?|removes?)\b/i,
-  /\b(sends?|emails?|messages?|posts?|publishes?)\b/i,
+  /\b(sends?|sending|posts?|publishes?|messages?)\b/i,
   /\b(charges?|refunds?|pays?|transfers?|purchases?|buys?)\b/i,
   /\b(books?|reserves?|cancels?|schedules?)\b/i,
   /\b(deploys?|provisions?|uploads?|writes?|modifies?|edits?)\b/i,
@@ -127,6 +138,8 @@ const READ_ONLY_DESCRIPTION_PATTERNS = [
   /\bdoes not (?:modify|change|write|mutate)\b/i,
   /\bwithout (?:modifying|changing|writing|mutating|saving)\b/i,
   /\b(searches?|reads?|retrieves?|fetches?|lists?|looks? up|inspects?)\b/i,
+  /\b(generates?|summarizes?|translates?|analyzes?|calculates?|computes?)\b/i,
+  /\b(converts?|formats?|parses?|renders?|validates?)\b/i,
 ];
 
 function freezeResult(
