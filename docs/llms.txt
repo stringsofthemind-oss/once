@@ -56,9 +56,9 @@ Use setup/apply mutation tools only after explicit user approval.
 
 If CLI is available:
 
-npx once doctor .
+npx --yes --package=@once-agent/sdk once doctor .
 
-Doctor assesses the project locally without an API key, uploading source, or modifying source. It identifies likely consequential operations and shows the next once protect command. Use npx once doctor . --protect to write a review plan and snippets under .once/ without rewriting source. Review candidates before a separate once protect . --apply action; use once setup . when the chosen integration requires configuration. Use npx once doctor . --connection to explicitly check hosted connectivity with ONCE_API_KEY.
+Doctor assesses the project locally without an API key, uploading source, or modifying source. It identifies likely consequential operations and shows the next once protect command. Use npx --yes --package=@once-agent/sdk once doctor . --protect to write a review plan and snippets under .once/ without rewriting source. Install @once-agent/sdk before using the shorter npx once commands. Review candidates before a separate once protect . --apply action; use once setup . when the chosen integration requires configuration. Use npx once doctor . --connection to explicitly check hosted connectivity with ONCE_API_KEY.
 
 CORE SAFETY MODEL
 
