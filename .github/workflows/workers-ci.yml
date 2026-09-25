@@ -13,6 +13,13 @@ on:
       - "workers/playground/**"
       - "workers/demo-provider/**"
       - "workers/evaluation/**"
+      - "docs/index.html"
+      - "docs/app.js"
+      - "docs/styles.css"
+      - "sdk/typescript/package.json"
+      - "sdk/python/pyproject.toml"
+      - "mcp/package.json"
+      - "scripts/check-site-surface.mjs"
       - "scripts/deploy-worker.cjs"
       - ".github/workflows/workers-ci.yml"
 
@@ -36,6 +43,9 @@ jobs:
 
       - name: Validate deploy guard syntax
         run: node --check scripts/deploy-worker.cjs
+
+      - name: Validate public site versions, counter route and heartbeat
+        run: node scripts/check-site-surface.mjs
 
   worker-dry-run:
     runs-on: ubuntu-latest
