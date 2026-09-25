@@ -1,9 +1,87 @@
 # @once-agent/sdk
 
+> **Automatic Connect release candidate:** repository `main` now includes the
+> `@once-agent/sdk/connect` public surface for automatic tool classification,
+> whole-toolset wiring, trusted intent identity, conservative effect binding,
+> and OpenAI Agents FunctionTool wrapping. It has passed source, packed-package,
+> ESM/CommonJS, and Node.js 24.15 protected-execution gates. The currently
+> published npm package remains `@once-agent/sdk@0.1.11` until the next SDK
+> release is explicitly versioned and published.
+>
+> Full guide: https://github.com/stringsofthemind-oss/once/blob/main/docs/CONNECT_AUTO.md
+
 > **Local protection:** `protectLocal` wraps an existing async function using a
 > durable same-machine SQLite file. This feature requires Node.js 24.15 or
 > later. See the local function guide:
 > https://github.com/stringsofthemind-oss/once/blob/main/examples/local-function/README.md
+
+## Automatic Connect
+
+Automatic Connect is designed for the integration path where an application
+already has a registry or framework list of agent tools.
+
+```ts
+import {
+  connectLocalAgentToolsetAuto
+} from "@once-agent/sdk/connect";
+
+const connected = connectLocalAgentToolsetAuto(
+  {
+    search_web: {
+      async execute(input: { query: string }) {
+        return search(input.query);
+      }
+    },
+    send_email: {
+      async execute(input: {
+        intentId: string;
+        destination: string;
+        body: string;
+      }) {
+        return mailer.send({
+          to: input.destination,
+          body: input.body
+        });
+      }
+    }
+  },
+  {
+    manifest: [
+      {
+        name: "search_web",
+        description: "Search the public web."
+      },
+      {
+        name: "send_email",
+        description: "Send an email to a recipient.",
+        _meta: {
+          once: {
+            identityFields: ["intentId"],
+            effectFields: ["destination", "body"]
+          }
+        }
+      }
+    ],
+    statePath: ".once/agent-tools.sqlite"
+  }
+);
+
+// Give the agent only the connected tools.
+const toolsForAgent = connected.tools;
+```
+
+Automatic Connect classifies tools as `BYPASS`, `PROTECT`, or `UNKNOWN`.
+`UNKNOWN` fails closed. Whole-toolset connection is all-or-nothing: duplicate,
+missing, undeclared, invalid, or unresolved tools block connection rather than
+silently exposing a partially protected registry.
+
+Protected automatic local execution still requires a trustworthy logical action
+identity and a payload that represents the consequential effect. Explicit
+`identityFields` and `effectFields` are preferred when available. Framework or
+transport attempt IDs are not automatically treated as business intent.
+
+The automatic local path requires Node.js 24.15+ and shared durable SQLite state
+on one machine. It is not a universal exactly-once or multi-host guarantee.
 
 
 <!-- ONCE_STRIPE_SANDBOX_NOTICE -->
@@ -533,4 +611,3 @@ That is the failure mode Once is built to address.
 ## License
 
 MIT
-
