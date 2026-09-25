@@ -108,7 +108,8 @@
     "typescript": "^5.9.0"
   },
   "repository": {
-    "type": "git+https://github.com/stringsofthemind-oss/once.git"
+    "type": "git",
+    "url": "git+https://github.com/stringsofthemind-oss/once.git"
   },
   "homepage": "https://onceexec.com/",
   "bugs": {
