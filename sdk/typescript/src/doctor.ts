@@ -23,6 +23,9 @@ export type DoctorOptions = {
   connection?: boolean;
 };
 
+const standaloneCli =
+  "npx --yes --package=@once-agent/sdk once";
+
 function confidenceRank(
   confidence: Finding["confidence"]
 ): number {
@@ -271,7 +274,7 @@ export async function runDoctor(
     if (sorted.length > 8) {
       console.log("");
       console.log(
-        `... ${sorted.length - 8} additional candidates. Run once scan ${printableTarget(requestedPath)} --no-estimate for the full local scan.`
+        `... ${sorted.length - 8} additional candidates. Run ${standaloneCli} scan ${printableTarget(requestedPath)} --no-estimate for the full local scan.`
       );
     }
   }
@@ -285,21 +288,21 @@ export async function runDoctor(
       "Review protection guidance without changing source code:"
     );
     console.log(
-      `  once protect ${printableTarget(requestedPath)} --all --snippets`
+      `  ${standaloneCli} protect ${printableTarget(requestedPath)} --all --snippets`
     );
     console.log("");
     console.log(
       "Generate a machine-readable protection plan:"
     );
     console.log(
-      `  once protect ${printableTarget(requestedPath)} --all --write-plan`
+      `  ${standaloneCli} protect ${printableTarget(requestedPath)} --all --write-plan`
     );
   } else {
     console.log(
       "If you know a consequential operation exists, review the full scanner output:"
     );
     console.log(
-      `  once scan ${printableTarget(requestedPath)} --no-estimate`
+      `  ${standaloneCli} scan ${printableTarget(requestedPath)} --no-estimate`
     );
   }
 
