@@ -2,18 +2,29 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-const entry = readFileSync(new URL("../src/public-entry.js", import.meta.url), "utf8");
+const entry = readFileSync(new URL("../src/index.js", import.meta.url), "utf8");
+const core = readFileSync(new URL("../src/runtime-core.js", import.meta.url), "utf8");
 const wrangler = readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8");
 
 function expectSource(pattern, message) {
   assert.match(entry, pattern, message);
 }
 
-test("runtime routes through the public stats wrapper", () => {
+test("runtime keeps the guarded src/index.js entrypoint", () => {
   assert.match(
     wrangler,
-    /"main"\s*:\s*"src\/public-entry\.js"/,
-    "wrangler must keep the public stats wrapper as the production entrypoint",
+    /"main"\s*:\s*"src\/index\.js"/,
+    "wrangler must keep src/index.js as the guarded production entrypoint",
+  );
+
+  expectSource(
+    /from\s+"\.\/runtime-core\.js"/,
+    "public edge must delegate to the preserved runtime core",
+  );
+
+  assert.ok(
+    core.includes("class extends DurableObject") || core.includes("class Q18Truth"),
+    "preserved runtime core must still contain the Durable Object engine",
   );
 });
 
