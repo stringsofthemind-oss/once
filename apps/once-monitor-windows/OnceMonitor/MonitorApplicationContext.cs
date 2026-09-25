@@ -73,6 +73,16 @@ internal sealed class MonitorApplicationContext : ApplicationContext
     {
         _settings.StartWithWindows =
             await MonitorSettingsStore.IsStartWithWindowsEnabledAsync();
+
+        if (!_settings.WelcomeShown && _settings.NotificationsEnabled)
+        {
+            ShowNotification(
+                "Once Monitor is ready",
+                "Look for the 1x icon in the Windows system tray. Click it to view local Once status, tools, Doctor, and settings.",
+                ToolTipIcon.Info);
+            _settings.WelcomeShown = true;
+        }
+
         MonitorSettingsStore.Save(_settings);
         await RefreshAsync();
     }
