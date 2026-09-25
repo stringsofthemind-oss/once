@@ -193,9 +193,9 @@ function validateAnnotations(
 /**
  * Infer whether a tool should cross the Once Connect safety boundary.
  *
- * This is intentionally conservative. It consumes explicit tool metadata
- * first, then uses deterministic name/description signals for obvious cases.
- * Weak or contradictory evidence resolves to UNKNOWN rather than permission.
+ * This is intentionally conservative. Explicit metadata and deterministic
+ * name/description semantics cross-check one another. Weak or contradictory
+ * evidence resolves to UNKNOWN rather than permission.
  *
  * UNKNOWN is not a bypass decision. Callers should require an explicit safety
  * declaration, human/config policy, or another trusted classifier before
@@ -248,13 +248,68 @@ export function classifyConnectTool(
     | ConnectToolAnnotations
     | undefined;
 
+  const nameTokens = normalizeName(candidate.name);
+  const description =
+    typeof candidate.description === "string"
+      ? candidate.description
+      : "";
+
+  const mutationNameTokens = nameTokens.filter(token =>
+    MUTATION_NAME_TOKENS.has(token),
+  );
+
+  const readOnlyNameTokens = nameTokens.filter(token =>
+    READ_ONLY_NAME_TOKENS.has(token),
+  );
+
+  const mutationDescription =
+    hasPattern(description, MUTATION_DESCRIPTION_PATTERNS);
+
+  const readOnlyDescription =
+    hasPattern(description, READ_ONLY_DESCRIPTION_PATTERNS);
+
+  const mutationSignal =
+    mutationNameTokens.length > 0 || mutationDescription;
+
+  const readOnlySignal =
+    readOnlyNameTokens.length > 0 || readOnlyDescription;
+
   const signals: string[] = [];
+
+  for (const token of mutationNameTokens) {
+    signals.push(`name:${token}`);
+  }
+
+  for (const token of readOnlyNameTokens) {
+    signals.push(`name:${token}`);
+  }
+
+  if (mutationDescription) {
+    signals.push("description:mutation");
+  }
+
+  if (readOnlyDescription) {
+    signals.push("description:read-only");
+  }
+
+  if (mutationSignal && readOnlySignal) {
+    return freezeResult(
+      CONNECT_TOOL_DECISION.UNKNOWN,
+      "CONFLICTING_SIGNALS",
+      signals,
+    );
+  }
 
   if (annotations?.readOnlyHint === true) {
     signals.push("annotations.readOnlyHint=true");
 
-    if (annotations.destructiveHint === true) {
-      signals.push("annotations.destructiveHint=true");
+    if (
+      annotations.destructiveHint === true ||
+      mutationSignal
+    ) {
+      if (annotations.destructiveHint === true) {
+        signals.push("annotations.destructiveHint=true");
+      }
 
       return freezeResult(
         CONNECT_TOOL_DECISION.UNKNOWN,
@@ -272,6 +327,14 @@ export function classifyConnectTool(
 
   if (annotations?.readOnlyHint === false) {
     signals.push("annotations.readOnlyHint=false");
+
+    if (readOnlySignal && !mutationSignal) {
+      return freezeResult(
+        CONNECT_TOOL_DECISION.UNKNOWN,
+        "CONFLICTING_SIGNALS",
+        signals,
+      );
+    }
 
     if (annotations.idempotentHint === true) {
       signals.push("annotations.idempotentHint=true");
@@ -313,59 +376,17 @@ export function classifyConnectTool(
   if (annotations?.destructiveHint === true) {
     signals.push("annotations.destructiveHint=true");
 
+    if (readOnlySignal) {
+      return freezeResult(
+        CONNECT_TOOL_DECISION.UNKNOWN,
+        "CONFLICTING_SIGNALS",
+        signals,
+      );
+    }
+
     return freezeResult(
       CONNECT_TOOL_DECISION.PROTECT,
       "EXPLICIT_WRITE",
-      signals,
-    );
-  }
-
-  const nameTokens = normalizeName(candidate.name);
-  const description =
-    typeof candidate.description === "string"
-      ? candidate.description
-      : "";
-
-  const mutationNameTokens = nameTokens.filter(token =>
-    MUTATION_NAME_TOKENS.has(token),
-  );
-
-  const readOnlyNameTokens = nameTokens.filter(token =>
-    READ_ONLY_NAME_TOKENS.has(token),
-  );
-
-  const mutationDescription =
-    hasPattern(description, MUTATION_DESCRIPTION_PATTERNS);
-
-  const readOnlyDescription =
-    hasPattern(description, READ_ONLY_DESCRIPTION_PATTERNS);
-
-  for (const token of mutationNameTokens) {
-    signals.push(`name:${token}`);
-  }
-
-  for (const token of readOnlyNameTokens) {
-    signals.push(`name:${token}`);
-  }
-
-  if (mutationDescription) {
-    signals.push("description:mutation");
-  }
-
-  if (readOnlyDescription) {
-    signals.push("description:read-only");
-  }
-
-  const mutationSignal =
-    mutationNameTokens.length > 0 || mutationDescription;
-
-  const readOnlySignal =
-    readOnlyNameTokens.length > 0 || readOnlyDescription;
-
-  if (mutationSignal && readOnlySignal) {
-    return freezeResult(
-      CONNECT_TOOL_DECISION.UNKNOWN,
-      "CONFLICTING_SIGNALS",
       signals,
     );
   }
