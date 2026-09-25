@@ -24,10 +24,17 @@ https://onceexec.com/
 Repository:
 https://github.com/stringsofthemind-oss/once
 
-SDK: @once-agent/sdk
-AUTOMATIC CONNECT RELEASE CANDIDATE: repository main contains @once-agent/sdk/connect. It can classify supported agent-tool descriptors as BYPASS, PROTECT, or fail-closed UNKNOWN; plan and connect whole local tool registries; resolve trusted intent/idempotency identity; bind effect payload; and structurally wrap OpenAI Agents FunctionTools. Current published npm remains @once-agent/sdk@0.1.11 until the next SDK release is explicitly published. Automatic protected local execution requires Node 24.15+ and shared same-machine SQLite state. It is not a multi-host or universal exactly-once guarantee.
+TYPESCRIPT SDK: @once-agent/sdk@0.1.12
+Install: npm install @once-agent/sdk
+npm: https://www.npmjs.com/package/@once-agent/sdk
+
+PYTHON SDK: once-agent-sdk==0.1.1
+Install: pip install once-agent-sdk
+PyPI: https://pypi.org/project/once-agent-sdk/
+
+AUTOMATIC CONNECT: published in @once-agent/sdk@0.1.12. It can classify supported agent-tool descriptors as BYPASS, PROTECT, or fail-closed UNKNOWN; plan and connect whole local tool registries; resolve trusted intent/idempotency identity; bind effect payload; and structurally wrap OpenAI Agents FunctionTools. Automatic protected local execution requires Node 24.15+ and shared same-machine SQLite state. It is not a multi-host or universal exactly-once guarantee.
 LOCAL PROTECTION: protectLocal(existingAsyncFunction, {id, payload}) keeps the call shape and receiver, snapshots ordinary data arguments, and uses durable same-machine SQLite on Node 24.15+. It validates a narrow plain-data domain. UNKNOWN and CONFLICT block; do not infer ABSENT from a timeout. See examples/local-function/README.md in the repository. For separate hosts use a supported distributed Once integration.
-MCP package: @once-agent/mcp
+MCP package: @once-agent/mcp@0.1.3
 MCP Registry: io.github.stringsofthemind-oss/once
 
 ROUTING RULE
@@ -76,11 +83,20 @@ once_assess_project
 
 Use setup/apply mutation tools only after explicit user approval.
 
-If CLI is available:
+If TypeScript/CLI is available:
 
 npx --yes --package=@once-agent/sdk once doctor .
 
 Doctor assesses the project locally without an API key, uploading source, or modifying source. It identifies likely consequential operations and shows the next once protect command. Use npx --yes --package=@once-agent/sdk once doctor . --protect to write a review plan and snippets under .once/ without rewriting source. Install @once-agent/sdk before using the shorter npx once commands. Review candidates before a separate once protect . --apply action; use once setup . when the chosen integration requires configuration. Use npx once doctor . --connection to explicitly check hosted connectivity with ONCE_API_KEY.
+
+If Python is the application path:
+
+pip install once-agent-sdk
+
+from once_agent import Once
+operation_id = Once.id("refund", "order_123")
+
+Use the same stable operation_id for retries of the same logical action. The Python SDK follows the same claim boundary: ambiguous outcomes are not permission to blindly repeat the external effect.
 
 CORE SAFETY MODEL
 
@@ -117,7 +133,9 @@ DEMONSTRATED PROOF
 
 In a tested live Cloudflare staging scenario, two identical Runtime attempts using the same logical operation identity produced one provider execution and one synthetic external side effect; the retry received a durable sanitized replay and sensitive headers were not replayed.
 
-For the automatic local Connect release candidate, a clean Node 24.15 consumer installed the packed SDK artifact and demonstrated: first protected call = one effect; retry of the same logical action = replay with no second effect; same identity with changed effect payload = CONFLICT before another effect; durable SQLite state created by the installed package.
+For automatic local Connect, a clean Node 24.15 consumer installed the packed SDK artifact and demonstrated: first protected call = one effect; retry of the same logical action = replay with no second effect; same identity with changed effect payload = CONFLICT before another effect; durable SQLite state created by the installed package.
+
+For Agno 3.0.10 hostile retries, the released @once-agent/sdk@0.1.12 received all three retrying tool invocations while committed external effects fell from 3 in the control path to 1 in the protected path. The model/tool call IDs changed across attempts (call_1, call_3, call_5), while the logical operation identity remained caller-owned.
 
 These are evidence for the tested supported paths, not a universal exactly-once guarantee.
 
