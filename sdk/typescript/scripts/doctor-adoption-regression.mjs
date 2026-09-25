@@ -99,7 +99,7 @@ try {
   );
   assert.match(
     result.stdout,
-    /once protect .* --all --snippets/
+    /npx --yes --package=@once-agent\/sdk once protect .* --all --snippets/
   );
   assert.match(
     result.stdout,
@@ -135,6 +135,19 @@ try {
   assert.match(
     connection.stdout,
     /Hosted connection verification needs ONCE_API_KEY/
+  );
+
+  const emptyProject = path.join(root, "empty");
+  await mkdir(emptyProject);
+  const emptyResult = spawnSync(
+    process.execPath,
+    [path.resolve("dist/cli.js"), "doctor", emptyProject],
+    { encoding: "utf8", env }
+  );
+  assert.equal(emptyResult.status, 0);
+  assert.match(
+    emptyResult.stdout,
+    /npx --yes --package=@once-agent\/sdk once scan .* --no-estimate/
   );
 
   console.log("doctor adoption regression: PASS");
