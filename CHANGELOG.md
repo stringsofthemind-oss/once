@@ -17,6 +17,10 @@ All notable changes to the Once SDK are documented here.
 - Phase 11B explicit authoritative MCP enumeration with `--tools-live=<host/name>`, modern 2026-07-28 `server/discover` negotiation, legacy `initialize` fallback, bounded `tools/list` pagination, schemas, annotation hints, and `SERVER_AUTHORITATIVE` evidence.
 - Bounded modern MCP tool-list refresh with `--tools-watch-ms=<ms>` using `subscriptions/listen`; a `tools/list_changed` notification triggers an authoritative re-list and namespaced added/removed/changed diff before the command exits.
 - Stable `host/server/tool` refresh namespaces and deterministic PROJECT-before-USER configured-source precedence.
+- Phase 11C runtime/model visibility discovery with distinct `RUNTIME_REGISTERED` and `MODEL_VISIBLE` Tool Graph evidence.
+- Public `@once-agent/sdk/discovery` ESM, CommonJS, and TypeScript subpath for dependency-free structural runtime observation.
+- Phase 11C priority framework adapters for OpenAI Agents/Responses, Vercel AI SDK, LangChain/LangGraph, Pydantic AI, Google ADK/Gemini, Strands Agents, and Microsoft Semantic Kernel.
+- Framework adapters preserve same-named tools as distinct observations when their safe descriptions, schemas, or metadata differ instead of collapsing them by name alone.
 
 ### Safety and validation
 
@@ -29,6 +33,10 @@ All notable changes to the Once SDK are documented here.
 - Phase 11 live discovery never launches configured stdio server commands, never follows redirects, enforces timeout/response/page/tool bounds, and does not retain configured secret header values in discovery results.
 - Tool enumeration and refresh never invoke MCP tools or automatically apply Once protection; the release-gated regressions explicitly prove no `tools/call` occurs.
 - Modern tool watching is bounded and foreground-only; no background daemon is created. Legacy 2025-era servers remain supported for authoritative enumeration, while the bounded watch command targets the 2026-07-28 `subscriptions/listen` model.
+- Phase 11C framework adapters observe already-existing registration/model-request state only: they do not invoke tools, run agents/graphs, call models/providers, resolve external toolsets, evaluate framework execution filters, or treat framework hints as a security boundary.
+- Runtime discovery keeps getter-backed or non-plain framework internals inert/opaque, redacts secret-like schema and metadata values, and counts unresolved runtime sources instead of guessing.
+- The packaged `@once-agent/sdk/discovery` contract is release-gated through clean-tarball TypeScript, ESM, and CommonJS consumers.
+- CrewAI, LlamaIndex, and Agno runtime adapters are explicitly deferred to the later discovery backlog rather than blocking Phase 11D execution observation.
 - No universal exactly-once claim is made; local automatic protection remains same-machine SQLite coordination and ambiguous outcomes still require authoritative reconciliation where applicable.
 
 ## 0.1.11 - 2026-09-25
