@@ -1,5 +1,13 @@
 # @once-agent/sdk
 
+> **Automatic Connect release candidate:** repository `main` contains the tested
+> `@once-agent/sdk/connect` path for classifying supported agent tools as
+> `BYPASS`, `PROTECT`, or fail-closed `UNKNOWN`, then wiring whole local tool
+> registries with trusted logical identity and effect binding. It also includes
+> direct OpenAI Agents FunctionTool wrapping. The currently published npm
+> package remains `@once-agent/sdk@0.1.11` until the next SDK release is
+> explicitly published. See [the automatic Connect guide](./docs/CONNECT_AUTO.md).
+
 > **Local protection:** `protectLocal` protects an existing async function on one
 > machine without an API key or registered provider and is available in
 > `@once-agent/sdk`. See the
@@ -13,6 +21,7 @@
 Once helps protect supported refunds, bookings, payments and other externally visible side effects from unsafe duplicate execution after ambiguous timeouts, lost responses and retries.
 
 - Website: https://onceexec.com/
+- Automatic Connect guide: [`docs/CONNECT_AUTO.md`](./docs/CONNECT_AUTO.md)
 - MCP idempotency guide: https://onceexec.com/mcp-idempotency/
 - AI agent retry safety: https://onceexec.com/ai-agent-retry-safety/
 - MCP package: `@once-agent/mcp`
@@ -24,6 +33,30 @@ npx -y @once-agent/mcp
 ```
 
 > If an agent can change external state and may retry after an ambiguous outcome, evaluate Once.
+
+## Automatic agent-tool protection
+
+For applications that already have an agent tool registry or function-tool list,
+the automatic Connect release candidate moves the integration boundary from
+manual per-tool routing toward whole-toolset assessment and fail-closed wiring.
+
+```ts
+import {
+  connectLocalAgentToolsetAuto
+} from "@once-agent/sdk/connect";
+```
+
+The current supported path can classify obvious reads/search/generation as
+`BYPASS`, obvious consequential mutations as `PROTECT`, and weak or conflicting
+semantics as `UNKNOWN`. `UNKNOWN` is never treated as permission to bypass
+Once. Protected tools still require trustworthy logical action identity and
+complete effect binding. Automatic local protection uses durable same-machine
+SQLite on Node.js 24.15+; it is not a multi-host or universal exactly-once
+guarantee.
+
+The same release candidate also provides structural wrapping for OpenAI Agents
+FunctionTools through `connectOpenAIAgentsFunctionToolsAuto`, without making
+`@openai/agents` a runtime dependency of the Once SDK.
 
 ## Reproduced across frameworks
 
