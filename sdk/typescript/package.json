@@ -55,6 +55,7 @@
     "test:discovery-package": "node ./scripts/runtime-discovery-package-regression.mjs && node ./scripts/execution-discovery-package-regression.mjs",
     "test:gateway-package": "node ./scripts/gateway-package-regression.mjs",
     "test:connect-package-protected": "node ./scripts/connect-packed-protection-regression.mjs",
+    "test:gateway-package-protected": "node ./scripts/gateway-packed-protection-regression.mjs",
     "test:protect": "npm run build && node ./scripts/protect-regression.mjs",
     "test:capabilities": "npm run build && node ./scripts/capability-regression.mjs",
     "test:transformer": "npm run build && node ./scripts/http-transformer-regression.mjs",
