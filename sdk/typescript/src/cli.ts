@@ -1,11 +1,8 @@
 #!/usr/bin/env node
 
-import { randomUUID } from "node:crypto";
-
 import {
-  Once,
-  OnceError
-} from "./index.js";
+  runDoctor
+} from "./doctor.js";
 
 import {
   runScan
@@ -31,108 +28,7 @@ import {
   runTraceFetch
 } from "./trace.js";
 
-async function runDoctor(): Promise<void> {
-
-  console.log("");
-  console.log("Once Doctor");
-  console.log("-----------");
-
-  if (!process.env.ONCE_API_KEY) {
-    console.log(
-      "✗ ONCE_API_KEY is not set"
-    );
-
-    console.log("");
-    console.log(
-      "Set ONCE_API_KEY and run again."
-    );
-
-    process.exitCode = 1;
-    return;
-  }
-
-  console.log(
-    "✓ ONCE_API_KEY found"
-  );
-
-  try {
-    const once =
-      new Once();
-
-    const operationId =
-      "doctor-" +
-      randomUUID()
-        .replaceAll("-", "");
-
-    const truth =
-      await once.truth(
-        operationId
-      );
-
-    console.log(
-      "✓ Once API reachable"
-    );
-
-    console.log(
-      "✓ API key accepted"
-    );
-
-    console.log(
-      "✓ Truth endpoint working"
-    );
-
-    if (
-      truth.ledger_state !==
-        "ABSENT" ||
-      truth.side_effects !== 0
-    ) {
-      console.log(
-        "✗ Unexpected doctor probe result"
-      );
-
-      process.exitCode = 1;
-      return;
-    }
-
-    console.log(
-      "✓ Safety probe passed"
-    );
-
-    console.log("");
-    console.log(
-      "Once is ready."
-    );
-
-  } catch (error) {
-
-    if (
-      error instanceof
-      OnceError
-    ) {
-      console.log(
-        `✗ Once error: ${error.code ?? "unknown"}`
-      );
-
-      if (error.status) {
-        console.log(
-          `  HTTP ${error.status}`
-        );
-      }
-
-    } else {
-      console.log(
-        "✗ Unexpected error"
-      );
-
-      console.error(error);
-    }
-
-    process.exitCode = 1;
-  }
-}
-
 function printHelp(): void {
-
   console.log("");
   console.log("Once");
   console.log("----");
@@ -140,43 +36,48 @@ function printHelp(): void {
   console.log("Commands:");
 
   console.log(
-    "  once protect [directory]"
+    "  once doctor [directory] [--protect] [--connection]"
+  );
+  console.log(
+    "      Run the low-friction local safety check. No API key required."
+  );
+  console.log(
+    "      Use --protect to generate a review plan and snippets without changing source."
+  );
+  console.log(
+    "      Use --connection to also verify the hosted Once API connection."
   );
 
+  console.log("");
+  console.log(
+    "  once protect [directory]"
+  );
   console.log(
     "      Review candidate operations for Once protection."
   );
-
   console.log(
     "      Use --all to include all confidence levels."
   );
-
   console.log(
     "      Use --write-plan to save .once/protect-plan.json."
   );
-
   console.log(
     "      Use --patch to generate .once/protect-preview.diff."
   );
-
   console.log(
     "      Use --snippets to generate per-callsite integration guidance."
   );
-
   console.log(
     "      Use --apply to transactionally apply exactly one PATCHABLE candidate."
   );
 
   console.log("");
-
   console.log(
     "  once setup [directory] [--runtime-http=<target-url>]"
   );
-
   console.log(
     "      Detect, configure and install Once."
   );
-
   console.log(
     "      Use --plan to preview; --runtime-http=<https-url> enables Runtime HTTP replay protection."
   );
@@ -185,7 +86,6 @@ function printHelp(): void {
   console.log(
     "  once scan [directory]"
   );
-
   console.log(
     "      Find likely consequential operations locally."
   );
@@ -194,7 +94,6 @@ function printHelp(): void {
   console.log(
     "  once trace fetch <url> [--resource=<id>] [--trace=<path>]"
   );
-
   console.log(
     "      Record a raw HTTP observation for Dataset #1 without inventing an Once decision."
   );
@@ -203,62 +102,48 @@ function printHelp(): void {
   console.log(
     "  once benchmark <trace.jsonl>"
   );
-
   console.log(
     "      Measure hindsight opportunity separately from measured Once avoidance."
   );
 
   console.log("");
-  console.log(
-    "  once doctor"
-  );
-
-  console.log(
-    "      Verify your Once connection."
-  );
-
-  console.log("");
   console.log("Examples:");
-
+  console.log(
+    "  once doctor ."
+  );
+  console.log(
+    "  once doctor . --protect"
+  );
+  console.log(
+    "  once doctor . --connection"
+  );
   console.log(
     "  once protect ."
   );
-
   console.log(
     "  once protect . --all --write-plan"
   );
-
   console.log(
     "  once protect . --all --patch"
   );
-
   console.log(
     "  once protect . --apply"
   );
-
   console.log(
     "  once setup ."
   );
-
   console.log(
     "  once scan ."
   );
-
   console.log(
     "  once trace fetch https://api.github.com/repos/stringsofthemind-oss/once"
   );
-
   console.log(
     "  once benchmark .once/agent-trace.jsonl"
-  );
-
-  console.log(
-    "  once doctor"
   );
 }
 
 async function main(): Promise<void> {
-
   const args =
     process.argv.slice(2);
 
@@ -269,10 +154,25 @@ async function main(): Promise<void> {
     ).toLowerCase();
 
   switch (command) {
+    case "doctor": {
+      const requestedPath =
+        args.find(
+          value =>
+            !value.startsWith("--")
+        ) ?? ".";
 
-    case "doctor":
-      await runDoctor();
+      await runDoctor(
+        requestedPath,
+        {
+          protect:
+            args.includes("--protect"),
+          connection:
+            args.includes("--connection")
+        }
+      );
+
       return;
+    }
 
     case "trace": {
       const subcommand =
@@ -401,24 +301,20 @@ async function main(): Promise<void> {
             apply
               ? true
               : includeAll,
-
           writePlan:
             apply
               ? true
               : writePlan,
-
           writePatch,
           writeSnippets
         }
       );
 
       if (apply) {
-
         console.log("");
         console.log(
           "APPLYING PROTECTION"
         );
-
         console.log(
           "-------------------"
         );
@@ -426,14 +322,11 @@ async function main(): Promise<void> {
         let result;
 
         try {
-
           result =
             await applyProtectionPlan(
               requestedPath
             );
-
         } catch (error) {
-
           const message =
             String(
               error instanceof Error
@@ -460,15 +353,12 @@ async function main(): Promise<void> {
         console.log(
           `Applied: ${result.file}`
         );
-
         console.log(
           `Backup: ${result.backupPath}`
         );
-
         console.log(
           "TypeScript verification: PASS"
         );
-
         console.log(
           "ONCE PROTECTION APPLIED"
         );
@@ -548,26 +438,20 @@ async function main(): Promise<void> {
       console.log(
         `Unknown command: ${command}`
       );
-
       printHelp();
-
       process.exitCode = 1;
   }
 }
 
 try {
   await main();
-
 } catch (error) {
-
   console.error("");
   console.error(
     "Once command failed."
   );
 
-  if (
-    error instanceof Error
-  ) {
+  if (error instanceof Error) {
     console.error(
       error.message
     );
