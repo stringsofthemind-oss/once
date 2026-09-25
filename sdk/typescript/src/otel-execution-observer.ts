@@ -53,7 +53,7 @@ function toolIndex(
     if (current === undefined) {
       map.set(tool.canonicalName, tool);
     } else {
-      // A generic OTel span normally identifies the tool by name only. If the
+      // Generic OTel spans commonly identify the tool by name only. If the
       // caller supplies multiple same-named candidates, fail closed rather
       // than choosing one by order.
       map.set(tool.canonicalName, null);
@@ -63,10 +63,12 @@ function toolIndex(
   return map;
 }
 
-function spanStatus(span: unknown, attributes: JsonRecord | undefined):
-  "SUCCEEDED" | "FAILED" | "UNKNOWN" {
-  const errorType = attrString(attributes, "error.type");
-  if (errorType) return "FAILED";
+function spanStatus(
+  span: unknown,
+  attributes: JsonRecord | undefined,
+): "SUCCEEDED" | "FAILED" | "UNKNOWN" {
+  // Only presence matters; the value itself is intentionally not retained.
+  if (attrString(attributes, "error.type")) return "FAILED";
 
   const status = ownDataValue(span, "status");
   const statusRecord = asRecord(status);
@@ -106,7 +108,8 @@ function durationMs(span: unknown): number | undefined {
  * Only spans with `gen_ai.operation.name=execute_tool` are considered. The
  * implementation deliberately reads a tiny allowlist of low-risk attributes
  * and never reads `gen_ai.tool.call.arguments`, `gen_ai.tool.call.result`,
- * exception messages/stacks, prompts, results or other content-bearing fields.
+ * exception messages/stacks, prompts, provider/model metadata, results or
+ * other content-bearing fields.
  *
  * Generic OTel tool spans commonly identify tools by name. Therefore a name
  * must resolve to exactly one caller-supplied Tool Graph observation; duplicate
@@ -131,11 +134,6 @@ export function observeOtelGenAiToolExecutions(
     const tool = byName.get(toolName);
     if (!tool) continue;
 
-    const framework =
-      attrString(attributes, "gen_ai.provider.name") ??
-      ownString(span, "instrumentationScopeName") ??
-      undefined;
-
     const eventId = spanEventId(span, attributes);
     const duration = durationMs(span);
     const observedAt = ownString(span, "endTime") ?? new Date().toISOString();
@@ -146,7 +144,6 @@ export function observeOtelGenAiToolExecutions(
       namespacedName: tool.namespacedName,
       descriptorFingerprint: executionToolFingerprint(tool),
       canonicalName: tool.canonicalName,
-      ...(framework ? { framework } : {}),
       source: "otel",
       status: spanStatus(span, attributes),
       observedAt,
