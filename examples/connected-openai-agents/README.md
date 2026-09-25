@@ -1,5 +1,19 @@
 # OpenAI Agents calls Once automatically at the tool boundary
 
+> [!NOTE]
+> ## Automatic Connect preview on `main`
+>
+> This directory remains a reproducible example for the **published**
+> `@once-agent/sdk@0.1.11` package.
+>
+> The repository `main` branch now also contains higher-level automatic Connect
+> APIs, including whole-toolset routing and direct OpenAI Agents FunctionTool
+> wrapping. Those APIs are **not in the published 0.1.11 package yet**.
+>
+> See [`docs/CONNECT_AUTO.md`](../../docs/CONNECT_AUTO.md) for the main-branch
+> automatic Connect design and usage. Do not update production imports until a
+> later npm release explicitly includes those APIs.
+
 This is a runnable example using the **published** `@once-agent/sdk@0.1.11`,
 OpenAI Agents SDK and a fake booking provider. It uses the Agents SDK's
 `ScriptedModel` to exercise the actual agent run loop and tool execution
