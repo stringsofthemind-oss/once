@@ -96,3 +96,6 @@ jobs:
 
       - name: Run packed Connect local protection regression
         run: npm run test:connect-package-protected
+
+      - name: Run packed Gateway local protection regression
+        run: npm run test:gateway-package-protected
