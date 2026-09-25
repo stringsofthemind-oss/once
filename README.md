@@ -336,11 +336,13 @@ doctor -> review -> protect -> setup/integrate where needed -> first protected a
 
 ### 1. Assess the project locally
 
+From a fresh project, specify the SDK package so npm runs Once's CLI:
+
 ```bash
-npx once doctor .
+npx --yes --package=@once-agent/sdk once doctor .
 ```
 
-Doctor identifies likely consequential operations and shows the next protection command. It needs no API key, does not upload source, and does not modify source. To write a review plan and snippets under `.once/` without rewriting source, run `npx once doctor . --protect`.
+Doctor identifies likely consequential operations and shows the next protection command. It needs no API key, does not upload source, and does not modify source. To write a review plan and snippets under `.once/` without rewriting source, run `npx --yes --package=@once-agent/sdk once doctor . --protect`. Install the SDK with `npm install @once-agent/sdk` before using the shorter `npx once` commands below.
 
 ### 2. Scan for consequential operations (optional)
 

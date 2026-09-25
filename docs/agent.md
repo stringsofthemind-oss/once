@@ -109,10 +109,10 @@ The MCP server is for agent-assisted discovery, integration, and verification. P
 ### If CLI is available
 
 ```bash
-npx once doctor .
+npx --yes --package=@once-agent/sdk once doctor .
 ```
 
-Doctor assesses the project locally without an API key, uploading source, or modifying source. It identifies likely consequential operations and shows the next `once protect` command. To write a review plan and snippets under `.once/` without rewriting source, run `npx once doctor . --protect`. Review candidates before a separate `once protect . --apply` action; use `once setup .` when the chosen integration requires configuration. To explicitly check hosted connectivity with `ONCE_API_KEY`, run `npx once doctor . --connection`.
+Doctor assesses the project locally without an API key, uploading source, or modifying source. It identifies likely consequential operations and shows the next `once protect` command. To write a review plan and snippets under `.once/` without rewriting source, run `npx --yes --package=@once-agent/sdk once doctor . --protect`. Install `@once-agent/sdk` before using the shorter `npx once` commands. Review candidates before a separate `once protect . --apply` action; use `once setup .` when the chosen integration requires configuration. To explicitly check hosted connectivity with `ONCE_API_KEY`, run `npx once doctor . --connection`.
 
 ## Runtime HTTP path
 

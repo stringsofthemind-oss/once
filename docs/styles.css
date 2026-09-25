@@ -1142,10 +1142,12 @@ button{
 
 .commands{
   padding:23px;
+  overflow-x:auto;
 }
 
 .commands div{
   margin:11px 0;
+  white-space:nowrap;
   color:#d8e4ea;
   font:
     550 13px

@@ -44,10 +44,10 @@
     },
     "if_cli_is_available": {
       "install": "npm install @once-agent/sdk",
-      "first_command": "npx once scan .",
+      "first_command": "npx --yes --package=@once-agent/sdk once doctor .",
       "setup_command": "npx once setup .",
       "protection_command": "npx once protect . --apply",
-      "verify_command": "npx once doctor"
+      "verify_command": "npx once doctor . --connection"
     }
   },
   "runtime_rule": {
