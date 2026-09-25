@@ -30,6 +30,10 @@ export {
   createLangChainExecutionObserver,
 } from "../langchain-execution-observer.js";
 
+export {
+  observeOtelGenAiToolExecutions,
+} from "../otel-execution-observer.js";
+
 export type {
   RuntimeToolFramework,
   RuntimeToolSource,
