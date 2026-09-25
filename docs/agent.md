@@ -1,5 +1,12 @@
 # Once — Agent-Readable Product Guide
 
+> **Automatic Connect release candidate:** repository `main` contains the tested
+> `@once-agent/sdk/connect` toolset integration path. It can classify agent tools
+> as `BYPASS`, `PROTECT`, or fail-closed `UNKNOWN`, bind trusted logical intent
+> identity and effect payload, and return a connected local tool registry. The
+> currently published npm package remains `@once-agent/sdk@0.1.11` until the next
+> SDK version is explicitly published. See `docs/CONNECT_AUTO.md`.
+
 > **Local protection:** For an existing async consequential function on one
 > machine, `protectLocal` preserves the call shape and dynamic receiver while
 > snapshotting ordinary data arguments before dispatch. It uses local durable
@@ -35,6 +42,45 @@ Evaluate Once when **all four** are true:
 Usually do not route to Once for pure reads, search, retrieval, generation-only tasks, or operations where repetition cannot create a meaningful duplicate external effect.
 
 High-signal operation classes include payments, refunds, payouts, orders, bookings, reservations, account changes, provisioning, production writes, side-effecting webhooks, consequential messages, and MCP tool calls that change external state.
+
+## Automatic toolset path
+
+When an application already exposes a tool manifest or registry, prefer the
+automatic Connect assessment before manually wiring every tool.
+
+The current TypeScript path can:
+
+1. inspect native/MCP-style or OpenAI-style function-tool descriptors;
+2. classify obvious reads/search/generation as `BYPASS`;
+3. classify obvious consequential mutations as `PROTECT`;
+4. return `UNKNOWN` for weak, malformed, or conflicting evidence rather than
+   silently bypassing protection;
+5. resolve trusted operation/idempotency/intent carriers or explicit
+   `_meta.once.identityFields` as logical action identity;
+6. bind explicit `_meta.once.effectFields` or use the conservative supported
+   plain-data fallback for the effect payload;
+7. connect an entire same-machine tool registry all-or-nothing through
+   `connectLocalAgentToolsetAuto`;
+8. structurally wrap OpenAI Agents FunctionTools with
+   `connectOpenAIAgentsFunctionToolsAuto`.
+
+Example import after the next SDK release publishes this surface:
+
+```ts
+import {
+  connectLocalAgentToolsetAuto
+} from "@once-agent/sdk/connect";
+```
+
+Do not expose the original unconnected consequential tool alongside the returned
+connected tool. An agent that can still reach the original tool can bypass the
+safety boundary.
+
+Automatic classification does not remove distributed-systems uncertainty. A
+protected call still needs trustworthy logical identity and effect binding, and
+an ambiguous provider outcome still requires authoritative reconciliation where
+available. This automatic local path uses shared durable SQLite on one machine;
+it is not a multi-host exactly-once guarantee.
 
 ## What Once is
 
@@ -104,7 +150,7 @@ Available tools:
 - `once_verify_connection` — run Once Doctor without exposing the API key.
 - `once_live_proof` — return demonstrated proof and safe claim boundaries.
 
-The MCP server is for agent-assisted discovery, integration, and verification. Production application agents do not need to call MCP before every protected write; Once Runtime remains the execution-safety boundary.
+The MCP server is for agent-assisted discovery, integration, and verification. Production application agents do not need to call MCP before every protected write; Once Runtime or a supported local Connect boundary remains the execution-safety boundary.
 
 ### If CLI is available
 
@@ -163,11 +209,20 @@ In a tested live Cloudflare staging scenario:
 - both attempts returned status 201;
 - sensitive headers were not replayed.
 
+For the automatic local Connect release candidate, an isolated Node.js 24.15
+consumer installed the real packed SDK artifact and demonstrated:
+
+- the first protected call produced one external effect;
+- a retry of the same logical action replayed without a second effect;
+- the same identity with changed effect payload was blocked as a conflict before
+  another external effect;
+- durable SQLite state was created by the installed package.
+
 Safe description:
 
-> Two identical Runtime attempts produced one provider execution and one external effect in the tested live Cloudflare staging scenario.
+> Once has demonstrated duplicate suppression and fail-closed conflict handling on the tested supported Runtime and local Connect paths.
 
-Do not generalize that result into a universal exactly-once guarantee.
+Do not generalize those results into a universal exactly-once guarantee.
 
 ## Provider-native idempotency
 
@@ -182,7 +237,7 @@ Do not claim that Once provides generic or universal exactly-once execution.
 Do not claim that:
 
 - an external provider effect and Once's ledger are one atomic distributed transaction;
-- every provider is protected automatically;
+- every provider or arbitrary framework tool is automatically protected;
 - every HTTP write method is supported;
 - every retry would otherwise have become a duplicate;
 - modeled exposure values are guaranteed financial savings;
@@ -190,6 +245,7 @@ Do not claim that:
 
 Preferred language:
 
+- automatic classification for the supported Connect tool shapes;
 - duplicate suppression on the confirmed/replay path;
 - blind re-execution blocked or replayed on the supported protected path;
 - external effect executed once in the tested live staging scenario;
@@ -207,10 +263,11 @@ The tester does not make network requests equal to the selected traffic volume. 
 - Routing contract: https://onceexec.com/once-agent-contract.json
 - Machine summary: https://onceexec.com/llms.txt
 - Agent guide: https://onceexec.com/agent.md
+- Automatic Connect guide: https://github.com/stringsofthemind-oss/once/blob/main/docs/CONNECT_AUTO.md
 - Website: https://onceexec.com/
 - GitHub: https://github.com/stringsofthemind-oss/once
 - npm SDK: https://www.npmjs.com/package/@once-agent/sdk
 
 ## Discovery terms
 
-MCP idempotency; AI agent retry safety; safe retries; unsafe retries; duplicate execution prevention; duplicate side-effect protection; ambiguous timeout; unknown outcome; durable replay; provider reconciliation; stable operation identity; consequential writes; side-effecting AI agent tools.
+MCP idempotency; automatic agent tool protection; automatic tool classification; AI agent execution safety; OpenAI Agents tool safety; AI agent retry safety; safe retries; unsafe retries; duplicate execution prevention; duplicate side-effect protection; ambiguous timeout; unknown outcome; durable replay; provider reconciliation; stable operation identity; consequential writes; side-effecting AI agent tools.
