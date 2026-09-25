@@ -1,6 +1,7 @@
 import {
   CONNECT_TOOL_DECISION,
   classifyConnectTool,
+  type ConnectToolAnnotations,
   type ConnectToolClassificationReason,
   type ConnectToolDecision,
   type ConnectToolDescriptor,
@@ -41,7 +42,8 @@ export interface ConnectManifestPlan {
   summary: Readonly<ConnectManifestPlanSummary>;
 }
 
-interface NormalizedConnectManifestTool {
+/** Internal normalized representation shared by manifest planning and toolset wiring. */
+export interface NormalizedConnectManifestTool {
   descriptor: unknown;
   name: string | null;
   source: ConnectManifestToolSource;
@@ -63,6 +65,22 @@ function normalizeManifestInput(manifest: unknown): readonly unknown[] | null {
   }
 
   return null;
+}
+
+function normalizedAnnotations(
+  value: unknown,
+): ConnectToolAnnotations | undefined {
+  return isRecord(value)
+    ? value as ConnectToolAnnotations
+    : undefined;
+}
+
+function normalizedMeta(
+  value: unknown,
+): Record<string, unknown> | undefined {
+  return isRecord(value)
+    ? value
+    : undefined;
 }
 
 function normalizeTool(tool: unknown): NormalizedConnectManifestTool {
@@ -93,6 +111,8 @@ function normalizeTool(tool: unknown): NormalizedConnectManifestTool {
   ) {
     const fn = tool.function;
     const name = tool.function.name;
+    const annotations = normalizedAnnotations(tool.annotations);
+    const meta = normalizedMeta(tool._meta) ?? normalizedMeta(fn._meta);
 
     const descriptor: ConnectToolDescriptor = {
       name,
@@ -101,6 +121,12 @@ function normalizeTool(tool: unknown): NormalizedConnectManifestTool {
         : {}),
       ...(fn.parameters !== undefined
         ? { inputSchema: fn.parameters }
+        : {}),
+      ...(annotations !== undefined
+        ? { annotations }
+        : {}),
+      ...(meta !== undefined
+        ? { _meta: meta }
         : {}),
     };
 
@@ -116,6 +142,27 @@ function normalizeTool(tool: unknown): NormalizedConnectManifestTool {
     name: null,
     source: "invalid",
   };
+}
+
+/**
+ * Normalize the same manifest shapes accepted by planConnectToolManifest().
+ *
+ * This is exported for internal Connect modules so classification and wiring
+ * cannot silently disagree about the descriptor being inspected. It is not
+ * re-exported from the public @once-agent/sdk/connect entry point.
+ */
+export function normalizeConnectToolManifest(
+  manifest: unknown,
+): readonly NormalizedConnectManifestTool[] | null {
+  const tools = normalizeManifestInput(manifest);
+
+  if (!tools) {
+    return null;
+  }
+
+  return Object.freeze(
+    tools.map(tool => Object.freeze(normalizeTool(tool))),
+  );
 }
 
 function freezeEntry(
@@ -163,20 +210,19 @@ function invalidPlan(): Readonly<ConnectManifestPlan> {
 export function planConnectToolManifest(
   manifest: unknown,
 ): Readonly<ConnectManifestPlan> {
-  const tools = normalizeManifestInput(manifest);
+  const tools = normalizeConnectToolManifest(manifest);
 
   if (!tools) {
     return invalidPlan();
   }
 
   const entries = tools.map((tool, index) => {
-    const normalized = normalizeTool(tool);
-    const classification = classifyConnectTool(normalized.descriptor);
+    const classification = classifyConnectTool(tool.descriptor);
 
     return freezeEntry({
       index,
-      name: normalized.name,
-      source: normalized.source,
+      name: tool.name,
+      source: tool.source,
       decision: classification.decision,
       reason: classification.reason,
       signals: classification.signals,
