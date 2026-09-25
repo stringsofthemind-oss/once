@@ -96,18 +96,81 @@ try {
     `
 import {
   GATEWAY_ROUTE,
+  bindGatewayPlanToToolGraph,
+  connectLocalGatewayToolsetAuto,
   gatewayDescriptorFingerprint,
   planGatewayToolset,
 } from "@once-agent/sdk/gateway";
 
-const plan = planGatewayToolset([
+const manifest = [
   { name: "search_orders", description: "Search orders" },
   { name: "send_email", description: "Sends email" },
-]);
+];
+const plan = planGatewayToolset(manifest);
 if (!plan.ready) throw new Error("packed gateway plan should be ready");
 if (plan.entries[0]?.route !== GATEWAY_ROUTE.DIRECT) throw new Error("bad packed direct route");
 if (plan.entries[1]?.route !== GATEWAY_ROUTE.PROTECT) throw new Error("bad packed protect route");
 if (!/^[a-f0-9]{64}$/.test(gatewayDescriptorFingerprint({ name: "x" }))) throw new Error("bad packed fingerprint");
+
+const bindings = plan.entries.map((entry, index) => ({
+  toolId: "tool:" + index,
+  namespacedName: "packed/" + entry.name,
+  canonicalName: entry.name,
+  descriptorFingerprint: entry.descriptorFingerprint,
+  evidenceLevel: index === 1 ? "EXECUTED" : "MODEL_VISIBLE",
+  actionPriorityScore: index === 1 ? 99 : 5,
+  protection: index === 1 ? "ONCE_HEALTHY" : "NONE",
+}));
+const bound = bindGatewayPlanToToolGraph(plan, [
+  ...bindings,
+  {
+    toolId: "tool:global-only",
+    namespacedName: "global/delete_everything",
+    canonicalName: "delete_everything",
+    descriptorFingerprint: "f".repeat(64),
+    evidenceLevel: "EXECUTED",
+    actionPriorityScore: 100,
+    protection: "NONE",
+  },
+]);
+if (!bound.ready || bound.entries.length !== 2) throw new Error("bad packed Tool Graph binding");
+if (bound.entries[1]?.route !== GATEWAY_ROUTE.PROTECT) throw new Error("Tool Graph metadata weakened protect route");
+
+const stale = bindGatewayPlanToToolGraph(plan, [
+  bindings[0],
+  { ...bindings[1], descriptorFingerprint: "0".repeat(64) },
+]);
+if (stale.ready || stale.entries[1]?.bindingStatus !== "FINGERPRINT_MISMATCH") {
+  throw new Error("stale packed binding did not fail closed");
+}
+
+let directCalls = 0;
+const directOnlyManifest = [manifest[0]];
+const directOnlyPlan = planGatewayToolset(directOnlyManifest);
+const gateway = connectLocalGatewayToolsetAuto(
+  {
+    search_orders: {
+      async execute(input) {
+        directCalls++;
+        return input;
+      },
+    },
+  },
+  {
+    manifest: directOnlyManifest,
+    toolGraphBindings: [{
+      toolId: "tool:direct",
+      namespacedName: "packed/search_orders",
+      canonicalName: "search_orders",
+      descriptorFingerprint: directOnlyPlan.entries[0].descriptorFingerprint,
+      evidenceLevel: "MODEL_VISIBLE",
+      protection: "NONE",
+    }],
+  },
+);
+await gateway.tools.search_orders.execute({ q: "x" });
+if (directCalls !== 1 || !gateway.binding?.ready) throw new Error("packed direct gateway broker failed");
+
 console.log("gateway esm consumer: PASS");
 `,
     "utf8",
@@ -117,19 +180,23 @@ console.log("gateway esm consumer: PASS");
   if (!esm.stdout.includes("gateway esm consumer: PASS")) {
     throw new Error("ESM gateway consumer did not report PASS");
   }
-  console.log("PASS - ESM gateway subpath executes");
+  console.log("PASS - ESM gateway planning, binding, and direct broker execute");
 
   await writeFile(
     path.join(sandbox, "consumer.cjs"),
     `
-const {
-  GATEWAY_ROUTE,
-  planGatewayToolset,
-} = require("@once-agent/sdk/gateway");
-const plan = planGatewayToolset([
+const gateway = require("@once-agent/sdk/gateway");
+for (const name of [
+  "planGatewayToolset",
+  "bindGatewayPlanToToolGraph",
+  "connectLocalGatewayToolsetAuto",
+]) {
+  if (typeof gateway[name] !== "function") throw new Error("missing CJS gateway API: " + name);
+}
+const plan = gateway.planGatewayToolset([
   { name: "search_web", description: "Search the web" },
 ]);
-if (!plan.ready || plan.entries[0]?.route !== GATEWAY_ROUTE.DIRECT) {
+if (!plan.ready || plan.entries[0]?.route !== gateway.GATEWAY_ROUTE.DIRECT) {
   throw new Error("bad CJS gateway plan");
 }
 console.log("gateway cjs consumer: PASS");
@@ -141,7 +208,7 @@ console.log("gateway cjs consumer: PASS");
   if (!cjs.stdout.includes("gateway cjs consumer: PASS")) {
     throw new Error("CommonJS gateway consumer did not report PASS");
   }
-  console.log("PASS - CommonJS gateway subpath executes");
+  console.log("PASS - CommonJS gateway APIs resolve");
 
   await writeJson(path.join(sandbox, "tsconfig.json"), {
     compilerOptions: {
@@ -159,16 +226,33 @@ console.log("gateway cjs consumer: PASS");
     path.join(sandbox, "consumer.ts"),
     `
 import {
+  bindGatewayPlanToToolGraph,
+  connectLocalGatewayToolsetAuto,
   planGatewayToolset,
+  type BoundGatewayPlan,
   type GatewayPlan,
   type GatewayPlanEntry,
   type GatewayRoute,
+  type GatewayToolGraphBinding,
+  type LocalGatewayToolsetOptions,
 } from "@once-agent/sdk/gateway";
 const plan: Readonly<GatewayPlan> = planGatewayToolset([
   { name: "search_web", description: "Search the web" },
 ]);
 const entry: Readonly<GatewayPlanEntry> | undefined = plan.entries[0];
 const route: GatewayRoute | undefined = entry?.route;
+const bindings: readonly GatewayToolGraphBinding[] = entry ? [{
+  toolId: "tool:typed",
+  namespacedName: "typed/search_web",
+  canonicalName: "search_web",
+  descriptorFingerprint: entry.descriptorFingerprint,
+  evidenceLevel: "MODEL_VISIBLE",
+}] : [];
+const bound: BoundGatewayPlan = bindGatewayPlanToToolGraph(plan, bindings);
+const options: LocalGatewayToolsetOptions = { manifest: [{ name: "search_web", description: "Search the web" }], toolGraphBindings: bindings };
+void connectLocalGatewayToolsetAuto;
+void bound;
+void options;
 void route;
 `,
     "utf8",
@@ -178,7 +262,7 @@ void route;
     cwd: sandbox,
   });
   requireSuccess(typecheck, "TypeScript gateway consumer failed");
-  console.log("PASS - TypeScript gateway declarations resolve");
+  console.log("PASS - TypeScript gateway binding declarations resolve");
 
   console.log("gateway package regression: PASS");
 } finally {
