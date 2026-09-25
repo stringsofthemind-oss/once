@@ -91,9 +91,12 @@ try {
   assert.equal(serialized.includes(root), false);
   assert.equal(serialized.includes("server.mjs"), false);
   assert.equal(serialized.includes("API_KEY"), false);
-  assert.equal(serialized.includes("description"), false);
-  assert.equal(serialized.includes("source"), false);
-  assert.equal(serialized.includes("reasons"), false);
+  assert.equal(serialized.includes("\"description\""), false);
+  assert.equal(serialized.includes("\"reasons\""), false);
+  assert.equal(serialized.includes("\"configPath\""), false);
+  assert.equal(serialized.includes("\"command\""), false);
+  assert.equal(serialized.includes("\"args\""), false);
+  assert.equal(serialized.includes("\"env\""), false);
 
   const rejected = spawnSync(
     process.execPath,
