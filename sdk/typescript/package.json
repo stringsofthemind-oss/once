@@ -46,7 +46,7 @@
     "test:local": "npm run build && node --test ./test/local.test.mjs ./test/connect/local-agent-tool.test.mjs",
     "test:connect": "npm run build && node --test ./test/connect/*.test.mjs",
     "test:connect-package": "node ./scripts/connect-package-regression.mjs",
-    "test:discovery-package": "node ./scripts/runtime-discovery-package-regression.mjs",
+    "test:discovery-package": "node ./scripts/runtime-discovery-package-regression.mjs && node ./scripts/execution-discovery-package-regression.mjs",
     "test:connect-package-protected": "node ./scripts/connect-packed-protection-regression.mjs",
     "test:protect": "npm run build && node ./scripts/protect-regression.mjs",
     "test:capabilities": "npm run build && node ./scripts/capability-regression.mjs",
