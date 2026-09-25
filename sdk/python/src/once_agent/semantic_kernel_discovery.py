@@ -22,6 +22,14 @@ _READ_ONLY_NAME = re.compile(
     r"(?:^|[_-])(search|lookup|retrieve|fetch|get|list|read|find|inspect|view)(?:$|[_-])",
     re.IGNORECASE,
 )
+_SECRET_PARAMETER_VALUE_KEYS = {
+    "default",
+    "default_value",
+    "example",
+    "examples",
+    "const",
+    "value",
+}
 
 
 @dataclass(frozen=True)
@@ -104,13 +112,26 @@ def _safe_json(
         seen.add(marker)
         try:
             output: Dict[str, Any] = {}
+            parameter_name = value.get("name")
+            secret_parameter = (
+                isinstance(parameter_name, str)
+                and bool(_SECRET_KEY.search(parameter_name))
+            )
             for key, item in value.items():
                 if not isinstance(key, str):
                     continue
+                child_secret = (
+                    secret_context
+                    or bool(_SECRET_KEY.search(key))
+                    or (
+                        secret_parameter
+                        and key.lower() in _SECRET_PARAMETER_VALUE_KEYS
+                    )
+                )
                 child = _safe_json(
                     item,
                     depth + 1,
-                    secret_context or bool(_SECRET_KEY.search(key)),
+                    child_secret,
                     seen,
                 )
                 if child is not None:
@@ -137,8 +158,6 @@ def _stable_id(value: Any) -> str:
 
 def _plugins_from_input(value: Any) -> Iterable[Tuple[str, Any]]:
     if isinstance(value, Mapping):
-        # A direct plugin mapping is accepted. If this looks like a Kernel-like
-        # dict, prefer its explicit plugins field.
         nested = value.get("plugins")
         if isinstance(nested, Mapping):
             return list(nested.items())
@@ -156,7 +175,6 @@ def _functions_from_plugin(plugin: Any) -> Iterable[Tuple[str, Any]]:
         nested = plugin.get("functions")
         if isinstance(nested, Mapping):
             return list(nested.items())
-        # A direct function mapping is also accepted.
         return list(plugin.items())
 
     data = _instance_dict(plugin)
@@ -188,8 +206,7 @@ def _metadata_from_function(function: Any) -> Optional[Mapping[str, Any]]:
 def _parameter_list(value: Any) -> Optional[Any]:
     if value is None:
         return None
-    sanitized = _safe_json(value)
-    return sanitized
+    return _safe_json(value)
 
 
 def _observe_metadata(
@@ -222,11 +239,7 @@ def _observe_metadata(
         if isinstance(value, bool):
             safe_metadata[key] = value
 
-    fq_name = (
-        f"{plugin_name}-{name}"
-        if plugin_name
-        else name
-    )
+    fq_name = f"{plugin_name}-{name}" if plugin_name else name
     namespace = f"semantic-kernel/{runtime_name or 'runtime'}"
     identity = {
         "framework": "semantic-kernel",
@@ -278,7 +291,7 @@ def discover_semantic_kernel_registered_tools(
         if not functions and plugin:
             opaque += 1
 
-        for function_key, function in functions:
+        for _function_key, function in functions:
             metadata = _metadata_from_function(function)
             if metadata is None:
                 opaque += 1
