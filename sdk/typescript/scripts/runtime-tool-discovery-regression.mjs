@@ -190,13 +190,58 @@ assert.doesNotMatch(visibleSerialized, /server_url/i);
 assert.doesNotMatch(visibleSerialized, /authorization/i);
 assert.doesNotMatch(visibleSerialized, /apiKey/i);
 
-const merged = mergeRuntimeToolEvidence(registered, visible);
-const mergedEmail = merged.tools.find(
+const secondAgent = discoverOpenAIAgentRuntime({
+  name: "Internal Assistant",
+  tools: [
+    {
+      type: "function",
+      name: "send_email",
+      description: "Send an internal operations email",
+      parameters: {
+        type: "object",
+        properties: {
+          team: { type: "string" },
+          message: { type: "string" },
+        },
+      },
+    },
+  ],
+});
+
+const merged = mergeRuntimeToolEvidence(
+  registered,
+  secondAgent,
+  visible,
+);
+const mergedEmails = merged.tools.filter(
   tool => tool.canonicalName === "send_email",
 );
-assert.ok(mergedEmail);
-assert.equal(mergedEmail.evidence.level, "MODEL_VISIBLE");
-assert.equal(mergedEmail.visibility.modelVisible, true);
+assert.equal(
+  mergedEmails.length,
+  2,
+  "same-name tools with different safe descriptor shapes must not collapse",
+);
+
+const mergedVisibleEmail = mergedEmails.find(
+  tool =>
+    tool.description ===
+    "Send a transactional email to a customer",
+);
+assert.ok(mergedVisibleEmail);
+assert.equal(mergedVisibleEmail.evidence.level, "MODEL_VISIBLE");
+assert.equal(mergedVisibleEmail.visibility.modelVisible, true);
+
+const mergedInternalEmail = mergedEmails.find(
+  tool =>
+    tool.description ===
+    "Send an internal operations email",
+);
+assert.ok(mergedInternalEmail);
+assert.equal(
+  mergedInternalEmail.evidence.level,
+  "RUNTIME_REGISTERED",
+);
+assert.equal(mergedInternalEmail.visibility.modelVisible, false);
 
 assert.equal(invokeCount, 0);
 assert.equal(executeCount, 0);
