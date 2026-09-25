@@ -74,6 +74,11 @@ try {
   requireSuccess(installed, "clean gateway tarball install failed");
   console.log("PASS - tarball installed into clean consumer");
 
+  if (existsSync(path.join(sandbox, "node_modules", "@openai", "agents"))) {
+    throw new Error("Gateway package unexpectedly installed @openai/agents");
+  }
+  console.log("PASS - clean consumer has no hard @openai/agents dependency");
+
   const installedRoot = path.join(
     sandbox,
     "node_modules",
@@ -98,6 +103,7 @@ import {
   GATEWAY_ROUTE,
   bindGatewayPlanToToolGraph,
   connectLocalGatewayToolsetAuto,
+  connectOpenAIAgentsFunctionToolsGatewayAuto,
   gatewayDescriptorFingerprint,
   planGatewayToolset,
 } from "@once-agent/sdk/gateway";
@@ -171,6 +177,32 @@ const gateway = connectLocalGatewayToolsetAuto(
 await gateway.tools.search_orders.execute({ q: "x" });
 if (directCalls !== 1 || !gateway.binding?.ready) throw new Error("packed direct gateway broker failed");
 
+let openAiCalls = 0;
+const openAiGateway = connectOpenAIAgentsFunctionToolsGatewayAuto([
+  {
+    type: "function",
+    name: "search_catalog",
+    description: "Search the product catalog",
+    parameters: { type: "object" },
+    marker: "structural-no-sdk",
+    async invoke(runContext, rawInput, details) {
+      openAiCalls++;
+      return { runContext, rawInput, details };
+    },
+  },
+]);
+if (openAiGateway.tools.length !== 1 || openAiGateway.tools[0].marker !== "structural-no-sdk") {
+  throw new Error("packed OpenAI Gateway changed the FunctionTool subset/shape");
+}
+const openAiResult = await openAiGateway.tools[0].invoke(
+  { source: "packed" },
+  "not-json-direct-input",
+  { toolCall: { callId: "transport-only" } },
+);
+if (openAiCalls !== 1 || openAiResult.rawInput !== "not-json-direct-input") {
+  throw new Error("packed structural OpenAI Gateway direct execution failed");
+}
+
 console.log("gateway esm consumer: PASS");
 `,
     "utf8",
@@ -180,7 +212,7 @@ console.log("gateway esm consumer: PASS");
   if (!esm.stdout.includes("gateway esm consumer: PASS")) {
     throw new Error("ESM gateway consumer did not report PASS");
   }
-  console.log("PASS - ESM gateway planning, binding, and direct broker execute");
+  console.log("PASS - ESM planning, binding, local broker, and structural OpenAI Gateway execute");
 
   await writeFile(
     path.join(sandbox, "consumer.cjs"),
@@ -190,6 +222,7 @@ for (const name of [
   "planGatewayToolset",
   "bindGatewayPlanToToolGraph",
   "connectLocalGatewayToolsetAuto",
+  "connectOpenAIAgentsFunctionToolsGatewayAuto",
 ]) {
   if (typeof gateway[name] !== "function") throw new Error("missing CJS gateway API: " + name);
 }
@@ -228,8 +261,10 @@ console.log("gateway cjs consumer: PASS");
 import {
   bindGatewayPlanToToolGraph,
   connectLocalGatewayToolsetAuto,
+  connectOpenAIAgentsFunctionToolsGatewayAuto,
   planGatewayToolset,
   type BoundGatewayPlan,
+  type GatewayOpenAIAgentsFunctionToolsOptions,
   type GatewayPlan,
   type GatewayPlanEntry,
   type GatewayRoute,
@@ -250,9 +285,12 @@ const bindings: readonly GatewayToolGraphBinding[] = entry ? [{
 }] : [];
 const bound: BoundGatewayPlan = bindGatewayPlanToToolGraph(plan, bindings);
 const options: LocalGatewayToolsetOptions = { manifest: [{ name: "search_web", description: "Search the web" }], toolGraphBindings: bindings };
+const openAiOptions: GatewayOpenAIAgentsFunctionToolsOptions = { toolGraphBindings: bindings };
 void connectLocalGatewayToolsetAuto;
+void connectOpenAIAgentsFunctionToolsGatewayAuto;
 void bound;
 void options;
+void openAiOptions;
 void route;
 `,
     "utf8",
@@ -262,7 +300,7 @@ void route;
     cwd: sandbox,
   });
   requireSuccess(typecheck, "TypeScript gateway consumer failed");
-  console.log("PASS - TypeScript gateway binding declarations resolve");
+  console.log("PASS - TypeScript Gateway/OpenAI declarations resolve without @openai/agents");
 
   console.log("gateway package regression: PASS");
 } finally {
