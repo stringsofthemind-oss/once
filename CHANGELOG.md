@@ -2,7 +2,7 @@
 
 All notable changes to the Once SDK are documented here.
 
-## Unreleased
+## 0.1.12 - 2026-09-25
 
 ### Added
 

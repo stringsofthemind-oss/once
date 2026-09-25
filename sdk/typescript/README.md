@@ -1,12 +1,10 @@
 # @once-agent/sdk
 
-> **Automatic Connect release candidate:** repository `main` now includes the
+> **Automatic Connect in 0.1.12:** this SDK version includes the
 > `@once-agent/sdk/connect` public surface for automatic tool classification,
 > whole-toolset wiring, trusted intent identity, conservative effect binding,
 > and OpenAI Agents FunctionTool wrapping. It has passed source, packed-package,
-> ESM/CommonJS, and Node.js 24.15 protected-execution gates. The currently
-> published npm package remains `@once-agent/sdk@0.1.11` until the next SDK
-> release is explicitly versioned and published.
+> ESM/CommonJS, and Node.js 24.15 protected-execution gates.
 >
 > Full guide: https://github.com/stringsofthemind-oss/once/blob/main/docs/CONNECT_AUTO.md
 
