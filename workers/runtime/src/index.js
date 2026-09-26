@@ -6,6 +6,7 @@ import {
   INTERNAL_HOSTED_EXECUTE_HOST,
   INTERNAL_HOSTED_EXECUTE_PATH,
 } from "./hosted-gateway-transport.mjs";
+import { createHostedStripeRefundResolver } from "./hosted-stripe-refund-registration.mjs";
 
 const PUBLIC_STATS_PATH = "/v1/public/stats";
 const STRIPE_CHECKOUT_PATH = "/v1/billing/checkout";
@@ -33,12 +34,30 @@ function publicStatsJson(data, status = 200) {
 
 export class Q18Truth extends RuntimeQ18Truth {
   /**
-   * Phase 12C keeps provider/action registration closed by default. Later
-   * slices may override/wire this resolver explicitly. Until then the internal
-   * hosted transport cannot cross any provider boundary.
+   * Phase 12C deliberately does not read one global Stripe secret here. Hosted
+   * provider credentials must resolve by authenticated tenant. Staging wiring
+   * can override this hook with encrypted tenant-scoped credential lookup.
    */
-  async resolveHostedGatewayRegistration() {
+  async getHostedStripeRefundSecret() {
     return null;
+  }
+
+  getHostedStripeFetch() {
+    return fetch;
+  }
+
+  getHostedStripeRefundResolver() {
+    if (!this._hostedStripeRefundResolver) {
+      this._hostedStripeRefundResolver = createHostedStripeRefundResolver({
+        getSecretKey: (context) => this.getHostedStripeRefundSecret(context),
+        fetchImpl: (...args) => this.getHostedStripeFetch()(...args),
+      });
+    }
+    return this._hostedStripeRefundResolver;
+  }
+
+  async resolveHostedGatewayRegistration(context) {
+    return this.getHostedStripeRefundResolver()(context);
   }
 
   getHostedGatewayBinding() {
