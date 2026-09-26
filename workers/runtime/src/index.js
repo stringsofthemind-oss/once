@@ -3,6 +3,13 @@ import { handleStripeCheckout } from "./stripe-checkout.js";
 import { RuntimeHostedGatewayBinding } from "./hosted-gateway-durable.mjs";
 import { RuntimeHostedProviderCredentialStore } from "./hosted-provider-credentials.mjs";
 import {
+  handleHostedCredentialInternalRequest,
+  handleStagingHostedCredentialAdminRequest,
+  INTERNAL_HOSTED_CREDENTIAL_ADMIN_HOST,
+  INTERNAL_HOSTED_CREDENTIAL_ADMIN_PATH,
+  STAGING_HOSTED_CREDENTIAL_ADMIN_PATH,
+} from "./hosted-credential-admin.mjs";
+import {
   handleHostedGatewayInternalRequest,
   INTERNAL_HOSTED_EXECUTE_HOST,
   INTERNAL_HOSTED_EXECUTE_PATH,
@@ -54,6 +61,21 @@ export class Q18Truth extends RuntimeQ18Truth {
     return this.getHostedProviderCredentialStore().getStripeRefundSecret({ tenantId });
   }
 
+  hasActiveHostedTenant(tenantId) {
+    const row = [
+      ...this.ctx.storage.sql.exec(
+        `
+          SELECT 1 AS present
+          FROM api_keys
+          WHERE customer_id = ? AND revoked_at IS NULL
+          LIMIT 1
+        `,
+        String(tenantId),
+      ),
+    ][0];
+    return Boolean(row?.present);
+  }
+
   getHostedStripeFetch() {
     return fetch;
   }
@@ -84,6 +106,17 @@ export class Q18Truth extends RuntimeQ18Truth {
 
   async fetch(request) {
     const url = new URL(request.url);
+
+    if (
+      url.hostname === INTERNAL_HOSTED_CREDENTIAL_ADMIN_HOST &&
+      url.pathname === INTERNAL_HOSTED_CREDENTIAL_ADMIN_PATH
+    ) {
+      return handleHostedCredentialInternalRequest({
+        request,
+        credentialStore: this.getHostedProviderCredentialStore(),
+        tenantExists: (tenantId) => this.hasActiveHostedTenant(tenantId),
+      });
+    }
 
     // Deliberately internal-only: the outer Worker does not expose this route,
     // and the Durable Object accepts it only on the synthetic q18.internal host.
@@ -124,6 +157,17 @@ export class Q18Truth extends RuntimeQ18Truth {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+
+    if (url.pathname === STAGING_HOSTED_CREDENTIAL_ADMIN_PATH) {
+      return handleStagingHostedCredentialAdminRequest({
+        request,
+        env,
+        getDurableStub: async () => {
+          const id = env.Q18_TRUTH.idFromName(LEDGER_NAME);
+          return env.Q18_TRUTH.get(id);
+        },
+      });
+    }
 
     if (url.pathname === STRIPE_CHECKOUT_PATH) {
       return handleStripeCheckout(request, env);
