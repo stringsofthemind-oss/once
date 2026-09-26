@@ -39,7 +39,9 @@
       "workers_dev": true,
       "preview_urls": false,
       "vars": {
-        "ONCE_HOSTED_CREDENTIAL_ADMIN_ENABLED": "staging"
+        "ONCE_HOSTED_CREDENTIAL_ADMIN_ENABLED": "staging",
+        "ONCE_HOSTED_EXECUTE_ENABLED": "staging",
+        "ONCE_HOSTED_STAGING_FAULT_INJECTION": "lost_ack"
       },
       "durable_objects": {
         "bindings": [
