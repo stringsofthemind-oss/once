@@ -61,21 +61,6 @@ export class Q18Truth extends RuntimeQ18Truth {
     return this.getHostedProviderCredentialStore().getStripeRefundSecret({ tenantId });
   }
 
-  hasActiveHostedTenant(tenantId) {
-    const row = [
-      ...this.ctx.storage.sql.exec(
-        `
-          SELECT 1 AS present
-          FROM api_keys
-          WHERE customer_id = ? AND revoked_at IS NULL
-          LIMIT 1
-        `,
-        String(tenantId),
-      ),
-    ][0];
-    return Boolean(row?.present);
-  }
-
   getHostedStripeFetch() {
     return fetch;
   }
@@ -111,10 +96,11 @@ export class Q18Truth extends RuntimeQ18Truth {
       url.hostname === INTERNAL_HOSTED_CREDENTIAL_ADMIN_HOST &&
       url.pathname === INTERNAL_HOSTED_CREDENTIAL_ADMIN_PATH
     ) {
+      const credentialStore = this.getHostedProviderCredentialStore();
       return handleHostedCredentialInternalRequest({
         request,
-        credentialStore: this.getHostedProviderCredentialStore(),
-        tenantExists: (tenantId) => this.hasActiveHostedTenant(tenantId),
+        credentialStore,
+        tenantExists: (tenantId) => credentialStore.hasActiveTenant(tenantId),
       });
     }
 
