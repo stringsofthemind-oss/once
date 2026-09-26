@@ -54,7 +54,7 @@ async function rejectsCode(promise, code, status) {
   });
 }
 
-test('missing entitlement fails closed before any logical-operation meter row is created', async () => {
+test('missing entitlement fails closed during request admission before any logical-operation meter row', async () => {
   const store = storage();
   try {
     store.sql.exec(`
@@ -69,7 +69,7 @@ test('missing entitlement fails closed before any logical-operation meter row is
       )
     `);
     const policy = new RuntimeHostedAdmissionPolicy({ ctx: { storage: store } });
-    await rejectsCode(policy.authorize(request()), 'entitlement_required', 403);
+    await rejectsCode(policy.authorizeRequest(request()), 'entitlement_required', 403);
     assert.equal(store.sql.exec('SELECT COUNT(*) AS n FROM hosted_metered_operations')[0].n, 0);
     assert.equal(store.sql.exec('SELECT COUNT(*) AS n FROM hosted_usage_monthly')[0].n, 0);
   } finally {
@@ -90,7 +90,9 @@ test('one logical operation is metered once and a later-month replay does not mu
       clock: () => now,
     });
 
-    const first = await policy.authorize(request());
+    const admitted = await policy.authorizeRequest(request());
+    assert.equal(admitted.plan, 'pro');
+    const first = await policy.reserveProtectedOperation(request());
     assert.equal(first.metered, true);
     assert.equal(first.replay, false);
     assert.equal(first.period, '2026-09');
@@ -98,7 +100,8 @@ test('one logical operation is metered once and a later-month replay does not mu
     assert.equal(syncs, 1);
 
     now = Date.parse('2026-10-03T12:00:00.000Z');
-    const replay = await policy.authorize(request());
+    await policy.authorizeRequest(request());
+    const replay = await policy.reserveProtectedOperation(request());
     assert.equal(replay.metered, false);
     assert.equal(replay.replay, true);
     assert.equal(replay.period, '2026-09');
@@ -117,14 +120,15 @@ test('one logical operation is metered once and a later-month replay does not mu
   }
 });
 
-test('same tenant operation cannot be metered under a different effect hash', async () => {
+test('same tenant operation cannot reserve a second effect hash', async () => {
   const store = storage();
   try {
     seedEntitlement(store, 'tenant_a');
     const policy = new RuntimeHostedAdmissionPolicy({ ctx: { storage: store } });
-    await policy.authorize(request());
+    await policy.authorizeRequest(request());
+    await policy.reserveProtectedOperation(request());
     await rejectsCode(
-      policy.authorize(request({ effectHash: 'sha256:bbb' })),
+      policy.reserveProtectedOperation(request({ effectHash: 'sha256:bbb' })),
       'operation_effect_conflict',
       409,
     );
@@ -135,7 +139,7 @@ test('same tenant operation cannot be metered under a different effect hash', as
   }
 });
 
-test('monthly logical-operation quota blocks only new operations and still permits replay', async () => {
+test('monthly logical-operation quota blocks only new reservations and still permits existing logical operation', async () => {
   const store = storage();
   try {
     seedEntitlement(store, 'tenant_a', { plan: 'tiny' });
@@ -145,15 +149,17 @@ test('monthly logical-operation quota blocks only new operations and still permi
       clock: () => Date.parse('2026-09-26T12:00:00.000Z'),
     });
 
-    await policy.authorize(request({ operationId: 'op_1', effectHash: 'sha256:1' }));
-    await policy.authorize(request({ operationId: 'op_2', effectHash: 'sha256:2' }));
-    await rejectsCode(
-      policy.authorize(request({ operationId: 'op_3', effectHash: 'sha256:3' })),
-      'monthly_limit_exceeded',
-      429,
-    );
+    const one = request({ operationId: 'op_1', effectHash: 'sha256:1' });
+    const two = request({ operationId: 'op_2', effectHash: 'sha256:2' });
+    const three = request({ operationId: 'op_3', effectHash: 'sha256:3' });
+    await policy.authorizeRequest(one);
+    await policy.reserveProtectedOperation(one);
+    await policy.authorizeRequest(two);
+    await policy.reserveProtectedOperation(two);
+    await policy.authorizeRequest(three);
+    await rejectsCode(policy.reserveProtectedOperation(three), 'monthly_limit_exceeded', 429);
 
-    const replay = await policy.authorize(request({ operationId: 'op_1', effectHash: 'sha256:1' }));
+    const replay = await policy.reserveProtectedOperation(one);
     assert.equal(replay.replay, true);
     assert.equal(replay.metered, false);
     assert.equal(store.sql.exec('SELECT used FROM hosted_usage_monthly')[0].used, 2);
@@ -162,12 +168,12 @@ test('monthly logical-operation quota blocks only new operations and still permi
   }
 });
 
-test('inactive entitlement fails closed', async () => {
+test('inactive entitlement fails closed at request admission', async () => {
   const store = storage();
   try {
     seedEntitlement(store, 'tenant_a', { status: 'canceled' });
     const policy = new RuntimeHostedAdmissionPolicy({ ctx: { storage: store } });
-    await rejectsCode(policy.authorize(request()), 'entitlement_inactive', 403);
+    await rejectsCode(policy.authorizeRequest(request()), 'entitlement_inactive', 403);
     assert.equal(store.sql.exec('SELECT COUNT(*) AS n FROM hosted_metered_operations')[0].n, 0);
   } finally {
     store.db.close();
@@ -184,10 +190,10 @@ test('request rate limiting is independent from logical-operation metering', asy
       clock: () => Date.parse('2026-09-26T12:00:30.000Z'),
     });
 
-    await policy.authorize(request());
-    const replay = await policy.authorize(request());
-    assert.equal(replay.metered, false);
-    await rejectsCode(policy.authorize(request()), 'rate_limit_exceeded', 429);
+    await policy.authorizeRequest(request());
+    await policy.reserveProtectedOperation(request());
+    await policy.authorizeRequest(request());
+    await rejectsCode(policy.authorizeRequest(request()), 'rate_limit_exceeded', 429);
     assert.equal(store.sql.exec('SELECT used FROM hosted_usage_monthly')[0].used, 1);
   } finally {
     store.db.close();
@@ -209,12 +215,43 @@ test('BYPASS requests are rate-limited but never consume protected-operation usa
       )
     `);
     const policy = new RuntimeHostedAdmissionPolicy({ ctx: { storage: store } });
-    const result = await policy.authorize(request({ protection: 'BYPASS' }));
-    assert.equal(result.metered, false);
+    const result = await policy.authorizeRequest(request({ protection: 'BYPASS' }));
     assert.equal(result.protection, 'BYPASS');
     assert.equal(store.sql.exec('SELECT COUNT(*) AS n FROM hosted_metered_operations')[0].n, 0);
     assert.equal(store.sql.exec('SELECT COUNT(*) AS n FROM hosted_usage_monthly')[0].n, 0);
     assert.equal(store.sql.exec('SELECT request_count FROM hosted_execute_rate_limits')[0].request_count, 1);
+  } finally {
+    store.db.close();
+  }
+});
+
+test('concurrent distinct operations cannot oversubscribe a one-operation quota while first sync is pending', async () => {
+  const store = storage();
+  try {
+    seedEntitlement(store, 'tenant_a', { plan: 'tiny' });
+    let releaseSync;
+    let syncEntered = false;
+    store.sync = () => {
+      syncEntered = true;
+      return new Promise((resolve) => { releaseSync = resolve; });
+    };
+    const policy = new RuntimeHostedAdmissionPolicy({
+      ctx: { storage: store },
+      planLimits: { tiny: 1 },
+      clock: () => Date.parse('2026-09-26T12:00:00.000Z'),
+    });
+
+    const firstRequest = request({ operationId: 'op_1', effectHash: 'sha256:1' });
+    const secondRequest = request({ operationId: 'op_2', effectHash: 'sha256:2' });
+    const first = policy.reserveProtectedOperation(firstRequest);
+    assert.equal(syncEntered, true);
+
+    await rejectsCode(policy.reserveProtectedOperation(secondRequest), 'monthly_limit_exceeded', 429);
+    releaseSync();
+    const firstResult = await first;
+    assert.equal(firstResult.metered, true);
+    assert.equal(store.sql.exec('SELECT used FROM hosted_usage_monthly')[0].used, 1);
+    assert.equal(store.sql.exec('SELECT COUNT(*) AS n FROM hosted_metered_operations')[0].n, 1);
   } finally {
     store.db.close();
   }
