@@ -149,6 +149,14 @@ export class GatewayCore {
         }
       }
 
+      // Deterministic configuration/credential failures must happen before the
+      // crash boundary is recorded. A successful preflight is not evidence that
+      // a provider effect occurred; it only proves the adapter is ready to cross
+      // the boundary. Confirmed replay returns above and never needs preflight.
+      if (typeof adapter.preflight === 'function') {
+        await adapter.preflight({ operationId, effectHash, payload, metadata, record: existing ?? null });
+      }
+
       const startedAt = this.clock();
       await this.store.put(operationId, {
         operationId,

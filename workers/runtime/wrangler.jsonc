@@ -33,5 +33,30 @@
       "type": "durable-object",
       "storage": "sqlite"
     }
+  },
+  "env": {
+    "staging": {
+      "workers_dev": true,
+      "preview_urls": false,
+      "vars": {
+        "ONCE_HOSTED_CREDENTIAL_ADMIN_ENABLED": "staging",
+        "ONCE_HOSTED_EXECUTE_ENABLED": "staging",
+        "ONCE_HOSTED_STAGING_FAULT_INJECTION": "lost_ack"
+      },
+      "durable_objects": {
+        "bindings": [
+          {
+            "name": "Q18_TRUTH",
+            "class_name": "Q18Truth"
+          }
+        ]
+      },
+      "exports": {
+        "Q18Truth": {
+          "type": "durable-object",
+          "storage": "sqlite"
+        }
+      }
+    }
   }
 }

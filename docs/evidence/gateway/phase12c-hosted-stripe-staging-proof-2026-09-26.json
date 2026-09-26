@@ -1,0 +1,46 @@
+{
+  "evidence": "ONCE_PHASE_12C_HOSTED_STRIPE_STAGING_LOST_ACK",
+  "date": "2026-09-26",
+  "workflow_run_id": 36279225398,
+  "workflow_run_url": "https://github.com/stringsofthemind-oss/once/actions/runs/36279225398",
+  "head_sha": "ef441a213aad4da8440becdef735db3c211080c2",
+  "branch": "phase12c/hosted-gateway-transport-contract",
+  "worker": "once-q18-cloud-staging",
+  "worker_url": "https://once-q18-cloud-staging.pennywatch.workers.dev",
+  "cloudflare_version_id": "97639c0a-dd81-4d4d-acaa-cbead9b019da",
+  "runtime_tests": {
+    "passed": 73,
+    "failed": 0
+  },
+  "proof": {
+    "passed": true,
+    "tenant": "tenant_phase12c_1790464957_10176",
+    "operation_id": "phase12c-staging-lostack-1790464957-19576",
+    "payment_intent": "pi_3UK4vSAHX5spO4zq3Rt073Zw",
+    "refund_id": "re_3UK4vSAHX5spO4zq3wq6LaIQ",
+    "effect_hash": "sha256:81bd875f48cd021855cdef0c9709991ec2492310cc4a59fde3f8b88a120e73b2",
+    "first_decision": "BLOCK_UNKNOWN",
+    "retry_decision": "REPLAY_CONFIRMED",
+    "final_decision": "REPLAY_CONFIRMED",
+    "matching_provider_refunds": 1,
+    "amount_minor_units": 100,
+    "currency": "gbp",
+    "livemode": false,
+    "credential_disabled_after_proof": true
+  },
+  "artifact": {
+    "id": 10917754092,
+    "name": "phase12c-hosted-stripe-staging-proof",
+    "size_bytes": 572,
+    "sha256": "abd2ef4f59327ebdccd37ed7408ee59c117d12994bb8790921549ef1e27bad7c",
+    "expires_at": "2026-10-26T23:22:41Z"
+  },
+  "scope": {
+    "provider": "Stripe sandbox/test mode",
+    "action": "refund.create",
+    "fault": "successful provider commit followed by injected lost acknowledgement",
+    "production_deploy": false,
+    "live_money": false,
+    "claim": "Under this tested staging configuration, the hosted Once path produced exactly one matching Stripe sandbox refund and reconciled the ambiguous first outcome to confirmed replay."
+  }
+}

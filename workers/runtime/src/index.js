@@ -1,5 +1,32 @@
 import runtime, { Q18Truth as RuntimeQ18Truth } from "./runtime-core.js";
 import { handleStripeCheckout } from "./stripe-checkout.js";
+import { RuntimeHostedGatewayBinding } from "./hosted-gateway-durable.mjs";
+import { RuntimeHostedProviderCredentialStore } from "./hosted-provider-credentials.mjs";
+import {
+  handleHostedCredentialInternalRequest,
+  handleStagingHostedCredentialAdminRequest,
+  INTERNAL_HOSTED_CREDENTIAL_ADMIN_HOST,
+  INTERNAL_HOSTED_CREDENTIAL_ADMIN_PATH,
+  STAGING_HOSTED_CREDENTIAL_ADMIN_PATH,
+} from "./hosted-credential-admin.mjs";
+import {
+  handleHostedGatewayInternalRequest,
+  INTERNAL_HOSTED_EXECUTE_HOST,
+  INTERNAL_HOSTED_EXECUTE_PATH,
+} from "./hosted-gateway-transport.mjs";
+import {
+  handleStagingHostedGatewayRequest,
+  STAGING_HOSTED_EXECUTE_PATH,
+} from "./hosted-staging-execute.mjs";
+import {
+  handleHostedTenantInternalRequest,
+  handleStagingHostedTenantAdminRequest,
+  INTERNAL_HOSTED_TENANT_ADMIN_HOST,
+  INTERNAL_HOSTED_TENANT_ADMIN_PATH,
+  STAGING_HOSTED_TENANT_ADMIN_PATH,
+} from "./hosted-staging-tenant-admin.mjs";
+import { createStagingStripeFetch } from "./hosted-staging-stripe-fault.mjs";
+import { createHostedStripeRefundResolver } from "./hosted-stripe-refund-registration.mjs";
 
 const PUBLIC_STATS_PATH = "/v1/public/stats";
 const STRIPE_CHECKOUT_PATH = "/v1/billing/checkout";
@@ -26,8 +53,90 @@ function publicStatsJson(data, status = 200) {
 }
 
 export class Q18Truth extends RuntimeQ18Truth {
+  getHostedProviderCredentialStore() {
+    if (!this._hostedProviderCredentialStore) {
+      this._hostedProviderCredentialStore = new RuntimeHostedProviderCredentialStore({
+        ctx: this.ctx,
+        encryptConfig: (...args) => this.encryptProviderConfig(...args),
+        decryptConfig: (...args) => this.decryptProviderConfig(...args),
+      });
+    }
+    return this._hostedProviderCredentialStore;
+  }
+
+  /**
+   * Hosted Stripe credentials resolve only from the authenticated tenant's
+   * encrypted provider credential record. There is deliberately no global
+   * environment-secret fallback on this path.
+   */
+  async getHostedStripeRefundSecret({ tenantId }) {
+    return this.getHostedProviderCredentialStore().getStripeRefundSecret({ tenantId });
+  }
+
+  getHostedStripeFetch() {
+    if (!this._hostedStripeFetch) {
+      this._hostedStripeFetch = createStagingStripeFetch({ env: this.env, fetchImpl: fetch });
+    }
+    return this._hostedStripeFetch;
+  }
+
+  getHostedStripeRefundResolver() {
+    if (!this._hostedStripeRefundResolver) {
+      this._hostedStripeRefundResolver = createHostedStripeRefundResolver({
+        getSecretKey: (context) => this.getHostedStripeRefundSecret(context),
+        fetchImpl: (...args) => this.getHostedStripeFetch()(...args),
+      });
+    }
+    return this._hostedStripeRefundResolver;
+  }
+
+  async resolveHostedGatewayRegistration(context) {
+    return this.getHostedStripeRefundResolver()(context);
+  }
+
+  getHostedGatewayBinding() {
+    if (!this._hostedGatewayBinding) {
+      this._hostedGatewayBinding = new RuntimeHostedGatewayBinding({
+        ctx: this.ctx,
+        resolveRegistration: (context) => this.resolveHostedGatewayRegistration(context),
+      });
+    }
+    return this._hostedGatewayBinding;
+  }
+
   async fetch(request) {
     const url = new URL(request.url);
+
+    if (
+      url.hostname === INTERNAL_HOSTED_CREDENTIAL_ADMIN_HOST &&
+      url.pathname === INTERNAL_HOSTED_CREDENTIAL_ADMIN_PATH
+    ) {
+      const credentialStore = this.getHostedProviderCredentialStore();
+      return handleHostedCredentialInternalRequest({
+        request,
+        credentialStore,
+        tenantExists: (tenantId) => credentialStore.hasActiveTenant(tenantId),
+      });
+    }
+
+    if (
+      url.hostname === INTERNAL_HOSTED_TENANT_ADMIN_HOST &&
+      url.pathname === INTERNAL_HOSTED_TENANT_ADMIN_PATH
+    ) {
+      return handleHostedTenantInternalRequest({ request, ctx: this.ctx });
+    }
+
+    // Deliberately internal-only: the outer Worker reaches this route only
+    // through the staging bridge or future reviewed hosted transport.
+    if (
+      url.hostname === INTERNAL_HOSTED_EXECUTE_HOST &&
+      url.pathname === INTERNAL_HOSTED_EXECUTE_PATH
+    ) {
+      return handleHostedGatewayInternalRequest({
+        request,
+        binding: this.getHostedGatewayBinding(),
+      });
+    }
 
     if (request.method === "GET" && url.pathname === INTERNAL_STATS_PATH) {
       const row = [
@@ -56,6 +165,39 @@ export class Q18Truth extends RuntimeQ18Truth {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+
+    if (url.pathname === STAGING_HOSTED_CREDENTIAL_ADMIN_PATH) {
+      return handleStagingHostedCredentialAdminRequest({
+        request,
+        env,
+        getDurableStub: async () => {
+          const id = env.Q18_TRUTH.idFromName(LEDGER_NAME);
+          return env.Q18_TRUTH.get(id);
+        },
+      });
+    }
+
+    if (url.pathname === STAGING_HOSTED_TENANT_ADMIN_PATH) {
+      return handleStagingHostedTenantAdminRequest({
+        request,
+        env,
+        getDurableStub: async () => {
+          const id = env.Q18_TRUTH.idFromName(LEDGER_NAME);
+          return env.Q18_TRUTH.get(id);
+        },
+      });
+    }
+
+    if (url.pathname === STAGING_HOSTED_EXECUTE_PATH) {
+      return handleStagingHostedGatewayRequest({
+        request,
+        env,
+        getDurableStub: async () => {
+          const id = env.Q18_TRUTH.idFromName(LEDGER_NAME);
+          return env.Q18_TRUTH.get(id);
+        },
+      });
+    }
 
     if (url.pathname === STRIPE_CHECKOUT_PATH) {
       return handleStripeCheckout(request, env);
