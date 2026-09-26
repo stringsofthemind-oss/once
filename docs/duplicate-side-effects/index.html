@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1">
+<meta name="description" content="Interactive demo of the AI-agent failure mode where a side effect commits, the acknowledgement is lost, and a blind retry duplicates the action. Compare naive retry with Once protection.">
+<link rel="canonical" href="https://onceexec.com/duplicate-side-effects/">
+<link rel="describedby" type="text/plain" href="../llms.txt">
+<meta property="og:type" content="article"><meta property="og:title" content="AI Agent Duplicate Side Effects: Live Retry Demo | Once"><meta property="og:description" content="See how a committed write plus a lost acknowledgement can become two real-world effects—and how Once changes the retry decision."><meta property="og:url" content="https://onceexec.com/duplicate-side-effects/">
+<title>AI Agent Duplicate Side Effects: Live Retry Demo | Once</title>
+<link rel="stylesheet" href="../discovery.css">
+<style>
+.demo{margin:30px 0;padding:22px;border:1px solid #243444;border-radius:18px;background:#071019}.demo-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.lane{padding:18px;border:1px solid #243444;border-radius:14px;background:#0a1420}.lane h3{margin-top:0}.step{padding:10px 12px;margin:9px 0;border-radius:10px;background:#0d1a27;color:#b8c8d3}.bad{color:#ff8b8b}.good{color:#39f0a0}.count{font-size:38px;font-weight:800}.controls{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}.controls button{cursor:pointer;border:1px solid #31516a;background:#0c1c29;color:#eaf4f8;border-radius:10px;padding:10px 14px;font-weight:700}.controls button:hover{border-color:#43d7ff}.note{font-size:13px;color:#8ea2b0}@media(max-width:760px){.demo-grid{grid-template-columns:1fr}}
+</style>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"AI agent duplicate side effects after a lost acknowledgement","description":"Interactive comparison of naive retry and Once-protected retry after a committed side effect with a lost acknowledgement.","mainEntityOfPage":"https://onceexec.com/duplicate-side-effects/","about":["AI agent duplicate tool calls","duplicate side effects","ambiguous outcome","lost acknowledgement","safe retries","MCP idempotency"],"publisher":{"@type":"Organization","name":"Once","url":"https://onceexec.com/"}}</script>
+</head>
+<body>
+<header class="topbar"><a class="brand" href="../">Once<span>.</span></a><nav><a href="../ambiguous-timeout/">Ambiguous timeout</a><a href="../reconciliation-recipes/">Reconciliation</a><a href="../providers/stripe-refunds/">Stripe example</a><a href="https://github.com/stringsofthemind-oss/once">GitHub</a></nav></header>
+<main class="wrap"><section class="hero"><div class="eyebrow">LIVE FAILURE-MODE DEMO</div><h1>The write succeeded. The acknowledgement disappeared. What should the agent do next?</h1><p>This is the dangerous retry boundary: the caller sees a timeout, but the provider may already have committed the external effect.</p></section><article>
+<div class="answer"><strong>Core rule:</strong> a timeout is not proof of failure. If the first attempt may have committed, blindly sending the write again can duplicate the real-world action.</div>
+<div class="demo">
+<div class="controls"><button id="run">Run lost-ack scenario</button><button id="reset">Reset</button></div>
+<div class="demo-grid">
+<section class="lane"><h3>Naive retry</h3><div id="naiveSteps"></div><p>External effects: <span class="count bad" id="naiveCount">0</span></p></section>
+<section class="lane"><h3>Once-protected path</h3><div id="onceSteps"></div><p>External effects: <span class="count good" id="onceCount">0</span></p></section>
+</div>
+<p class="note">This browser demo is an explanatory simulation of the failure mode. Repository hostile-retry tests provide the executable evidence for tested Once paths.</p>
+</div>
+<h2>What the simulation represents</h2><p>Both lanes begin with the same logical operation. The provider commits the first write, but the response is lost. The naive lane treats the timeout as failure and creates a fresh retry. The Once lane keeps the same logical operation identity, sees that execution truth is unresolved, and requires replay/reconciliation or blocks instead of guessing.</p>
+<h2>The decision model</h2><p><strong>CONFIRMED</strong> → replay or suppress. <strong>ABSENT</strong> → a protected execution may proceed. <strong>UNKNOWN</strong> → block or reconcile. <strong>CONFLICT</strong> → the same logical identity was reused with different effect-bearing data, so block.</p>
+<div class="claim"><strong>Claim boundary:</strong> Once does not claim universal exactly-once execution. Safe behavior depends on stable logical identity, effect binding, durable state, controlled execution boundaries, and sufficiently authoritative reconciliation when needed.</div>
+<div class="cta"><h2>Try it in a project</h2><pre><code>npx --yes --package=@once-agent/sdk once doctor .</code></pre><p>Or expose Once through MCP:</p><pre><code>npx -y @once-agent/mcp</code></pre><p><a href="../reconciliation-recipes/">Read the reconciliation recipes</a> · <a href="../providers/stripe-refunds/">See the Stripe refund pattern</a> · <a href="https://github.com/stringsofthemind-oss/once">Source and reproducible tests</a></p></div>
+</article></main>
+<script>
+const n=document.getElementById('naiveSteps'),o=document.getElementById('onceSteps'),nc=document.getElementById('naiveCount'),oc=document.getElementById('onceCount');
+function reset(){n.innerHTML='';o.innerHTML='';nc.textContent='0';oc.textContent='0'}
+function add(el,text,cls=''){const d=document.createElement('div');d.className='step '+cls;d.textContent=text;el.appendChild(d)}
+function run(){reset();add(n,'1. Send refund operation refund:order_123');add(o,'1. Send refund operation refund:order_123');setTimeout(()=>{add(n,'2. Provider commits refund');add(o,'2. Provider commits refund');nc.textContent='1';oc.textContent='1'},350);setTimeout(()=>{add(n,'3. Response is lost → caller sees timeout','bad');add(o,'3. Response is lost → outcome becomes UNKNOWN');},700);setTimeout(()=>{add(n,'4. Blind retry sends a new write','bad');add(o,'4. Same logical identity is checked before another effect','good')},1050);setTimeout(()=>{add(n,'5. Provider commits again → duplicate effect','bad');nc.textContent='2';add(o,'5. Replay/reconcile or block; do not blindly execute again','good');oc.textContent='1'},1400)}
+document.getElementById('run').addEventListener('click',run);document.getElementById('reset').addEventListener('click',reset);reset();
+</script>
+</body></html>

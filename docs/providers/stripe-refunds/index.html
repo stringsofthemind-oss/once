@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1">
+<meta name="description" content="A concrete Stripe refund retry-safety pattern for AI agents using stable logical operation identity, Stripe idempotency keys, durable state, and refund readback.">
+<link rel="canonical" href="https://onceexec.com/providers/stripe-refunds/"><link rel="describedby" type="text/plain" href="../../llms.txt">
+<title>Stripe Refund Retry Safety for AI Agents | Once</title>
+<link rel="stylesheet" href="../../discovery.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Stripe refund retry safety for AI agents","mainEntityOfPage":"https://onceexec.com/providers/stripe-refunds/","about":["Stripe refund idempotency","AI agent refunds","ambiguous timeout","provider reconciliation","safe retries"],"publisher":{"@type":"Organization","name":"Once","url":"https://onceexec.com/"}}</script>
+</head>
+<body>
+<header class="topbar"><a class="brand" href="../../">Once<span>.</span></a><nav><a href="../../duplicate-side-effects/">Live demo</a><a href="../../reconciliation-recipes/">Reconciliation</a><a href="../">Providers</a><a href="https://github.com/stringsofthemind-oss/once">GitHub</a></nav></header>
+<main class="wrap"><section class="hero"><div class="eyebrow">PROVIDER RECIPE / STRIPE</div><h1>A refund timeout should not become a second refund.</h1><p>Use one stable logical operation identity across Once and Stripe's idempotency boundary, then reconcile provider truth instead of creating a fresh retry identity.</p></section><article>
+<div class="answer"><strong>Pattern:</strong> derive one logical identity such as <code>refund:order_123</code>, bind the refund amount/payment target to it, and reuse the corresponding Stripe idempotency key for retries of that same intended refund.</div>
+<h2>Why Stripe is a useful example</h2><p>Stripe documents idempotency keys for POST requests so clients can retry a request without accidentally creating a second operation. Stripe also exposes refund retrieval and listing APIs, which can provide provider-side evidence for reconciliation.</p>
+<h2>Illustrative flow</h2><pre><code>logical_operation = "refund:order_123"
+effect = { payment_intent: "pi_...", amount: 2500 }
+
+1. Once binds logical_operation + effect
+2. Stripe POST refund uses an idempotency key derived for that logical operation
+3. If the acknowledgement is lost, keep the Once state UNKNOWN
+4. Reuse the same Stripe idempotency key for the same logical action
+5. Where provider readback is needed, retrieve/list the relevant refund evidence
+6. CONFIRMED -> replay/suppress
+   ABSENT -> execute only when absence is authoritative
+   UNKNOWN -> block/reconcile, do not invent a new refund identity
+   CONFLICT -> block changed effect data under the same logical identity</code></pre>
+<h2>Do not do this</h2><pre><code>// dangerous after an ambiguous timeout
+await createRefund({ payment_intent, amount }, {
+  idempotencyKey: randomUUID() // fresh key for the retry
+})</code></pre><p>A fresh per-attempt key can turn a retry into a new provider operation. Attempt identity and logical operation identity are not the same thing.</p>
+<h2>What Stripe itself provides</h2><p>Stripe's API documentation says POST requests accept idempotency keys and that later requests with the same key return the first saved result once endpoint execution has begun. Stripe also supports retrieving a refund by refund ID and listing refunds, including filtering by charge or PaymentIntent.</p>
+<h2>What Once adds</h2><p>Once is concerned with the application/agent-side logical operation: stable identity across retries, effect binding, durable execution state, routing, conflict detection, and a fail-closed UNKNOWN state. Provider-native idempotency remains valuable and should be used when available.</p>
+<div class="claim"><strong>Claim boundary:</strong> this page is an integration recipe, not a claim that Once currently ships a production Stripe adapter or that Stripe plus Once creates universal exactly-once execution. Real integrations must preserve provider IDs, keys, request parameters, account scope, and reconciliation evidence appropriate to the deployed Stripe API version.</div>
+<div class="cta"><h2>Next</h2><p><a href="../../reconciliation-recipes/">Choose a reconciliation strategy</a> · <a href="../../duplicate-side-effects/">Run the lost-ack demo</a> · <a href="https://docs.stripe.com/api/idempotent_requests">Stripe idempotency docs</a> · <a href="https://docs.stripe.com/api/refunds/retrieve">Stripe refund retrieval docs</a></p></div>
+</article></main></body></html>
