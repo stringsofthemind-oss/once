@@ -1,6 +1,7 @@
 import { AmbiguousOutcomeError } from './gateway-core.js';
 
 const STRIPE_API_BASE = 'https://api.stripe.com/v1';
+const MAX_OPERATION_ID_LENGTH = 240;
 
 function requireString(value, name) {
   if (typeof value !== 'string' || value.length === 0) {
@@ -8,9 +9,17 @@ function requireString(value, name) {
   }
 }
 
-function buildRefundBody({ paymentIntent, amount, operationId }) {
-  requireString(paymentIntent, 'payload.paymentIntent');
+function requireOperationId(operationId) {
   requireString(operationId, 'operationId');
+  if (operationId.length > MAX_OPERATION_ID_LENGTH) {
+    throw new TypeError(`operationId must be <= ${MAX_OPERATION_ID_LENGTH} characters for Stripe idempotency`);
+  }
+}
+
+function buildRefundBody({ paymentIntent, amount, operationId, effectHash }) {
+  requireString(paymentIntent, 'payload.paymentIntent');
+  requireOperationId(operationId);
+  requireString(effectHash, 'effectHash');
 
   const body = new URLSearchParams();
   body.set('payment_intent', paymentIntent);
@@ -21,6 +30,7 @@ function buildRefundBody({ paymentIntent, amount, operationId }) {
     body.set('amount', String(amount));
   }
   body.set('metadata[once_operation_id]', operationId);
+  body.set('metadata[once_effect_hash]', effectHash);
   return body;
 }
 
@@ -38,6 +48,14 @@ function summarizeRefund(refund) {
   };
 }
 
+function refundMatchesIntent(refund, { operationId, effectHash, paymentIntent, amount }) {
+  if (refund?.metadata?.once_operation_id !== operationId) return false;
+  if (refund?.metadata?.once_effect_hash !== effectHash) return false;
+  if (refund?.payment_intent !== paymentIntent) return false;
+  if (amount !== undefined && refund?.amount !== amount) return false;
+  return true;
+}
+
 export class StripeRefundAdapter {
   constructor({ secretKey, fetchImpl = fetch, apiBase = STRIPE_API_BASE }) {
     requireString(secretKey, 'secretKey');
@@ -49,20 +67,28 @@ export class StripeRefundAdapter {
     this.apiBase = apiBase.replace(/\/$/, '');
   }
 
-  headers() {
-    return {
+  headers(operationId) {
+    const headers = {
       authorization: `Bearer ${this.secretKey}`,
       'content-type': 'application/x-www-form-urlencoded',
     };
+    if (operationId) {
+      requireOperationId(operationId);
+      headers['idempotency-key'] = `once:${operationId}`;
+    }
+    return headers;
   }
 
-  async execute({ operationId, payload }) {
+  async execute({ operationId, effectHash, payload }) {
+    requireOperationId(operationId);
+    requireString(effectHash, 'effectHash');
+
     let response;
     try {
       response = await this.fetchImpl(`${this.apiBase}/refunds`, {
         method: 'POST',
-        headers: this.headers(),
-        body: buildRefundBody({ ...payload, operationId }),
+        headers: this.headers(operationId),
+        body: buildRefundBody({ ...payload, operationId, effectHash }),
       });
     } catch {
       throw new AmbiguousOutcomeError('Stripe refund transport failed after request dispatch');
@@ -93,8 +119,9 @@ export class StripeRefundAdapter {
     return summarizeRefund(data);
   }
 
-  async reconcile({ operationId, payload }) {
-    requireString(operationId, 'operationId');
+  async reconcile({ operationId, effectHash, payload }) {
+    requireOperationId(operationId);
+    requireString(effectHash, 'effectHash');
     requireString(payload?.paymentIntent, 'payload.paymentIntent');
 
     const query = new URLSearchParams();
@@ -126,7 +153,13 @@ export class StripeRefundAdapter {
       return { status: 'UNKNOWN' };
     }
 
-    const match = data.data.find((refund) => refund?.metadata?.once_operation_id === operationId);
+    const match = data.data.find((refund) => refundMatchesIntent(refund, {
+      operationId,
+      effectHash,
+      paymentIntent: payload.paymentIntent,
+      amount: payload.amount,
+    }));
+
     if (match) {
       const result = summarizeRefund(match);
       return {
