@@ -30,13 +30,14 @@ export class MemoryOperationStore {
     const current = new Promise((resolve) => {
       release = resolve;
     });
-    this.queues.set(operationId, previous.then(() => current));
+    const tail = previous.then(() => current);
+    this.queues.set(operationId, tail);
     await previous;
     try {
       return await fn();
     } finally {
       release();
-      if (this.queues.get(operationId) === current) this.queues.delete(operationId);
+      if (this.queues.get(operationId) === tail) this.queues.delete(operationId);
     }
   }
 
@@ -109,9 +110,18 @@ export class GatewayCore {
       }
 
       if (existing?.state === OutcomeState.UNKNOWN) {
-        const reconciliation = normalizeReconciliation(
-          await adapter.reconcile({ operationId, effectHash, payload, metadata, record: existing }),
-        );
+        let reconciliation;
+        try {
+          reconciliation = normalizeReconciliation(
+            await adapter.reconcile({ operationId, effectHash, payload, metadata, record: existing }),
+          );
+        } catch {
+          return {
+            decision: GatewayDecision.BLOCK_UNKNOWN,
+            state: OutcomeState.UNKNOWN,
+            operationId,
+          };
+        }
 
         if (reconciliation.status === 'CONFIRMED') {
           const record = {
