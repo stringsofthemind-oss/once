@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use Once in research or technical work, please cite the software and the preferred technical paper below."
+title: "Once — AI Agent Execution Safety"
+type: software
+authors:
+  - family-names: Oswald
+    given-names: Jamie
+version: 0.1.12
+date-released: 2026-09-25
+url: "https://onceexec.com/"
+repository-code: "https://github.com/stringsofthemind-oss/once"
+license: MIT
+preferred-citation:
+  type: report
+  authors:
+    - family-names: Oswald
+      given-names: Jamie
+      affiliation: "Once Research"
+  title: "Reliable Execution of Consequential AI Agent Actions Under Retries and Ambiguous Outcomes"
+  year: 2026
+  month: 9
+  date-published: 2026-09-26
+  publisher:
+    name: Zenodo
+  doi: "10.5281/zenodo.22969881"
+  url: "https://doi.org/10.5281/zenodo.22969881"
