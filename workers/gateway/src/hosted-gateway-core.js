@@ -173,9 +173,10 @@ export class TenantScopedOperationStore {
   async put(operationId, record) {
     const key = await this.key(operationId);
     await this.storage.put(key, {
+      ...structuredClone(record),
+      operationId,
       tenantId: this.tenantId,
       ...structuredClone(this.recordContext),
-      ...structuredClone(record),
     });
   }
 }
