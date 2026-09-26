@@ -57,11 +57,16 @@ export class StripeRefundAdapter {
   }
 
   async execute({ operationId, payload }) {
-    const response = await this.fetchImpl(`${this.apiBase}/refunds`, {
-      method: 'POST',
-      headers: this.headers(),
-      body: buildRefundBody({ ...payload, operationId }),
-    });
+    let response;
+    try {
+      response = await this.fetchImpl(`${this.apiBase}/refunds`, {
+        method: 'POST',
+        headers: this.headers(),
+        body: buildRefundBody({ ...payload, operationId }),
+      });
+    } catch {
+      throw new AmbiguousOutcomeError('Stripe refund transport failed after request dispatch');
+    }
 
     let data;
     try {
@@ -88,16 +93,23 @@ export class StripeRefundAdapter {
     return summarizeRefund(data);
   }
 
-  async reconcile({ operationId }) {
+  async reconcile({ operationId, payload }) {
     requireString(operationId, 'operationId');
+    requireString(payload?.paymentIntent, 'payload.paymentIntent');
 
     const query = new URLSearchParams();
     query.set('limit', '100');
+    query.set('payment_intent', payload.paymentIntent);
 
-    const response = await this.fetchImpl(`${this.apiBase}/refunds?${query.toString()}`, {
-      method: 'GET',
-      headers: { authorization: `Bearer ${this.secretKey}` },
-    });
+    let response;
+    try {
+      response = await this.fetchImpl(`${this.apiBase}/refunds?${query.toString()}`, {
+        method: 'GET',
+        headers: { authorization: `Bearer ${this.secretKey}` },
+      });
+    } catch {
+      return { status: 'UNKNOWN' };
+    }
 
     if (!response.ok) {
       return { status: 'UNKNOWN' };
