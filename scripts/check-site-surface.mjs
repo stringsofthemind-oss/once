@@ -88,32 +88,38 @@ assert.match(
 
 assert.match(
   pageAnalytics,
-  /heartbeatStyle\.dataset\.onceHeartbeat\s*=\s*"monitor-red-v4"/,
-  "red heartbeat monitor override is missing",
+  /heartbeatStyle\.dataset\.onceHeartbeat\s*=\s*"pulse-only-v5"/,
+  "red pulse-only heartbeat override is missing",
 );
 
 assert.match(
   pageAnalytics,
   /class\", \"once-heartbeat-monitor\"/,
-  "heartbeat monitor SVG is missing",
+  "heartbeat pulse SVG is missing",
 );
 
 assert.match(
   pageAnalytics,
-  /M0 38 H78 L91 38 L101 29 L111 51 L123 8 L135 61 L149 24 L162 38 H300/,
-  "heartbeat monitor ECG trace shape is missing",
+  /M20 38 L32 29 L43 51 L55 8 L67 61 L80 24 L92 38/,
+  "compact heartbeat pulse shape is missing",
+);
+
+assert.doesNotMatch(
+  pageAnalytics,
+  /once-heartbeat-monitor \.baseline|M0 38 H78/,
+  "heartbeat pulse must not restore the removed long ECG baseline",
 );
 
 assert.match(
   pageAnalytics,
   /stroke:#ff3040/,
-  "heartbeat monitor must retain a bright red trace",
+  "heartbeat pulse must retain a bright red trace",
 );
 
 assert.match(
   pageAnalytics,
-  /once-heartbeat-monitor-sweep\s*1s\s*linear\s*infinite/s,
-  "heartbeat monitor sweep must remain exactly one second",
+  /once-heartbeat-pulse\s*1s\s*ease-in-out\s*infinite/s,
+  "heartbeat pulse must remain exactly one second",
 );
 
 assert.match(
@@ -138,5 +144,5 @@ const visibleVersionLine =
   `TS SDK ${siteTs} · PY SDK ${sitePython} · MCP ${siteMcp}`;
 
 console.log(
-  `PASS site surface: ${visibleVersionLine}; live counter route present; heartbeat=1s red-monitor; usage-pulse=cyan`,
+  `PASS site surface: ${visibleVersionLine}; live counter route present; heartbeat=1s red-pulse; usage-pulse=cyan`,
 );
