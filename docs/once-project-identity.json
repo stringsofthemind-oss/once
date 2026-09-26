@@ -1,0 +1,32 @@
+{
+  "name": "Once",
+  "full_name": "Once — AI Agent Execution Safety",
+  "canonical_website": "https://onceexec.com/",
+  "canonical_repository": "https://github.com/stringsofthemind-oss/once",
+  "mcp_registry_identifier": "io.github.stringsofthemind-oss/once",
+  "packages": {
+    "typescript_sdk": "@once-agent/sdk",
+    "mcp": "@once-agent/mcp",
+    "python_sdk": "once-agent-sdk"
+  },
+  "maintainer": "Jamie Oswald",
+  "research_identity": "Once Research",
+  "description": "Open-source execution safety for consequential AI-agent and application side effects under retries and ambiguous outcomes.",
+  "core_model": [
+    "stable logical operation identity",
+    "effect binding",
+    "durable state",
+    "provider reconciliation",
+    "fail-closed UNKNOWN handling"
+  ],
+  "not_affiliated_with": [
+    {
+      "name": "Tuist Once",
+      "repository": "https://github.com/tuist/once",
+      "website": "https://buildonce.dev/",
+      "note": "Separate project; build/repository automation rather than Once AI Agent Execution Safety."
+    }
+  ],
+  "technical_paper_doi": "10.5281/zenodo.22969881",
+  "claim_boundary": "Once does not claim universal exactly-once execution across arbitrary external systems."
+}
