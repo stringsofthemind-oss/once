@@ -1,6 +1,6 @@
 # Once Hosted Provider Credentials V1 — Phase 12C
 
-Status: implemented locally/CI for the internal hosted gateway. Not deployed.
+Status: implemented and exercised in isolated staging with Stripe sandbox/test mode on 2026-09-26. **Not deployed to production and not enabled for live Stripe.**
 
 This note records the credential boundary used by the Phase 12C hosted `stripe / refund.create` registration. It is intentionally narrower than a general secrets service.
 
@@ -83,7 +83,7 @@ The credential store returns only non-secret metadata from rotation operations. 
 
 ## Staging-only provisioning boundary
 
-Phase 12C now contains a narrow staging-only credential provisioning transport. It is disabled by default and is not a tenant-facing production API.
+Phase 12C contains a narrow staging-only credential provisioning transport. It is disabled by default outside the isolated staging environment and is not a tenant-facing production API.
 
 The outer Worker route is:
 
@@ -130,9 +130,9 @@ The outer staging route forwards the request to the same authoritative `Q18Truth
 
 The route is capped at 16 KiB, accepts JSON only, returns `cache-control: no-store`, rejects `sk_live_...`, and never returns a stored Stripe secret.
 
-No staging flag, admin token, provider master key or Stripe credential is committed to the repository. Enabling/provisioning the route in an actual environment remains an explicit deployment-time action.
+No staging flag, admin token, provider master key or Stripe credential is committed to the repository.
 
-## CI evidence expected
+## CI and staging evidence
 
 The credential and staging-admin tests verify:
 
@@ -150,19 +150,24 @@ The credential and staging-admin tests verify:
 - unknown tenants cannot receive credentials,
 - outward provisioning responses are allowlisted and cannot reflect secret/debug fields.
 
-The Worker dry-run also compiles the runtime wiring from the authenticated hosted request through tenant-scoped credential lookup into the Stripe refund registration.
+The Worker dry-run compiles the runtime wiring from the authenticated hosted request through tenant-scoped credential lookup into the Stripe refund registration.
 
-## Staging gates
+The real staging proof completed successfully on exact implementation head `ef441a213aad4da8440becdef735db3c211080c2` in GitHub Actions run `36279225398`. It provisioned one tenant-scoped encrypted Stripe test credential, executed the lost-ack refund proof, verified exactly one matching Stripe sandbox refund, disabled that tenant credential, and then proved confirmed replay still worked without provider credentials.
 
-Before any staging deployment or real Stripe sandbox call through the hosted transport:
+Frozen evidence:
 
-1. keep PR #149 review-complete and CI green on the exact head,
-2. configure a staging-only 32-byte provider master key as a platform secret,
-3. configure a separate high-entropy `once_admin_stage_...` credential-admin token as a platform secret,
-4. enable the credential-admin route only in the isolated staging environment,
-5. provision only an `sk_test_...` Stripe secret for the intended staging tenant,
-6. disable the credential-admin route again after provisioning unless a reviewed operational reason requires it to remain enabled,
-7. keep the hosted execute transport non-public until its public migration/cutover is separately reviewed,
-8. repeat the lost-acknowledgement proof against real Stripe sandbox through the hosted HTTP path,
-9. verify one refund POST/effect, reconciliation to `REPLAY_CONFIRMED`, tenant-scoped idempotency and no secret leakage,
-10. do not enable live Stripe or production deployment without separate explicit approval.
+- `docs/evidence/gateway/phase12c-hosted-stripe-staging-proof-2026-09-26.md`
+- `docs/evidence/gateway/phase12c-hosted-stripe-staging-proof-2026-09-26.json`
+
+## Remaining production gates
+
+Before production/public hosted credential use:
+
+1. keep the staging/admin route isolated from production,
+2. define provider master-key multi-version rotation and recovery,
+3. review a production credential provisioning/rotation/revocation API separately,
+4. wire production entitlement, metering and rate-limit policy into the hosted execution path,
+5. complete audit-safe hosted observability and secret-redaction regression coverage,
+6. improve Stripe reconciliation pagination/liveness as appropriate,
+7. repeat adversarial staging tests after any material credential/runtime change,
+8. obtain separate explicit approval before any production deployment or live Stripe enablement.
