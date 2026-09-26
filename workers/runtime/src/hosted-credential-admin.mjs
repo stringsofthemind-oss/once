@@ -76,6 +76,54 @@ function normalizeTenantId(value) {
   return tenantId;
 }
 
+function sanitizeInternalAdminResult(body, status) {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return json({ error: 'credential_admin_unavailable' }, 503);
+  }
+
+  if (status < 200 || status >= 300) {
+    const allowedErrors = new Set([
+      'invalid_tenant_id',
+      'tenant_not_found',
+      'invalid_credential_action',
+      'stripe_test_secret_required',
+      'invalid_provider_credential',
+      'credential_admin_unavailable',
+    ]);
+    const error = allowedErrors.has(body.error)
+      ? body.error
+      : 'credential_admin_unavailable';
+    return json({ error }, status >= 400 && status <= 599 ? status : 503);
+  }
+
+  if (body.action === 'rotate') {
+    return json({
+      ok: body.ok === true,
+      action: 'rotate',
+      tenant_id: String(body.tenant_id || ''),
+      provider: 'stripe',
+      provider_action: 'refund.create',
+      version_id: String(body.version_id || ''),
+      credentials: body.credentials === 'stored_encrypted' ? 'stored_encrypted' : 'stored_encrypted',
+      created: body.created === true,
+      rotated: body.rotated === true,
+    }, status);
+  }
+
+  if (body.action === 'disable') {
+    return json({
+      ok: body.ok === true,
+      action: 'disable',
+      tenant_id: String(body.tenant_id || ''),
+      provider: 'stripe',
+      provider_action: 'refund.create',
+      disabled: body.disabled === true,
+    }, status);
+  }
+
+  return json({ error: 'credential_admin_unavailable' }, 503);
+}
+
 /**
  * Public Worker staging gate. This route is absent unless the exact staging
  * enable flag is configured. The admin token must itself be a staging token;
@@ -151,14 +199,14 @@ export async function handleStagingHostedCredentialAdminRequest({
         },
       ),
     );
-    const responseText = await response.text();
-    return new Response(responseText, {
-      status: response.status,
-      headers: {
-        'content-type': 'application/json; charset=utf-8',
-        'cache-control': 'no-store',
-      },
-    });
+
+    let responseBody;
+    try {
+      responseBody = await response.json();
+    } catch {
+      return json({ error: 'credential_admin_unavailable' }, 503);
+    }
+    return sanitizeInternalAdminResult(responseBody, response.status);
   } catch {
     return json({ error: 'credential_admin_unavailable' }, 503);
   }
