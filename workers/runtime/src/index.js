@@ -1,5 +1,11 @@
 import runtime, { Q18Truth as RuntimeQ18Truth } from "./runtime-core.js";
 import { handleStripeCheckout } from "./stripe-checkout.js";
+import { RuntimeHostedGatewayBinding } from "./hosted-gateway-durable.mjs";
+import {
+  handleHostedGatewayInternalRequest,
+  INTERNAL_HOSTED_EXECUTE_HOST,
+  INTERNAL_HOSTED_EXECUTE_PATH,
+} from "./hosted-gateway-transport.mjs";
 
 const PUBLIC_STATS_PATH = "/v1/public/stats";
 const STRIPE_CHECKOUT_PATH = "/v1/billing/checkout";
@@ -26,8 +32,39 @@ function publicStatsJson(data, status = 200) {
 }
 
 export class Q18Truth extends RuntimeQ18Truth {
+  /**
+   * Phase 12C keeps provider/action registration closed by default. Later
+   * slices may override/wire this resolver explicitly. Until then the internal
+   * hosted transport cannot cross any provider boundary.
+   */
+  async resolveHostedGatewayRegistration() {
+    return null;
+  }
+
+  getHostedGatewayBinding() {
+    if (!this._hostedGatewayBinding) {
+      this._hostedGatewayBinding = new RuntimeHostedGatewayBinding({
+        ctx: this.ctx,
+        resolveRegistration: (context) => this.resolveHostedGatewayRegistration(context),
+      });
+    }
+    return this._hostedGatewayBinding;
+  }
+
   async fetch(request) {
     const url = new URL(request.url);
+
+    // Deliberately internal-only: the outer Worker does not expose this route,
+    // and the Durable Object accepts it only on the synthetic q18.internal host.
+    if (
+      url.hostname === INTERNAL_HOSTED_EXECUTE_HOST &&
+      url.pathname === INTERNAL_HOSTED_EXECUTE_PATH
+    ) {
+      return handleHostedGatewayInternalRequest({
+        request,
+        binding: this.getHostedGatewayBinding(),
+      });
+    }
 
     if (request.method === "GET" && url.pathname === INTERNAL_STATS_PATH) {
       const row = [
