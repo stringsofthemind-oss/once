@@ -1,6 +1,6 @@
 # Once Hosted Gateway Transport V1 — Phase 12C
 
-Status: design contract only. Not deployed.
+Status: contract + first local/CI implementation slice. Not deployed.
 
 Phase 12C turns the proven gateway semantics into a hosted, framework-neutral transport without weakening the safety guarantees established in Phases 12A and 12B.
 
@@ -18,9 +18,11 @@ agent / framework / MCP client
        Once Gateway
           |
           +--> authenticate tenant
-          +--> validate logical identity + effect binding
+          +--> resolve registered provider/action policy
+          +--> server-canonicalise effect-bearing data
+          +--> derive authoritative effect binding
           +--> acquire serialized operation authority
-          +--> read/write durable operation state
+          +--> read/write durable tenant-scoped state
           +--> invoke registered provider adapter
           +--> reconcile ambiguous outcomes
           +--> meter one logical protected operation
@@ -32,6 +34,20 @@ agent / framework / MCP client
 
 The transport is deliberately thin. It must not change the Phase 12A safety state machine or the provider-reconciliation rules proven in Phase 12B.
 
+## Hostile-review hardening decisions
+
+The hosted boundary is a trust boundary. The following rules are normative:
+
+1. **The server, not the client, decides whether a registered action is `PROTECT` or `BYPASS`.** A client cannot downgrade a consequential registered action by sending `BYPASS`.
+2. **The server recomputes the effect binding from the validated registered provider/action schema.** A client-supplied `effect_hash` is optional verification input only; if supplied it must exactly match the server-derived binding.
+3. **Provider and action identity are part of the effect binding.** Reusing one logical operation ID for a different provider/action is a conflict even if payload fields are otherwise identical.
+4. **Canonicalisation is versioned and persisted.** Provider/action registrations declare a binding version so later schema changes cannot silently reinterpret historical operation identities.
+5. **Provider-native idempotency is tenant-scoped.** A native idempotency key must derive from tenant + logical operation + provider/action, not from raw `operation_id` alone. Two tenants may legitimately use the same logical operation ID.
+6. **`CONFLICT` reports the stored state.** It must not assume the prior state is `CONFIRMED`; an existing operation may still be `UNKNOWN`.
+7. **Billing begins only after auth, authorization, schema validation, target resolution and binding validation succeed.** Rejected malformed/unauthorized requests do not consume a protected-operation unit.
+8. **A provider crossing can never be inferred from a generic HTTP status.** If infrastructure fails after durable `UNKNOWN` is written, retries reuse the same identity and reconcile.
+9. **The existing repository already contains an evaluation/runtime `/v1/execute` path and tenant/API-key primitives.** Phase 12C should harden/reuse compatible pieces rather than accidentally publish a second conflicting execution plane.
+
 ## V1 endpoint
 
 ```http
@@ -40,15 +56,14 @@ Authorization: Bearer <once_api_key>
 Content-Type: application/json
 ```
 
-The V1 hosted gateway exposes only registered provider/action pairs. It is **not** an arbitrary outbound HTTP proxy.
+V1 exposes only registered provider/action pairs. It is **not** an arbitrary outbound HTTP proxy.
 
 ### Request
 
 ```json
 {
   "operation_id": "refund:customer_123:order_456:v1",
-  "effect_hash": "sha256:...",
-  "protection": "PROTECT",
+  "effect_hash": "sha256:optional-client-verification-value",
   "target": {
     "provider": "stripe",
     "action": "refund.create"
@@ -65,16 +80,16 @@ The V1 hosted gateway exposes only registered provider/action pairs. It is **not
 }
 ```
 
-### Required fields
+### Fields
 
-- `operation_id`: stable logical operation identity reused across retries, redispatches, reconnects and fresh processes for the same intended effect.
-- `effect_hash`: deterministic binding over the effect-bearing request fields for the registered action.
-- `protection`: `PROTECT` or `BYPASS`. Hosted provider actions that can mutate external state default to `PROTECT`; `BYPASS` is permitted only for explicitly supported harmless paths.
-- `target.provider`: registered provider identifier.
-- `target.action`: registered action identifier.
-- `payload`: provider/action-specific data validated by the registered adapter.
+- `operation_id`: required stable logical operation identity reused across retries, redispatches, reconnects and fresh processes for the same intended effect.
+- `effect_hash`: optional client verification value. If present it must equal the server-derived binding exactly. The server binding is authoritative.
+- `target.provider`: required registered provider identifier.
+- `target.action`: required registered action identifier.
+- `payload`: required provider/action-specific data validated by the registered adapter.
+- `metadata`: optional non-authoritative client context. It must never override server-owned auth, tenant, provider policy, idempotency or binding metadata.
 
-`metadata` is optional and must never participate in the external effect unless a provider adapter explicitly defines a metadata field as effect-bearing.
+A client-supplied `protection` field, if accepted for compatibility, must match the server registration. It cannot change server policy.
 
 ## Response contract
 
@@ -123,7 +138,7 @@ The client must not bypass `BLOCK_UNKNOWN` by inventing a new logical identity f
 ```json
 {
   "decision": "CONFLICT",
-  "state": "CONFIRMED",
+  "state": "UNKNOWN",
   "operation_id": "refund:customer_123:order_456:v1",
   "error": {
     "code": "operation_effect_conflict"
@@ -131,9 +146,13 @@ The client must not bypass `BLOCK_UNKNOWN` by inventing a new logical identity f
 }
 ```
 
-`CONFLICT` means the same logical identity was presented with a different effect binding. No provider mutation is permitted.
+The example state is illustrative. The response returns the stored state, which may be `UNKNOWN` or `CONFIRMED`.
+
+`CONFLICT` means the same tenant-scoped logical identity was presented with a different server-derived effect binding. No provider mutation is permitted.
 
 ### Bypass
+
+`BYPASS` is available only for server-registered harmless routes. A client does not get to classify a consequential provider action as harmless.
 
 ```json
 {
@@ -149,57 +168,101 @@ The client must not bypass `BLOCK_UNKNOWN` by inventing a new logical identity f
 
 HTTP status communicates transport/auth/request validity. Once decisions communicate execution safety state.
 
-Suggested V1 mapping:
-
-- `200` — valid request processed; decision may be `EXECUTE`, `REPLAY_CONFIRMED`, `BLOCK_UNKNOWN`, `CONFLICT`, or `BYPASS`.
-- `400` — malformed JSON or invalid schema.
-- `401` — missing/invalid API key.
+- `200` — valid request processed; decision may be `EXECUTE`, `REPLAY_CONFIRMED`, `BLOCK_UNKNOWN`, `CONFLICT`, or server-authorized `BYPASS`.
+- `400` — malformed JSON, invalid schema, client effect-hash mismatch, or protection-policy mismatch.
+- `401` — missing/invalid/revoked API key.
 - `403` — authenticated tenant is not permitted to use the provider/action or plan feature.
 - `404` — unknown registered provider/action route. This is never evidence that an external effect is absent.
-- `409` — reserved for transport-level request conflicts only; Phase 12C should prefer `200` + `decision: CONFLICT` for semantic operation conflicts so clients have one stable decision contract.
 - `413` — request body exceeds configured limit.
-- `429` — tenant rate limit exceeded before provider execution authority is acquired.
-- `5xx` — gateway infrastructure failed before a safe semantic decision could be returned. Clients must retry with the **same** `operation_id` and `effect_hash`; they must not assume the provider action did or did not happen.
+- `429` — tenant rate limit or logical-operation quota exceeded before provider crossing.
+- `5xx` — gateway infrastructure failed before a safe semantic response could be returned. Clients retry with the **same** logical identity and never assume whether the provider action happened.
 
 ## Authentication and tenant isolation
 
 V1 uses server-issued Once API keys. Raw provider secrets must not be sent in each execution request.
 
-Each authenticated request resolves exactly one `tenant_id` before durable operation state is accessed.
+Each authenticated request resolves exactly one server-owned `tenant_id` before operation state is accessed. The tenant is never accepted from request JSON.
 
-The durable operation key is scoped by tenant:
+The durable operation identity is:
 
 ```text
 (tenant_id, operation_id)
 ```
 
-The same `operation_id` used by two tenants must be completely independent.
+Two tenants using the same `operation_id` are independent.
 
-Provider credentials are also tenant-scoped and stored server-side. They must never appear in logs, metrics, traces, public responses, or operation-state records.
+API-key requirements:
 
-API keys must be stored only as non-reversible verifier material where practical; raw keys are shown only at creation/rotation time.
+- raw keys are shown only at creation/rotation time,
+- only high-entropy server-issued keys are accepted,
+- storage uses non-reversible verifier material,
+- revoked keys fail authentication before operation access,
+- auth failures do not reveal whether an operation exists,
+- raw keys and Authorization headers never enter logs.
 
-## Durable state requirements
+Provider credentials are tenant-scoped and server-side. They must never appear in logs, metrics, traces, public responses, or operation-state records.
+
+## Server-derived effect binding
+
+Each provider/action registration defines a canonicaliser over exactly the fields that can change the real-world effect.
+
+The server derives a binding equivalent to:
+
+```text
+SHA256(
+  binding-domain ||
+  provider ||
+  action ||
+  binding-version ||
+  canonical-effect-payload
+)
+```
+
+The canonicaliser must reject ambiguous/coercible inputs rather than silently normalize unsafe differences.
+
+The registration stores a `binding_version`. Historical operation records preserve the version used when first accepted.
+
+If a client sends `effect_hash`, the server compares it to the derived value before durable state or provider execution. A mismatch is a request error, not a new logical operation.
+
+## Durable state and serialized authority
 
 The hosted implementation replaces the Phase 12A in-memory reference store with durable serialized state suitable for concurrent multi-request access.
 
-For each protected logical operation, storage must preserve at least:
+For each protected operation, preserve at least:
 
 - `tenant_id`
 - `operation_id`
-- `effect_hash`
+- server-derived `effect_hash`
+- `binding_version`
 - `state` (`UNKNOWN` or `CONFIRMED`)
 - registered `provider`
 - registered `action`
+- provider-native operation/idempotency key material or safe reference
 - provider reference when known
 - confirmed result material needed for replay
 - first-attempt timestamp
 - last-attempt timestamp
 - reconciliation timestamp when applicable
 
-The implementation must provide serialized execution authority per `(tenant_id, operation_id)` so concurrent deliveries cannot race into duplicate provider effects.
+Serialized authority is per `(tenant_id, operation_id)`. Concurrent identical deliveries must not race across the provider boundary.
 
-`UNKNOWN` must be durable before crossing the provider boundary.
+`UNKNOWN` must be durably committed before the provider boundary is crossed.
+
+The first implementation slice may use an injected durable key-value backend plus a single-writer authority abstraction in CI. Production/staging wiring must guarantee that the authority and durable record share one serialization domain; process-local locks alone are insufficient across independently active hosts.
+
+## Provider-native idempotency namespace
+
+Provider-native idempotency complements Once and must not create cross-tenant collisions.
+
+A hosted provider key should be derived from server-owned scope, for example:
+
+```text
+provider_key = H(tenant_id, operation_id, provider, action)
+```
+
+The raw tenant ID does not need to be exposed to the provider if a cryptographic digest is used.
+
+The Phase 12B Stripe adapter may retain its local single-tenant fallback, but hosted calls must supply the tenant-scoped provider operation key.
 
 ## Provider registry
 
@@ -212,16 +275,17 @@ stripe / refund.create
 Each registration defines:
 
 - request schema
+- server protection policy (`PROTECT` or explicitly harmless `BYPASS`)
 - effect-bearing fields
-- effect-hash/canonicalisation rules
+- canonicalisation + `binding_version`
 - provider-native idempotency behavior
 - execution method
 - reconciliation method
 - whether authoritative `ABSENT` is possible
 - secret requirements
-- result fields safe to persist/replay
+- safe result fields for persistence/replay
 
-No client-controlled URL, hostname, arbitrary method, arbitrary header set, or arbitrary provider secret may be used to turn the gateway into a generic SSRF/proxy surface.
+No client-controlled URL, hostname, arbitrary method, arbitrary header set, or arbitrary provider secret may turn the gateway into a generic SSRF/proxy surface.
 
 ## Reconciliation rules
 
@@ -234,7 +298,7 @@ reconcile(context) -> CONFIRMED | authoritative ABSENT | UNKNOWN
 
 `UNKNOWN` is never permission to execute again.
 
-A provider adapter may permit a new provider attempt only after returning `ABSENT` with `authoritative: true` for the same logical effect under documented provider consistency semantics.
+A provider adapter permits a new provider attempt only after `ABSENT` with `authoritative: true` for the same server-derived logical effect under documented provider consistency semantics.
 
 Missing local state, cache misses, ordinary 404s, partial listings, failed provider reads, and visibility uncertainty are not authoritative absence.
 
@@ -242,33 +306,30 @@ Missing local state, cache misses, ordinary 404s, partial listings, failed provi
 
 Billing/metering is based on logical protected operations, not raw HTTP attempts.
 
-V1 metering rule:
+One accepted unique protected `(tenant_id, operation_id, effect_hash)` consumes one protected-operation unit **after** auth, authorization, provider/action resolution, schema validation and effect-binding validation succeed.
 
-```text
-one unique protected logical operation accepted for a tenant = one protected-operation unit
-```
-
-Retries, `REPLAY_CONFIRMED`, reconciliation reads, duplicate deliveries and safe replays for the same `(tenant_id, operation_id, effect_hash)` must not multiply protected-operation usage.
+Retries, `REPLAY_CONFIRMED`, reconciliation reads, duplicate deliveries and safe replays do not multiply usage.
 
 `BYPASS` does not consume protected-operation quota.
 
-`CONFLICT` must not create a second protected-operation unit for the same operation identity.
+`CONFLICT` does not create a second unit for the same operation identity.
 
-Metering must be derived from durable logical-operation records, not request counters, so transport retry storms cannot inflate usage.
+Metering derives from durable logical-operation records, not request counters, so transport retry storms cannot inflate usage.
 
 ## Observability and audit
 
-Each request should emit an internal event containing safe identifiers only:
+Each request may emit safe internal fields such as:
 
 - request/trace ID
-- tenant ID or non-sensitive internal tenant reference
-- operation ID
+- non-secret tenant reference
+- operation ID or safe digest
 - effect-hash fingerprint
+- binding version
 - provider/action
 - decision
 - prior/new durable state
 - whether reconciliation ran
-- provider reference if safe
+- safe provider reference
 - latency buckets
 - timestamp
 
@@ -283,51 +344,47 @@ Never log:
 
 Provider payload logging must be opt-in, field-allowlisted and redacted.
 
-## Latency target
-
-The hosted layer should add minimal overhead to ordinary confirmed/replay paths.
-
-Initial engineering target, to be measured rather than claimed:
-
-- durable replay path should avoid provider calls entirely
-- auth + durable lookup + decision overhead should be small relative to normal provider network latency
-- reconciliation latency is provider-dependent and must be reported separately from pure gateway overhead
-
-No public latency claim should be made until measured on the hosted implementation.
-
 ## Rate limiting and abuse controls
 
-Rate limiting must happen before expensive provider work where possible while preserving retry safety.
+Rate limiting should happen before expensive provider work where possible while preserving retry safety.
 
 Limits are tenant-scoped. A rate-limit response must not mutate protected state unless execution authority had already been acquired and the provider boundary may have been crossed.
 
-The gateway must reject oversized requests and unsupported provider/action pairs before provider execution.
+Reject oversized requests, malformed schemas and unsupported provider/action pairs before provider execution.
 
 ## Secret lifecycle
 
-Phase 12C must define provider credential creation, rotation and revocation separately from `/v1/execute`.
+Provider credential creation, rotation and revocation are separate from `/v1/execute`.
 
 Minimum requirements:
 
 - encrypted at rest
 - never returned after initial submission
-- never included in GitHub, client SDK config examples or logs
+- never included in source control, client SDK examples or logs
 - scoped to tenant/provider
 - rotation does not mutate existing logical operation identity
 - revocation fails closed for protected operations that require reconciliation
 
 ## Thin client contract
 
-Framework, SDK and MCP clients should remain thin. They should:
+Clients should:
 
 1. create/reuse the stable logical operation ID,
-2. construct the canonical effect binding,
+2. optionally compute the expected canonical effect hash as a consistency check,
 3. call `/v1/execute`,
 4. preserve the same identity across retries,
 5. obey the returned decision,
 6. never convert `BLOCK_UNKNOWN` into a fresh execution identity.
 
-They should not reimplement the durable state machine.
+Clients do **not** decide the authoritative effect binding or protection policy and do not reimplement the durable state machine.
+
+## Existing runtime integration note
+
+The repository already contains a runtime/evaluation `/v1/execute` path with API-key hashing, tenant-scoped operation IDs, usage records, rate limiting, provider credential encryption and durable SQL state.
+
+Phase 12C should treat those as reusable implementation evidence, not as proof that this V1 contract is already complete. In particular, the new gateway contract requires server-owned provider/action policy, server-derived binding compatible with the Phase 12A/12B gateway core, hosted tenant-scoped provider idempotency, and the exact `EXECUTE / REPLAY_CONFIRMED / BLOCK_UNKNOWN / CONFLICT` semantics.
+
+Do not expose a second competing public `/v1/execute` route. The migration/adapter plan must be explicit before staging.
 
 ## V1 non-goals
 
@@ -345,35 +402,39 @@ Phase 12C V1 does **not** include:
 
 ## Acceptance criteria
 
-Phase 12C is not complete until all of the following are demonstrated:
+Phase 12C is not complete until all are demonstrated:
 
 1. authenticated tenant-scoped `/v1/execute` transport exists in non-production/staging first,
-2. durable multi-request operation state replaces the reference in-memory store,
-3. concurrent identical deliveries produce at most one provider effect under the adapter assumptions,
-4. same logical identity with a different effect hash returns `CONFLICT`,
-5. confirmed operations replay without a second provider call,
-6. an ambiguous provider outcome persists `UNKNOWN` and retries reconcile before re-execution,
-7. provider truth unavailable returns `BLOCK_UNKNOWN`,
-8. Stripe sandbox lost-ack proof passes through the hosted transport, not only the local runner,
-9. tenant A cannot read/replay/affect tenant B operation state,
-10. live-looking provider credentials are rejected in the sandbox/staging environment,
-11. request retry storms do not multiply logical-operation metering,
-12. logs contain no raw Once/provider secrets,
-13. CI contains deterministic transport/auth/tenant-isolation/adversarial retry tests,
-14. no production deployment or live-money enablement occurs without separate explicit approval.
+2. server, not client, owns protection policy,
+3. server recomputes and validates the effect binding,
+4. durable multi-request operation state replaces the reference in-memory store,
+5. concurrent identical deliveries produce at most one provider effect under adapter assumptions,
+6. same logical identity with a different provider/action or effect binding returns `CONFLICT`,
+7. confirmed operations replay without a second provider call,
+8. ambiguous outcome persists `UNKNOWN` and retries reconcile before re-execution,
+9. provider truth unavailable returns `BLOCK_UNKNOWN`,
+10. Stripe sandbox lost-ack proof passes through the hosted transport,
+11. tenant A cannot read/replay/affect tenant B operation state,
+12. provider-native idempotency keys cannot collide merely because two tenants reuse an operation ID,
+13. live-looking provider credentials are rejected in sandbox/staging,
+14. retry storms do not multiply logical-operation metering,
+15. logs contain no raw Once/provider secrets,
+16. CI contains deterministic auth/tenant-isolation/binding/concurrency/adversarial retry tests,
+17. no production deployment or live-money enablement occurs without separate explicit approval.
 
 ## Phase sequence
 
 Recommended implementation order:
 
-1. freeze this transport/auth/tenant contract,
-2. add durable tenant-scoped store and serialized authority,
-3. add request validation + provider registry,
-4. wire the proven Stripe refund adapter,
-5. add metering and audit-safe observability,
-6. run hostile retry/concurrency tests locally,
-7. deploy to staging only after review,
-8. repeat the real Stripe sandbox lost-ack proof through the hosted endpoint,
-9. only then consider production deployment, billing entitlement and additional providers.
+1. freeze and hostile-review this contract,
+2. add auth + tenant-scoped store/authority abstraction and tests,
+3. wire a real durable single-writer backend in the existing runtime/gateway hosting plane,
+4. add provider registry + server canonicalisation,
+5. wire the proven Stripe refund adapter with hosted tenant-scoped provider idempotency,
+6. add metering and audit-safe observability,
+7. run hostile retry/concurrency tests locally,
+8. deploy to staging only after review,
+9. repeat the real Stripe sandbox lost-ack proof through the hosted endpoint,
+10. only then consider production deployment, billing entitlement and additional providers.
 
-Phase 12C should be considered a hosted transport proof first and a commercial production service second. The safety semantics must survive the move from local reference code to networked multi-request operation.
+Phase 12C is a hosted transport proof first and a commercial production service second. The safety semantics must survive the move from local reference code to a networked multi-request boundary.
