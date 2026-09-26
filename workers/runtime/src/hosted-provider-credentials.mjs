@@ -61,6 +61,21 @@ export class RuntimeHostedProviderCredentialStore {
     return requireNonEmptyString(String(tenantId ?? '').trim(), 'tenantId', MAX_TENANT_ID_BYTES);
   }
 
+  hasActiveTenant(tenantId) {
+    const tenant = this.normalizeTenantId(tenantId);
+    const row = sqlRows(
+      this.sql,
+      `
+        SELECT 1 AS present
+        FROM api_keys
+        WHERE customer_id = ? AND revoked_at IS NULL
+        LIMIT 1
+      `,
+      tenant,
+    )[0];
+    return Boolean(row?.present);
+  }
+
   validateStripeTestSecret(secretKey) {
     const secret = requireNonEmptyString(secretKey, 'secretKey', MAX_STRIPE_SECRET_BYTES);
     if (!secret.startsWith('sk_test_')) {
