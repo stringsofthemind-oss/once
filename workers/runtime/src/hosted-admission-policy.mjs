@@ -27,17 +27,17 @@ function utcPeriodKey(nowMs) {
 /**
  * Phase 12D hosted admission policy.
  *
- * This policy is intentionally runtime-local and is NOT wired into the public
- * production execute route by this module alone. It is designed to be injected
- * into HostedGatewayCore before production cutover.
+ * Request-level admission (rate + entitlement) happens after authoritative
+ * effect binding but before adapter construction. Logical-operation metering is
+ * a separate reservation invoked by GatewayCore only after conflict/replay
+ * checks and deterministic provider preflight, immediately before durable
+ * UNKNOWN and the provider boundary.
  *
- * Ordering invariant:
- *   authenticate -> target/schema/binding -> authorize here -> provider boundary
+ * Metering identity is global across billing periods:
+ *   one (tenant_id, operation_id) -> first authoritative effect_hash
  *
- * Metering invariant:
- *   one (tenant_id, operation_id) is reserved once globally, with the first
- *   authoritative effect_hash permanently bound to it. Retries/replays in later
- *   calendar months therefore do not create another billable logical operation.
+ * Retries/reconciliation/replays therefore cannot create a second logical unit,
+ * including when the retry occurs in a later calendar month.
  */
 export class RuntimeHostedAdmissionPolicy {
   constructor({
@@ -66,6 +66,16 @@ export class RuntimeHostedAdmissionPolicy {
 
   initialize() {
     this.sql.exec(`
+      CREATE TABLE IF NOT EXISTS hosted_usage_monthly (
+        tenant_id TEXT NOT NULL,
+        period_key TEXT NOT NULL,
+        used INTEGER NOT NULL DEFAULT 0 CHECK(used >= 0),
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (tenant_id, period_key)
+      )
+    `);
+
+    this.sql.exec(`
       CREATE TABLE IF NOT EXISTS hosted_metered_operations (
         tenant_id TEXT NOT NULL,
         operation_id TEXT NOT NULL,
@@ -76,14 +86,22 @@ export class RuntimeHostedAdmissionPolicy {
       )
     `);
 
+    // Keep meter-row creation and monthly aggregate increment in one SQLite
+    // statement transaction. INSERT OR IGNORE below means this trigger fires
+    // exactly once for each globally unique logical operation.
     this.sql.exec(`
-      CREATE TABLE IF NOT EXISTS hosted_usage_monthly (
-        tenant_id TEXT NOT NULL,
-        period_key TEXT NOT NULL,
-        used INTEGER NOT NULL DEFAULT 0 CHECK(used >= 0),
-        updated_at TEXT NOT NULL,
-        PRIMARY KEY (tenant_id, period_key)
-      )
+      CREATE TRIGGER IF NOT EXISTS hosted_metered_operations_usage_insert
+      AFTER INSERT ON hosted_metered_operations
+      BEGIN
+        INSERT INTO hosted_usage_monthly (
+          tenant_id, period_key, used, updated_at
+        ) VALUES (
+          NEW.tenant_id, NEW.first_period_key, 1, NEW.created_at
+        )
+        ON CONFLICT(tenant_id, period_key) DO UPDATE SET
+          used = hosted_usage_monthly.used + 1,
+          updated_at = excluded.updated_at;
+      END
     `);
 
     this.sql.exec(`
@@ -139,6 +157,23 @@ export class RuntimeHostedAdmissionPolicy {
     return Number(row?.used ?? 0);
   }
 
+  getActivePlan(tenantId) {
+    const entitlement = this.getEntitlement(tenantId);
+    if (!entitlement) throw new HostedGatewayError('entitlement_required', 403);
+
+    const status = String(entitlement.status || '').trim().toLowerCase();
+    if (!ACTIVE_ENTITLEMENT_STATUSES.has(status)) {
+      throw new HostedGatewayError('entitlement_inactive', 403);
+    }
+
+    const plan = String(entitlement.plan || '').trim().toLowerCase();
+    const monthlyLimit = Number(this.planLimits[plan]);
+    if (!Number.isSafeInteger(monthlyLimit) || monthlyLimit < 1) {
+      throw new HostedGatewayError('entitlement_plan_unsupported', 403);
+    }
+    return { plan, monthlyLimit };
+  }
+
   applyRateLimit(tenantId, nowMs) {
     const windowKey = Math.floor(nowMs / 60_000);
     const nowIso = new Date(nowMs).toISOString();
@@ -182,12 +217,32 @@ export class RuntimeHostedAdmissionPolicy {
     };
   }
 
-  async authorize({
-    tenantId,
-    operationId,
-    effectHash,
-    protection,
-  }) {
+  async authorizeRequest({ tenantId, protection }) {
+    requireString(tenantId, 'tenantId');
+
+    const nowMs = Number(this.clock());
+    if (!Number.isFinite(nowMs)) throw new HostedGatewayError('admission_clock_invalid', 500);
+    const rate = this.applyRateLimit(tenantId, nowMs);
+
+    // BYPASS is infrastructure-rate-limited but is not a protected billable
+    // operation. This behavior is intentionally explicit and reviewable.
+    if (protection === 'BYPASS') {
+      return {
+        protection: 'BYPASS',
+        rate,
+      };
+    }
+
+    const { plan, monthlyLimit } = this.getActivePlan(tenantId);
+    return {
+      protection: 'PROTECT',
+      plan,
+      limit: monthlyLimit,
+      rate,
+    };
+  }
+
+  async reserveProtectedOperation({ tenantId, operationId, effectHash }) {
     requireString(tenantId, 'tenantId');
     requireString(operationId, 'operationId');
     requireString(effectHash, 'effectHash');
@@ -195,45 +250,28 @@ export class RuntimeHostedAdmissionPolicy {
     const nowMs = Number(this.clock());
     if (!Number.isFinite(nowMs)) throw new HostedGatewayError('admission_clock_invalid', 500);
 
-    const rate = this.applyRateLimit(tenantId, nowMs);
-
-    if (protection === 'BYPASS') {
-      return {
-        protection: 'BYPASS',
-        metered: false,
-        rate,
-      };
-    }
-
-    const entitlement = this.getEntitlement(tenantId);
-    if (!entitlement) throw new HostedGatewayError('entitlement_required', 403);
-
-    const status = String(entitlement.status || '').trim().toLowerCase();
-    if (!ACTIVE_ENTITLEMENT_STATUSES.has(status)) {
-      throw new HostedGatewayError('entitlement_inactive', 403);
-    }
-
-    const plan = String(entitlement.plan || '').trim().toLowerCase();
-    const monthlyLimit = Number(this.planLimits[plan]);
-    if (!Number.isSafeInteger(monthlyLimit) || monthlyLimit < 1) {
-      throw new HostedGatewayError('entitlement_plan_unsupported', 403);
-    }
+    // Re-read entitlement at the provider-attempt boundary. If a subscription
+    // changed after request admission but before deterministic preflight ended,
+    // execution fails closed rather than crossing under stale authorization.
+    const { plan, monthlyLimit } = this.getActivePlan(tenantId);
 
     const existing = this.getMeteredOperation(tenantId, operationId);
     if (existing) {
       if (String(existing.effect_hash) !== effectHash) {
+        // This can only be reached when a prior meter reservation survived but
+        // its hosted operation record did not (for example, a crash between the
+        // meter sync and UNKNOWN write). Never reuse that accepted identity for
+        // a different effect.
         throw new HostedGatewayError('operation_effect_conflict', 409);
       }
       const firstPeriod = String(existing.first_period_key);
       return {
-        protection: 'PROTECT',
         metered: false,
         replay: true,
         plan,
         limit: monthlyLimit,
         used: this.getMonthlyUsage(tenantId, firstPeriod),
         period: firstPeriod,
-        rate,
       };
     }
 
@@ -249,7 +287,7 @@ export class RuntimeHostedAdmissionPolicy {
     const nowIso = new Date(nowMs).toISOString();
     this.sql.exec(
       `
-        INSERT INTO hosted_metered_operations (
+        INSERT OR IGNORE INTO hosted_metered_operations (
           tenant_id, operation_id, effect_hash, first_period_key, created_at
         ) VALUES (?, ?, ?, ?, ?)
       `,
@@ -260,33 +298,38 @@ export class RuntimeHostedAdmissionPolicy {
       nowIso,
     );
 
-    this.sql.exec(
-      `
-        INSERT INTO hosted_usage_monthly (
-          tenant_id, period_key, used, updated_at
-        ) VALUES (?, ?, 1, ?)
-        ON CONFLICT(tenant_id, period_key) DO UPDATE SET
-          used = hosted_usage_monthly.used + 1,
-          updated_at = excluded.updated_at
-      `,
-      tenantId,
-      periodKey,
-      nowIso,
-    );
+    const inserted = Number(
+      sqlRows(this.sql, 'SELECT changes() AS changes')[0]?.changes ?? 0,
+    ) === 1;
 
-    // The usage reservation is a provider-crossing prerequisite. It must be
-    // durable before execution can continue, just like the UNKNOWN boundary.
+    if (!inserted) {
+      const raced = this.getMeteredOperation(tenantId, operationId);
+      if (!raced) throw new HostedGatewayError('usage_reservation_failed', 500);
+      if (String(raced.effect_hash) !== effectHash) {
+        throw new HostedGatewayError('operation_effect_conflict', 409);
+      }
+      const firstPeriod = String(raced.first_period_key);
+      return {
+        metered: false,
+        replay: true,
+        plan,
+        limit: monthlyLimit,
+        used: this.getMonthlyUsage(tenantId, firstPeriod),
+        period: firstPeriod,
+      };
+    }
+
+    // A newly accepted logical-operation reservation is a provider-crossing
+    // prerequisite. Flush it before GatewayCore may write UNKNOWN or execute.
     await this.storage.sync();
 
     return {
-      protection: 'PROTECT',
       metered: true,
       replay: false,
       plan,
       limit: monthlyLimit,
-      used: used + 1,
+      used: this.getMonthlyUsage(tenantId, periodKey),
       period: periodKey,
-      rate,
     };
   }
 }
