@@ -8,7 +8,7 @@
     "deploy:production": "node ../../scripts/deploy-worker.cjs runtime production",
     "dev": "wrangler dev",
     "start": "wrangler dev",
-    "test": "node --test test/safety.test.mjs test/public-stats-contract.test.mjs test/stripe-checkout.test.mjs && node test/credential-free-lost-ack-proof.mjs"
+    "test": "node --test test/safety.test.mjs test/public-stats-contract.test.mjs test/stripe-checkout.test.mjs test/hosted-gateway-durable.test.mjs test/hosted-gateway-durability-boundary.test.mjs test/hosted-gateway-transport.test.mjs test/hosted-stripe-refund-transport.test.mjs test/hosted-provider-credentials.test.mjs test/hosted-stripe-credential-failure.test.mjs test/hosted-credential-admin.test.mjs && node test/credential-free-lost-ack-proof.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.135.0"

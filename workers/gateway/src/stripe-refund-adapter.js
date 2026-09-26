@@ -2,6 +2,7 @@ import { AmbiguousOutcomeError } from './gateway-core.js';
 
 const STRIPE_API_BASE = 'https://api.stripe.com/v1';
 const MAX_OPERATION_ID_LENGTH = 240;
+const MAX_IDEMPOTENCY_KEY_LENGTH = 255;
 
 function requireString(value, name) {
   if (typeof value !== 'string' || value.length === 0) {
@@ -14,6 +15,18 @@ function requireOperationId(operationId) {
   if (operationId.length > MAX_OPERATION_ID_LENGTH) {
     throw new TypeError(`operationId must be <= ${MAX_OPERATION_ID_LENGTH} characters for Stripe idempotency`);
   }
+}
+
+function resolveIdempotencyKey(operationId, metadata) {
+  requireOperationId(operationId);
+  const hostedKey = metadata?.hosted?.providerOperationKey;
+  const key = typeof hostedKey === 'string' && hostedKey.length > 0
+    ? hostedKey
+    : `once:${operationId}`;
+  if (key.length > MAX_IDEMPOTENCY_KEY_LENGTH) {
+    throw new TypeError(`Stripe idempotency key must be <= ${MAX_IDEMPOTENCY_KEY_LENGTH} characters`);
+  }
+  return key;
 }
 
 function buildRefundBody({ paymentIntent, amount, operationId, effectHash }) {
@@ -67,19 +80,15 @@ export class StripeRefundAdapter {
     this.apiBase = apiBase.replace(/\/$/, '');
   }
 
-  headers(operationId) {
-    const headers = {
+  headers(operationId, metadata) {
+    return {
       authorization: `Bearer ${this.secretKey}`,
       'content-type': 'application/x-www-form-urlencoded',
+      'idempotency-key': resolveIdempotencyKey(operationId, metadata),
     };
-    if (operationId) {
-      requireOperationId(operationId);
-      headers['idempotency-key'] = `once:${operationId}`;
-    }
-    return headers;
   }
 
-  async execute({ operationId, effectHash, payload }) {
+  async execute({ operationId, effectHash, payload, metadata }) {
     requireOperationId(operationId);
     requireString(effectHash, 'effectHash');
 
@@ -87,7 +96,7 @@ export class StripeRefundAdapter {
     try {
       response = await this.fetchImpl(`${this.apiBase}/refunds`, {
         method: 'POST',
-        headers: this.headers(operationId),
+        headers: this.headers(operationId, metadata),
         body: buildRefundBody({ ...payload, operationId, effectHash }),
       });
     } catch {
