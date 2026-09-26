@@ -1,6 +1,8 @@
 import runtime, { Q18Truth as RuntimeQ18Truth } from "./runtime-core.js";
+import { handleStripeCheckout } from "./stripe-checkout.js";
 
 const PUBLIC_STATS_PATH = "/v1/public/stats";
+const STRIPE_CHECKOUT_PATH = "/v1/billing/checkout";
 const INTERNAL_STATS_PATH = "/__once/public/stats";
 const LEDGER_NAME = "once-q18-authoritative-ledger-v1";
 
@@ -54,6 +56,10 @@ export class Q18Truth extends RuntimeQ18Truth {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+
+    if (url.pathname === STRIPE_CHECKOUT_PATH) {
+      return handleStripeCheckout(request, env);
+    }
 
     if (url.pathname === PUBLIC_STATS_PATH) {
       if (request.method === "OPTIONS") {
