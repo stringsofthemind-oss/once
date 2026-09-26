@@ -60,12 +60,21 @@ export class RuntimeHostedApiKeyStore {
  * database used by the existing Once runtime. The JSON record is preserved for
  * replay while safety-critical fields are duplicated into typed columns so
  * corruption or accidental cross-tenant reuse can fail closed.
+ *
+ * Every safety-state write is followed by storage.sync(). In particular, the
+ * UNKNOWN record must be flushed before GatewayCore is allowed to cross the
+ * external provider boundary. This mirrors the older runtime's proven
+ * write-then-sync-before-dispatch rule rather than relying on process timing.
  */
 export class RuntimeHostedOperationStorage {
   constructor({ ctx }) {
     if (!ctx?.storage?.sql?.exec) {
       throw new TypeError('ctx.storage.sql.exec is required');
     }
+    if (typeof ctx.storage.sync !== 'function') {
+      throw new TypeError('ctx.storage.sync is required');
+    }
+    this.durableStorage = ctx.storage;
     this.sql = ctx.storage.sql;
     this.initialize();
   }
@@ -252,6 +261,8 @@ export class RuntimeHostedOperationStorage {
       createdAt,
       updatedAt,
     );
+
+    await this.durableStorage.sync();
   }
 }
 
