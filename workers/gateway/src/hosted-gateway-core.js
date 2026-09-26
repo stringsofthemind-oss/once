@@ -201,6 +201,13 @@ function makeLazyAdapter(createAdapter) {
     return adapterPromise;
   };
   return {
+    async preflight(context) {
+      const adapter = await getAdapter();
+      if (typeof adapter?.preflight === 'function') {
+        return adapter.preflight(context);
+      }
+      return undefined;
+    },
     async execute(context) {
       const adapter = await getAdapter();
       if (typeof adapter?.execute !== 'function') {
