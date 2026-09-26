@@ -1,0 +1,26 @@
+name: Phase 12C live Stripe staging proof
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Default-branch registration stub.
+#
+# GitHub only exposes workflow_dispatch controls when the workflow exists on the
+# repository default branch. The actual proof implementation lives on
+# phase12c/hosted-gateway-transport-contract and must be selected in the Run
+# workflow branch picker. Running this default-branch stub performs no deploy,
+# provider call, billing action, or external write.
+
+jobs:
+  select-phase12c-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Refuse proof from main
+        shell: bash
+        run: |
+          echo "Safety stop: this default-branch file only registers the manual workflow in GitHub Actions."
+          echo "Run it from branch: phase12c/hosted-gateway-transport-contract"
+          exit 1
