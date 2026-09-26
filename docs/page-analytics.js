@@ -59,16 +59,15 @@
   }
 
   // --------------------------------------------------------
-  // ONCE HEARTBEAT MONITOR
+  // ONCE PULSE
   // --------------------------------------------------------
-  // Keep the existing one-second cadence and reduced-motion
-  // policy, but present the Once heartbeat as a monitor trace:
-  // faint red baseline + sharp ECG spike + bright one-second beat.
-  // A real protected-operation increase uses a contrasting cyan
-  // event ripple so heartbeat and usage are visually distinct.
+  // Keep the one-second heartbeat cadence, but show only the
+  // compact pulse mark behind the live counter. The long ECG
+  // baseline is intentionally removed. A real protected-operation
+  // increase still uses the contrasting cyan event ripple.
 
   const heartbeatStyle = document.createElement("style");
-  heartbeatStyle.dataset.onceHeartbeat = "monitor-red-v4";
+  heartbeatStyle.dataset.onceHeartbeat = "pulse-only-v5";
   heartbeatStyle.textContent = `
 .once-network::before{
   width:176px;
@@ -97,36 +96,28 @@
   z-index:0;
   left:50%;
   top:54%;
-  width:min(290px,88%);
+  width:min(112px,42%);
   height:72px;
   transform:translate(-50%,-50%);
   overflow:visible;
   pointer-events:none;
 }
 
-.once-heartbeat-monitor .baseline{
-  fill:none;
-  stroke:rgba(255,48,64,.24);
-  stroke-width:1.35;
-  vector-effect:non-scaling-stroke;
-}
-
 .once-heartbeat-monitor .trace{
   fill:none;
   stroke:#ff3040;
-  stroke-width:2.35;
+  stroke-width:2.6;
   stroke-linecap:round;
   stroke-linejoin:round;
   vector-effect:non-scaling-stroke;
+  transform-origin:center;
   filter:
     drop-shadow(0 0 3px rgba(255,48,64,.95))
     drop-shadow(0 0 8px rgba(255,48,64,.46));
-  stroke-dasharray:78 330;
-  stroke-dashoffset:0;
   animation:
-    once-heartbeat-monitor-sweep
+    once-heartbeat-pulse
     1s
-    linear
+    ease-in-out
     infinite;
 }
 
@@ -168,19 +159,20 @@
   }
 }
 
-@keyframes once-heartbeat-monitor-sweep{
-  from{
-    stroke-dashoffset:0;
+@keyframes once-heartbeat-pulse{
+  0%,100%{
+    opacity:.52;
+    transform:scale(.96);
   }
-  to{
-    stroke-dashoffset:-408;
+  45%{
+    opacity:1;
+    transform:scale(1.04);
   }
 }
 
 @media(prefers-reduced-motion:reduce){
   .once-heartbeat-monitor .trace{
     animation:none;
-    stroke-dasharray:none;
   }
 }
 `;
@@ -199,25 +191,22 @@
     );
 
     svg.setAttribute("class", "once-heartbeat-monitor");
-    svg.setAttribute("viewBox", "0 0 300 72");
+    svg.setAttribute("viewBox", "0 0 112 72");
     svg.setAttribute("aria-hidden", "true");
     svg.setAttribute("focusable", "false");
 
-    const baseline = document.createElementNS(
+    const trace = document.createElementNS(
       "http://www.w3.org/2000/svg",
       "path"
     );
 
-    baseline.setAttribute("class", "baseline");
-    baseline.setAttribute(
+    trace.setAttribute("class", "trace");
+    trace.setAttribute(
       "d",
-      "M0 38 H78 L91 38 L101 29 L111 51 L123 8 L135 61 L149 24 L162 38 H300"
+      "M20 38 L32 29 L43 51 L55 8 L67 61 L80 24 L92 38"
     );
 
-    const trace = baseline.cloneNode();
-    trace.setAttribute("class", "trace");
-
-    svg.append(baseline, trace);
+    svg.append(trace);
     heartbeatHost.prepend(svg);
   }
 
