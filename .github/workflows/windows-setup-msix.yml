@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "apps/once-setup-windows/**"
+      - "apps/once-monitor-windows/**"
       - ".github/workflows/windows-setup-msix.yml"
   workflow_dispatch:
 

@@ -49,6 +49,21 @@ internal static class MonitorSelfTest
                 return 3;
             }
 
+            // Construct the real flyout shell so CI catches WinForms startup
+            // regressions (for example unsupported transparent backgrounds)
+            // before a private MSIX reaches a real Windows machine.
+            using var panel = new MonitorPanelForm(
+                new MonitorSettings(),
+                () => Task.CompletedTask,
+                () => Task.FromResult("Doctor self-test"),
+                _ => { },
+                () => { });
+
+            if (panel.ClientSize.Width < 700 || panel.ClientSize.Height < 760)
+            {
+                return 4;
+            }
+
             return 0;
         }
         catch
