@@ -77,7 +77,7 @@ test('enabled staging route requires the configured staging admin bearer token',
   assert.equal((await response.json()).error, 'invalid_admin_token');
 });
 
-test('staging rotate forwards a test secret internally but never reflects it', async () => {
+test('staging rotate forwards a test secret internally but allowlists the outward response', async () => {
   const secretKey = 'sk_test_super_secret_fixture_value';
   let forwardedBody;
   const response = await handleStagingHostedCredentialAdminRequest({
@@ -97,8 +97,12 @@ test('staging rotate forwards a test secret internally but never reflects it', a
           ok: true,
           action: 'rotate',
           tenant_id: 'tenant_a',
+          provider: 'stripe',
+          provider_action: 'refund.create',
           credentials: 'stored_encrypted',
           version_id: 'hpc_fixture',
+          secret_key: secretKey,
+          internal_debug: 'must_not_escape',
         });
       },
     }),
@@ -109,6 +113,7 @@ test('staging rotate forwards a test secret internally but never reflects it', a
   assert.equal(forwardedBody.tenant_id, 'tenant_a');
   const text = await response.text();
   assert.doesNotMatch(text, /sk_test_super_secret_fixture_value/);
+  assert.doesNotMatch(text, /internal_debug|must_not_escape/);
   assert.match(text, /stored_encrypted/);
   assert.equal(response.headers.get('cache-control'), 'no-store');
 });
