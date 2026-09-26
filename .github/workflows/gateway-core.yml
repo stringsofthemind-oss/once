@@ -1,0 +1,31 @@
+name: Gateway core
+
+on:
+  pull_request:
+    paths:
+      - 'workers/gateway/**'
+      - 'docs/GATEWAY_CONTRACT.md'
+      - '.github/workflows/gateway-core.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'workers/gateway/**'
+      - 'docs/GATEWAY_CONTRACT.md'
+      - '.github/workflows/gateway-core.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run isolated gateway adversarial tests
+        working-directory: workers/gateway
+        run: npm test
