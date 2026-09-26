@@ -41,6 +41,19 @@ test('checkout fails closed when Stripe secret is not configured', async () => {
   assert.deepEqual(await response.json(), { error: 'stripe_not_configured' });
 });
 
+test('checkout refuses a live Stripe secret during sandbox-only phase', async () => {
+  const response = await handleStripeCheckout(
+    new Request('https://runtime.test/v1/billing/checkout', { method: 'POST' }),
+    { STRIPE_SECRET_KEY: 'sk_live_example' },
+    async () => {
+      throw new Error('fetch must not run');
+    },
+  );
+
+  assert.equal(response.status, 503);
+  assert.deepEqual(await response.json(), { error: 'stripe_sandbox_key_required' });
+});
+
 test('checkout posts the configured body to Stripe and returns only id and url', async () => {
   let captured;
   const response = await handleStripeCheckout(
@@ -70,6 +83,19 @@ test('checkout posts the configured body to Stripe and returns only id and url',
     id: 'cs_test_123',
     url: 'https://checkout.stripe.com/c/pay/cs_test_123',
   });
+});
+
+test('checkout converts provider network failure into a filtered 502', async () => {
+  const response = await handleStripeCheckout(
+    new Request('https://runtime.test/v1/billing/checkout', { method: 'POST' }),
+    { STRIPE_SECRET_KEY: 'sk_test_example' },
+    async () => {
+      throw new Error('sensitive network detail');
+    },
+  );
+
+  assert.equal(response.status, 502);
+  assert.deepEqual(await response.json(), { error: 'stripe_unavailable' });
 });
 
 test('checkout does not expose Stripe error messages or request details', async () => {
