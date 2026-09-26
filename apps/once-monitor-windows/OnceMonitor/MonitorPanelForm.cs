@@ -9,9 +9,8 @@ internal sealed class MonitorPanelForm : Form
     private readonly Action _copyDiagnostics;
 
     private readonly Panel _content = new();
-    private readonly Label _statusPill = new();
-    private readonly HeartbeatControl _heartbeat = new();
-    private readonly Dictionary<string, Button> _navButtons = new(StringComparer.OrdinalIgnoreCase);
+    private readonly WebsitePill _statusPill = new();
+    private readonly Dictionary<string, WebsiteButton> _navButtons = new(StringComparer.OrdinalIgnoreCase);
 
     private MonitorLoadResult _state = new(null, "Waiting for local Once status.");
     private string _activeView = "Overview";
@@ -31,40 +30,59 @@ internal sealed class MonitorPanelForm : Form
         _copyDiagnostics = copyDiagnostics;
 
         Text = "Once Monitor";
-        BackColor = MonitorTheme.Background;
+        BackColor = MonitorTheme.Border;
         ForeColor = MonitorTheme.Text;
         FormBorderStyle = FormBorderStyle.None;
         ShowInTaskbar = false;
         TopMost = true;
         StartPosition = FormStartPosition.Manual;
-        ClientSize = new Size(430, 650);
-        Padding = new Padding(14);
+        AutoScaleMode = AutoScaleMode.Dpi;
+        AutoScaleDimensions = new SizeF(96F, 96F);
+
+        // Phase 12B deliberately doubles the previous 500 x 620 logical
+        // footprint by area (760 x 820 = ~2x), then clamps to the monitor work
+        // area. This keeps the tray experience substantial without becoming a
+        // full-screen app on smaller displays.
+        ClientSize = new Size(760, 820);
+        MinimumSize = new Size(560, 620);
+        Padding = new Padding(1);
         Font = MonitorTheme.Body;
+
+        var background = new WebsiteBackgroundPanel
+        {
+            Dock = DockStyle.Fill,
+            Padding = new Padding(24, 22, 24, 24),
+            Margin = Padding.Empty,
+        };
 
         var root = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            BackColor = MonitorTheme.Background,
+            BackColor = Color.Transparent,
             ColumnCount = 1,
-            RowCount = 4,
+            RowCount = 3,
             Margin = Padding.Empty,
             Padding = Padding.Empty,
         };
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 78));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 44));
-        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 46));
+        root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 104));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 62));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
         root.Controls.Add(BuildHeader(), 0, 0);
-        root.Controls.Add(_heartbeat, 0, 1);
+        root.Controls.Add(BuildNavigation(), 0, 1);
 
         _content.Dock = DockStyle.Fill;
-        _content.BackColor = MonitorTheme.Background;
-        _content.AutoScroll = true;
+        _content.BackColor = Color.Transparent;
+        _content.AutoScroll = false;
+        _content.Margin = new Padding(0, 18, 0, 0);
         root.Controls.Add(_content, 0, 2);
-        root.Controls.Add(BuildNavigation(), 0, 3);
 
-        Controls.Add(root);
+        background.Controls.Add(root);
+        Controls.Add(background);
+
+        Resize += (_, _) => MonitorTheme.ApplyRoundedRegion(this, 28);
+        HandleCreated += (_, _) => MonitorTheme.ApplyRoundedRegion(this, 28);
 
         Deactivate += (_, _) =>
         {
@@ -77,26 +95,45 @@ internal sealed class MonitorPanelForm : Form
         RenderActiveView();
     }
 
+    // Preserve a native shadow around the borderless rounded flyout.
+    protected override CreateParams CreateParams
+    {
+        get
+        {
+            const int CsDropShadow = 0x00020000;
+            var parameters = base.CreateParams;
+            parameters.ClassStyle |= CsDropShadow;
+            return parameters;
+        }
+    }
+
     internal void ApplyState(MonitorLoadResult state)
     {
         _state = state;
-
         var (text, color) = StatePresentation(state);
-        _statusPill.Text = text;
-        _statusPill.ForeColor = color;
-        _statusPill.BackColor = MonitorTheme.SurfaceRaised;
-
+        _statusPill.Label = text;
+        _statusPill.AccentColor = color;
         RenderActiveView();
     }
 
-    internal void PulseActivity() => _heartbeat.Pulse();
+    // Activity remains represented by the tray icon and optional Windows
+    // notification. The user-facing Monitor panel intentionally has no
+    // heartbeat or decorative pulse animation.
+    internal void PulseActivity()
+    {
+    }
 
     internal void ShowView(string view)
     {
         _activeView = view;
         RenderActiveView();
+
+        if (!Visible)
+        {
+            Show();
+        }
+
         PositionNearTray();
-        Show();
         Activate();
     }
 
@@ -115,98 +152,187 @@ internal sealed class MonitorPanelForm : Form
     {
         var screen = Screen.FromPoint(Cursor.Position);
         var working = screen.WorkingArea;
+
+        // Keep a consistent physical footprint on scaled TVs / high-DPI
+        // monitors. On a 1920x1080-class desktop this settles at 760x820,
+        // approximately twice the area of the Phase 12 flyout.
+        var desiredWidth = Math.Min(760, Math.Max(560, (int)(working.Width * 0.48)));
+        var desiredHeight = Math.Min(820, Math.Max(620, (int)(working.Height * 0.82)));
+        desiredWidth = Math.Min(desiredWidth, Math.Max(360, working.Width - 24));
+        desiredHeight = Math.Min(desiredHeight, Math.Max(480, working.Height - 24));
+
+        Size = new Size(desiredWidth, desiredHeight);
+        MonitorTheme.ApplyRoundedRegion(this, 28);
+
         Location = new Point(
-            Math.Max(working.Left + 8, working.Right - Width - 10),
-            Math.Max(working.Top + 8, working.Bottom - Height - 10));
+            Math.Max(working.Left + 10, working.Right - Width - 12),
+            Math.Max(working.Top + 10, working.Bottom - Height - 12));
+    }
+
+    protected override void OnDpiChanged(DpiChangedEventArgs e)
+    {
+        base.OnDpiChanged(e);
+        if (Visible && IsHandleCreated)
+        {
+            BeginInvoke(new Action(PositionNearTray));
+        }
     }
 
     private Control BuildHeader()
     {
-        var header = new Panel
+        var header = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            BackColor = MonitorTheme.Background,
+            BackColor = Color.Transparent,
+            ColumnCount = 3,
+            RowCount = 1,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty,
         };
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 68));
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 132));
+        header.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
-        var mark = new Label
+        var mark = new WebsitePanel
+        {
+            Radius = 15,
+            FillColor = MonitorTheme.AccentWash,
+            BorderColor = Color.FromArgb(54, 99, 115),
+            BorderWidth = 1f,
+            Size = new Size(54, 54),
+            Anchor = AnchorStyles.Top | AnchorStyles.Left,
+            Margin = new Padding(0, 5, 12, 0),
+            Padding = Padding.Empty,
+        };
+        mark.Controls.Add(new Label
         {
             Text = "1x",
-            ForeColor = MonitorTheme.Accent,
-            BackColor = MonitorTheme.AccentDeep,
-            Font = new Font("Segoe UI Semibold", 12f, FontStyle.Bold),
+            Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter,
-            Location = new Point(0, 4),
-            Size = new Size(42, 42),
+            ForeColor = MonitorTheme.Accent,
+            BackColor = Color.Transparent,
+            Font = new Font("Consolas", 12f, FontStyle.Bold),
+        });
+
+        var identity = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = Color.Transparent,
+            ColumnCount = 1,
+            RowCount = 3,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty,
         };
+        identity.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        identity.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));
+        identity.RowStyles.Add(new RowStyle(SizeType.Absolute, 24));
+        identity.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
         var title = new Label
         {
-            Text = "ONCE",
+            Text = "ONCE MONITOR",
             ForeColor = MonitorTheme.Text,
-            Font = MonitorTheme.Heading,
-            AutoSize = true,
-            Location = new Point(54, 4),
+            BackColor = Color.Transparent,
+            Font = MonitorTheme.Brand,
+            AutoSize = false,
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.BottomLeft,
+            Margin = Padding.Empty,
+        };
+
+        var product = new Label
+        {
+            Text = "AI AGENT EXECUTION SAFETY",
+            ForeColor = MonitorTheme.Accent,
+            BackColor = Color.Transparent,
+            Font = MonitorTheme.Small,
+            AutoSize = false,
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleLeft,
+            Margin = Padding.Empty,
         };
 
         var tagline = new Label
         {
             Text = "THE SAME ACTION SHOULD HAPPEN ONCE.",
             ForeColor = MonitorTheme.Muted,
-            Font = MonitorTheme.Small,
-            AutoSize = true,
-            Location = new Point(55, 34),
+            BackColor = Color.Transparent,
+            Font = new Font("Segoe UI", 8.5f, FontStyle.Regular),
+            AutoSize = false,
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.TopLeft,
+            AutoEllipsis = true,
+            Margin = Padding.Empty,
         };
 
-        _statusPill.Text = "STARTING";
-        _statusPill.ForeColor = MonitorTheme.Muted;
-        _statusPill.BackColor = MonitorTheme.SurfaceRaised;
-        _statusPill.Font = MonitorTheme.Small;
-        _statusPill.TextAlign = ContentAlignment.MiddleCenter;
-        _statusPill.AutoSize = false;
-        _statusPill.Size = new Size(94, 28);
-        _statusPill.Location = new Point(ClientSize.Width - 124, 8);
-        _statusPill.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+        identity.Controls.Add(title, 0, 0);
+        identity.Controls.Add(product, 0, 1);
+        identity.Controls.Add(tagline, 0, 2);
 
-        header.Controls.Add(mark);
-        header.Controls.Add(title);
-        header.Controls.Add(tagline);
-        header.Controls.Add(_statusPill);
+        _statusPill.Label = "STARTING";
+        _statusPill.AccentColor = MonitorTheme.Muted;
+        _statusPill.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+        _statusPill.Margin = new Padding(10, 9, 0, 0);
+
+        header.Controls.Add(mark, 0, 0);
+        header.Controls.Add(identity, 1, 0);
+        header.Controls.Add(_statusPill, 2, 0);
         return header;
     }
 
     private Control BuildNavigation()
     {
-        var nav = new FlowLayoutPanel
+        var shell = new WebsitePanel
         {
             Dock = DockStyle.Fill,
-            FlowDirection = FlowDirection.LeftToRight,
-            WrapContents = false,
-            BackColor = MonitorTheme.Background,
-            Padding = new Padding(0, 5, 0, 0),
+            Radius = 15,
+            FillColor = Color.FromArgb(7, 12, 19),
+            BorderColor = MonitorTheme.Border,
+            BorderWidth = 1f,
+            Padding = new Padding(6),
+            Margin = Padding.Empty,
         };
 
-        foreach (var name in new[] { "Overview", "Tools", "Activity", "Doctor", "Settings" })
+        var nav = new TableLayoutPanel
         {
-            var captured = name;
-            var button = MonitorTheme.Button(name, (_, _) => ShowView(captured));
-            button.Height = 34;
-            button.Width = name == "Overview" ? 78 : 70;
-            button.Padding = Padding.Empty;
-            button.Margin = new Padding(0, 0, 5, 0);
-            _navButtons[name] = button;
-            nav.Controls.Add(button);
+            Dock = DockStyle.Fill,
+            ColumnCount = 5,
+            RowCount = 1,
+            BackColor = Color.Transparent,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty,
+        };
+        nav.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+        for (var index = 0; index < 5; index++)
+        {
+            nav.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
         }
 
-        return nav;
+        var names = new[] { "Overview", "Tools", "Activity", "Doctor", "Settings" };
+        for (var index = 0; index < names.Length; index++)
+        {
+            var name = names[index];
+            var captured = name;
+            var button = MonitorTheme.Button(name, (_, _) => ShowView(captured));
+            button.AutoSize = false;
+            button.Dock = DockStyle.Fill;
+            button.Radius = 10;
+            button.Padding = Padding.Empty;
+            button.Margin = new Padding(index == 0 ? 0 : 3, 0, index == names.Length - 1 ? 0 : 3, 0);
+            _navButtons[name] = button;
+            nav.Controls.Add(button, index, 0);
+        }
+
+        shell.Controls.Add(nav);
+        return shell;
     }
 
     private void RenderActiveView()
     {
         foreach (var pair in _navButtons)
         {
-            pair.Value.ForeColor = pair.Key.Equals(_activeView, StringComparison.OrdinalIgnoreCase)
-                ? MonitorTheme.Accent
-                : MonitorTheme.Text;
+            pair.Value.Active = pair.Key.Equals(_activeView, StringComparison.OrdinalIgnoreCase);
         }
 
         _content.SuspendLayout();
@@ -229,6 +355,7 @@ internal sealed class MonitorPanelForm : Form
     private Control BuildOverviewView()
     {
         var flow = NewVerticalFlow();
+        flow.Controls.Add(SectionHeader("Overview", "Local execution-safety status at a glance."));
 
         if (_state.Snapshot is not { } snapshot)
         {
@@ -239,7 +366,11 @@ internal sealed class MonitorPanelForm : Form
 
             if (string.IsNullOrWhiteSpace(_settings.ProjectDirectory))
             {
-                var openSettings = MonitorTheme.Button("Choose project", (_, _) => ShowView("Settings"));
+                var openSettings = MonitorTheme.Button(
+                    "Choose project",
+                    (_, _) => ShowView("Settings"),
+                    primary: true);
+                openSettings.Margin = new Padding(0, 4, 0, 0);
                 flow.Controls.Add(openSettings);
             }
 
@@ -252,9 +383,9 @@ internal sealed class MonitorPanelForm : Form
 
         flow.Controls.Add(Card(
             "PROTECTION",
-            protectionText + Environment.NewLine +
-            $"Needs attention  {snapshot.Summary.NeedsAttention}" + Environment.NewLine +
-            $"Read-only / generation  {snapshot.Summary.ReadOnly}",
+            protectionText + Environment.NewLine + Environment.NewLine +
+            $"Needs attention   {snapshot.Summary.NeedsAttention}" + Environment.NewLine +
+            $"Read-only / generation   {snapshot.Summary.ReadOnly}",
             snapshot.Summary.NeedsAttention > 0 ? MonitorTheme.Warning : MonitorTheme.Accent));
 
         var frameworks = snapshot.Tools
@@ -264,26 +395,27 @@ internal sealed class MonitorPanelForm : Form
             .ToArray();
 
         var environment =
-            $"Project  {snapshot.Project.Name}{Environment.NewLine}" +
-            $"Tools discovered  {snapshot.Summary.ToolsDiscovered}{Environment.NewLine}" +
-            $"Model-visible  {snapshot.Summary.ModelVisible}{Environment.NewLine}" +
-            $"Configured sources  {snapshot.Summary.ConfiguredSources}";
+            $"Project   {snapshot.Project.Name}{Environment.NewLine}" +
+            $"Tools discovered   {snapshot.Summary.ToolsDiscovered}{Environment.NewLine}" +
+            $"Model-visible   {snapshot.Summary.ModelVisible}{Environment.NewLine}" +
+            $"Configured sources   {snapshot.Summary.ConfiguredSources}";
 
         if (frameworks.Length > 0)
         {
-            environment += Environment.NewLine + "Framework  " + string.Join(", ", frameworks);
+            environment += Environment.NewLine + "Framework   " + string.Join(", ", frameworks);
         }
 
-        flow.Controls.Add(Card("ENVIRONMENT", environment, MonitorTheme.Text));
+        var evidence =
+            $"Execution evidence   {snapshot.Summary.ExecutionEvidence}{Environment.NewLine}" +
+            $"Unknown / review   {snapshot.Summary.Unknown}{Environment.NewLine}" +
+            $"Updated   {snapshot.GeneratedAt.ToLocalTime():HH:mm:ss}";
 
-        flow.Controls.Add(Card(
-            "EVIDENCE",
-            $"Execution evidence  {snapshot.Summary.ExecutionEvidence}{Environment.NewLine}" +
-            $"Unknown / review  {snapshot.Summary.Unknown}{Environment.NewLine}" +
-            $"Updated  {snapshot.GeneratedAt.ToLocalTime():HH:mm:ss}",
-            MonitorTheme.Activity));
+        flow.Controls.Add(TwoCardRow(
+            Card("ENVIRONMENT", environment, MonitorTheme.Text),
+            Card("EVIDENCE", evidence, MonitorTheme.Activity)));
 
         var refresh = MonitorTheme.Button("Refresh now", async (_, _) => await _refreshAsync());
+        refresh.Margin = new Padding(0, 4, 0, 0);
         flow.Controls.Add(refresh);
         return flow;
     }
@@ -291,6 +423,7 @@ internal sealed class MonitorPanelForm : Form
     private Control BuildToolsView()
     {
         var flow = NewVerticalFlow();
+        flow.Controls.Add(SectionHeader("Tools", "Safe local metadata from the current Once Tool Graph."));
 
         if (_state.Snapshot is not { } snapshot)
         {
@@ -298,17 +431,13 @@ internal sealed class MonitorPanelForm : Form
             return flow;
         }
 
-        flow.Controls.Add(MonitorTheme.Label(
-            $"{snapshot.Summary.ToolsDiscovered} discovered tool record(s). Once shows safe metadata only.",
-            muted: true));
-
         foreach (var tool in snapshot.Tools.Take(40))
         {
             var detail =
                 $"{Pretty(tool.EffectClass)} · {tool.ImportanceBand}{Environment.NewLine}" +
-                $"Action  {Pretty(tool.Action)}{Environment.NewLine}" +
-                $"Evidence  {Pretty(tool.EvidenceLevel)}{Environment.NewLine}" +
-                $"Protection  {Pretty(tool.Protection)}";
+                $"Action   {Pretty(tool.Action)}{Environment.NewLine}" +
+                $"Evidence   {Pretty(tool.EvidenceLevel)}{Environment.NewLine}" +
+                $"Protection   {Pretty(tool.Protection)}";
 
             var color = tool.Action is "CRITICAL_GAP" or "PROTECT_PRIORITY"
                 ? MonitorTheme.Warning
@@ -319,11 +448,21 @@ internal sealed class MonitorPanelForm : Form
             flow.Controls.Add(Card(tool.Name, detail, color));
         }
 
-        if (snapshot.Tools.Count > 40)
+        if (snapshot.Tools.Count == 0)
         {
-            flow.Controls.Add(MonitorTheme.Label(
+            flow.Controls.Add(Card(
+                "NO TOOLS OBSERVED",
+                "Once has not discovered a tool record in the selected project yet.",
+                MonitorTheme.Muted));
+        }
+        else if (snapshot.Tools.Count > 40)
+        {
+            var remaining = MonitorTheme.Label(
                 $"{snapshot.Tools.Count - 40} additional tool records are available through Once Doctor.",
-                muted: true));
+                muted: true);
+            remaining.Tag = "stretch";
+            remaining.Margin = new Padding(0, 2, 0, 0);
+            flow.Controls.Add(remaining);
         }
 
         return flow;
@@ -332,6 +471,7 @@ internal sealed class MonitorPanelForm : Form
     private Control BuildActivityView()
     {
         var flow = NewVerticalFlow();
+        flow.Controls.Add(SectionHeader("Activity", "Evidence Once has actually observed — never an invented timeline."));
 
         if (_state.Snapshot is not { } snapshot)
         {
@@ -357,30 +497,64 @@ internal sealed class MonitorPanelForm : Form
 
     private Control BuildDoctorView()
     {
-        var panel = new Panel
+        var root = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            BackColor = MonitorTheme.Background,
+            BackColor = Color.Transparent,
+            ColumnCount = 1,
+            RowCount = 3,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty,
+        };
+        root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 70));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 54));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+
+        root.Controls.Add(SectionHeader("Doctor", "Detailed local, read-only project and tool-safety diagnostics."), 0, 0);
+
+        var actions = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            BackColor = Color.Transparent,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty,
+        };
+
+        var run = MonitorTheme.Button("Run Doctor", (_, _) => { }, primary: true);
+        var copy = MonitorTheme.Button("Copy diagnostics", (_, _) => _copyDiagnostics());
+        run.Margin = new Padding(0, 0, 8, 6);
+        copy.Margin = new Padding(0, 0, 0, 6);
+        actions.Controls.Add(run);
+        actions.Controls.Add(copy);
+
+        var consoleShell = new WebsitePanel
+        {
+            Dock = DockStyle.Fill,
+            Radius = 17,
+            FillColor = Color.FromArgb(6, 11, 17),
+            BorderColor = MonitorTheme.Border,
+            Padding = new Padding(16),
+            Margin = Padding.Empty,
         };
 
         var doctor = new TextBox
         {
             Multiline = true,
             ReadOnly = true,
-            ScrollBars = ScrollBars.Vertical,
+            ScrollBars = ScrollBars.Both,
             WordWrap = false,
-            BackColor = MonitorTheme.Surface,
+            BackColor = Color.FromArgb(6, 11, 17),
             ForeColor = MonitorTheme.Text,
-            BorderStyle = BorderStyle.FixedSingle,
+            BorderStyle = BorderStyle.None,
             Font = MonitorTheme.Mono,
-            Location = new Point(0, 44),
-            Size = new Size(392, 430),
-            Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
+            Dock = DockStyle.Fill,
             Text = "Doctor is local and read-only. Run it when you want a detailed project and tool-safety check.",
         };
+        consoleShell.Controls.Add(doctor);
 
-        var run = MonitorTheme.Button("Run Doctor", (_, _) => { });
-        run.Location = new Point(0, 0);
         run.Click += async (_, _) =>
         {
             run.Enabled = false;
@@ -395,37 +569,77 @@ internal sealed class MonitorPanelForm : Form
             }
         };
 
-        var copy = MonitorTheme.Button("Copy diagnostics", (_, _) => _copyDiagnostics());
-        copy.Location = new Point(112, 0);
-
-        panel.Controls.Add(run);
-        panel.Controls.Add(copy);
-        panel.Controls.Add(doctor);
-        return panel;
+        root.Controls.Add(actions, 0, 1);
+        root.Controls.Add(consoleShell, 0, 2);
+        return root;
     }
 
     private Control BuildSettingsView()
     {
-        var panel = new Panel
-        {
-            Dock = DockStyle.Fill,
-            AutoScroll = true,
-            BackColor = MonitorTheme.Background,
-        };
+        var flow = NewVerticalFlow();
+        flow.Controls.Add(SectionHeader("Settings", "Local Monitor preferences. Protection itself is not controlled here."));
 
-        var projectLabel = MonitorTheme.Label("PROJECT", heading: true);
-        projectLabel.Location = new Point(0, 4);
+        var projectCard = MonitorTheme.Card();
+        projectCard.Tag = "stretch";
+        projectCard.AutoSize = true;
+        projectCard.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+        projectCard.Padding = new Padding(20);
+
+        var projectStack = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            BackColor = Color.Transparent,
+            ColumnCount = 1,
+            RowCount = 3,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty,
+        };
+        projectStack.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        projectStack.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        projectStack.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        projectStack.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        var projectLabel = Kicker("PROJECT");
+        projectLabel.Margin = new Padding(0, 0, 0, 10);
+        projectStack.Controls.Add(projectLabel, 0, 0);
+
+        var projectRow = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            ColumnCount = 2,
+            RowCount = 1,
+            BackColor = Color.Transparent,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty,
+        };
+        projectRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        projectRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 104));
 
         var project = new TextBox
         {
             Text = _settings.ProjectDirectory,
-            BackColor = MonitorTheme.Surface,
+            BackColor = MonitorTheme.SurfaceRaised,
             ForeColor = MonitorTheme.Text,
-            BorderStyle = BorderStyle.FixedSingle,
+            BorderStyle = BorderStyle.None,
             Font = MonitorTheme.Body,
-            Location = new Point(0, 30),
-            Width = 295,
+            Dock = DockStyle.Fill,
+            Margin = Padding.Empty,
         };
+
+        var field = new WebsitePanel
+        {
+            Radius = 12,
+            FillColor = MonitorTheme.SurfaceRaised,
+            BorderColor = MonitorTheme.Border,
+            Height = 44,
+            Dock = DockStyle.Fill,
+            Padding = new Padding(12, 12, 12, 8),
+            Margin = new Padding(0, 0, 10, 0),
+        };
+        field.Controls.Add(project);
 
         var browse = MonitorTheme.Button("Browse", (_, _) =>
         {
@@ -451,36 +665,75 @@ internal sealed class MonitorPanelForm : Form
                 Activate();
             }
         });
-        browse.Location = new Point(304, 26);
-        browse.Width = 86;
+        browse.AutoSize = false;
+        browse.Dock = DockStyle.Fill;
+        browse.Margin = Padding.Empty;
 
-        var start = CheckBox("Start Once Monitor with Windows", _settings.StartWithWindows, 78);
-        var notifications = CheckBox("Enable meaningful Windows notifications", _settings.NotificationsEnabled, 112);
-        var attention = CheckBox("Notify when tool safety needs attention", _settings.AttentionNotifications, 146);
-        var activity = CheckBox("Notify on observed protection activity", _settings.ActivityNotifications, 180);
-        var discovery = CheckBox("Refresh local discovery automatically", _settings.AutomaticDiscovery, 214);
+        projectRow.Controls.Add(field, 0, 0);
+        projectRow.Controls.Add(browse, 1, 0);
+        projectStack.Controls.Add(projectRow, 0, 1);
+
+        var projectHint = MonitorTheme.Label("Monitor reads this project locally and does not upload source code.", muted: true);
+        projectHint.Margin = new Padding(0, 10, 0, 0);
+        projectStack.Controls.Add(projectHint, 0, 2);
+        projectCard.Controls.Add(projectStack);
+        flow.Controls.Add(projectCard);
+
+        var preferenceCard = MonitorTheme.Card();
+        preferenceCard.Tag = "stretch";
+        preferenceCard.AutoSize = true;
+        preferenceCard.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+
+        var prefs = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+            BackColor = Color.Transparent,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty,
+        };
+        var prefTitle = Kicker("MONITOR PREFERENCES");
+        prefTitle.Margin = new Padding(0, 0, 0, 12);
+        prefs.Controls.Add(prefTitle);
+
+        var start = CheckBox("Start Once Monitor with Windows", _settings.StartWithWindows);
+        var notifications = CheckBox("Enable meaningful Windows notifications", _settings.NotificationsEnabled);
+        var attention = CheckBox("Notify when tool safety needs attention", _settings.AttentionNotifications);
+        var activity = CheckBox("Notify on observed protection activity", _settings.ActivityNotifications);
+        var discovery = CheckBox("Refresh local discovery automatically", _settings.AutomaticDiscovery);
+        prefs.Controls.Add(start);
+        prefs.Controls.Add(notifications);
+        prefs.Controls.Add(attention);
+        prefs.Controls.Add(activity);
+        prefs.Controls.Add(discovery);
 
         var refreshLabel = MonitorTheme.Label("Refresh interval", muted: true);
-        refreshLabel.Location = new Point(0, 256);
+        refreshLabel.Margin = new Padding(0, 10, 0, 5);
+        prefs.Controls.Add(refreshLabel);
 
         var refresh = new ComboBox
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
-            BackColor = MonitorTheme.Surface,
+            FlatStyle = FlatStyle.Flat,
+            BackColor = MonitorTheme.SurfaceRaised,
             ForeColor = MonitorTheme.Text,
             Font = MonitorTheme.Body,
-            Location = new Point(0, 280),
-            Width = 160,
+            Width = 190,
+            Height = 36,
+            Margin = new Padding(0, 0, 0, 14),
         };
         refresh.Items.AddRange(new object[] { "15 seconds", "30 seconds", "60 seconds", "120 seconds" });
-        var index = _settings.RefreshSeconds switch
+        refresh.SelectedIndex = _settings.RefreshSeconds switch
         {
             <= 15 => 0,
             <= 30 => 1,
             <= 60 => 2,
             _ => 3,
         };
-        refresh.SelectedIndex = index;
+        prefs.Controls.Add(refresh);
 
         var save = MonitorTheme.Button("Save settings", async (_, _) =>
         {
@@ -501,86 +754,215 @@ internal sealed class MonitorPanelForm : Form
             _saveSettings(_settings);
             await _refreshAsync();
             ShowView("Overview");
-        });
-        save.Location = new Point(0, 326);
+        }, primary: true);
+        save.Margin = Padding.Empty;
+        prefs.Controls.Add(save);
+        preferenceCard.Controls.Add(prefs);
+        flow.Controls.Add(preferenceCard);
 
-        var privacy = MonitorTheme.Label(
+        flow.Controls.Add(Card(
+            "PRIVACY",
             "Monitor reads a secret-minimal local snapshot. It does not need prompts, tool arguments/results, API keys, credentials, or provider payloads.",
-            muted: true);
-        privacy.Location = new Point(0, 382);
-        privacy.MaximumSize = new Size(390, 0);
+            MonitorTheme.Muted));
 
-        panel.Controls.Add(projectLabel);
-        panel.Controls.Add(project);
-        panel.Controls.Add(browse);
-        panel.Controls.Add(start);
-        panel.Controls.Add(notifications);
-        panel.Controls.Add(attention);
-        panel.Controls.Add(activity);
-        panel.Controls.Add(discovery);
-        panel.Controls.Add(refreshLabel);
-        panel.Controls.Add(refresh);
-        panel.Controls.Add(save);
-        panel.Controls.Add(privacy);
-        return panel;
+        return flow;
     }
 
-    private static CheckBox CheckBox(string text, bool value, int y)
+    private static CheckBox CheckBox(string text, bool value)
     {
         return new CheckBox
         {
             Text = text,
             Checked = value,
             ForeColor = MonitorTheme.Text,
-            BackColor = MonitorTheme.Background,
+            BackColor = Color.Transparent,
             Font = MonitorTheme.Body,
+            FlatStyle = FlatStyle.Flat,
             AutoSize = true,
-            Location = new Point(0, y),
+            Margin = new Padding(0, 0, 0, 9),
+            Padding = new Padding(1, 0, 0, 0),
+        };
+    }
+
+    private static Control SectionHeader(string title, string subtitle)
+    {
+        var block = new TableLayoutPanel
+        {
+            Tag = "stretch",
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 1,
+            RowCount = 2,
+            BackColor = Color.Transparent,
+            Margin = new Padding(0, 0, 0, 16),
+            Padding = Padding.Empty,
+        };
+        block.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        block.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        block.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        var heading = new Label
+        {
+            Text = title,
+            AutoSize = true,
+            ForeColor = MonitorTheme.Text,
+            BackColor = Color.Transparent,
+            Font = MonitorTheme.Heading,
+            Margin = new Padding(0, 0, 0, 4),
+        };
+        var detail = MonitorTheme.Label(subtitle, muted: true);
+        detail.Margin = Padding.Empty;
+        block.Controls.Add(heading, 0, 0);
+        block.Controls.Add(detail, 0, 1);
+        return block;
+    }
+
+    private static Label Kicker(string text)
+    {
+        return new Label
+        {
+            Text = text,
+            AutoSize = true,
+            ForeColor = MonitorTheme.Accent,
+            BackColor = Color.Transparent,
+            Font = MonitorTheme.Small,
         };
     }
 
     private static FlowLayoutPanel NewVerticalFlow()
     {
-        return new FlowLayoutPanel
+        var flow = new FlowLayoutPanel
         {
             Dock = DockStyle.Fill,
             AutoScroll = true,
             FlowDirection = FlowDirection.TopDown,
             WrapContents = false,
-            BackColor = MonitorTheme.Background,
-            Padding = Padding.Empty,
+            BackColor = Color.Transparent,
+            Padding = new Padding(0, 0, 4, 0),
+            Margin = Padding.Empty,
         };
+
+        void ResizeChildren()
+        {
+            var scrollAllowance = flow.VerticalScroll.Visible
+                ? SystemInformation.VerticalScrollBarWidth
+                : 0;
+            var available = Math.Max(
+                300,
+                flow.ClientSize.Width - flow.Padding.Horizontal - scrollAllowance - 6);
+
+            foreach (Control child in flow.Controls)
+            {
+                if (!Equals(child.Tag, "stretch"))
+                {
+                    continue;
+                }
+
+                child.MinimumSize = new Size(available, 0);
+                child.MaximumSize = new Size(available, 0);
+                child.Width = available;
+            }
+        }
+
+        flow.SizeChanged += (_, _) => ResizeChildren();
+        flow.ControlAdded += (_, _) => BeginResize(flow, ResizeChildren);
+        return flow;
     }
 
-    private static Panel Card(string title, string body, Color accent)
+    private static void BeginResize(Control control, Action resize)
     {
-        var card = MonitorTheme.Card();
-        card.Width = 392;
-        card.AutoSize = true;
-        card.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-
-        var stack = new FlowLayoutPanel
+        if (control.IsHandleCreated)
         {
-            FlowDirection = FlowDirection.TopDown,
-            WrapContents = false,
+            control.BeginInvoke(resize);
+            return;
+        }
+
+        EventHandler? created = null;
+        created = (_, _) =>
+        {
+            if (created is not null)
+            {
+                control.HandleCreated -= created;
+            }
+            control.BeginInvoke(resize);
+        };
+        control.HandleCreated += created;
+    }
+
+    private static Control TwoCardRow(Control left, Control right)
+    {
+        left.Tag = null;
+        right.Tag = null;
+        left.Dock = DockStyle.Fill;
+        right.Dock = DockStyle.Fill;
+        left.Margin = new Padding(0, 0, 7, 0);
+        right.Margin = new Padding(7, 0, 0, 0);
+
+        var row = new TableLayoutPanel
+        {
+            Tag = "stretch",
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            BackColor = MonitorTheme.Surface,
+            ColumnCount = 2,
+            RowCount = 1,
+            BackColor = Color.Transparent,
+            Margin = new Padding(0, 0, 0, 14),
+            Padding = Padding.Empty,
+        };
+        row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+        row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+        row.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        row.Controls.Add(left, 0, 0);
+        row.Controls.Add(right, 1, 0);
+        return row;
+    }
+
+    private static Control Card(string title, string body, Color accent)
+    {
+        var card = MonitorTheme.Card();
+        card.Tag = "stretch";
+        card.AutoSize = true;
+        card.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+        card.MinimumSize = new Size(0, 112);
+
+        var stack = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 1,
+            RowCount = 2,
+            BackColor = Color.Transparent,
             Margin = Padding.Empty,
             Padding = Padding.Empty,
-            Width = 366,
+        };
+        stack.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        stack.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        stack.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        var heading = new Label
+        {
+            Text = title,
+            ForeColor = accent,
+            BackColor = Color.Transparent,
+            Font = MonitorTheme.Small,
+            AutoSize = true,
+            Margin = new Padding(0, 0, 0, 12),
         };
 
-        var heading = MonitorTheme.Label(title, heading: true);
-        heading.ForeColor = accent;
-        heading.Margin = new Padding(0, 0, 0, 6);
-
         var detail = MonitorTheme.Label(body);
-        detail.MaximumSize = new Size(360, 0);
         detail.Margin = Padding.Empty;
 
-        stack.Controls.Add(heading);
-        stack.Controls.Add(detail);
+        card.SizeChanged += (_, _) =>
+        {
+            var textWidth = Math.Max(180, card.ClientSize.Width - card.Padding.Horizontal - 2);
+            heading.MaximumSize = new Size(textWidth, 0);
+            detail.MaximumSize = new Size(textWidth, 0);
+            stack.MaximumSize = new Size(textWidth, 0);
+        };
+
+        stack.Controls.Add(heading, 0, 0);
+        stack.Controls.Add(detail, 0, 1);
         card.Controls.Add(stack);
         return card;
     }
