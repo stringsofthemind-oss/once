@@ -1,0 +1,59 @@
+name: Phase 12C staging deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - phase12c/hosted-gateway-transport-contract
+    paths:
+      - .github/workflows/phase12c-staging-deploy.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase12c-staging-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy-staging:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Checkout exact branch head
+        uses: actions/checkout@v4
+        with:
+          ref: phase12c/hosted-gateway-transport-contract
+          persist-credentials: false
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: workers/runtime/package-lock.json
+
+      - name: Install runtime dependencies
+        working-directory: workers/runtime
+        run: npm ci
+
+      - name: Run runtime safety regressions
+        working-directory: workers/runtime
+        run: npm test
+
+      - name: Require Cloudflare staging credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo "CLOUDFLARE_API_TOKEN is not configured"; exit 2; }
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || { echo "CLOUDFLARE_ACCOUNT_ID is not configured"; exit 2; }
+
+      - name: Staging dry-run
+        working-directory: workers/runtime
+        run: npx wrangler deploy --env staging --dry-run
+
+      - name: Deploy isolated staging Worker
+        working-directory: workers/runtime
+        run: npx wrangler deploy --env staging
