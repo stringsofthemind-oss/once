@@ -1,6 +1,7 @@
 import runtime, { Q18Truth as RuntimeQ18Truth } from "./runtime-core.js";
 import { handleStripeCheckout } from "./stripe-checkout.js";
 import { RuntimeHostedGatewayBinding } from "./hosted-gateway-durable.mjs";
+import { RuntimeHostedProviderCredentialStore } from "./hosted-provider-credentials.mjs";
 import {
   handleHostedGatewayInternalRequest,
   INTERNAL_HOSTED_EXECUTE_HOST,
@@ -33,13 +34,24 @@ function publicStatsJson(data, status = 200) {
 }
 
 export class Q18Truth extends RuntimeQ18Truth {
+  getHostedProviderCredentialStore() {
+    if (!this._hostedProviderCredentialStore) {
+      this._hostedProviderCredentialStore = new RuntimeHostedProviderCredentialStore({
+        ctx: this.ctx,
+        encryptConfig: (...args) => this.encryptProviderConfig(...args),
+        decryptConfig: (...args) => this.decryptProviderConfig(...args),
+      });
+    }
+    return this._hostedProviderCredentialStore;
+  }
+
   /**
-   * Phase 12C deliberately does not read one global Stripe secret here. Hosted
-   * provider credentials must resolve by authenticated tenant. Staging wiring
-   * can override this hook with encrypted tenant-scoped credential lookup.
+   * Hosted Stripe credentials resolve only from the authenticated tenant's
+   * encrypted provider credential record. There is deliberately no global
+   * environment-secret fallback on this path.
    */
-  async getHostedStripeRefundSecret() {
-    return null;
+  async getHostedStripeRefundSecret({ tenantId }) {
+    return this.getHostedProviderCredentialStore().getStripeRefundSecret({ tenantId });
   }
 
   getHostedStripeFetch() {
