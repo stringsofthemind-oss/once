@@ -1,6 +1,6 @@
 # Once Hosted Gateway Transport V1 — Phase 12C
 
-Status: contract plus local/CI hosted implementation. **Not deployed.** The new hosted execution path is internal-only and is not a public production endpoint.
+Status: contract plus hosted implementation exercised in **isolated staging** against Stripe sandbox/test mode on 2026-09-26. It is **not deployed to production**, does not expose a public production hosted `/v1/execute`, and does not enable live Stripe.
 
 Phase 12C moves the Phase 12A safety state machine and Phase 12B Stripe reconciliation proof behind a tenant-scoped, durable, framework-neutral transport without weakening their safety rules.
 
@@ -31,13 +31,19 @@ agent / framework / MCP client
     external provider
 ```
 
-Current branch implementation is deliberately narrower:
+Current implementation is deliberately narrower. The authoritative hosted route is internal to `Q18Truth`:
 
 ```text
 POST https://q18.internal/__once/hosted/v1/execute
 ```
 
-That route exists only inside the `Q18Truth` Durable Object. The outer Worker does **not** expose it publicly. This avoids creating a second competing public `/v1/execute` while migration/cutover is still under review.
+For the isolated Phase 12C staging proof only, the outer Worker exposes a guarded bridge:
+
+```text
+POST /__once/staging/hosted/v1/execute
+```
+
+That bridge is absent unless `ONCE_HOSTED_EXECUTE_ENABLED=staging`. There is still no new public production `/v1/execute`; the existing production surface is unchanged while migration/cutover remains under review.
 
 ## Normative trust-boundary rules
 
@@ -64,7 +70,7 @@ Authorization: Bearer <once_api_key>
 Content-Type: application/json
 ```
 
-Current local/CI proof uses the same request body through the internal `q18.internal` route.
+The internal route and staging bridge use the same request body.
 
 Example for the only hosted provider/action currently registered:
 
@@ -250,7 +256,7 @@ Critically, every hosted safety-state write executes a storage durability barrie
 
 ## Stripe refund registration
 
-Only one hosted consequential provider route exists in this Phase 12C branch:
+Only one hosted consequential provider route exists in this Phase 12C implementation:
 
 ```text
 stripe / refund.create
@@ -333,7 +339,7 @@ one (tenant_id, operation_id, effect_hash) = one protected-operation unit
 
 Retries, reconciliation reads, `REPLAY_CONFIRMED` and duplicate deliveries must not multiply usage. `BYPASS` must not consume protected-operation quota. `CONFLICT` must not create a second unit.
 
-**Current Phase 12C branch does not yet wire this metering/entitlement/rate-limit layer into the new internal hosted transport.** The existing legacy runtime has usage/entitlement primitives, but they are not treated as proof that the new hosted contract is complete. This is a production/public-exposure gate, not hidden as completed work.
+**Current Phase 12C implementation does not yet wire this metering/entitlement/rate-limit layer into the new hosted transport.** The existing legacy runtime has usage/entitlement primitives, but they are not treated as proof that the new hosted contract is commercially production-ready. This is a production/public-exposure gate, not hidden as completed work.
 
 ## Observability and secret handling
 
@@ -350,7 +356,7 @@ Never log or persist in ordinary operation telemetry:
 
 The current hosted implementation does not add secret-bearing logs.
 
-## Current local/CI evidence
+## Current evidence
 
 The branch contains deterministic tests for:
 
@@ -376,7 +382,33 @@ The branch contains deterministic tests for:
 - missing master key fail-closed behavior
 - opaque credential-store failure before durable `UNKNOWN`
 
-The hosted Stripe HTTP proof currently uses a deterministic Stripe test double. The independent Phase 12B proof against real Stripe sandbox was completed earlier; a **real Stripe sandbox proof through the new Phase 12C hosted transport remains pending**.
+The real Phase 12C hosted Stripe staging proof also completed successfully against Stripe sandbox/test mode on exact implementation head:
+
+```text
+ef441a213aad4da8440becdef735db3c211080c2
+```
+
+GitHub Actions run `36279225398` passed after **73/73 runtime safety tests**. The isolated staging Worker version was `97639c0a-dd81-4d4d-acaa-cbead9b019da`.
+
+The proof observed:
+
+```text
+first decision:  BLOCK_UNKNOWN
+retry decision:  REPLAY_CONFIRMED
+final decision:  REPLAY_CONFIRMED
+matching Stripe refunds: 1
+livemode: false
+credential disabled after proof: true
+```
+
+The provider commit was allowed to succeed, its acknowledgement was deliberately discarded for the proof operation, and the retry reconciled provider truth rather than blindly executing again. After verification, the tenant Stripe credential was disabled and confirmed replay still succeeded from durable Once state.
+
+Frozen evidence:
+
+- `docs/evidence/gateway/phase12c-hosted-stripe-staging-proof-2026-09-26.md`
+- `docs/evidence/gateway/phase12c-hosted-stripe-staging-proof-2026-09-26.json`
+
+The temporary Actions artifact is also recorded in those evidence files with its ID and SHA-256 digest.
 
 ## Current non-goals / not-yet-complete items
 
@@ -395,19 +427,20 @@ Phase 12C does not currently claim:
 - multi-provider transactions
 - distributed transactions
 
-## Staging gates
+## Staging milestone status
 
-Before a staging-only deployment/proof:
+The staging safety milestone has now demonstrated:
 
-1. exact PR head remains green under Gateway core + Worker CI + runtime dry-run,
-2. final hostile review has no unresolved safety blocker,
-3. configure a staging-only 32-byte provider master key as a platform secret,
-4. separately review/approve a narrow way to provision one tenant's `sk_test_...` credential,
-5. keep the hosted execution route internal or expose only a deliberate staging bridge; do not create a competing production `/v1/execute`,
-6. run the real Stripe sandbox lost-ack proof through the hosted HTTP stack,
-7. verify one refund effect, tenant-scoped idempotency, reconciliation to `REPLAY_CONFIRMED`, and no credential leakage.
+1. tenant-scoped authenticated transport in isolated staging,
+2. server-owned protection and effect binding,
+3. durable serialized state with `UNKNOWN` flushed before provider crossing,
+4. encrypted tenant-scoped Stripe test credentials,
+5. a real Stripe sandbox lost-ack provider commit,
+6. `BLOCK_UNKNOWN -> REPLAY_CONFIRMED` reconciliation,
+7. exactly one matching provider refund for the proof operation/effect binding,
+8. confirmed replay after the tenant provider credential was disabled.
 
-Staging deployment and real provider writes remain separately approval-gated.
+The staging deployment and provider write were explicitly approval-gated. They do not authorize production deployment or live-provider use.
 
 ## Production/public-exposure gates
 
@@ -416,16 +449,16 @@ Before treating Phase 12C as a commercial public hosted gateway:
 1. choose and review the migration/cutover from the existing public runtime `/v1/execute`,
 2. wire tenant entitlement, logical-operation metering and rate limits into the hosted path,
 3. add audit-safe hosted observability and explicit secret-redaction regression coverage,
-4. complete real Stripe sandbox hosted proof,
+4. retain/repeat real Stripe sandbox hosted proof after material runtime/provider changes,
 5. improve Stripe reconciliation pagination/liveness as appropriate,
 6. define provider master-key rotation/recovery procedure,
 7. review credential provisioning/rotation/revocation APIs,
-8. repeat concurrency/crash/adversarial tests in staging,
+8. repeat concurrency/crash/adversarial tests in staging after material changes,
 9. obtain separate explicit approval for any production deployment or live-provider enablement.
 
 ## Acceptance criteria
 
-Phase 12C is complete only when all applicable hosted criteria are demonstrated:
+For the Phase 12C **internal/staging safety milestone**, the applicable acceptance criteria are:
 
 1. authenticated tenant-scoped transport exists in non-production/staging first,
 2. server owns protection policy,
@@ -441,9 +474,10 @@ Phase 12C is complete only when all applicable hosted criteria are demonstrated:
 12. provider-native idempotency cannot collide merely because two tenants reuse an operation ID,
 13. live-looking credentials are rejected in sandbox/staging,
 14. Stripe sandbox lost-ack proof passes through the hosted transport,
-15. retry storms do not multiply logical-operation metering,
-16. logs contain no raw Once/provider secrets,
-17. CI covers auth, tenant isolation, binding, concurrency, durability and adversarial retries,
-18. no production deployment or live-money enablement occurs without separate explicit approval.
+15. logs/evidence contain no raw Once/provider secrets,
+16. CI covers auth, tenant isolation, binding, concurrency, durability and adversarial retries,
+17. no production deployment or live-money enablement occurs without separate explicit approval.
+
+Commercial/public acceptance additionally requires the production gates above, including logical-operation metering semantics such that retries, reconciliation and replay do not multiply billable usage.
 
 Phase 12C is a hosted transport safety proof first and a commercial production service second. Safety semantics must survive the move from local reference code to a networked multi-request boundary.
