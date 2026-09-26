@@ -2,11 +2,6 @@ name: Phase 12C staging deploy
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - phase12c/hosted-gateway-transport-contract
-    paths:
-      - .github/workflows/phase12c-staging-deploy.yml
 
 permissions:
   contents: read
