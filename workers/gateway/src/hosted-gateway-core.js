@@ -24,8 +24,27 @@ export class HostedGatewayError extends Error {
 }
 
 export function canonicalJson(value) {
-  if (value === null || typeof value !== 'object') return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map((item) => canonicalJson(item)).join(',')}]`;
+  if (value === null) return 'null';
+
+  const type = typeof value;
+  if (type === 'string' || type === 'boolean') return JSON.stringify(value);
+  if (type === 'number') {
+    if (!Number.isFinite(value)) throw new TypeError('canonical effect contains a non-finite number');
+    return JSON.stringify(value);
+  }
+  if (type !== 'object') {
+    throw new TypeError(`canonical effect contains unsupported ${type} value`);
+  }
+
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => canonicalJson(item)).join(',')}]`;
+  }
+
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) {
+    throw new TypeError('canonical effect must contain plain objects only');
+  }
+
   const keys = Object.keys(value).sort();
   return `{${keys.map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`).join(',')}}`;
 }
@@ -122,7 +141,7 @@ export class KeyedSerialAuthority {
 }
 
 export class TenantScopedOperationStore {
-  constructor({ tenantId, storage, authority }) {
+  constructor({ tenantId, storage, authority, recordContext = {} }) {
     requireString(tenantId, 'tenantId');
     if (!storage?.get || !storage?.put) {
       throw new TypeError('storage must implement get/put');
@@ -133,6 +152,7 @@ export class TenantScopedOperationStore {
     this.tenantId = tenantId;
     this.storage = storage;
     this.authority = authority;
+    this.recordContext = structuredClone(recordContext);
   }
 
   async key(operationId) {
@@ -152,7 +172,11 @@ export class TenantScopedOperationStore {
 
   async put(operationId, record) {
     const key = await this.key(operationId);
-    await this.storage.put(key, structuredClone(record));
+    await this.storage.put(key, {
+      tenantId: this.tenantId,
+      ...structuredClone(this.recordContext),
+      ...structuredClone(record),
+    });
   }
 }
 
@@ -168,6 +192,30 @@ function validateTarget(target) {
   requireObject(target, 'target');
   requireString(target.provider, 'target.provider');
   requireString(target.action, 'target.action');
+}
+
+function makeLazyAdapter(createAdapter) {
+  let adapterPromise;
+  const getAdapter = async () => {
+    if (!adapterPromise) adapterPromise = Promise.resolve().then(createAdapter);
+    return adapterPromise;
+  };
+  return {
+    async execute(context) {
+      const adapter = await getAdapter();
+      if (typeof adapter?.execute !== 'function') {
+        throw new HostedGatewayError('provider_registration_invalid', 500);
+      }
+      return adapter.execute(context);
+    },
+    async reconcile(context) {
+      const adapter = await getAdapter();
+      if (typeof adapter?.reconcile !== 'function') {
+        throw new HostedGatewayError('provider_registration_invalid', 500);
+      }
+      return adapter.reconcile(context);
+    },
+  };
 }
 
 export class HostedGatewayCore {
@@ -240,13 +288,6 @@ export class HostedGatewayCore {
       action,
     });
 
-    const adapter = await registration.createAdapter({
-      tenantId: principal.tenantId,
-      provider,
-      action,
-      providerOperationKey,
-    });
-
     const metadata = {
       ...(body.metadata && typeof body.metadata === 'object' && !Array.isArray(body.metadata)
         ? body.metadata
@@ -264,8 +305,21 @@ export class HostedGatewayCore {
       tenantId: principal.tenantId,
       storage: this.storage,
       authority: this.authority,
+      recordContext: {
+        provider,
+        action,
+        bindingVersion,
+        providerOperationKey,
+      },
     });
     const gateway = new GatewayCore({ store, ...(this.clock ? { clock: this.clock } : {}) });
+
+    const adapter = makeLazyAdapter(() => registration.createAdapter({
+      tenantId: principal.tenantId,
+      provider,
+      action,
+      providerOperationKey,
+    }));
 
     const result = await gateway.execute(
       {
@@ -284,7 +338,6 @@ export class HostedGatewayCore {
       effectHash,
       provider,
       action,
-      tenantId: principal.tenantId,
     };
   }
 }
