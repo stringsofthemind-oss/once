@@ -62,14 +62,25 @@ export async function handleStripeCheckout(request, env, fetchImpl = fetch) {
     return json({ error: 'stripe_not_configured' }, 503, allowedOrigin);
   }
 
-  const response = await fetchImpl(STRIPE_CHECKOUT_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      authorization: `Bearer ${env.STRIPE_SECRET_KEY}`,
-      'content-type': 'application/x-www-form-urlencoded',
-    },
-    body: buildCheckoutSessionBody(),
-  });
+  // This route is intentionally sandbox-only in this phase. Refuse a live key
+  // even if one is accidentally configured.
+  if (!env.STRIPE_SECRET_KEY.startsWith('sk_test_')) {
+    return json({ error: 'stripe_sandbox_key_required' }, 503, allowedOrigin);
+  }
+
+  let response;
+  try {
+    response = await fetchImpl(STRIPE_CHECKOUT_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${env.STRIPE_SECRET_KEY}`,
+        'content-type': 'application/x-www-form-urlencoded',
+      },
+      body: buildCheckoutSessionBody(),
+    });
+  } catch {
+    return json({ error: 'stripe_unavailable' }, 502, allowedOrigin);
+  }
 
   let data;
   try {
