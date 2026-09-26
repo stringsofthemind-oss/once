@@ -77,12 +77,21 @@ export function createHostedStripeRefundResolver({
       },
 
       async createAdapter(context) {
-        const secretKey = await getSecretKey({
-          tenantId,
-          provider,
-          action,
-          providerOperationKey: context.providerOperationKey,
-        });
+        let secretKey;
+        try {
+          secretKey = await getSecretKey({
+            tenantId,
+            provider,
+            action,
+            providerOperationKey: context.providerOperationKey,
+          });
+        } catch {
+          // Credential-store corruption, missing master-key material or a
+          // decryption failure is deterministic infrastructure failure, not
+          // evidence about provider state. Keep the detail server-side and fail
+          // before GatewayCore records a new UNKNOWN boundary.
+          throw new HostedGatewayError('provider_credentials_unavailable', 503);
+        }
 
         if (typeof secretKey !== 'string' || secretKey.length === 0) {
           throw new HostedGatewayError('provider_credentials_unavailable', 503);
