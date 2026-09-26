@@ -227,7 +227,14 @@ function makeLazyAdapter(createAdapter) {
 }
 
 export class HostedGatewayCore {
-  constructor({ authenticator, storage, authority = new KeyedSerialAuthority(), resolveRegistration, clock }) {
+  constructor({
+    authenticator,
+    storage,
+    authority = new KeyedSerialAuthority(),
+    resolveRegistration,
+    admissionPolicy = null,
+    clock,
+  }) {
     if (!authenticator?.authenticate) {
       throw new TypeError('authenticator must implement authenticate');
     }
@@ -237,10 +244,14 @@ export class HostedGatewayCore {
     if (typeof resolveRegistration !== 'function') {
       throw new TypeError('resolveRegistration must be a function');
     }
+    if (admissionPolicy !== null && typeof admissionPolicy?.authorize !== 'function') {
+      throw new TypeError('admissionPolicy must implement authorize');
+    }
     this.authenticator = authenticator;
     this.storage = storage;
     this.authority = authority;
     this.resolveRegistration = resolveRegistration;
+    this.admissionPolicy = admissionPolicy;
     this.clock = clock;
   }
 
@@ -296,6 +307,24 @@ export class HostedGatewayCore {
       action,
     });
 
+    // Phase 12D hook: admission runs only after authentication, target/schema
+    // validation and authoritative effect binding are complete, but before any
+    // provider adapter can be constructed or called. Implementations may enforce
+    // entitlement, request-rate policy and one-per-logical-operation metering.
+    const admission = this.admissionPolicy
+      ? await this.admissionPolicy.authorize({
+          tenantId: principal.tenantId,
+          keyId: principal.keyId,
+          operationId,
+          effectHash,
+          provider,
+          action,
+          bindingVersion,
+          providerOperationKey,
+          protection: serverProtection,
+        })
+      : null;
+
     const metadata = {
       ...(body.metadata && typeof body.metadata === 'object' && !Array.isArray(body.metadata)
         ? body.metadata
@@ -346,6 +375,7 @@ export class HostedGatewayCore {
       effectHash,
       provider,
       action,
+      ...(admission ? { admission } : {}),
     };
   }
 }
