@@ -79,6 +79,27 @@ test('provider truth unavailable stays fail-closed', async () => {
   assert.equal(executeCalls, 1);
 });
 
+test('reconciliation transport failure stays fail-closed', async () => {
+  const gateway = makeGateway();
+  let executeCalls = 0;
+  const adapter = {
+    async execute() {
+      executeCalls += 1;
+      throw new AmbiguousOutcomeError();
+    },
+    async reconcile() {
+      throw new Error('provider status endpoint unavailable');
+    },
+  };
+
+  const request = { operationId: 'email:2', effectHash: 'hash:c2', payload: { to: 'b@example.test' } };
+  await gateway.execute(request, adapter);
+  const retry = await gateway.execute(request, adapter);
+
+  assert.equal(retry.decision, GatewayDecision.BLOCK_UNKNOWN);
+  assert.equal(executeCalls, 1);
+});
+
 test('non-authoritative absence is treated as UNKNOWN', async () => {
   const gateway = makeGateway();
   let executeCalls = 0;
@@ -141,6 +162,42 @@ test('same logical identity with different effect hash is rejected', async () =>
   const conflict = await gateway.execute({ operationId: 'refund:3', effectHash: 'hash:two', payload: { amount: 20 } }, adapter);
 
   assert.equal(conflict.decision, GatewayDecision.CONFLICT);
+  assert.equal(effects, 1);
+});
+
+test('concurrent delivery of the same logical operation produces one provider effect', async () => {
+  const gateway = makeGateway();
+  let effects = 0;
+  let releaseExecution;
+  const executionGate = new Promise((resolve) => {
+    releaseExecution = resolve;
+  });
+  let firstEntered;
+  const firstEnteredGate = new Promise((resolve) => {
+    firstEntered = resolve;
+  });
+
+  const adapter = {
+    async execute() {
+      effects += 1;
+      firstEntered();
+      await executionGate;
+      return { ok: true, providerReference: 'concurrent-1' };
+    },
+    async reconcile() {
+      throw new Error('reconcile should not run after serialized confirmed execution');
+    },
+  };
+
+  const request = { operationId: 'refund:concurrent', effectHash: 'hash:concurrent', payload: { amount: 30 } };
+  const first = gateway.execute(request, adapter);
+  await firstEnteredGate;
+  const second = gateway.execute(request, adapter);
+  releaseExecution();
+
+  const [firstResult, secondResult] = await Promise.all([first, second]);
+  assert.equal(firstResult.decision, GatewayDecision.EXECUTE);
+  assert.equal(secondResult.decision, GatewayDecision.REPLAY_CONFIRMED);
   assert.equal(effects, 1);
 });
 
