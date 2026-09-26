@@ -276,6 +276,7 @@ export class RuntimeHostedGatewayBinding {
   constructor({
     ctx,
     resolveRegistration,
+    admissionPolicy = null,
     allowedPrefixes = ['once_test_', 'once_stage_'],
     clock,
     authority = new KeyedSerialAuthority(),
@@ -296,6 +297,7 @@ export class RuntimeHostedGatewayBinding {
       storage: this.storage,
       authority: this.authority,
       resolveRegistration,
+      ...(admissionPolicy ? { admissionPolicy } : {}),
       ...(clock ? { clock } : {}),
     });
   }
