@@ -244,8 +244,12 @@ export class HostedGatewayCore {
     if (typeof resolveRegistration !== 'function') {
       throw new TypeError('resolveRegistration must be a function');
     }
-    if (admissionPolicy !== null && typeof admissionPolicy?.authorize !== 'function') {
-      throw new TypeError('admissionPolicy must implement authorize');
+    if (
+      admissionPolicy !== null &&
+      (typeof admissionPolicy?.authorizeRequest !== 'function' ||
+        typeof admissionPolicy?.reserveProtectedOperation !== 'function')
+    ) {
+      throw new TypeError('admissionPolicy must implement authorizeRequest/reserveProtectedOperation');
     }
     this.authenticator = authenticator;
     this.storage = storage;
@@ -307,22 +311,25 @@ export class HostedGatewayCore {
       action,
     });
 
-    // Phase 12D hook: admission runs only after authentication, target/schema
-    // validation and authoritative effect binding are complete, but before any
-    // provider adapter can be constructed or called. Implementations may enforce
-    // entitlement, request-rate policy and one-per-logical-operation metering.
-    const admission = this.admissionPolicy
-      ? await this.admissionPolicy.authorize({
-          tenantId: principal.tenantId,
-          keyId: principal.keyId,
-          operationId,
-          effectHash,
-          provider,
-          action,
-          bindingVersion,
-          providerOperationKey,
-          protection: serverProtection,
-        })
+    const admissionContext = {
+      tenantId: principal.tenantId,
+      keyId: principal.keyId,
+      operationId,
+      effectHash,
+      provider,
+      action,
+      bindingVersion,
+      providerOperationKey,
+      protection: serverProtection,
+    };
+
+    // Phase 12D request admission happens after authentication, registered
+    // target/schema validation and authoritative effect binding, but before any
+    // provider adapter is constructed. It is limited to request-level policy
+    // such as entitlement and rate limiting; protected-operation metering is
+    // reserved later, inside the operation lock after deterministic preflight.
+    const requestAdmission = this.admissionPolicy
+      ? await this.admissionPolicy.authorizeRequest(admissionContext)
       : null;
 
     const metadata = {
@@ -349,7 +356,19 @@ export class HostedGatewayCore {
         providerOperationKey,
       },
     });
-    const gateway = new GatewayCore({ store, ...(this.clock ? { clock: this.clock } : {}) });
+
+    let meterReservation = null;
+    const gateway = new GatewayCore({
+      store,
+      ...(this.clock ? { clock: this.clock } : {}),
+      ...(this.admissionPolicy && serverProtection === 'PROTECT'
+        ? {
+            beforeProviderAttempt: async () => {
+              meterReservation = await this.admissionPolicy.reserveProtectedOperation(admissionContext);
+            },
+          }
+        : {}),
+    });
 
     const adapter = makeLazyAdapter(() => registration.createAdapter({
       tenantId: principal.tenantId,
@@ -375,7 +394,14 @@ export class HostedGatewayCore {
       effectHash,
       provider,
       action,
-      ...(admission ? { admission } : {}),
+      ...(requestAdmission || meterReservation
+        ? {
+            admission: {
+              ...(requestAdmission ?? {}),
+              ...(meterReservation ? { meter: meterReservation } : {}),
+            },
+          }
+        : {}),
     };
   }
 }
