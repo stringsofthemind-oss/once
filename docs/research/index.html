@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Once Research — Reliable Execution of Consequential AI Agent Actions</title>
+  <meta name="description" content="A technical paper on logical operation identity, ambiguous outcomes, reconciliation, and safe retry boundaries for consequential AI agent tools.">
+  <link rel="canonical" href="https://onceexec.com/research/">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Reliable Execution of Consequential AI Agent Actions Under Retries and Ambiguous Outcomes">
+  <meta property="og:description" content="A systems paper on ambiguous outcomes, logical operation identity, reconciliation, and safe retries for consequential AI agent tools.">
+  <meta property="og:url" content="https://onceexec.com/research/">
+  <meta name="twitter:card" content="summary">
+  <link rel="stylesheet" href="../styles.css">
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"ScholarlyArticle",
+    "headline":"Reliable Execution of Consequential AI Agent Actions Under Retries and Ambiguous Outcomes",
+    "author":{"@type":"Person","name":"Jamie Oswald","affiliation":{"@type":"Organization","name":"Once Research"}},
+    "datePublished":"2026-09-26",
+    "version":"1.0",
+    "identifier":"https://doi.org/10.5281/zenodo.22969881",
+    "url":"https://onceexec.com/research/",
+    "isPartOf":{"@type":"WebSite","name":"Once","url":"https://onceexec.com/"},
+    "about":["AI agents","execution safety","MCP","idempotency","retry safety","distributed systems","ambiguous outcomes","reconciliation"]
+  }
+  </script>
+  <style>
+    .research-shell{max-width:1040px;margin:0 auto;padding:120px 24px 90px}
+    .research-brand{display:flex;align-items:center;gap:11px;font-weight:780;font-size:20px;letter-spacing:-.035em;margin-bottom:64px}
+    .research-brand .brand-icon{width:37px;height:37px;border-radius:12px;border:1px solid rgba(99,229,255,.28);background:linear-gradient(145deg,rgba(67,215,255,.18),rgba(57,240,160,.12));color:#39f0a0;display:grid;place-items:center;font:800 12px ui-monospace,SFMono-Regular,Menlo,monospace}
+    .research-kicker{color:#39f0a0;font:750 10px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase}
+    .research-title{max-width:980px;margin:18px 0 20px;font-size:clamp(42px,6vw,78px);line-height:.98;letter-spacing:-.055em;color:#f5f8fb}
+    .research-sub{max-width:820px;color:#9fb0bd;line-height:1.7;font-size:16px}
+    .research-meta{display:flex;flex-wrap:wrap;gap:9px;margin:28px 0 52px}
+    .research-chip{border:1px solid rgba(157,189,218,.18);border-radius:999px;padding:8px 12px;color:#9fb0bd;background:rgba(10,17,26,.72);font-size:11px}
+    .research-actions{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 64px}
+    .research-actions a{border:1px solid rgba(157,189,218,.22);border-radius:11px;padding:12px 16px;font-size:12px;font-weight:750}
+    .research-actions a.primary{background:#39f0a0;color:#04110b;border-color:#39f0a0}
+    .research-grid{display:grid;grid-template-columns:1fr 320px;gap:28px;align-items:start}
+    .research-card{border:1px solid rgba(157,189,218,.14);border-radius:22px;background:rgba(8,14,22,.78);padding:28px}
+    .research-card h2{margin:0 0 14px;font-size:24px;color:#edf5f8}
+    .research-card p,.research-card li{color:#93a5b3;line-height:1.75;font-size:14px}
+    .research-card code{color:#c7f8df}
+    .research-cite{font:500 12px/1.75 ui-monospace,SFMono-Regular,Menlo,monospace;color:#a9bac6;white-space:pre-wrap}
+    .research-note{margin-top:28px;color:#718492;font-size:12px;line-height:1.65}
+    .research-footer{margin-top:70px;padding-top:22px;border-top:1px solid rgba(157,189,218,.14);display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;color:#718492;font-size:11px}
+    @media(max-width:820px){.research-grid{grid-template-columns:1fr}.research-shell{padding-top:86px}.research-title{font-size:44px}}
+  </style>
+</head>
+<body>
+  <div class="background-grid"></div>
+  <main class="research-shell">
+    <a class="research-brand" href="/">
+      <span class="brand-icon">1×</span><span>Once</span>
+    </a>
+
+    <div class="research-kicker">Once Research / Technical Paper v1.0</div>
+    <h1 class="research-title">Reliable Execution of Consequential AI Agent Actions Under Retries and Ambiguous Outcomes</h1>
+    <p class="research-sub">A systems paper on logical operation identity, ambiguous outcomes, reconciliation, and safe retry boundaries for consequential AI agent tools.</p>
+
+    <div class="research-meta">
+      <span class="research-chip">Jamie Oswald — Once Research</span>
+      <span class="research-chip">26 September 2026</span>
+      <span class="research-chip">DOI 10.5281/zenodo.22969881</span>
+      <span class="research-chip">CC BY 4.0</span>
+    </div>
+
+    <div class="research-actions">
+      <a class="primary" href="https://doi.org/10.5281/zenodo.22969881" target="_blank" rel="noopener">Read / download on Zenodo</a>
+      <a href="https://github.com/stringsofthemind-oss/once" target="_blank" rel="noopener">Reference implementation</a>
+    </div>
+
+    <div class="research-grid">
+      <article class="research-card">
+        <h2>Abstract</h2>
+        <p>AI agents increasingly invoke tools that create externally visible side effects, including payments, refunds, bookings, messages, account changes, deployments, orders, and other mutations. When a tool invocation crosses a network boundary, a timeout or lost acknowledgement can leave the caller unable to determine whether the external effect occurred. A naive retry may therefore transform a recoverable communications failure into a duplicate real-world action.</p>
+        <p>This paper frames that condition as an ambiguous-outcome execution problem and presents a practical execution-safety model based on stable logical operation identity, effect binding, durable outcome state, conservative handling of <code>UNKNOWN</code> outcomes, and authoritative reconciliation where available.</p>
+        <p>It also describes selective protection: read-only and generation-only tools can remain direct, while consequential mutations are routed through a protection boundary and semantically uncertain tools fail closed.</p>
+        <p>Once is presented as a reference implementation of this model, including same-machine durable protection, MCP/tool discovery, framework integrations, and hostile-retry evidence across multiple agent frameworks.</p>
+        <p>The paper does not claim universal exactly-once execution. Instead, it specifies the conditions under which a one-effect invariant can be demonstrated and the cases that remain dependent on downstream provider guarantees and authoritative reconciliation.</p>
+      </article>
+
+      <aside class="research-card">
+        <h2>Paper record</h2>
+        <p><strong>Type</strong><br>Technical note</p>
+        <p><strong>Version</strong><br>1.0</p>
+        <p><strong>Version DOI</strong><br><a href="https://doi.org/10.5281/zenodo.22969881">10.5281/zenodo.22969881</a></p>
+        <p><strong>All-versions DOI</strong><br><a href="https://doi.org/10.5281/zenodo.22969880">10.5281/zenodo.22969880</a></p>
+        <p><strong>Licence</strong><br>CC BY 4.0</p>
+      </aside>
+    </div>
+
+    <section class="research-card" style="margin-top:28px">
+      <h2>Cite</h2>
+      <div class="research-cite">Oswald, Jamie. (2026). Reliable Execution of Consequential AI Agent Actions Under Retries and Ambiguous Outcomes (Version 1.0). Zenodo. https://doi.org/10.5281/zenodo.22969881</div>
+      <p class="research-note">The version DOI identifies this exact publication. The concept DOI 10.5281/zenodo.22969880 can be used when citing the evolving record across future versions.</p>
+    </section>
+
+    <section class="research-card" style="margin-top:28px">
+      <h2>Implementation and evidence</h2>
+      <ul>
+        <li>Stable logical operation identity separated from retry-attempt identity.</li>
+        <li>Effect binding to detect payload drift across retries.</li>
+        <li>Durable <code>CONFIRMED / ABSENT / UNKNOWN</code> outcome handling.</li>
+        <li>Authoritative provider reconciliation for ambiguous outcomes where supported.</li>
+        <li>Selective <code>DIRECT / PROTECT / BLOCK</code> routing for agent tools.</li>
+        <li>Hostile-retry evidence across LangGraph, CrewAI, and Agno execution models.</li>
+      </ul>
+      <p><a href="https://github.com/stringsofthemind-oss/once">Explore the public Once repository and reproducibility evidence →</a></p>
+    </section>
+
+    <div class="research-footer">
+      <span>Once — AI Agent Execution Safety</span>
+      <span><a href="https://onceexec.com/">onceexec.com</a> · <a href="https://doi.org/10.5281/zenodo.22969881">DOI</a></span>
+    </div>
+  </main>
+</body>
+</html>
