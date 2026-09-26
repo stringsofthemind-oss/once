@@ -27,7 +27,7 @@ function body(amount = 100) {
   };
 }
 
-function registration(events) {
+function registration(events, { preflightError = null } = {}) {
   return {
     protection: 'PROTECT',
     bindingVersion: 'fixture-v1',
@@ -38,6 +38,10 @@ function registration(events) {
     createAdapter() {
       events.push('adapter_construct');
       return {
+        async preflight() {
+          events.push('provider_preflight');
+          if (preflightError) throw preflightError;
+        },
         async execute() {
           events.push('provider_execute');
           return { providerReference: 'effect_1' };
@@ -51,9 +55,24 @@ function registration(events) {
   };
 }
 
-test('admission runs after authoritative effect binding and before adapter/provider construction', async () => {
+function allowPolicy(events, capture = {}) {
+  return {
+    async authorizeRequest(context) {
+      events.push('request_admission');
+      capture.requestContext = context;
+      return { plan: 'pro', limit: 100_000, rate: { remaining: 119 } };
+    },
+    async reserveProtectedOperation(context) {
+      events.push('meter_reserve');
+      capture.meterContext = context;
+      return { metered: true, used: 1, period: '2026-09' };
+    },
+  };
+}
+
+test('request admission precedes adapter construction while meter reservation follows deterministic preflight', async () => {
   const events = [];
-  let admissionContext;
+  const capture = {};
   const core = new HostedGatewayCore({
     authenticator: {
       async authenticate() {
@@ -63,13 +82,7 @@ test('admission runs after authoritative effect binding and before adapter/provi
     },
     storage: new MemoryStorage(),
     resolveRegistration: async () => registration(events),
-    admissionPolicy: {
-      async authorize(context) {
-        events.push('admission');
-        admissionContext = context;
-        return { plan: 'pro', used: 1, limit: 100_000, metered: true };
-      },
-    },
+    admissionPolicy: allowPolicy(events, capture),
   });
 
   const result = await core.execute({ authorization: 'Bearer once_test_a', body: body() });
@@ -77,23 +90,32 @@ test('admission runs after authoritative effect binding and before adapter/provi
   assert.deepEqual(events, [
     'authenticate',
     'canonicalize',
-    'admission',
+    'request_admission',
     'adapter_construct',
+    'provider_preflight',
+    'meter_reserve',
     'provider_execute',
   ]);
-  assert.equal(admissionContext.tenantId, 'tenant_a');
-  assert.equal(admissionContext.operationId, 'op_1');
-  assert.equal(admissionContext.provider, 'fixture');
-  assert.equal(admissionContext.action, 'effect.create');
-  assert.equal(admissionContext.bindingVersion, 'fixture-v1');
-  assert.equal(admissionContext.protection, 'PROTECT');
-  assert.match(admissionContext.effectHash, /^sha256:[a-f0-9]{64}$/);
-  assert.match(admissionContext.providerOperationKey, /^once_hv1_[a-f0-9]{64}$/);
-  assert.deepEqual(result.admission, { plan: 'pro', used: 1, limit: 100_000, metered: true });
+  assert.equal(capture.requestContext.tenantId, 'tenant_a');
+  assert.equal(capture.requestContext.operationId, 'op_1');
+  assert.equal(capture.requestContext.provider, 'fixture');
+  assert.equal(capture.requestContext.action, 'effect.create');
+  assert.equal(capture.requestContext.bindingVersion, 'fixture-v1');
+  assert.equal(capture.requestContext.protection, 'PROTECT');
+  assert.match(capture.requestContext.effectHash, /^sha256:[a-f0-9]{64}$/);
+  assert.match(capture.requestContext.providerOperationKey, /^once_hv1_[a-f0-9]{64}$/);
+  assert.equal(capture.meterContext.effectHash, capture.requestContext.effectHash);
+  assert.deepEqual(result.admission, {
+    plan: 'pro',
+    limit: 100_000,
+    rate: { remaining: 119 },
+    meter: { metered: true, used: 1, period: '2026-09' },
+  });
 });
 
-test('admission denial prevents adapter construction and provider crossing', async () => {
+test('request admission denial prevents adapter construction and provider crossing', async () => {
   const events = [];
+  let reserveCalls = 0;
   const core = new HostedGatewayCore({
     authenticator: {
       async authenticate() {
@@ -104,23 +126,28 @@ test('admission denial prevents adapter construction and provider crossing', asy
     storage: new MemoryStorage(),
     resolveRegistration: async () => registration(events),
     admissionPolicy: {
-      async authorize() {
-        events.push('admission');
-        throw new HostedGatewayError('monthly_limit_exceeded', 429);
+      async authorizeRequest() {
+        events.push('request_admission');
+        throw new HostedGatewayError('entitlement_required', 403);
+      },
+      async reserveProtectedOperation() {
+        reserveCalls += 1;
       },
     },
   });
 
   await assert.rejects(
     core.execute({ authorization: 'Bearer once_test_a', body: body() }),
-    (error) => error instanceof HostedGatewayError && error.code === 'monthly_limit_exceeded',
+    (error) => error instanceof HostedGatewayError && error.code === 'entitlement_required',
   );
-  assert.deepEqual(events, ['authenticate', 'canonicalize', 'admission']);
+  assert.deepEqual(events, ['authenticate', 'canonicalize', 'request_admission']);
+  assert.equal(reserveCalls, 0);
 });
 
-test('effect-hash mismatch is rejected before admission', async () => {
+test('effect-hash mismatch is rejected before request admission', async () => {
   const events = [];
   let admissionCalls = 0;
+  let reserveCalls = 0;
   const canonicalEffect = { resource: 'r1', amount: 100 };
   const wrongHash = await computeHostedEffectHash({
     provider: 'fixture',
@@ -145,8 +172,11 @@ test('effect-hash mismatch is rejected before admission', async () => {
       },
     }),
     admissionPolicy: {
-      async authorize() {
+      async authorizeRequest() {
         admissionCalls += 1;
+      },
+      async reserveProtectedOperation() {
+        reserveCalls += 1;
       },
     },
   });
@@ -159,5 +189,80 @@ test('effect-hash mismatch is rejected before admission', async () => {
     (error) => error instanceof HostedGatewayError && error.code === 'effect_hash_mismatch',
   );
   assert.equal(admissionCalls, 0);
+  assert.equal(reserveCalls, 0);
   assert.deepEqual(events, ['authenticate', 'canonicalize']);
+});
+
+test('deterministic provider preflight failure never reserves a logical-operation meter unit', async () => {
+  const events = [];
+  let reserveCalls = 0;
+  const core = new HostedGatewayCore({
+    authenticator: {
+      async authenticate() {
+        events.push('authenticate');
+        return { tenantId: 'tenant_a', keyId: 'key_a' };
+      },
+    },
+    storage: new MemoryStorage(),
+    resolveRegistration: async () => registration(events, {
+      preflightError: new HostedGatewayError('provider_credentials_unavailable', 503),
+    }),
+    admissionPolicy: {
+      async authorizeRequest() {
+        events.push('request_admission');
+        return { plan: 'pro' };
+      },
+      async reserveProtectedOperation() {
+        reserveCalls += 1;
+      },
+    },
+  });
+
+  await assert.rejects(
+    core.execute({ authorization: 'Bearer once_test_a', body: body() }),
+    (error) => error instanceof HostedGatewayError && error.code === 'provider_credentials_unavailable',
+  );
+  assert.deepEqual(events, [
+    'authenticate',
+    'canonicalize',
+    'request_admission',
+    'adapter_construct',
+    'provider_preflight',
+  ]);
+  assert.equal(reserveCalls, 0);
+});
+
+test('normal effect drift remains semantic CONFLICT and does not reserve another unit', async () => {
+  const events = [];
+  let reserveCalls = 0;
+  const policy = {
+    async authorizeRequest() {
+      events.push('request_admission');
+      return { plan: 'pro' };
+    },
+    async reserveProtectedOperation() {
+      events.push('meter_reserve');
+      reserveCalls += 1;
+      return { metered: reserveCalls === 1 };
+    },
+  };
+  const core = new HostedGatewayCore({
+    authenticator: {
+      async authenticate() {
+        events.push('authenticate');
+        return { tenantId: 'tenant_a', keyId: 'key_a' };
+      },
+    },
+    storage: new MemoryStorage(),
+    resolveRegistration: async () => registration(events),
+    admissionPolicy: policy,
+  });
+
+  const first = await core.execute({ authorization: 'Bearer once_test_a', body: body(100) });
+  assert.equal(first.decision, 'EXECUTE');
+  const conflict = await core.execute({ authorization: 'Bearer once_test_a', body: body(200) });
+  assert.equal(conflict.decision, 'CONFLICT');
+  assert.equal(conflict.state, 'CONFIRMED');
+  assert.equal(reserveCalls, 1);
+  assert.equal(events.filter((event) => event === 'provider_execute').length, 1);
 });
