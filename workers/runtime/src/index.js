@@ -1,6 +1,7 @@
 import runtime, { Q18Truth as RuntimeQ18Truth } from "./runtime-core.js";
 import { handleStripeCheckout } from "./stripe-checkout.js";
 import { RuntimeHostedGatewayBinding } from "./hosted-gateway-durable.mjs";
+import { RuntimeHostedAdmissionPolicy } from "./hosted-admission-policy.mjs";
 import { RuntimeHostedProviderCredentialStore } from "./hosted-provider-credentials.mjs";
 import {
   handleHostedCredentialInternalRequest,
@@ -94,11 +95,24 @@ export class Q18Truth extends RuntimeQ18Truth {
     return this.getHostedStripeRefundResolver()(context);
   }
 
+  getHostedAdmissionPolicy() {
+    // Phase 12D is opt-in while under review. Existing Phase 12C staging/proof
+    // behavior remains unchanged unless this exact non-production gate is set.
+    if (String(this.env?.ONCE_HOSTED_ADMISSION_ENABLED || "") !== "phase12d") {
+      return null;
+    }
+    if (!this._hostedAdmissionPolicy) {
+      this._hostedAdmissionPolicy = new RuntimeHostedAdmissionPolicy({ ctx: this.ctx });
+    }
+    return this._hostedAdmissionPolicy;
+  }
+
   getHostedGatewayBinding() {
     if (!this._hostedGatewayBinding) {
       this._hostedGatewayBinding = new RuntimeHostedGatewayBinding({
         ctx: this.ctx,
         resolveRegistration: (context) => this.resolveHostedGatewayRegistration(context),
+        admissionPolicy: this.getHostedAdmissionPolicy(),
       });
     }
     return this._hostedGatewayBinding;
