@@ -68,6 +68,26 @@ jobs:
         working-directory: workers/runtime
         run: npx wrangler deploy --env staging
 
+      - name: Wait for staging admin binding propagation
+        shell: bash
+        run: |
+          set -euo pipefail
+          ready=0
+          for attempt in $(seq 1 30); do
+            status=$(curl -sS -o /dev/null -w '%{http_code}' \
+              -X POST \
+              -H 'Authorization: Bearer once_admin_stage_readiness_probe_invalid' \
+              -H 'Content-Type: application/json' \
+              --data '{}' \
+              "$STAGING_BASE_URL/__once/staging/hosted/tenants" || true)
+            if [ "$status" = "401" ]; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          test "$ready" = "1" || { echo "staging admin binding did not become ready"; exit 2; }
+
       - name: Run real Stripe sandbox lost-ack proof through hosted HTTP
         id: proof
         shell: bash
@@ -79,6 +99,7 @@ jobs:
           operation_id="phase12c-staging-lostack-$(date +%s)-${RANDOM}"
           echo "::add-mask::$stage_key"
 
+          echo "proof phase: bootstrap tenant"
           bootstrap_payload=$(jq -nc \
             --arg tenant "$tenant" \
             --arg stage_key "$stage_key" \
@@ -94,6 +115,7 @@ jobs:
           test "$(jq -r '.ok' <<<"$bootstrap")" = "true"
           test "$(jq -r '.credentials' <<<"$bootstrap")" = "hash_only"
 
+          echo "proof phase: provision encrypted Stripe test credential"
           credential_payload=$(jq -nc \
             --arg tenant "$tenant" \
             --arg secret "$ONCE_STRIPE_TEST_SECRET" \
@@ -109,6 +131,7 @@ jobs:
           test "$(jq -r '.ok' <<<"$credential")" = "true"
           test "$(jq -r '.credentials' <<<"$credential")" = "stored_encrypted"
 
+          echo "proof phase: create Stripe test PaymentIntent"
           payment_intent=$(curl --fail-with-body -sS \
             -X POST 'https://api.stripe.com/v1/payment_intents' \
             -H "Authorization: Bearer $ONCE_STRIPE_TEST_SECRET" \
@@ -130,6 +153,7 @@ jobs:
             --arg pi "$pi_id" \
             '{operation_id:$operation_id,target:{provider:"stripe",action:"refund.create"},payload:{payment_intent:$pi,amount:100}}')
 
+          echo "proof phase: inject lost acknowledgement through hosted execute"
           first=$(curl --fail-with-body -sS \
             -X POST \
             -H "Authorization: Bearer $stage_key" \
@@ -142,6 +166,7 @@ jobs:
           test "$first_decision" = "BLOCK_UNKNOWN"
           test -n "$effect_hash"
 
+          echo "proof phase: reconcile retry"
           decision=""
           retry='{}'
           for attempt in $(seq 1 12); do
@@ -163,6 +188,7 @@ jobs:
           refund_id=$(jq -r '.result.refundId // .result.providerReference // empty' <<<"$retry")
           test -n "$refund_id"
 
+          echo "proof phase: verify exactly one Stripe refund"
           refunds=$(curl --fail-with-body -sS \
             -G 'https://api.stripe.com/v1/refunds' \
             -H "Authorization: Bearer $ONCE_STRIPE_TEST_SECRET" \
@@ -176,6 +202,7 @@ jobs:
             <<<"$refunds")
           test "$matches" = "1"
 
+          echo "proof phase: disable tenant Stripe credential"
           disable_payload=$(jq -nc --arg tenant "$tenant" '{action:"disable",tenant_id:$tenant}')
           disabled=$(curl --fail-with-body -sS \
             -X POST \
@@ -185,6 +212,7 @@ jobs:
             "$STAGING_BASE_URL/__once/staging/hosted/credentials/stripe-refund")
           test "$(jq -r '.disabled' <<<"$disabled")" = "true"
 
+          echo "proof phase: confirm local replay without provider credential"
           final_replay=$(curl --fail-with-body -sS \
             -X POST \
             -H "Authorization: Bearer $stage_key" \
