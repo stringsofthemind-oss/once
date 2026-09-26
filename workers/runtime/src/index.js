@@ -14,6 +14,18 @@ import {
   INTERNAL_HOSTED_EXECUTE_HOST,
   INTERNAL_HOSTED_EXECUTE_PATH,
 } from "./hosted-gateway-transport.mjs";
+import {
+  handleStagingHostedGatewayRequest,
+  STAGING_HOSTED_EXECUTE_PATH,
+} from "./hosted-staging-execute.mjs";
+import {
+  handleHostedTenantInternalRequest,
+  handleStagingHostedTenantAdminRequest,
+  INTERNAL_HOSTED_TENANT_ADMIN_HOST,
+  INTERNAL_HOSTED_TENANT_ADMIN_PATH,
+  STAGING_HOSTED_TENANT_ADMIN_PATH,
+} from "./hosted-staging-tenant-admin.mjs";
+import { createStagingStripeFetch } from "./hosted-staging-stripe-fault.mjs";
 import { createHostedStripeRefundResolver } from "./hosted-stripe-refund-registration.mjs";
 
 const PUBLIC_STATS_PATH = "/v1/public/stats";
@@ -62,7 +74,10 @@ export class Q18Truth extends RuntimeQ18Truth {
   }
 
   getHostedStripeFetch() {
-    return fetch;
+    if (!this._hostedStripeFetch) {
+      this._hostedStripeFetch = createStagingStripeFetch({ env: this.env, fetchImpl: fetch });
+    }
+    return this._hostedStripeFetch;
   }
 
   getHostedStripeRefundResolver() {
@@ -104,8 +119,15 @@ export class Q18Truth extends RuntimeQ18Truth {
       });
     }
 
-    // Deliberately internal-only: the outer Worker does not expose this route,
-    // and the Durable Object accepts it only on the synthetic q18.internal host.
+    if (
+      url.hostname === INTERNAL_HOSTED_TENANT_ADMIN_HOST &&
+      url.pathname === INTERNAL_HOSTED_TENANT_ADMIN_PATH
+    ) {
+      return handleHostedTenantInternalRequest({ request, ctx: this.ctx });
+    }
+
+    // Deliberately internal-only: the outer Worker reaches this route only
+    // through the staging bridge or future reviewed hosted transport.
     if (
       url.hostname === INTERNAL_HOSTED_EXECUTE_HOST &&
       url.pathname === INTERNAL_HOSTED_EXECUTE_PATH
@@ -146,6 +168,28 @@ export default {
 
     if (url.pathname === STAGING_HOSTED_CREDENTIAL_ADMIN_PATH) {
       return handleStagingHostedCredentialAdminRequest({
+        request,
+        env,
+        getDurableStub: async () => {
+          const id = env.Q18_TRUTH.idFromName(LEDGER_NAME);
+          return env.Q18_TRUTH.get(id);
+        },
+      });
+    }
+
+    if (url.pathname === STAGING_HOSTED_TENANT_ADMIN_PATH) {
+      return handleStagingHostedTenantAdminRequest({
+        request,
+        env,
+        getDurableStub: async () => {
+          const id = env.Q18_TRUTH.idFromName(LEDGER_NAME);
+          return env.Q18_TRUTH.get(id);
+        },
+      });
+    }
+
+    if (url.pathname === STAGING_HOSTED_EXECUTE_PATH) {
+      return handleStagingHostedGatewayRequest({
         request,
         env,
         getDurableStub: async () => {
