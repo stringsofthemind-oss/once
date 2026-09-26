@@ -104,8 +104,11 @@ test('one logical operation is metered once and a later-month replay does not mu
     assert.equal(replay.period, '2026-09');
     assert.equal(syncs, 1);
 
+    const usageRows = store.sql.exec(
+      'SELECT period_key, used FROM hosted_usage_monthly ORDER BY period_key',
+    );
     assert.deepEqual(
-      store.sql.exec('SELECT period_key, used FROM hosted_usage_monthly ORDER BY period_key'),
+      usageRows.map((row) => ({ period_key: String(row.period_key), used: Number(row.used) })),
       [{ period_key: '2026-09', used: 1 }],
     );
     assert.equal(store.sql.exec('SELECT COUNT(*) AS n FROM hosted_metered_operations')[0].n, 1);
