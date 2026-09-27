@@ -90,6 +90,52 @@ test("scoped session fails closed when its durable state path disappears", async
   assert.equal(count(f.effectsPath), 1);
 });
 
+test("in-place state corruption blocks a new effect with a live session", async t => {
+  const f = fixture(t);
+  const session = createLocalProtectionSession(f.statePath);
+  t.after(() => session.close());
+  const run = createRun(f);
+
+  await withLocalProtectionSession(session,
+    () => run({ id: "A", amount: 100 }));
+  assert.equal(count(f.effectsPath), 1);
+
+  // Same pathname/inode, corrupted contents. SQLite itself must reject the
+  // atomic claim before another external effect can run.
+  writeFileSync(f.statePath, "not-a-sqlite-database");
+  await assert.rejects(
+    withLocalProtectionSession(session,
+      () => run({ id: "B", amount: 200 })),
+    error => error instanceof LocalProtectionError && error.code === "STATE_UNAVAILABLE",
+  );
+  assert.equal(count(f.effectsPath), 1);
+});
+
+test("corruption after an external effect cannot cause a blind redispatch", async t => {
+  const f = fixture(t);
+  const session = createLocalProtectionSession(f.statePath);
+  t.after(() => session.close());
+  const run = protectLocal(async input => {
+    addEffect(f.effectsPath, input.amount);
+    // Adversarially corrupt the same live database file after the effect but
+    // before Once can durably confirm its receipt.
+    writeFileSync(f.statePath, "corrupt-after-effect");
+    return { receipt: "ambiguous" };
+  }, {
+    statePath: f.statePath,
+    id: input => input.id,
+    payload: input => ({ amount: input.amount }),
+  });
+
+  await assert.rejects(withLocalProtectionSession(session,
+    () => run({ id: "A", amount: 100 })));
+  assert.equal(count(f.effectsPath), 1);
+
+  await assert.rejects(withLocalProtectionSession(session,
+    () => run({ id: "A", amount: 100 })));
+  assert.equal(count(f.effectsPath), 1);
+});
+
 test("an unrelated scoped session cannot change a protectLocal state path", async t => {
   const f = fixture(t);
   const other = path.join(f.dir, "other.sqlite");
