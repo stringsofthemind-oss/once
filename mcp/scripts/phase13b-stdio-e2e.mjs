@@ -72,7 +72,7 @@ try {
     const values = [];
     for (let i = 0; i < 25; i++) {
       const started = performance.now();
-      await fn();
+      await fn(i);
       values.push(performance.now() - started);
     }
     values.sort((a, b) => a - b);
@@ -160,6 +160,33 @@ try {
     client = undefined;
     proxy = undefined;
     unlinkSync(driftPath);
+  }
+  // Separate state/effects prevent benchmark writes from masking safety counts.
+  const benchEffects = path.join(dir, "benchmark-effects.jsonl");
+  const benchConfig = { ...config,
+    args: [fixture, benchEffects, driftPath],
+    statePath: path.join(dir, "benchmark-state.sqlite") };
+  const benchProxy = await connectStdioProxy(benchConfig);
+  const benchClient = await attach(benchProxy);
+  const directWrite = new Client({ name: "once-write-control", version: "0.0.1" });
+  try {
+    await directWrite.connect(new StdioClientTransport({
+      command: benchConfig.command, args: benchConfig.args,
+    }));
+    const directFirst = await sample(i => directWrite.callTool({
+      name: "create_order",
+      arguments: { operation_id: "direct-" + i, sku: "bench", quantity: 1 },
+    }));
+    const protectedFirst = await sample(i => benchClient.callTool({
+      name: "create_order",
+      arguments: { operation_id: "once-" + i, sku: "bench", quantity: 1 },
+    }));
+    console.log("ONCE PHASE13B FIRST CALL LATENCY MS",
+      JSON.stringify({ directFirst, protectedFirst }));
+  } finally {
+    await directWrite.close();
+    await benchClient.close();
+    await benchProxy.close();
   }
   console.log("ONCE PHASE 13B STDIO PROCESS: PASS");
 } finally {
