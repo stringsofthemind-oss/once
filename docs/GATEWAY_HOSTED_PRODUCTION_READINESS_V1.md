@@ -18,7 +18,10 @@ This branch now contains:
 - allowlisted rate/usage response headers on the internal hosted transport,
 - allowlisted server-side admission audit events,
 - explicit authorization/payload/metadata redaction regressions,
-- hostile recovery tests for the durable meter-sync -> durable UNKNOWN-sync crash window.
+- hostile recovery tests for the durable meter-sync -> durable UNKNOWN-sync crash window,
+- key-version-aware hosted provider credential encryption,
+- controlled current/previous provider master-key rotation,
+- immutable active-credential rewrap under a new master-key version without returning plaintext credentials.
 
 The runtime wiring remains deliberately opt-in behind the exact environment value:
 
@@ -176,6 +179,49 @@ Those defaults are compatibility values, **not a new public pricing commitment**
 
 Production still needs a defined entitlement-freshness policy: webhook ordering, grace periods, current-period end semantics, delayed/corrupt lifecycle updates and recovery procedures are not settled by this slice.
 
+## Provider master-key versioning and recovery
+
+Hosted provider credentials now have an explicit key-version-aware encryption path. Existing version-1 deployments remain compatible when only the original master-key variable is configured:
+
+```text
+ONCE_PROVIDER_MASTER_KEY=<base64 32-byte current key>
+ONCE_PROVIDER_MASTER_KEY_VERSION=1   # optional; defaults to 1
+```
+
+A controlled rollover can temporarily configure one exact previous version beside the new current version:
+
+```text
+ONCE_PROVIDER_MASTER_KEY=<base64 32-byte NEW key>
+ONCE_PROVIDER_MASTER_KEY_VERSION=2
+ONCE_PROVIDER_PREVIOUS_MASTER_KEY=<base64 32-byte OLD key>
+ONCE_PROVIDER_PREVIOUS_MASTER_KEY_VERSION=1
+```
+
+The keyring rules are deliberately strict:
+
+- new ciphertext is always encrypted with the configured current key version;
+- an existing credential row is decrypted only with the key whose version exactly matches that row's durable `key_version`;
+- the runtime never guesses, probes or falls back across arbitrary keys;
+- the previous key and previous version must be configured together;
+- current and previous versions cannot be equal;
+- master keys must decode to exactly 32 bytes;
+- a row whose key version is unavailable fails closed with no provider attempt.
+
+The hosted credential admin path adds `rewrap`. Rewrap is **master-key migration, not provider-credential rotation**. It decrypts the active tenant credential with its exact old key version, encrypts the same provider credential under the current key/version, verifies the new ciphertext, creates a new immutable `provider_versions` row and only then moves the active alias. The old encrypted version remains in immutable history. No plaintext provider secret is returned by the admin response.
+
+A production rollover runbook should use this sequence:
+
+1. configure the new current key/version while retaining the old key as the exact previous version;
+2. verify reads of existing old-version credentials and writes of new-version credentials;
+3. invoke `rewrap` for each active hosted provider credential alias that still references the old version;
+4. verify every active alias now resolves to ciphertext carrying the new `key_version`;
+5. only then remove the previous key/version configuration;
+6. verify old-version active aliases would fail closed rather than silently decrypting with the wrong key.
+
+CI covers old-version read during the overlap window, new-version writes, active credential rewrap, no-op rewrap when already current, successful reads after the previous key is removed once rewrap is complete, fail-closed reads when a required old key is absent, conflicting/incomplete keyring configuration and plaintext non-disclosure.
+
+This branch does **not** automatically rotate any environment secret, bulk-migrate tenants, deploy the keyring, or modify staging/production key material. Actual key rollover remains a separately approval-gated operational event.
+
 ## Rate limiting
 
 Rate limiting is separate from logical-operation metering.
@@ -205,15 +251,18 @@ The response body still excludes the internal admission object. The header path 
 
 ## Exact-head CI evidence
 
-Exact reviewed head before this evidence-only documentation commit:
+The evidence block below will be refreshed after the key-version/rewrap documentation commit receives exact-head CI. The latest reviewed implementation head before this documentation update is:
 
 ```text
-1369b91a0cb0b0a8f83ec32d5109aead9a2f1ab7
+c7896c8ebcc3554ed5b1e95912d0de837614db2e
 ```
 
-- Gateway core #100 / run `36282923607`: **PASS**
-- Worker CI #446 / run `36282923534`: **PASS**
-- runtime suite: **91/91 PASS, 0 failed**
+At that implementation head:
+
+- Gateway core #110 / run `36284055570`: **PASS**
+- runtime Worker job in Worker CI #456 / run `36284055526`: **PASS**
+- runtime suite: **97/97 PASS, 0 failed**
+- provider master-key version/rewrap regressions: **PASS**
 - entitlement lifecycle regressions: **PASS**
 - meter-sync -> UNKNOWN-sync hostile recovery regressions: **PASS**
 - credential-free lost-ack proof: **PASS / exactly one external effect**
@@ -240,6 +289,8 @@ The runtime suite covers, among other existing safety regressions:
 - authorization/API-key, payload and free-form metadata redaction,
 - same-effect recovery from an orphaned meter reservation without double usage,
 - changed-effect failure from an orphaned meter reservation without provider crossing,
+- exact-version provider master-key selection and fail-closed missing-version behavior,
+- immutable hosted credential rewrap under a new current master-key version without plaintext return,
 - the existing credential-free lost-ack proof with exactly one external effect.
 
 ## Claim boundary
@@ -252,6 +303,7 @@ This slice does **not** claim:
 - public `/v1/execute` cutover is complete,
 - Stripe live mode is enabled,
 - production credentials are provisioned,
+- production provider master keys were changed,
 - production deployment has occurred.
 
 It also does not change the core Once claim boundary: Once provides execution-safety semantics under stated assumptions; it does not claim universal exactly-once execution.
@@ -260,7 +312,7 @@ It also does not change the core Once claim boundary: Once provides execution-sa
 
 1. reconcile final commercial plan names/limits with Stripe entitlements,
 2. define production entitlement freshness/lifecycle delivery policy (webhook ordering, grace and stale-state handling),
-3. define provider master-key key-version rotation/recovery,
+3. define and rehearse the approval-gated operational bulk-check/rollover runbook for provider master-key migration,
 4. define rate-limit, meter and audit retention/cleanup policy,
 5. decide commercial treatment of orphaned meter reservations,
 6. decide public BYPASS entitlement policy and replay/reconciliation rate-limit policy,
