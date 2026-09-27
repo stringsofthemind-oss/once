@@ -120,3 +120,7 @@ jobs:
       - name: Run Phase 13B disposable stdio process regression
         working-directory: mcp
         run: node scripts/phase13b-stdio-e2e.mjs
+
+      - name: Run Phase 13C replay catalog fast-path regression
+        working-directory: mcp
+        run: node scripts/phase13c-replay-catalog-e2e.mjs
