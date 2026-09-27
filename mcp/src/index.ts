@@ -10,7 +10,7 @@ import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import * as z from "zod/v4";
 
 const SERVER_NAME = "once-agent";
-const SERVER_VERSION = "0.1.3";
+const SERVER_VERSION = "0.1.4";
 const MAX_OUTPUT_CHARS = 250_000;
 const DEFAULT_TIMEOUT_MS = 120_000;
 
@@ -517,5 +517,16 @@ function createServer(): McpServer {
   return server;
 }
 
-void serveStdio(createServer);
-console.error(`Once MCP ${SERVER_VERSION} running on stdio`);
+if (process.argv[2] === "proxy") {
+  // Keep proxy mode explicit. Helper mode remains the default.
+  const proxyModule = new URL("../scripts/stdio-proxy.mjs", import.meta.url).href;
+  void import(proxyModule)
+    .then(module => module.runProxyCli(process.argv.slice(3)))
+    .catch(error => {
+      console.error(error instanceof Error ? error.message : String(error));
+      process.exitCode = 1;
+    });
+} else {
+  void serveStdio(createServer);
+  console.error(`Once MCP ${SERVER_VERSION} running on stdio`);
+}

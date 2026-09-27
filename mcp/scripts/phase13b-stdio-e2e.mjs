@@ -135,8 +135,8 @@ try {
   try {
     await cli.connect(new StdioClientTransport({
       command: process.execPath,
-      args: [fileURLToPath(new URL("./stdio-proxy.mjs", import.meta.url)),
-        "--config", configPath],
+      args: [fileURLToPath(new URL("../dist/index.js", import.meta.url)),
+        "proxy", "--config", configPath],
     }));
     assert.deepEqual((await cli.listTools()).tools.map(tool => tool.name),
       ["create_order", "read_count"]);
@@ -192,8 +192,8 @@ try {
   try {
     await Promise.all(peerClients.map(peer => peer.connect(new StdioClientTransport({
       command: process.execPath,
-      args: [fileURLToPath(new URL("./stdio-proxy.mjs", import.meta.url)),
-        "--config", configPath],
+      args: [fileURLToPath(new URL("../dist/index.js", import.meta.url)),
+        "proxy", "--config", configPath],
     }))));
     const shared = { name: "create_order",
       arguments: { operation_id: "order-two-processes", sku: "sku-4", quantity: 1 } };
