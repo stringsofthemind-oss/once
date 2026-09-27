@@ -102,6 +102,27 @@ That status is intentionally not an active entitlement, so admission cannot use 
 
 Unsupported Stripe events are durably recorded as ignored and do not mutate entitlement state.
 
+## Safe opt-in and rollback compatibility
+
+The ordering gate can be introduced onto an existing legacy entitlement ledger without assuming that the new ordering table has always existed.
+
+Before a customer has a `hosted_entitlement_event_order` row, an existing `stripe_entitlements.updated_at` is treated as a conservative ordering floor. A first ordered event whose Stripe `event.created` is not strictly newer than that floor is recorded as:
+
+```text
+IGNORED_PRE_ORDERING_BASELINE
+```
+
+It cannot overwrite the existing entitlement and it does not establish new ordering authority. A strictly newer Stripe lifecycle event can then establish the per-customer ordering record.
+
+The ordered path also cooperates with the pre-existing `stripe_events` ledger in both directions:
+
+- if an event ID is already present in legacy `stripe_events`, the ordered path treats it as `LEGACY_ALREADY_PROCESSED` and does not mutate entitlement again;
+- every event durably processed or ignored by the ordered path is also inserted into `stripe_events` with `INSERT OR IGNORE`.
+
+The second rule is deliberate rollback protection. If the ordering gate is later disabled and traffic falls back to the legacy webhook handler, an event already consumed by the ordered path remains a duplicate to the legacy path instead of being applied a second time.
+
+This is migration compatibility, not a claim that the gate has been enabled anywhere. No staging or production lifecycle traffic has been switched by this branch.
+
 ## Lifecycle time and freshness interaction
 
 For an accepted ordered event, `stripe_entitlements.updated_at` is derived from Stripe `event.created`, not local receipt time.
@@ -138,6 +159,8 @@ Therefore:
 
 ## CI coverage
 
+At implementation head `801e26e9786c8b09a6984ab58a7947f3b339590f`, the runtime suite passed **130/130** with zero failures and the credential-free lost-ack proof still ended with exactly one external effect.
+
 The Phase 12D runtime suite covers:
 
 - freshness gate inert unless exact opt-in value is configured,
@@ -151,6 +174,9 @@ The Phase 12D runtime suite covers:
 - unsafe freshness configuration rejected,
 - older active lifecycle event cannot overwrite newer cancellation,
 - duplicate event ID is idempotent,
+- ordered events populate the legacy Stripe event ledger for rollback-safe dedupe,
+- events already processed by the legacy path are duplicates on first ordered handling,
+- an existing legacy entitlement acts as a conservative bootstrap floor until a strictly newer event establishes ordering authority,
 - same-created-second distinct events fail closed as ambiguous,
 - strictly newer lifecycle event resolves ambiguity,
 - accepted `updated_at` derives from Stripe `event.created`,
@@ -158,6 +184,8 @@ The Phase 12D runtime suite covers:
 - ordered webhook gate inert unless exact opt-in value is configured,
 - invalid signature rejected before Durable Object access,
 - verified public webhook forwards only parsed event JSON internally.
+
+Exact-head GitHub Actions for that implementation head were also green: Gateway core #133 and Worker CI #479.
 
 ## Remaining production decisions
 
