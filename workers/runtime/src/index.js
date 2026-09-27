@@ -1,7 +1,7 @@
 import runtime, { Q18Truth as RuntimeQ18Truth } from "./runtime-core.js";
 import { handleStripeCheckout } from "./stripe-checkout.js";
 import { RuntimeHostedGatewayBinding } from "./hosted-gateway-durable.mjs";
-import { RuntimeHostedAdmissionPolicy } from "./hosted-admission-policy.mjs";
+import { createRuntimeHostedAdmissionPolicy } from "./hosted-entitlement-freshness.mjs";
 import { RuntimeHostedProviderCredentialStore } from "./hosted-provider-credentials.mjs";
 import { RuntimeHostedProviderKeyring } from "./hosted-provider-keyring.mjs";
 import {
@@ -122,7 +122,10 @@ export class Q18Truth extends RuntimeQ18Truth {
       return null;
     }
     if (!this._hostedAdmissionPolicy) {
-      this._hostedAdmissionPolicy = new RuntimeHostedAdmissionPolicy({ ctx: this.ctx });
+      this._hostedAdmissionPolicy = createRuntimeHostedAdmissionPolicy({
+        ctx: this.ctx,
+        env: this.env || {},
+      });
     }
     return this._hostedAdmissionPolicy;
   }
