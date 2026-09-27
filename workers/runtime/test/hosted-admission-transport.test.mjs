@@ -364,6 +364,17 @@ test('orphaned durable meter reservation is reused after a crash before UNKNOWN 
     });
     const effectHash = await fixtureEffectHash(100);
 
+    // A real request has already constructed its hosted operation storage by
+    // the time it reaches the meter reservation boundary. Initialize that table
+    // before simulating the crash between meter sync and UNKNOWN write.
+    new RuntimeHostedGatewayBinding({
+      ctx: createContext(store),
+      admissionPolicy: firstPolicy,
+      resolveRegistration: registrationFactory({
+        execute: async () => ({ providerReference: 'never_before_crash' }),
+      }),
+    });
+
     // Simulate the exact crash edge: meter reservation is durable, but the
     // process dies before GatewayCore writes its durable UNKNOWN operation.
     await firstPolicy.authorizeRequest({
@@ -429,6 +440,15 @@ test('orphaned meter reservation fails closed if the logical identity is reused 
       clock,
     });
     const firstEffectHash = await fixtureEffectHash(100);
+
+    new RuntimeHostedGatewayBinding({
+      ctx: createContext(store),
+      admissionPolicy: firstPolicy,
+      resolveRegistration: registrationFactory({
+        execute: async () => ({ providerReference: 'never_before_crash' }),
+      }),
+    });
+
     await firstPolicy.reserveProtectedOperation({
       tenantId,
       operationId,
