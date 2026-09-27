@@ -83,7 +83,12 @@ export async function connectStdioProxy(rawConfig) {
       statePath: resolve(config.statePath),
       overrides: config.tools,
       upstream: {
-        callTool: ({ name, arguments: args }) => upstream.callTool({ name, arguments: args }),
+        async callTool({ name, arguments: args }) {
+          const result = await upstream.callTool({ name, arguments: args });
+          // An MCP isError result may arrive after an external write. Preserve UNKNOWN.
+          if (result.isError) throw new Error("UPSTREAM_TOOL_ERROR: outcome ambiguous");
+          return result;
+        },
       },
     });
     downstream = createMcpProxyServer({ boundary, version: "phase13b" });
@@ -116,9 +121,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
       if (config.cwd) config.cwd = resolve(base, config.cwd);
       const proxy = await connectStdioProxy(config);
       console.error(`Once proxy connected: ${proxy.plan.entries.length} tools`);
-      await serveStdio(proxy.server);
-      process.once("SIGINT", () => void proxy.close());
-      process.once("SIGTERM", () => void proxy.close());
+      const handle = serveStdio(() => proxy.server);
+      proxy.server.server.onclose = () => void proxy.close();
+      process.once("SIGINT", () => void handle.close().finally(() => proxy.close()));
+      process.once("SIGTERM", () => void handle.close().finally(() => proxy.close()));
     } catch (error) {
       console.error(error instanceof Error ? error.message : String(error));
       process.exitCode = 1;
