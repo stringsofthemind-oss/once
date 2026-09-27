@@ -1,3 +1,5 @@
+import { resolveHostedStripePlan } from './hosted-plan-catalog.mjs';
+
 export const HOSTED_ENTITLEMENT_ORDERING_ENABLE_VALUE = 'phase12d';
 export const INTERNAL_HOSTED_ENTITLEMENT_EVENT_HOST = 'q18.internal';
 export const INTERNAL_HOSTED_ENTITLEMENT_EVENT_PATH = '/__once/hosted/v1/stripe-entitlement-event';
@@ -8,12 +10,6 @@ const SUBSCRIPTION_EVENTS = new Set([
   'customer.subscription.updated',
   'customer.subscription.deleted',
 ]);
-
-const PRICE_PLAN_MAP = Object.freeze({
-  price_1UGqPRAHX5spO4zqQcuRzi3S: 'pro',
-  price_1UGqPWAHX5spO4zqWlFeMbwO: 'startup',
-  price_1UGqPfAHX5spO4zqKaLaAINp: 'scale',
-});
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -103,7 +99,7 @@ function subscriptionIdentity(eventType, subscription) {
   const firstItem = subscription?.items?.data?.[0];
   const priceId = String(firstItem?.price?.id || '').trim();
   const metadataPlan = String(subscription?.metadata?.plan || '').trim().toLowerCase();
-  const plan = metadataPlan || PRICE_PLAN_MAP[priceId] || 'unknown';
+  const plan = resolveHostedStripePlan({ priceId, metadataPlan }).plan;
   const status = eventType === 'customer.subscription.deleted'
     ? 'canceled'
     : String(subscription?.status || 'unknown').trim().toLowerCase();
