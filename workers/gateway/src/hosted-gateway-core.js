@@ -62,6 +62,12 @@ export async function deriveTenantOperationKey(tenantId, operationId) {
   return `tenant_v1_${await sha256Hex(`once:tenant-operation:v1\n${tenantId}\n${operationId}`)}`;
 }
 
+export async function deriveTenantConflictKey(tenantId, conflictKey) {
+  requireString(tenantId, 'tenantId');
+  requireString(conflictKey, 'conflictKey');
+  return `conflict_v1_${await sha256Hex(`once:tenant-conflict:v1\n${tenantId}\n${conflictKey}`)}`;
+}
+
 export async function deriveProviderOperationKey({ tenantId, operationId, provider, action }) {
   requireString(tenantId, 'tenantId');
   requireString(operationId, 'operationId');
@@ -159,8 +165,12 @@ export class TenantScopedOperationStore {
     return deriveTenantOperationKey(this.tenantId, operationId);
   }
 
-  async withLock(operationId, fn) {
-    const key = await this.key(operationId);
+  async conflictFenceKey(conflictKey) {
+    return deriveTenantConflictKey(this.tenantId, conflictKey);
+  }
+
+  async withLock(lockIdentity, fn) {
+    const key = await this.key(lockIdentity);
     return this.authority.withLock(key, fn);
   }
 
@@ -178,6 +188,33 @@ export class TenantScopedOperationStore {
       tenantId: this.tenantId,
       ...structuredClone(this.recordContext),
     });
+
+    if (record?.conflictKey) {
+      const fenceKey = await this.conflictFenceKey(record.conflictKey);
+      const fence = await this.storage.get(fenceKey);
+      if (record.state === 'UNKNOWN') {
+        await this.storage.put(fenceKey, {
+          operationId,
+          conflictKey: record.conflictKey,
+          tenantId: this.tenantId,
+        });
+      } else if (fence?.operationId === operationId) {
+        await this.storage.put(fenceKey, {
+          operationId: null,
+          conflictKey: record.conflictKey,
+          tenantId: this.tenantId,
+        });
+      }
+    }
+  }
+
+  async findUnknownByConflictKey(conflictKey, excludeOperationId = null) {
+    if (!conflictKey) return null;
+    const fence = await this.storage.get(await this.conflictFenceKey(conflictKey));
+    if (!fence?.operationId || fence.operationId === excludeOperationId) return null;
+    const record = await this.get(fence.operationId);
+    if (record?.state === 'UNKNOWN' && record?.conflictKey === conflictKey) return record;
+    return null;
   }
 }
 
@@ -187,6 +224,14 @@ function validateOperationId(operationId) {
   if (bytes > 200 || !/^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(operationId)) {
     throw new HostedGatewayError('invalid_operation_id', 400);
   }
+}
+
+function validateConflictKey(conflictKey) {
+  if (conflictKey === undefined || conflictKey === null) return null;
+  requireString(conflictKey, 'conflict_key');
+  const bytes = textEncoder.encode(conflictKey).byteLength;
+  if (bytes > 300) throw new HostedGatewayError('invalid_conflict_key', 400);
+  return conflictKey;
 }
 
 function validateTarget(target) {
@@ -268,6 +313,7 @@ export class HostedGatewayCore {
 
     const operationId = body.operation_id;
     validateOperationId(operationId);
+    const conflictKey = validateConflictKey(body.conflict_key);
     validateTarget(body.target);
 
     const provider = String(body.target.provider).trim().toLowerCase();
@@ -319,6 +365,7 @@ export class HostedGatewayCore {
       keyId: principal.keyId,
       operationId,
       effectHash,
+      conflictKey,
       provider,
       action,
       bindingVersion,
@@ -390,6 +437,7 @@ export class HostedGatewayCore {
       {
         operationId,
         effectHash,
+        conflictKey,
         payload: body.payload,
         protection: serverProtection,
         metadata,
@@ -401,6 +449,7 @@ export class HostedGatewayCore {
       ...result,
       operationId,
       effectHash,
+      ...(conflictKey ? { conflictKey } : {}),
       provider,
       action,
       ...(requestAdmission || providerAttemptAdmission || meterReservation
