@@ -21,4 +21,4 @@ server.server.setRequestHandler("tools/call", async request => {
   if (args.sku === "lost-ack") throw new Error("Acknowledgement lost after disposable write");
   return { content: [{ type: "text", text: "created:" + args.operation_id }] };
 });
-await serveStdio(server);
+serveStdio(() => server);
