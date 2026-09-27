@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import {
   maybeHandlePublicHostedGatewayRequest,
   PUBLIC_HOSTED_ADMISSION_VALUE,
+  PUBLIC_HOSTED_ENTITLEMENT_FRESHNESS_VALUE,
+  PUBLIC_HOSTED_ENTITLEMENT_ORDERING_VALUE,
   PUBLIC_HOSTED_EXECUTE_PATH,
   PUBLIC_HOSTED_EXECUTE_PREVIEW_VALUE,
 } from '../src/hosted-public-execute.mjs';
@@ -31,6 +33,8 @@ function enabledEnv() {
   return {
     ONCE_HOSTED_PUBLIC_EXECUTE_ENABLED: PUBLIC_HOSTED_EXECUTE_PREVIEW_VALUE,
     ONCE_HOSTED_ADMISSION_ENABLED: PUBLIC_HOSTED_ADMISSION_VALUE,
+    ONCE_HOSTED_ENTITLEMENT_FRESHNESS_ENABLED: PUBLIC_HOSTED_ENTITLEMENT_FRESHNESS_VALUE,
+    ONCE_HOSTED_ENTITLEMENT_ORDERING_ENABLED: PUBLIC_HOSTED_ENTITLEMENT_ORDERING_VALUE,
   };
 }
 
@@ -64,22 +68,54 @@ test('public hosted bridge ignores unrelated paths even when preview is enabled'
   assert.equal(stubCalls, 0);
 });
 
-test('public hosted preview fails closed if Phase 12D admission is not enabled', async () => {
-  let stubCalls = 0;
-  const response = await maybeHandlePublicHostedGatewayRequest({
-    request: executeRequest(),
-    env: {
-      ONCE_HOSTED_PUBLIC_EXECUTE_ENABLED: PUBLIC_HOSTED_EXECUTE_PREVIEW_VALUE,
-    },
-    getDurableStub: async () => {
-      stubCalls += 1;
-      throw new Error('must not resolve durable object');
-    },
-  });
+test('public hosted preview fails closed unless the full reviewed Phase 12D lifecycle safety stack is enabled', async () => {
+  const complete = enabledEnv();
+  for (const missing of [
+    'ONCE_HOSTED_ADMISSION_ENABLED',
+    'ONCE_HOSTED_ENTITLEMENT_FRESHNESS_ENABLED',
+    'ONCE_HOSTED_ENTITLEMENT_ORDERING_ENABLED',
+  ]) {
+    let stubCalls = 0;
+    const env = { ...complete };
+    delete env[missing];
 
-  assert.equal(response.status, 503);
-  assert.deepEqual(await response.json(), { error: 'hosted_gateway_unavailable' });
-  assert.equal(stubCalls, 0);
+    const response = await maybeHandlePublicHostedGatewayRequest({
+      request: executeRequest(),
+      env,
+      getDurableStub: async () => {
+        stubCalls += 1;
+        throw new Error('must not resolve durable object');
+      },
+    });
+
+    assert.equal(response.status, 503, missing);
+    assert.deepEqual(await response.json(), { error: 'hosted_gateway_unavailable' }, missing);
+    assert.equal(stubCalls, 0, missing);
+  }
+});
+
+test('public hosted preview rejects near-match lifecycle gate values before Durable Object access', async () => {
+  const cases = [
+    { ONCE_HOSTED_ADMISSION_ENABLED: 'phase12d-preview' },
+    { ONCE_HOSTED_ENTITLEMENT_FRESHNESS_ENABLED: 'true' },
+    { ONCE_HOSTED_ENTITLEMENT_ORDERING_ENABLED: 'phase12d-preview' },
+  ];
+
+  for (const override of cases) {
+    let stubCalls = 0;
+    const response = await maybeHandlePublicHostedGatewayRequest({
+      request: executeRequest(),
+      env: { ...enabledEnv(), ...override },
+      getDurableStub: async () => {
+        stubCalls += 1;
+        throw new Error('must not resolve durable object');
+      },
+    });
+
+    assert.equal(response.status, 503);
+    assert.deepEqual(await response.json(), { error: 'hosted_gateway_unavailable' });
+    assert.equal(stubCalls, 0);
+  }
 });
 
 test('enabled public hosted bridge is POST-only before durable object access', async () => {
