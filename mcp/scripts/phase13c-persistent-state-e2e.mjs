@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -22,6 +22,7 @@ function count(file) {
 
 function configFor(name, options = {}) {
   const dir = path.join(root, name);
+  mkdirSync(dir, { recursive: true });
   const effectsPath = path.join(dir, "effects.jsonl");
   const driftPath = path.join(dir, "catalog-drift.txt");
   const statePath = path.join(dir, "state.sqlite");
