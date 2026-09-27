@@ -1,6 +1,6 @@
 # @once-agent/sdk
 
-> **Automatic Connect:** `@once-agent/sdk@0.1.12` publishes the tested
+> **Automatic Connect:** `@once-agent/sdk@0.1.13` publishes the tested
 > `@once-agent/sdk/connect` path for classifying supported agent tools as
 > `BYPASS`, `PROTECT`, or fail-closed `UNKNOWN`, then wiring whole local tool
 > registries with trusted logical identity and effect binding. It also includes
@@ -23,9 +23,9 @@ Once helps protect supported refunds, bookings, payments and other externally vi
 - Automatic Connect guide: [`docs/CONNECT_AUTO.md`](./docs/CONNECT_AUTO.md)
 - MCP idempotency guide: https://onceexec.com/mcp-idempotency/
 - AI agent retry safety: https://onceexec.com/ai-agent-retry-safety/
-- TypeScript SDK: [`@once-agent/sdk@0.1.12`](https://www.npmjs.com/package/@once-agent/sdk)
+- TypeScript SDK: [`@once-agent/sdk@0.1.13`](https://www.npmjs.com/package/@once-agent/sdk)
 - Python SDK: [`once-agent-sdk==0.1.1`](https://pypi.org/project/once-agent-sdk/)
-- MCP package: `@once-agent/mcp@0.1.3`
+- MCP package: `@once-agent/mcp@0.1.4`
 - MCP Registry: `io.github.stringsofthemind-oss/once`
 
 ```bash

@@ -1,6 +1,6 @@
 # Once Gateway
 
-Status: repository `main` release candidate. The currently published npm package remains `@once-agent/sdk@0.1.11` until a later SDK release is explicitly versioned and published.
+Status: available in the published `@once-agent/sdk@0.1.13` package.
 
 The Once Gateway selectively routes an agent/runtime's **already-selected tool subset** without copying the global Tool Graph into model context.
 

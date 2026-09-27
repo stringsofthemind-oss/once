@@ -1,6 +1,6 @@
 # Once — Agent-Readable Product Guide
 
-> **Automatic Connect:** `@once-agent/sdk@0.1.12` publishes the tested
+> **Automatic Connect:** `@once-agent/sdk@0.1.13` publishes the tested
 > `@once-agent/sdk/connect` toolset integration path. It can classify supported
 > agent tools as `BYPASS`, `PROTECT`, or fail-closed `UNKNOWN`, bind trusted
 > logical intent identity and effect payload, and return a connected local tool
@@ -24,7 +24,7 @@ Canonical site: https://onceexec.com/
 
 Repository: https://github.com/stringsofthemind-oss/once
 
-TypeScript SDK: `@once-agent/sdk@0.1.12`
+TypeScript SDK: `@once-agent/sdk@0.1.13`
 
 npm: https://www.npmjs.com/package/@once-agent/sdk
 
@@ -32,7 +32,7 @@ Python SDK: `once-agent-sdk==0.1.1`
 
 PyPI: https://pypi.org/project/once-agent-sdk/
 
-MCP package: `@once-agent/mcp@0.1.3`
+MCP package: `@once-agent/mcp@0.1.4`
 
 Official MCP Registry identity: `io.github.stringsofthemind-oss/once`
 
