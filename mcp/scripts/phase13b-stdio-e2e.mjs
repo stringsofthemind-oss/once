@@ -186,6 +186,27 @@ try {
   await proxy.close();
   client = undefined;
   proxy = undefined;
+  // Two independent Once processes race on the same logical action and SQLite file.
+  const peerClients = Array.from({ length: 2 }, (_, i) =>
+    new Client({ name: "once-peer-" + i, version: "0.0.1" }));
+  try {
+    await Promise.all(peerClients.map(peer => peer.connect(new StdioClientTransport({
+      command: process.execPath,
+      args: [fileURLToPath(new URL("./stdio-proxy.mjs", import.meta.url)),
+        "--config", configPath],
+    }))));
+    const shared = { name: "create_order",
+      arguments: { operation_id: "order-two-processes", sku: "sku-4", quantity: 1 } };
+    const outcomes = await Promise.allSettled(peerClients.map(peer => peer.callTool(shared)));
+    const successful = outcomes.filter(outcome => outcome.status === "fulfilled");
+    assert.ok(successful.length >= 1);
+    assert.equal(count(), 5);
+    assert.deepEqual(await peerClients[0].callTool(shared), successful[0].value);
+    assert.deepEqual(await peerClients[1].callTool(shared), successful[0].value);
+    assert.equal(count(), 5);
+  } finally {
+    await Promise.all(peerClients.map(peer => peer.close()));
+  }
   // Separate state/effects prevent benchmark writes from masking safety counts.
   const benchEffects = path.join(dir, "benchmark-effects.jsonl");
   const benchConfig = { ...config,
