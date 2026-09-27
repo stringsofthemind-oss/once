@@ -171,17 +171,22 @@ The test suite covers:
 - concurrent distinct operations cannot oversubscribe a one-operation quota while the first meter sync is pending,
 - request-rate limiting is independent from logical-operation metering,
 - `BYPASS` never consumes protected-operation usage,
-- logical-operation reservation crosses `storage.sync()` before execution can continue.
+- logical-operation reservation crosses `storage.sync()` before execution can continue,
+- policy-enabled internal hosted HTTP executes once, meters once and replay does not multiply usage,
+- policy-enabled internal hosted HTTP rejects missing entitlement before adapter construction,
+- deterministic provider preflight failure through the internal HTTP path creates neither a meter row nor hosted operation state,
+- the internal transport does not expose admission metadata, tenant identity or API-key material before a separately reviewed public response contract exists.
+
+Exact-head CI after adding the internal transport coverage passed Gateway core and Worker CI, with 84/84 runtime tests plus the credential-free lost-ack proof.
 
 ## Next Phase 12D slices
 
 After this foundation is green and reviewed:
 
-1. add explicit end-to-end non-production tests with the opt-in admission gate enabled,
-2. add safe response usage/rate headers and audit events,
-3. add explicit secret/payload redaction regressions,
-4. reconcile final commercial plan names/limits with Stripe entitlements,
-5. define production key-version rotation/recovery,
-6. hostile-test crash recovery around the meter-sync -> UNKNOWN-sync boundary,
-7. design the public `/v1/execute` migration/cutover,
-8. keep production deployment and live-provider enablement separately approval-gated.
+1. add safe response usage/rate headers and audit events,
+2. add broader explicit secret/payload redaction regressions,
+3. reconcile final commercial plan names/limits with Stripe entitlements,
+4. define production key-version rotation/recovery,
+5. hostile-test crash recovery around the meter-sync -> UNKNOWN-sync boundary,
+6. design the public `/v1/execute` migration/cutover,
+7. keep production deployment and live-provider enablement separately approval-gated.
