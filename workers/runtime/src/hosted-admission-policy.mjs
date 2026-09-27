@@ -2,12 +2,9 @@ import {
   HostedGatewayError,
   sha256Hex,
 } from '../../gateway/src/hosted-gateway-core.js';
+import { LEGACY_HOSTED_PLAN_LIMITS } from './hosted-plan-catalog.mjs';
 
-export const DEFAULT_HOSTED_PLAN_LIMITS = Object.freeze({
-  pro: 100_000,
-  startup: 500_000,
-  scale: 2_000_000,
-});
+export const DEFAULT_HOSTED_PLAN_LIMITS = LEGACY_HOSTED_PLAN_LIMITS;
 
 const ACTIVE_ENTITLEMENT_STATUSES = new Set(['active', 'trialing']);
 
