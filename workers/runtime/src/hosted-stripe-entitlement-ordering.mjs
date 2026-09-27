@@ -128,6 +128,16 @@ function subscriptionIdentity(eventType, subscription) {
 }
 
 function initializeOrderingTables(sql) {
+  // Keep the legacy event ledger populated as well. That makes rollback from the
+  // opt-in ordered handler safe: an event processed here remains a duplicate if
+  // traffic later falls back to the pre-existing webhook path.
+  sql.exec(`
+    CREATE TABLE IF NOT EXISTS stripe_events (
+      event_id TEXT PRIMARY KEY,
+      type TEXT NOT NULL,
+      processed_at TEXT NOT NULL
+    )
+  `);
   sql.exec(`
     CREATE TABLE IF NOT EXISTS hosted_entitlement_event_order (
       customer_id TEXT PRIMARY KEY,
@@ -162,11 +172,35 @@ function getOrderRow(sql, customerId) {
   )][0] ?? null;
 }
 
+function getExistingEntitlement(sql, customerId) {
+  return [...sql.exec(
+    `
+      SELECT customer_id, subscription_id, plan, status, price_id, current_period_end, updated_at
+      FROM stripe_entitlements
+      WHERE customer_id = ?
+      LIMIT 1
+    `,
+    customerId,
+  )][0] ?? null;
+}
+
 function eventAlreadyProcessed(sql, eventId) {
   return [...sql.exec(
     `
       SELECT event_id, outcome
       FROM hosted_entitlement_lifecycle_events
+      WHERE event_id = ?
+      LIMIT 1
+    `,
+    eventId,
+  )][0] ?? null;
+}
+
+function legacyEventAlreadyProcessed(sql, eventId) {
+  return [...sql.exec(
+    `
+      SELECT event_id, type, processed_at
+      FROM stripe_events
       WHERE event_id = ?
       LIMIT 1
     `,
@@ -193,6 +227,15 @@ function recordLifecycleEvent(sql, {
     customerId,
     eventCreated,
     outcome,
+    processedAt,
+  );
+  sql.exec(
+    `
+      INSERT OR IGNORE INTO stripe_events (event_id, type, processed_at)
+      VALUES (?, ?, ?)
+    `,
+    eventId,
+    eventType,
     processedAt,
   );
 }
@@ -272,16 +315,7 @@ function writeEntitlement(sql, {
 
 function markEntitlementAmbiguous(sql, { customerId, eventCreated }) {
   const lifecycleTime = new Date(eventCreated * 1000).toISOString();
-  const existing = [...sql.exec(
-    `
-      SELECT subscription_id, plan, price_id, current_period_end
-      FROM stripe_entitlements
-      WHERE customer_id = ?
-      LIMIT 1
-    `,
-    customerId,
-  )][0];
-
+  const existing = getExistingEntitlement(sql, customerId);
   if (!existing) return;
   sql.exec(
     `
@@ -294,6 +328,13 @@ function markEntitlementAmbiguous(sql, { customerId, eventCreated }) {
   );
 }
 
+function legacyBaselineRejectsEvent(existingEntitlement, eventCreated) {
+  if (!existingEntitlement) return false;
+  const baselineMs = Date.parse(String(existingEntitlement.updated_at || ''));
+  if (!Number.isFinite(baselineMs)) return true;
+  return eventCreated * 1000 <= baselineMs;
+}
+
 /**
  * Durable, monotonic Stripe subscription lifecycle application.
  *
@@ -301,6 +342,10 @@ function markEntitlementAmbiguous(sql, { customerId, eventCreated }) {
  * lifecycle events for the same customer with the exact same Stripe `created`
  * second are conservatively treated as ambiguous: the entitlement is made
  * inactive (`lifecycle_ambiguous`) until a strictly newer event resolves it.
+ *
+ * During first opt-in on an existing legacy entitlement ledger, the existing
+ * `updated_at` is treated as a conservative ordering floor until a strictly
+ * newer Stripe event establishes the new per-customer ordering authority.
  */
 export async function handleHostedStripeEntitlementEvent({ request, ctx }) {
   if (!ctx?.storage?.sql?.exec || typeof ctx.storage.sync !== 'function') {
@@ -327,6 +372,24 @@ export async function handleHostedStripeEntitlementEvent({ request, ctx }) {
   }
 
   const processedAt = new Date().toISOString();
+  const legacyDuplicate = legacyEventAlreadyProcessed(sql, eventId);
+  if (legacyDuplicate) {
+    recordLifecycleEvent(sql, {
+      eventId,
+      eventType,
+      eventCreated,
+      outcome: 'LEGACY_ALREADY_PROCESSED',
+      processedAt,
+    });
+    await ctx.storage.sync();
+    return json({
+      received: true,
+      duplicate: true,
+      event_id: eventId,
+      outcome: 'LEGACY_ALREADY_PROCESSED',
+    });
+  }
+
   if (!SUBSCRIPTION_EVENTS.has(eventType)) {
     recordLifecycleEvent(sql, {
       eventId,
@@ -344,6 +407,29 @@ export async function handleHostedStripeEntitlementEvent({ request, ctx }) {
   if (!parsed) return json({ error: 'stripe_subscription_identity_missing', event_id: eventId }, 400);
 
   const current = getOrderRow(sql, parsed.customerId);
+  const existingEntitlement = getExistingEntitlement(sql, parsed.customerId);
+
+  if (!current && legacyBaselineRejectsEvent(existingEntitlement, eventCreated)) {
+    recordLifecycleEvent(sql, {
+      eventId,
+      eventType,
+      customerId: parsed.customerId,
+      eventCreated,
+      outcome: 'IGNORED_PRE_ORDERING_BASELINE',
+      processedAt,
+    });
+    await ctx.storage.sync();
+    return json({
+      received: true,
+      duplicate: false,
+      processed: false,
+      stale: true,
+      baseline: 'legacy_entitlement_updated_at',
+      event_id: eventId,
+      type: eventType,
+    });
+  }
+
   if (current && eventCreated < Number(current.latest_event_created)) {
     recordLifecycleEvent(sql, {
       eventId,
