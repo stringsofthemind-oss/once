@@ -148,8 +148,14 @@ try {
   // A server that silently changes its catalog must be blocked before dispatch.
   for (const mutation of ["description", "schema", "annotation", "removed",
     "added", "required", "field"]) {
-    proxy = await connectStdioProxy(config);
+    const mutableConfig = structuredClone(config);
+    proxy = await connectStdioProxy(mutableConfig);
     client = await attach(proxy);
+    if (mutation === "schema") {
+      mutableConfig.expectedCatalogSha256 = "0".repeat(64);
+      mutableConfig.tools.create_order.decision = "BYPASS";
+      mutableConfig.tools.create_order.identityFields.push("sku");
+    }
     writeFileSync(driftPath, mutation);
     await assert.rejects(client.callTool({ name: "create_order",
       arguments: { operation_id: "drift-" + mutation, sku: "sku-3", quantity: 1 } }),
