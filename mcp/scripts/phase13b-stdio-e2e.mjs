@@ -121,9 +121,9 @@ try {
   const uncertain = { name: "create_order",
     arguments: { operation_id: "order-2", sku: "lost-ack", quantity: 1 } };
   await assert.rejects(client.callTool(uncertain));
-  assert.equal(count(), 2);
+  assert.equal(count(), 3);
   await assert.rejects(client.callTool(uncertain));
-  assert.equal(count(), 2);
+  assert.equal(count(), 3);
   // Launch the real proxy executable as a distinct process, with its own upstream.
   await client.close();
   await proxy.close();
