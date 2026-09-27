@@ -14,6 +14,7 @@ server.server.setRequestHandler("tools/list", async request => {
   const current = JSON.parse(JSON.stringify(tools));
   let drift;
   try { drift = readFileSync(driftPath, "utf8").trim(); } catch {}
+  if (drift === "hang-list") await new Promise(() => {});
   if (drift === "repeated-cursor") {
     if (request.params?.cursor === undefined) listPage = 0;
     const page = listPage++;
@@ -43,7 +44,9 @@ server.server.setRequestHandler("tools/call", async request => {
     return { content: [{ type: "text", text: String(count) }] };
   }
   if (name !== "create_order") throw new Error("Unknown tool");
+  if (args.sku === "hang-before") await new Promise(() => {});
   appendFileSync(effectsPath, JSON.stringify(args) + "\n");
+  if (args.sku === "hang-after") await new Promise(() => {});
   if (args.sku === "lost-ack") throw new Error("Acknowledgement lost after disposable write");
   if (args.sku === "crash") process.exit(23);
   return { content: [{ type: "text", text: "created:" + args.operation_id }] };

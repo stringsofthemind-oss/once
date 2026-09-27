@@ -8,6 +8,7 @@ import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 import { catalogDigest, connectStdioProxy } from "./stdio-proxy.mjs";
 
 const fixture = fileURLToPath(new URL("./fixtures/stdio-upstream.mjs", import.meta.url));
+const hangConnectFixture = fileURLToPath(new URL("./fixtures/stdio-hang-connect.mjs", import.meta.url));
 const tools = JSON.parse(readFileSync(new URL("./fixtures/stdio-tools.json", import.meta.url), "utf8"));
 const dir = mkdtempSync(path.join(os.tmpdir(), "once-stdio-e2e-"));
 const effectsPath = path.join(dir, "effects.jsonl");
@@ -27,10 +28,11 @@ const config = {
     read_count: { decision: "BYPASS" },
   },
 };
-const count = () => {
-  try { return readFileSync(effectsPath, "utf8").trim().split("\n").filter(Boolean).length; }
+const countFile = file => {
+  try { return readFileSync(file, "utf8").trim().split("\n").filter(Boolean).length; }
   catch { return 0; }
 };
+const count = () => countFile(effectsPath);
 
 async function attach(proxy) {
   const client = new Client({ name: "once-disposable-downstream", version: "0.0.1" });
@@ -47,6 +49,31 @@ try {
     ...config, expectedCatalogSha256: "0".repeat(64),
   }), /TOOL_SCHEMA_CHANGED/);
   assert.equal(count(), 0);
+
+  await assert.rejects(connectStdioProxy({
+    ...config, timeouts: { callMs: 0 },
+  }), /INVALID_PROXY_CONFIG: timeouts.callMs/);
+
+  // A process that never completes initialize must not hold the agent forever.
+  const connectStarted = performance.now();
+  await assert.rejects(connectStdioProxy({
+    ...config,
+    args: [hangConnectFixture],
+    timeouts: { connectMs: 100, catalogMs: 500, callMs: 500 },
+  }), /UPSTREAM_CONNECT_TIMEOUT/);
+  assert.ok(performance.now() - connectStarted < 2_000);
+  assert.equal(count(), 0);
+
+  // Catalog discovery is also bounded and happens before any tool dispatch.
+  writeFileSync(driftPath, "hang-list");
+  const catalogStarted = performance.now();
+  await assert.rejects(connectStdioProxy({
+    ...config,
+    timeouts: { connectMs: 1_000, catalogMs: 100, callMs: 500 },
+  }), /UPSTREAM_CATALOG_TIMEOUT/);
+  assert.ok(performance.now() - catalogStarted < 2_000);
+  assert.equal(count(), 0);
+  unlinkSync(driftPath);
 
   // MCP client v2.0.0 auto-aggregation can silently truncate a catalog when a
   // server legally repeats an opaque cursor. Once walks raw pages separately,
@@ -243,6 +270,46 @@ try {
     await benchClient.close();
     await benchProxy.close();
   }
+
+  // A write that commits and then stops responding must time out into durable
+  // UNKNOWN, invalidate the current upstream channel, and never execute twice.
+  const timeoutEffects = path.join(dir, "timeout-effects.jsonl");
+  const timeoutConfig = {
+    ...config,
+    args: [fixture, timeoutEffects, driftPath],
+    statePath: path.join(dir, "timeout-state.sqlite"),
+    timeouts: { connectMs: 1_000, catalogMs: 1_000, callMs: 100 },
+  };
+  const timedCall = { name: "create_order",
+    arguments: { operation_id: "order-timeout", sku: "hang-after", quantity: 1 } };
+  proxy = await connectStdioProxy(timeoutConfig);
+  client = await attach(proxy);
+  const callStarted = performance.now();
+  await assert.rejects(client.callTool(timedCall));
+  assert.ok(performance.now() - callStarted < 2_000);
+  assert.equal(countFile(timeoutEffects), 1);
+
+  // Once the timeout makes transport health unknowable, unrelated work on that
+  // same channel is rejected promptly rather than flowing around the failure.
+  const unavailableStarted = performance.now();
+  await assert.rejects(client.callTool({ name: "read_count", arguments: {} }));
+  assert.ok(performance.now() - unavailableStarted < 2_000);
+  assert.equal(countFile(timeoutEffects), 1);
+
+  await client.close();
+  await proxy.close();
+  client = undefined;
+  proxy = await connectStdioProxy(timeoutConfig);
+  client = await attach(proxy);
+  const retryStarted = performance.now();
+  await assert.rejects(client.callTool(timedCall));
+  assert.ok(performance.now() - retryStarted < 2_000);
+  assert.equal(countFile(timeoutEffects), 1);
+  await client.close();
+  await proxy.close();
+  client = undefined;
+  proxy = undefined;
+
   console.log("ONCE PHASE 13B STDIO PROCESS: PASS");
 } finally {
   await client?.close();

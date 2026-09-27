@@ -93,6 +93,20 @@ npx -y @once-agent/mcp@0.1.4 proxy --config .once/mcp.json
 
 The config must name the upstream command, pin the SHA-256 digest of its reviewed complete `tools/list` catalog, and specify protection decisions and identity/effect fields for consequential tools. It requires `serverId`, `command`, `args`, `statePath`, `expectedCatalogSha256`, and `tools`; each tool policy sets `decision` to `PROTECT` or `BYPASS`. The proxy refuses a changed catalog and preserves an unknown outcome after an ambiguous upstream error. Keep its SQLite state path durable and private. The [source regression](https://github.com/stringsofthemind-oss/once/blob/main/mcp/scripts/phase13b-stdio-e2e.mjs) includes a disposable example config.
 
+Source builds after MCP 0.1.4 also support optional bounded upstream waits:
+
+```json
+{
+  "timeouts": {
+    "connectMs": 15000,
+    "catalogMs": 10000,
+    "callMs": 60000
+  }
+}
+```
+
+Each timeout must be an integer from 50 to 300000 milliseconds. The defaults shown above prevent a hung upstream process from holding the agent indefinitely. A catalog/connect timeout occurs before tool dispatch. A protected `tools/call` timeout is treated as an ambiguous post-dispatch outcome: Once invalidates that upstream channel and the existing durable safety state remains `UNKNOWN` until provider truth can reconcile it. These controls are source-only until a later MCP package release is explicitly approved.
+
 ## Local development
 
 From the repository root:
