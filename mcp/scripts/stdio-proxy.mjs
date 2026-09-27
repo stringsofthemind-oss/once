@@ -189,17 +189,16 @@ async function listCompleteCatalog(client, timeoutMs, onTimeout) {
 }
 
 /**
- * Connect the reviewed stdio proxy. `connectRuntime` is intentionally injectable
- * for source-tree conformance tests; the published path defaults to the installed
- * @once-agent/sdk/connect namespace. Newer SDKs expose scoped local state sessions,
- * while older SDKs simply retain the proven per-call state-open behavior.
+ * Connect the reviewed stdio proxy against the installed SDK runtime.
+ * Newer SDKs expose scoped local state sessions; older compatible SDKs retain
+ * the proven per-call state-open behavior until they are upgraded.
  */
-export async function connectStdioProxy(rawConfig, connectRuntime = OnceConnect) {
+export async function connectStdioProxy(rawConfig) {
   const [major, minor] = process.versions.node.split(".").map(Number);
   if (major < 24 || (major === 24 && minor < 15)) {
     throw new Error("NODE_VERSION_UNSUPPORTED: proxy mode requires Node 24.15+ for durable SQLite");
   }
-  if (typeof connectRuntime?.createMcpExecutionBoundary !== "function") {
+  if (typeof OnceConnect.createMcpExecutionBoundary !== "function") {
     throw new Error("SDK_BOUNDARY_UNAVAILABLE: createMcpExecutionBoundary is required");
   }
 
@@ -208,10 +207,10 @@ export async function connectStdioProxy(rawConfig, connectRuntime = OnceConnect)
   const upstream = new Client({ name: "once-upstream-proxy", version: "0.1.0" });
   const dispatchVerification = new AsyncLocalStorage();
   const hasScopedState =
-    typeof connectRuntime.createLocalProtectionSession === "function" &&
-    typeof connectRuntime.withLocalProtectionSession === "function";
+    typeof OnceConnect.createLocalProtectionSession === "function" &&
+    typeof OnceConnect.withLocalProtectionSession === "function";
   const localStateSession = hasScopedState
-    ? connectRuntime.createLocalProtectionSession(resolve(config.statePath))
+    ? OnceConnect.createLocalProtectionSession(resolve(config.statePath))
     : undefined;
   let downstream;
   let closed = false;
@@ -292,7 +291,7 @@ export async function connectStdioProxy(rawConfig, connectRuntime = OnceConnect)
       await catalogCheck;
     }
 
-    const boundary = connectRuntime.createMcpExecutionBoundary({
+    const boundary = OnceConnect.createMcpExecutionBoundary({
       serverId: config.serverId,
       tools,
       statePath: resolve(config.statePath),
@@ -354,7 +353,7 @@ export async function connectStdioProxy(rawConfig, connectRuntime = OnceConnect)
           () => boundary.callTool(request),
         );
         const result = localStateSession
-          ? await connectRuntime.withLocalProtectionSession(localStateSession, invokeBoundary)
+          ? await OnceConnect.withLocalProtectionSession(localStateSession, invokeBoundary)
           : await invokeBoundary();
 
         if (replayKey !== undefined) {
@@ -368,7 +367,7 @@ export async function connectStdioProxy(rawConfig, connectRuntime = OnceConnect)
     return {
       server: downstream,
       plan: boundary.plan,
-      /** True only when the installed/injected SDK supports the scoped persistent state path. */
+      /** True only when the installed SDK supports the scoped persistent state path. */
       persistentLocalState: Boolean(localStateSession),
       async close() {
         if (closed) return;
