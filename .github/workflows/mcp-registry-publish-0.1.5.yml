@@ -1,0 +1,63 @@
+name: Publish MCP Registry 0.1.5
+
+on:
+  push:
+    branches:
+      - ops/mcp-registry-publish-0.1.5
+    paths:
+      - .github/workflows/mcp-registry-publish-0.1.5.yml
+      - mcp/server.json
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact publish branch
+        uses: actions/checkout@v5
+
+      - name: Verify pinned Once Registry metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(jq -r '.name' mcp/server.json)" = "io.github.stringsofthemind-oss/once"
+          test "$(jq -r '.version' mcp/server.json)" = "0.1.5"
+          test "$(jq -r '.packages[0].identifier' mcp/server.json)" = "@once-agent/mcp"
+          test "$(jq -r '.packages[0].version' mcp/server.json)" = "0.1.5"
+
+      - name: Install official MCP publisher
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
+          ./mcp-publisher --help >/dev/null
+
+      - name: Validate server metadata
+        run: ./mcp-publisher validate mcp/server.json
+
+      - name: Authenticate to official MCP Registry with GitHub OIDC
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish Once 0.1.5 metadata
+        run: ./mcp-publisher publish mcp/server.json
+
+      - name: Verify official Registry record
+        shell: bash
+        run: |
+          set -euo pipefail
+          encoded='io.github.stringsofthemind-oss%2Fonce'
+          url="https://registry.modelcontextprotocol.io/v0.1/servers/${encoded}/versions/0.1.5"
+          for i in $(seq 1 12); do
+            if body="$(curl -fsSL "$url" 2>/dev/null)"; then
+              test "$(printf '%s' "$body" | jq -r '.server.name // .name')" = "io.github.stringsofthemind-oss/once"
+              test "$(printf '%s' "$body" | jq -r '.server.version // .version')" = "0.1.5"
+              printf '%s\n' "$body" | jq .
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Registry record 0.1.5 was not readable after publish" >&2
+          exit 1
