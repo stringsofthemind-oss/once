@@ -6,6 +6,7 @@ import {
   HOSTED_STRIPE_CREDENTIAL_TYPE,
   RuntimeHostedProviderCredentialStore,
 } from '../src/hosted-provider-credentials.mjs';
+import { RuntimeHostedProviderKeyring } from '../src/hosted-provider-keyring.mjs';
 import { loadRuntime, storage } from './harness.mjs';
 
 function masterKey(byte = 7) {
@@ -15,14 +16,21 @@ function masterKey(byte = 7) {
 async function createCredentialStore(store, env = { ONCE_PROVIDER_MASTER_KEY: masterKey() }) {
   const { Runtime } = await loadRuntime();
   const runtime = new Runtime({ storage: store }, env);
+  const keyring = new RuntimeHostedProviderKeyring({
+    env,
+    bytesToBase64: (bytes) => runtime.providerBytesToBase64(bytes),
+    base64ToBytes: (value) => runtime.providerBase64ToBytes(value),
+    aadFor: (customerId, providerName, versionId) =>
+      runtime.providerConfigAad(customerId, providerName, versionId),
+  });
   const credentials = new RuntimeHostedProviderCredentialStore({
     ctx: { storage: store },
-    encryptConfig: (...args) => runtime.encryptProviderConfig(...args),
-    decryptConfig: (...args) => runtime.decryptProviderConfig(...args),
-    currentKeyVersion: () => runtime.getProviderMasterKeyVersion(),
+    encryptConfig: (...args) => keyring.encryptConfig(...args),
+    decryptConfig: (...args) => keyring.decryptConfig(...args),
+    currentKeyVersion: () => keyring.getCurrentKeyVersion(),
     clock: () => '2026-09-26T21:30:00.000Z',
   });
-  return { runtime, credentials };
+  return { runtime, keyring, credentials };
 }
 
 test('hosted Stripe credentials are encrypted, tenant-scoped and rotate immutably', async () => {
