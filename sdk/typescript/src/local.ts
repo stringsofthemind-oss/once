@@ -47,8 +47,6 @@ export interface LocalProtectionOptions<A extends unknown[], T> {
   reconcile?: (context: { id: string; payload: JsonObject }) => Promise<LocalObservation<T>> | LocalObservation<T>;
   /** Time before an abandoned claim can be reconciled. No redispatch follows ABSENT. */
   leaseMs?: number;
-  /** Advanced shared state session. The default protectLocal path still opens state per call. */
-  session?: LocalProtectionSession;
 }
 
 export class LocalProtectionError extends Error {
@@ -331,9 +329,6 @@ export function protectLocal<A extends unknown[], T>(
   if (!Number.isSafeInteger(leaseMs) || leaseMs <= 0) {
     throw new LocalProtectionError("INVALID_LEASE", "leaseMs must be a positive integer in milliseconds.");
   }
-  if (options.session && options.session.statePath !== statePath) {
-    throw new LocalProtectionError("INVALID_CONFIGURATION", "A shared local protection session must use the same statePath as the protected operation.");
-  }
 
   return async function (this: unknown, ...args: A): Promise<T> {
     const callArgs = copyData(args, true, new Set<object>(), "$args", true) as A;
@@ -344,8 +339,7 @@ export function protectLocal<A extends unknown[], T>(
     const payload = copyData(options.payload(...callArgs)) as JsonObject;
     const fingerprint = fingerprintConnectPayload(payload);
     const contextualSession = localProtectionSessionContext.getStore();
-    const sharedSession = options.session ??
-      (contextualSession?.statePath === statePath ? contextualSession : undefined);
+    const sharedSession = contextualSession?.statePath === statePath ? contextualSession : undefined;
     const db = sharedSession
       ? await sharedSession.databaseForCall()
       : await openLocalDatabase(statePath);
