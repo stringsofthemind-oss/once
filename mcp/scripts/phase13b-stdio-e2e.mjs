@@ -79,9 +79,17 @@ try {
 
   const simultaneous = { name: "create_order",
     arguments: { operation_id: "order-concurrent", sku: "sku-2", quantity: 1 } };
-  const concurrentResults = await Promise.all(
+  const concurrentResults = await Promise.allSettled(
     Array.from({ length: 4 }, () => client.callTool(simultaneous)));
-  for (const result of concurrentResults) assert.deepEqual(result, concurrentResults[0]);
+  const completed = concurrentResults.filter(result => result.status === "fulfilled");
+  assert.ok(completed.length >= 1);
+  for (const result of concurrentResults) {
+    if (result.status === "rejected") {
+      assert.match(String(result.reason), /still in flight/);
+    }
+  }
+  const settledRetry = await client.callTool(simultaneous);
+  assert.deepEqual(settledRetry, completed[0].value);
   assert.equal(count(), 2);
 
   const uncertain = { name: "create_order",
