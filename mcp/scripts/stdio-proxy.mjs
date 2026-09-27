@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // Explicit proxy for a reviewed local MCP stdio server.
+import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -18,6 +19,7 @@ const DEFAULT_TIMEOUTS = Object.freeze({
 });
 const MAX_TIMEOUT_MS = 300_000;
 const CLOSE_TIMEOUT_MS = 1_000;
+const MAX_CONFIRMED_REPLAY_KEYS = 4_096;
 
 class ProxyTimeoutError extends Error {
   constructor(code, message) {
@@ -111,6 +113,13 @@ export function catalogDigest(tools) {
   return createHash("sha256").update(JSON.stringify(canonical(tools))).digest("hex");
 }
 
+function requestDigest(request) {
+  return createHash("sha256").update(JSON.stringify(canonical({
+    name: request.name,
+    arguments: request.arguments ?? {},
+  }))).digest("hex");
+}
+
 function validConfig(config) {
   if (!config || typeof config !== "object" || Array.isArray(config) ||
       typeof config.serverId !== "string" || !config.serverId.trim() ||
@@ -187,6 +196,7 @@ export async function connectStdioProxy(rawConfig) {
   // Snapshot caller-owned configuration so later mutation cannot change trust policy.
   const config = validConfig(JSON.parse(JSON.stringify(rawConfig)));
   const upstream = new Client({ name: "once-upstream-proxy", version: "0.1.0" });
+  const dispatchVerification = new AsyncLocalStorage();
   let downstream;
   let catalogInvalidated = false;
   let upstreamUnavailable = false;
@@ -249,7 +259,7 @@ export async function connectStdioProxy(rawConfig) {
       if (catalogInvalidated) {
         throw new Error("TOOL_SCHEMA_CHANGED: upstream announced a catalog change");
       }
-      // Verify before each dispatch; share an in-flight read across concurrent calls.
+      // Verify before each real dispatch; share an in-flight read across concurrent calls.
       catalogCheck ??= listCompleteCatalog(
         upstream,
         config.timeouts.catalogMs,
@@ -270,6 +280,13 @@ export async function connectStdioProxy(rawConfig) {
       upstream: {
         async callTool({ name, arguments: args }) {
           assertUpstreamAvailable();
+          // Every actual upstream execution must still have a fresh catalog proof.
+          // Cached replay hints may skip the outer check, but they can never allow
+          // a real dispatch to cross this point without re-verification.
+          if (!dispatchVerification.getStore()?.catalogVerified) {
+            await verifyCatalog();
+            assertUpstreamAvailable();
+          }
           const result = await withTimeout(
             upstream.callTool({ name, arguments: args }),
             config.timeouts.callMs,
@@ -283,13 +300,48 @@ export async function connectStdioProxy(rawConfig) {
         },
       },
     });
+    const protectedTools = new Set(boundary.plan.protect.map(entry => entry.name));
+    const confirmedReplayKeys = new Set();
+    function rememberConfirmedReplay(key) {
+      confirmedReplayKeys.delete(key);
+      confirmedReplayKeys.add(key);
+      if (confirmedReplayKeys.size > MAX_CONFIRMED_REPLAY_KEYS) {
+        confirmedReplayKeys.delete(confirmedReplayKeys.values().next().value);
+      }
+    }
     const checkedBoundary = {
       listTools: () => boundary.listTools(),
       async callTool(request) {
         assertUpstreamAvailable();
-        await verifyCatalog();
-        assertUpstreamAvailable();
-        return boundary.callTool(request);
+        // Preserve the existing fail-closed behavior for an explicit list-change
+        // notification even when this exact protected request was confirmed before.
+        if (catalogInvalidated) {
+          throw new Error("TOOL_SCHEMA_CHANGED: upstream announced a catalog change");
+        }
+
+        const isProtected = protectedTools.has(request.name);
+        const replayKey = isProtected ? requestDigest(request) : undefined;
+        const confirmedReplay = replayKey !== undefined && confirmedReplayKeys.has(replayKey);
+        let catalogVerified = false;
+
+        // First protected attempts and all BYPASS calls keep the original strict
+        // pre-dispatch verification. Only an exact protected request that already
+        // returned successfully in this proxy process can take the replay fast path.
+        if (!confirmedReplay) {
+          await verifyCatalog();
+          assertUpstreamAvailable();
+          catalogVerified = true;
+        }
+
+        const result = await dispatchVerification.run(
+          { catalogVerified },
+          () => boundary.callTool(request),
+        );
+
+        if (replayKey !== undefined) {
+          rememberConfirmedReplay(replayKey);
+        }
+        return result;
       },
     };
     downstream = createMcpProxyServer({ boundary: checkedBoundary, version: "phase13b" });
