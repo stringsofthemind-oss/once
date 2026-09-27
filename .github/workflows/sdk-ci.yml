@@ -96,6 +96,9 @@ jobs:
       - name: Run source-tree local regressions
         run: npm run test:local
 
+      - name: Run persistent local state regressions
+        run: node --test ./test/local-session.test.mjs
+
       - name: Run MCP boundary mutation regressions
         run: node --test ./test/connect/mcp-execution-boundary-mutation.test.mjs
 
@@ -124,3 +127,7 @@ jobs:
       - name: Run Phase 13C replay catalog fast-path regression
         working-directory: mcp
         run: node scripts/phase13c-replay-catalog-e2e.mjs
+
+      - name: Run Phase 13C persistent state regression
+        working-directory: mcp
+        run: node scripts/phase13c-persistent-state-e2e.mjs
