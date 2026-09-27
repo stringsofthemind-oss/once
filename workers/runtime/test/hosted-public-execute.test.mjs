@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   maybeHandlePublicHostedGatewayRequest,
+  PUBLIC_HOSTED_ADMISSION_VALUE,
   PUBLIC_HOSTED_EXECUTE_PATH,
   PUBLIC_HOSTED_EXECUTE_PREVIEW_VALUE,
 } from '../src/hosted-public-execute.mjs';
@@ -27,7 +28,10 @@ function executeRequest({
 }
 
 function enabledEnv() {
-  return { ONCE_HOSTED_PUBLIC_EXECUTE_ENABLED: PUBLIC_HOSTED_EXECUTE_PREVIEW_VALUE };
+  return {
+    ONCE_HOSTED_PUBLIC_EXECUTE_ENABLED: PUBLIC_HOSTED_EXECUTE_PREVIEW_VALUE,
+    ONCE_HOSTED_ADMISSION_ENABLED: PUBLIC_HOSTED_ADMISSION_VALUE,
+  };
 }
 
 test('public hosted bridge returns null when preview gate is absent so legacy /v1/execute can fall through unchanged', async () => {
@@ -57,6 +61,24 @@ test('public hosted bridge ignores unrelated paths even when preview is enabled'
   });
 
   assert.equal(response, null);
+  assert.equal(stubCalls, 0);
+});
+
+test('public hosted preview fails closed if Phase 12D admission is not enabled', async () => {
+  let stubCalls = 0;
+  const response = await maybeHandlePublicHostedGatewayRequest({
+    request: executeRequest(),
+    env: {
+      ONCE_HOSTED_PUBLIC_EXECUTE_ENABLED: PUBLIC_HOSTED_EXECUTE_PREVIEW_VALUE,
+    },
+    getDurableStub: async () => {
+      stubCalls += 1;
+      throw new Error('must not resolve durable object');
+    },
+  });
+
+  assert.equal(response.status, 503);
+  assert.deepEqual(await response.json(), { error: 'hosted_gateway_unavailable' });
   assert.equal(stubCalls, 0);
 });
 
