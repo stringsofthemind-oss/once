@@ -247,9 +247,12 @@ export class HostedGatewayCore {
     if (
       admissionPolicy !== null &&
       (typeof admissionPolicy?.authorizeRequest !== 'function' ||
+        typeof admissionPolicy?.authorizeProviderAttempt !== 'function' ||
         typeof admissionPolicy?.reserveProtectedOperation !== 'function')
     ) {
-      throw new TypeError('admissionPolicy must implement authorizeRequest/reserveProtectedOperation');
+      throw new TypeError(
+        'admissionPolicy must implement authorizeRequest/authorizeProviderAttempt/reserveProtectedOperation',
+      );
     }
     this.authenticator = authenticator;
     this.storage = storage;
@@ -323,11 +326,11 @@ export class HostedGatewayCore {
       protection: serverProtection,
     };
 
-    // Phase 12D request admission happens after authentication, registered
-    // target/schema validation and authoritative effect binding, but before any
-    // provider adapter is constructed. It is limited to request-level policy
-    // such as entitlement and rate limiting; protected-operation metering is
-    // reserved later, inside the operation lock after deterministic preflight.
+    // Request admission is deliberately limited to infrastructure-level policy
+    // such as rate limiting plus a non-authoritative usage snapshot. Active
+    // entitlement is required only if the state machine determines that a new
+    // provider attempt is necessary. That preserves safe confirmed replay and
+    // UNKNOWN reconciliation after subscription/lifecycle changes.
     const requestAdmission = this.admissionPolicy
       ? await this.admissionPolicy.authorizeRequest(admissionContext)
       : null;
@@ -357,12 +360,18 @@ export class HostedGatewayCore {
       },
     });
 
+    let providerAttemptAdmission = null;
     let meterReservation = null;
     const gateway = new GatewayCore({
       store,
       ...(this.clock ? { clock: this.clock } : {}),
       ...(this.admissionPolicy && serverProtection === 'PROTECT'
         ? {
+            beforeProviderPreflight: async () => {
+              providerAttemptAdmission = await this.admissionPolicy.authorizeProviderAttempt(
+                admissionContext,
+              );
+            },
             beforeProviderAttempt: async () => {
               meterReservation = await this.admissionPolicy.reserveProtectedOperation(admissionContext);
             },
@@ -394,10 +403,11 @@ export class HostedGatewayCore {
       effectHash,
       provider,
       action,
-      ...(requestAdmission || meterReservation
+      ...(requestAdmission || providerAttemptAdmission || meterReservation
         ? {
             admission: {
               ...(requestAdmission ?? {}),
+              ...(providerAttemptAdmission ?? {}),
               ...(meterReservation ? { meter: meterReservation } : {}),
             },
           }
