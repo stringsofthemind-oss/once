@@ -7,6 +7,7 @@ import {
   HostedGatewayError,
   computeHostedEffectHash,
   deriveProviderOperationKey,
+  deriveTenantOperationKey,
   sha256Hex,
 } from '../src/hosted-gateway-core.js';
 import { AmbiguousOutcomeError } from '../src/gateway-core.js';
@@ -136,4 +137,52 @@ test('conflict fences are tenant scoped', async () => {
   const a = await hosted.execute({ authorization: 'Bearer once_test_tenant_a', body: requestBody({ operation_id: 'refund:a', conflict_key: 'shared-looking-scope' }) });
   const b = await hosted.execute({ authorization: 'Bearer once_test_tenant_b', body: requestBody({ operation_id: 'refund:b', conflict_key: 'shared-looking-scope' }) });
   assert.equal(a.decision, 'BLOCK_UNKNOWN'); assert.equal(b.decision, 'EXECUTE'); assert.equal(effectsA.count, 1); assert.equal(effectsB.count, 1);
+});
+
+test('legacy CONFIRMED record without conflictKey still replays after upgrade', async () => {
+  const authenticator = await makeAuthenticator([['once_test_tenant_a', { tenantId: 'tenant-a' }]]);
+  const storage = new MemoryStorage(); const effects = { count: 0 };
+  const operationId = 'refund:legacy-confirmed';
+  const effectHash = await computeHostedEffectHash({ provider: 'stripe', action: 'refund.create', canonicalEffect: { payment_intent: 'pi_123', amount: 100 } });
+  const providerOperationKey = await deriveProviderOperationKey({ tenantId: 'tenant-a', operationId, provider: 'stripe', action: 'refund.create' });
+  storage.records.set(await deriveTenantOperationKey('tenant-a', operationId), {
+    operationId, tenantId: 'tenant-a', effectHash, state: 'CONFIRMED', result: { providerReference: 're_legacy' }, providerReference: 're_legacy',
+    provider: 'stripe', action: 'refund.create', bindingVersion: 'v1', providerOperationKey,
+    createdAt: '2026-09-01T00:00:00.000Z', updatedAt: '2026-09-01T00:00:01.000Z',
+  });
+  const hosted = new HostedGatewayCore({ authenticator, storage, resolveRegistration: async () => makeRegistration({ effects }) });
+  const replay = await hosted.execute({ authorization: 'Bearer once_test_tenant_a', body: requestBody({ operation_id: operationId }) });
+  assert.equal(replay.decision, 'REPLAY_CONFIRMED'); assert.equal(replay.result.providerReference, 're_legacy'); assert.equal(effects.count, 0);
+});
+
+test('legacy UNKNOWN record without conflictKey keeps legacy reconcile-before-retry behavior', async () => {
+  const authenticator = await makeAuthenticator([['once_test_tenant_a', { tenantId: 'tenant-a' }]]);
+  const storage = new MemoryStorage(); const effects = { count: 0 };
+  const operationId = 'refund:legacy-unknown';
+  const effectHash = await computeHostedEffectHash({ provider: 'stripe', action: 'refund.create', canonicalEffect: { payment_intent: 'pi_123', amount: 100 } });
+  const providerOperationKey = await deriveProviderOperationKey({ tenantId: 'tenant-a', operationId, provider: 'stripe', action: 'refund.create' });
+  storage.records.set(await deriveTenantOperationKey('tenant-a', operationId), {
+    operationId, tenantId: 'tenant-a', effectHash, state: 'UNKNOWN', result: null, providerReference: null,
+    provider: 'stripe', action: 'refund.create', bindingVersion: 'v1', providerOperationKey,
+    createdAt: '2026-09-01T00:00:00.000Z', updatedAt: '2026-09-01T00:00:01.000Z',
+  });
+  const hosted = new HostedGatewayCore({ authenticator, storage, resolveRegistration: async () => makeRegistration({ effects }) });
+  const result = await hosted.execute({ authorization: 'Bearer once_test_tenant_a', body: requestBody({ operation_id: operationId }) });
+  assert.equal(result.decision, 'BLOCK_UNKNOWN'); assert.equal(effects.count, 0);
+});
+
+test('legacy operation cannot be silently rebound to a new conflictKey after upgrade', async () => {
+  const authenticator = await makeAuthenticator([['once_test_tenant_a', { tenantId: 'tenant-a' }]]);
+  const storage = new MemoryStorage(); const effects = { count: 0 };
+  const operationId = 'refund:legacy-rebind';
+  const effectHash = await computeHostedEffectHash({ provider: 'stripe', action: 'refund.create', canonicalEffect: { payment_intent: 'pi_123', amount: 100 } });
+  const providerOperationKey = await deriveProviderOperationKey({ tenantId: 'tenant-a', operationId, provider: 'stripe', action: 'refund.create' });
+  storage.records.set(await deriveTenantOperationKey('tenant-a', operationId), {
+    operationId, tenantId: 'tenant-a', effectHash, state: 'UNKNOWN', result: null, providerReference: null,
+    provider: 'stripe', action: 'refund.create', bindingVersion: 'v1', providerOperationKey,
+    createdAt: '2026-09-01T00:00:00.000Z', updatedAt: '2026-09-01T00:00:01.000Z',
+  });
+  const hosted = new HostedGatewayCore({ authenticator, storage, resolveRegistration: async () => makeRegistration({ effects }) });
+  const conflict = await hosted.execute({ authorization: 'Bearer once_test_tenant_a', body: requestBody({ operation_id: operationId, conflict_key: 'stripe:pi_123:refund' }) });
+  assert.equal(conflict.decision, 'CONFLICT'); assert.equal(effects.count, 0);
 });
