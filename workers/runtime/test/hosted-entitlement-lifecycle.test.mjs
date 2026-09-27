@@ -11,6 +11,8 @@ import {
 } from '../src/hosted-gateway-transport.mjs';
 import { storage } from './harness.mjs';
 
+const LEGACY_PRO_PRICE_ID = 'price_1UGqPRAHX5spO4zqQcuRzi3S';
+
 function ctx(store) {
   return { storage: store };
 }
@@ -35,14 +37,16 @@ function setEntitlement(store, tenantId, status = 'active') {
     `
       INSERT INTO stripe_entitlements (
         customer_id, subscription_id, plan, status, price_id, current_period_end, updated_at
-      ) VALUES (?, ?, 'pro', ?, NULL, NULL, ?)
+      ) VALUES (?, ?, 'pro', ?, ?, NULL, ?)
       ON CONFLICT(customer_id) DO UPDATE SET
         status = excluded.status,
+        price_id = excluded.price_id,
         updated_at = excluded.updated_at
     `,
     tenantId,
     `sub_${tenantId}`,
     status,
+    LEGACY_PRO_PRICE_ID,
     new Date().toISOString(),
   );
 }
