@@ -21,7 +21,8 @@ This branch now contains:
 - hostile recovery tests for the durable meter-sync -> durable UNKNOWN-sync crash window,
 - key-version-aware hosted provider credential encryption,
 - controlled current/previous provider master-key rotation,
-- immutable active-credential rewrap under a new master-key version without returning plaintext credentials.
+- immutable active-credential rewrap under a new master-key version without returning plaintext credentials,
+- explicit-cutoff, bounded cleanup for operational rate-limit and admission-audit rows that never prunes safety or billing authority.
 
 The runtime wiring remains deliberately opt-in behind the exact environment value:
 
@@ -144,7 +145,7 @@ An SQLite `AFTER INSERT` trigger updates the monthly aggregate when and only whe
 
 A new logical-operation reservation is followed by `storage.sync()` before GatewayCore can write `UNKNOWN` or cross the provider boundary.
 
-Audit rows are operational observability only, not billing authority. Their schema is an explicit scalar allowlist. They do not store raw operation IDs, effect hashes, authorization/API-key material, request payloads, free-form metadata, provider operation keys, provider results or credentials. Raw operation IDs are represented only by a tenant-scoped one-way SHA-256 fingerprint for correlation. Audit-retention/cleanup policy remains a production gate.
+Audit rows are operational observability only, not billing authority. Their schema is an explicit scalar allowlist. They do not store raw operation IDs, effect hashes, authorization/API-key material, request payloads, free-form metadata, provider operation keys, provider results or credentials. Raw operation IDs are represented only by a tenant-scoped one-way SHA-256 fingerprint for correlation.
 
 ## Entitlement source and lifecycle semantics
 
@@ -222,6 +223,33 @@ CI covers old-version read during the overlap window, new-version writes, active
 
 This branch does **not** automatically rotate any environment secret, bulk-migrate tenants, deploy the keyring, or modify staging/production key material. Actual key rollover remains a separately approval-gated operational event.
 
+## Operational retention mechanism
+
+Phase 12D now includes a bounded cleanup primitive for **operational telemetry only**. It deliberately does not choose a retention period and it is not wired to a scheduler or public route.
+
+The cleanup primitive can delete only:
+
+```text
+hosted_execute_rate_limits
+hosted_admission_audit_events
+```
+
+Deletion requires an explicit caller-supplied cutoff. Rate-limit cleanup removes only complete one-minute windows strictly before the minute containing the cutoff. Audit cleanup removes rows whose `created_at` is strictly before its explicit cutoff. Each table is processed in a bounded batch of 1 to 10,000 rows, with 1,000 as the caller default, and the result indicates when another batch may remain. A durable `storage.sync()` follows any deletion.
+
+The cleanup primitive has no implicit destructive default: calling it with no cutoff fails. Invalid timestamps or unsafe batch bounds fail before deletion.
+
+It is deliberately forbidden from pruning billing or execution-safety authority. In particular it never deletes:
+
+```text
+hosted_metered_operations
+hosted_usage_monthly
+hosted_gateway_operations
+```
+
+The meter identity and monthly usage ledger therefore remain durable even when short-lived infrastructure rate windows and operational audit telemetry are removed. CI explicitly seeds authority rows, runs cleanup, and verifies those authority rows remain unchanged.
+
+Production still needs policy decisions for the actual rate-limit/audit retention durations, invocation cadence, scheduler/operator ownership, observability for cleanup failures and any eventual archival requirement. No cleanup has been run against staging or production by this branch.
+
 ## Rate limiting
 
 Rate limiting is separate from logical-operation metering.
@@ -249,19 +277,20 @@ The response body still excludes the internal admission object. The header path 
 
 `x-once-usage-metered=true` means that request created the new protected logical-operation meter unit. Retry/replay or reuse of an existing meter reservation reports `false`.
 
-## Exact-head CI evidence
+## CI evidence
 
-The evidence block below will be refreshed after the key-version/rewrap documentation commit receives exact-head CI. The latest reviewed implementation head before this documentation update is:
+The latest reviewed implementation head before this documentation-only commit is:
 
 ```text
-c7896c8ebcc3554ed5b1e95912d0de837614db2e
+a7900b94a6019f7a94079052a159626680c23aac
 ```
 
 At that implementation head:
 
-- Gateway core #110 / run `36284055570`: **PASS**
-- runtime Worker job in Worker CI #456 / run `36284055526`: **PASS**
-- runtime suite: **97/97 PASS, 0 failed**
+- Gateway core #114 / run `36284322120`: **PASS**
+- Worker CI #460 / run `36284322045`: **PASS**
+- runtime suite: **101/101 PASS, 0 failed**
+- operational retention regressions: **PASS**
 - provider master-key version/rewrap regressions: **PASS**
 - entitlement lifecycle regressions: **PASS**
 - meter-sync -> UNKNOWN-sync hostile recovery regressions: **PASS**
@@ -291,6 +320,7 @@ The runtime suite covers, among other existing safety regressions:
 - changed-effect failure from an orphaned meter reservation without provider crossing,
 - exact-version provider master-key selection and fail-closed missing-version behavior,
 - immutable hosted credential rewrap under a new current master-key version without plaintext return,
+- explicit-cutoff bounded cleanup of operational rate/audit state while preserving authoritative meter/usage state,
 - the existing credential-free lost-ack proof with exactly one external effect.
 
 ## Claim boundary
@@ -304,6 +334,7 @@ This slice does **not** claim:
 - Stripe live mode is enabled,
 - production credentials are provisioned,
 - production provider master keys were changed,
+- any staging/production operational cleanup was run,
 - production deployment has occurred.
 
 It also does not change the core Once claim boundary: Once provides execution-safety semantics under stated assumptions; it does not claim universal exactly-once execution.
@@ -313,7 +344,7 @@ It also does not change the core Once claim boundary: Once provides execution-sa
 1. reconcile final commercial plan names/limits with Stripe entitlements,
 2. define production entitlement freshness/lifecycle delivery policy (webhook ordering, grace and stale-state handling),
 3. define and rehearse the approval-gated operational bulk-check/rollover runbook for provider master-key migration,
-4. define rate-limit, meter and audit retention/cleanup policy,
+4. choose production rate-limit/audit retention durations, cleanup invocation cadence and operational ownership/observability,
 5. decide commercial treatment of orphaned meter reservations,
 6. decide public BYPASS entitlement policy and replay/reconciliation rate-limit policy,
 7. design the public `/v1/execute` migration/cutover,
