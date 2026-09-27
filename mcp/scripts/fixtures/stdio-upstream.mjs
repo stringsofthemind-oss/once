@@ -33,6 +33,7 @@ server.server.setRequestHandler("tools/call", async request => {
   if (name !== "create_order") throw new Error("Unknown tool");
   appendFileSync(effectsPath, JSON.stringify(args) + "\n");
   if (args.sku === "lost-ack") throw new Error("Acknowledgement lost after disposable write");
+  if (args.sku === "crash") process.exit(23);
   return { content: [{ type: "text", text: "created:" + args.operation_id }] };
 });
 serveStdio(() => server);
