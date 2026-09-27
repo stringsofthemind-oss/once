@@ -92,6 +92,7 @@ test('one logical operation is metered once and a later-month replay does not mu
 
     const admitted = await policy.authorizeRequest(request());
     assert.equal(admitted.plan, 'pro');
+    assert.deepEqual(admitted.usage, { limit: 100_000, used: 0, period: '2026-09' });
     const first = await policy.reserveProtectedOperation(request());
     assert.equal(first.metered, true);
     assert.equal(first.replay, false);
@@ -100,7 +101,8 @@ test('one logical operation is metered once and a later-month replay does not mu
     assert.equal(syncs, 1);
 
     now = Date.parse('2026-10-03T12:00:00.000Z');
-    await policy.authorizeRequest(request());
+    const laterAdmission = await policy.authorizeRequest(request());
+    assert.deepEqual(laterAdmission.usage, { limit: 100_000, used: 0, period: '2026-10' });
     const replay = await policy.reserveProtectedOperation(request());
     assert.equal(replay.metered, false);
     assert.equal(replay.replay, true);
@@ -252,6 +254,63 @@ test('concurrent distinct operations cannot oversubscribe a one-operation quota 
     assert.equal(firstResult.metered, true);
     assert.equal(store.sql.exec('SELECT used FROM hosted_usage_monthly')[0].used, 1);
     assert.equal(store.sql.exec('SELECT COUNT(*) AS n FROM hosted_metered_operations')[0].n, 1);
+  } finally {
+    store.db.close();
+  }
+});
+
+test('audit rows use an explicit scalar allowlist and never persist effect or credential material', async () => {
+  const store = storage();
+  try {
+    seedEntitlement(store, 'tenant_a');
+    const policy = new RuntimeHostedAdmissionPolicy({
+      ctx: { storage: store },
+      requestLimitPerMinute: 10,
+      clock: () => Date.parse('2026-09-27T00:10:00.000Z'),
+    });
+
+    const secretFingerprint = 'sha256:payload-secret-fingerprint';
+    const input = request({ effectHash: secretFingerprint });
+    await policy.authorizeRequest(input);
+    await policy.reserveProtectedOperation(input);
+
+    const columns = store.sql.exec('PRAGMA table_info(hosted_admission_audit_events)')
+      .map((row) => String(row.name));
+    for (const forbidden of [
+      'effect_hash',
+      'authorization',
+      'api_key',
+      'payload',
+      'metadata',
+      'provider_operation_key',
+      'provider_result',
+      'credential',
+    ]) {
+      assert.equal(columns.includes(forbidden), false);
+    }
+
+    const rows = store.sql.exec(`
+      SELECT
+        event_type,
+        tenant_id,
+        operation_id,
+        protection,
+        plan,
+        rate_limit,
+        rate_remaining,
+        usage_limit,
+        usage_used,
+        usage_period
+      FROM hosted_admission_audit_events
+      ORDER BY event_id
+    `).map((row) => ({ ...row }));
+
+    assert.equal(rows.length, 2);
+    assert.equal(rows[0].event_type, 'REQUEST_ADMITTED');
+    assert.equal(rows[0].usage_used, 0);
+    assert.equal(rows[1].event_type, 'METER_RESERVED');
+    assert.equal(rows[1].usage_used, 1);
+    assert.doesNotMatch(JSON.stringify(rows), /payload-secret-fingerprint/);
   } finally {
     store.db.close();
   }
