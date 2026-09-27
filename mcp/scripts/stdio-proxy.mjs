@@ -7,7 +7,7 @@ import { pathToFileURL } from "node:url";
 import { Client } from "@modelcontextprotocol/client";
 import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 import { serveStdio } from "@modelcontextprotocol/server/stdio";
-import { createMcpExecutionBoundary } from "../../sdk/typescript/dist/connect/index.js";
+import { createMcpExecutionBoundary } from "@once-agent/sdk/connect";
 import { createMcpProxyServer } from "../dist/proxy-server.js";
 
 function canonical(value) {
@@ -64,6 +64,10 @@ async function listCompleteCatalog(client) {
 }
 
 export async function connectStdioProxy(rawConfig) {
+  const [major, minor] = process.versions.node.split(".").map(Number);
+  if (major < 24 || (major === 24 && minor < 15)) {
+    throw new Error("NODE_VERSION_UNSUPPORTED: proxy mode requires Node 24.15+ for durable SQLite");
+  }
   // Snapshot caller-owned configuration so later mutation cannot change trust policy.
   const config = validConfig(JSON.parse(JSON.stringify(rawConfig)));
   const upstream = new Client({ name: "once-upstream-proxy", version: "0.1.0" });
@@ -131,14 +135,14 @@ export async function connectStdioProxy(rawConfig) {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  const index = process.argv.indexOf("--config");
-  if (index < 0 || !process.argv[index + 1]) {
+export async function runProxyCli(args = process.argv.slice(2)) {
+  const index = args.indexOf("--config");
+  if (index < 0 || !args[index + 1]) {
     console.error("Usage: node mcp/scripts/stdio-proxy.mjs --config .once/mcp.json");
     process.exitCode = 2;
   } else {
     try {
-      const configPath = resolve(process.argv[index + 1]);
+      const configPath = resolve(args[index + 1]);
       const config = JSON.parse(await readFile(configPath, "utf8"));
       // Relative state/cwd paths are anchored to the reviewed config file.
       const { dirname } = await import("node:path");
@@ -156,4 +160,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
       process.exitCode = 1;
     }
   }
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  await runProxyCli();
 }
