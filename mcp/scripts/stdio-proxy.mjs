@@ -64,7 +64,8 @@ async function listCompleteCatalog(client) {
 }
 
 export async function connectStdioProxy(rawConfig) {
-  const config = validConfig(rawConfig);
+  // Snapshot caller-owned configuration so later mutation cannot change trust policy.
+  const config = validConfig(JSON.parse(JSON.stringify(rawConfig)));
   const upstream = new Client({ name: "once-upstream-proxy", version: "0.1.0" });
   let downstream;
   let catalogInvalidated = false;
