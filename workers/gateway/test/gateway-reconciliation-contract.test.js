@@ -201,3 +201,116 @@ test('first ambiguous attempt followed by ABSENT_PROVEN permits one ordinary ret
   assert.equal(replay.decision, GatewayDecision.REPLAY_CONFIRMED);
   assert.equal(executeCalls, 2);
 });
+
+test('restart before reconciliation preserves UNKNOWN and conflict fence', async () => {
+  const store = new MemoryOperationStore();
+  await seedUnknown({ store });
+
+  // A new GatewayCore instance models a process/runtime restart while durable
+  // operation state remains in the store.
+  const restartedGateway = new GatewayCore({ store });
+  let executeCalls = 0;
+  const result = await restartedGateway.execute(request(), {
+    async reconcile() { return { status: 'UNKNOWN', reason: 'still ambiguous' }; },
+    async execute() { executeCalls += 1; return { ok: true }; },
+  });
+
+  assert.equal(result.decision, GatewayDecision.BLOCK_UNKNOWN);
+  assert.equal((await store.get(request().operationId)).state, OutcomeState.UNKNOWN);
+
+  const competing = await restartedGateway.execute(
+    request({ operationId: 'phase14c:restart-competing', effectHash: 'hash:restart-competing' }),
+    { async execute() { executeCalls += 1; return { ok: true }; } },
+  );
+  assert.equal(competing.decision, GatewayDecision.BLOCK_CONFLICT_SCOPE);
+  assert.equal(competing.blockingOperationId, request().operationId);
+  assert.equal(executeCalls, 0);
+});
+
+test('restart after durable reconciliation confirmation replays without provider execution', async () => {
+  const store = new MemoryOperationStore();
+  await seedUnknown({ store });
+  let executeCalls = 0;
+  const firstGateway = new GatewayCore({ store });
+  const adapter = {
+    async reconcile() {
+      return { status: 'CONFIRMED', result: { ok: true, reconciled: true }, providerReference: 'restart-confirmed' };
+    },
+    async execute() { executeCalls += 1; return { ok: true }; },
+  };
+
+  const reconciled = await firstGateway.execute(request(), adapter);
+  assert.equal(reconciled.decision, GatewayDecision.REPLAY_CONFIRMED);
+
+  const restartedGateway = new GatewayCore({ store });
+  const replay = await restartedGateway.execute(request(), adapter);
+  assert.equal(replay.decision, GatewayDecision.REPLAY_CONFIRMED);
+  assert.deepEqual(replay.result, { ok: true, reconciled: true });
+  assert.equal(executeCalls, 0);
+});
+
+test('concurrent reconciliation attempts are serialized by conflict authority', async () => {
+  const store = new MemoryOperationStore();
+  await seedUnknown({ store });
+  const gateway = new GatewayCore({ store });
+  let activeReconciliations = 0;
+  let maxActiveReconciliations = 0;
+  let reconcileCalls = 0;
+  let releaseFirst;
+  const firstEntered = new Promise((resolve) => { releaseFirst = resolve; });
+  let signalEntered;
+  const entered = new Promise((resolve) => { signalEntered = resolve; });
+
+  const adapter = {
+    async reconcile() {
+      reconcileCalls += 1;
+      activeReconciliations += 1;
+      maxActiveReconciliations = Math.max(maxActiveReconciliations, activeReconciliations);
+      if (reconcileCalls === 1) {
+        signalEntered();
+        await firstEntered;
+      }
+      activeReconciliations -= 1;
+      return { status: 'UNKNOWN' };
+    },
+    async execute() { throw new Error('must not execute'); },
+  };
+
+  const first = gateway.execute(request(), adapter);
+  await entered;
+  const second = gateway.execute(request(), adapter);
+  releaseFirst();
+
+  const [firstResult, secondResult] = await Promise.all([first, second]);
+  assert.equal(firstResult.decision, GatewayDecision.BLOCK_UNKNOWN);
+  assert.equal(secondResult.decision, GatewayDecision.BLOCK_UNKNOWN);
+  assert.equal(reconcileCalls, 2);
+  assert.equal(maxActiveReconciliations, 1);
+});
+
+test('reconciliation evidence is not persisted as a raw provider payload channel', async () => {
+  const store = new MemoryOperationStore();
+  await seedUnknown({ store });
+  const gateway = new GatewayCore({ store });
+  const secret = 'sk_live_must_not_persist';
+  const result = await gateway.execute(request(), {
+    async reconcile() {
+      return {
+        status: 'MISMATCH',
+        reason: 'related object did not match',
+        evidence: {
+          method: 'provider-read',
+          authorization: `Bearer ${secret}`,
+          rawResponse: { secret, huge: 'provider-payload' },
+        },
+      };
+    },
+    async execute() { throw new Error('must not execute'); },
+  });
+
+  assert.equal(result.decision, GatewayDecision.BLOCK_UNKNOWN);
+  const persisted = JSON.stringify(await store.get(request().operationId));
+  assert.equal(persisted.includes(secret), false);
+  assert.equal(persisted.includes('rawResponse'), false);
+  assert.equal(persisted.includes('authorization'), false);
+});
