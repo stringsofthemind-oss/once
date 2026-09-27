@@ -77,6 +77,13 @@ try {
   assert.deepEqual(await client.callTool(call), first);
   assert.equal(count(), 1);
 
+  const simultaneous = { name: "create_order",
+    arguments: { operation_id: "order-concurrent", sku: "sku-2", quantity: 1 } };
+  const concurrentResults = await Promise.all(
+    Array.from({ length: 4 }, () => client.callTool(simultaneous)));
+  for (const result of concurrentResults) assert.deepEqual(result, concurrentResults[0]);
+  assert.equal(count(), 2);
+
   const uncertain = { name: "create_order",
     arguments: { operation_id: "order-2", sku: "lost-ack", quantity: 1 } };
   await assert.rejects(client.callTool(uncertain));
@@ -100,7 +107,7 @@ try {
     assert.deepEqual((await cli.listTools()).tools.map(tool => tool.name),
       ["create_order", "read_count"]);
     assert.deepEqual(await cli.callTool(call), first);
-    assert.equal(count(), 2);
+    assert.equal(count(), 3);
   } finally {
     await cli.close();
   }
@@ -113,7 +120,7 @@ try {
     await assert.rejects(client.callTool({ name: "create_order",
       arguments: { operation_id: "drift-" + mutation, sku: "sku-3", quantity: 1 } }),
       /TOOL_SCHEMA_CHANGED/);
-    assert.equal(count(), 2);
+    assert.equal(count(), 3);
     await client.close();
     await proxy.close();
     client = undefined;
