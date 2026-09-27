@@ -6,8 +6,23 @@ import { types } from "node:util";
 import { canonicalizeConnectPayload, fingerprintConnectPayload } from "./connect/binding.js";
 
 type JsonObject = Record<string, unknown>;
-type DatabaseSyncConstructor = typeof import("node:sqlite").DatabaseSync;
-type LocalDatabase = InstanceType<DatabaseSyncConstructor>;
+
+type LocalStatement = {
+  get(...params: unknown[]): unknown;
+  run(...params: unknown[]): { changes: number | bigint };
+};
+
+type LocalDatabase = {
+  readonly isTransaction: boolean;
+  exec(sql: string): void;
+  prepare(sql: string): LocalStatement;
+  close(): void;
+};
+
+type DatabaseSyncConstructor = new (
+  location: string,
+  options?: Readonly<{ timeout?: number }>,
+) => LocalDatabase;
 
 type StateFileIdentity = Readonly<{
   dev: bigint;
@@ -65,7 +80,8 @@ function assertSupportedLocalRuntime(): void {
 async function loadDatabaseSync(): Promise<DatabaseSyncConstructor> {
   assertSupportedLocalRuntime();
   try {
-    return (await import("node:sqlite")).DatabaseSync;
+    const sqlite = await import("node:sqlite");
+    return sqlite.DatabaseSync as unknown as DatabaseSyncConstructor;
   } catch (cause) {
     throw new LocalProtectionError("SQLITE_UNAVAILABLE", "Node SQLite is unavailable. Enable node:sqlite or use the hosted Once execution path; the operation was not dispatched.", { cause });
   }
