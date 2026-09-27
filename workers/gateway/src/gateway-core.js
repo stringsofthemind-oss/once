@@ -3,6 +3,7 @@ export const GatewayDecision = Object.freeze({
   EXECUTE: 'EXECUTE',
   REPLAY_CONFIRMED: 'REPLAY_CONFIRMED',
   BLOCK_UNKNOWN: 'BLOCK_UNKNOWN',
+  BLOCK_CONFLICT_SCOPE: 'BLOCK_CONFLICT_SCOPE',
   CONFLICT: 'CONFLICT',
 });
 
@@ -48,6 +49,20 @@ export class MemoryOperationStore {
   async put(operationId, record) {
     this.records.set(operationId, structuredClone(record));
   }
+
+  async findUnknownByConflictKey(conflictKey, excludeOperationId = null) {
+    if (!conflictKey) return null;
+    for (const record of this.records.values()) {
+      if (
+        record?.state === OutcomeState.UNKNOWN &&
+        record?.conflictKey === conflictKey &&
+        record?.operationId !== excludeOperationId
+      ) {
+        return structuredClone(record);
+      }
+    }
+    return null;
+  }
 }
 
 function requireString(value, name) {
@@ -89,6 +104,7 @@ export class GatewayCore {
     const {
       operationId,
       effectHash,
+      conflictKey = null,
       payload,
       protection = 'PROTECT',
       metadata = {},
@@ -96,16 +112,36 @@ export class GatewayCore {
 
     requireString(operationId, 'operationId');
     requireString(effectHash, 'effectHash');
+    if (conflictKey !== null && conflictKey !== undefined) {
+      requireString(conflictKey, 'conflictKey');
+    }
 
     if (protection === 'BYPASS') {
-      const result = await adapter.execute({ operationId, effectHash, payload, metadata });
+      const result = await adapter.execute({ operationId, effectHash, conflictKey, payload, metadata });
       return { decision: GatewayDecision.BYPASS, result };
     }
 
-    return this.store.withLock(operationId, async () => {
+    // When conflict fencing is requested, serialize the entire decision path on
+    // the conflict scope rather than only the operation ID. This prevents two
+    // different logical operations for the same external object from both
+    // observing an unfenced scope and crossing the provider boundary.
+    const lockKey = conflictKey ? `conflict:${conflictKey}` : `operation:${operationId}`;
+
+    return this.store.withLock(lockKey, async () => {
       const existing = await this.store.get(operationId);
 
       if (existing && existing.effectHash !== effectHash) {
+        return {
+          decision: GatewayDecision.CONFLICT,
+          state: existing.state,
+          operationId,
+        };
+      }
+
+      if (
+        existing &&
+        (existing.conflictKey ?? null) !== (conflictKey ?? null)
+      ) {
         return {
           decision: GatewayDecision.CONFLICT,
           state: existing.state,
@@ -122,11 +158,27 @@ export class GatewayCore {
         };
       }
 
+      // A different unresolved logical operation on the same external scope is
+      // a hard fence. A fresh operation ID, changed payload, new process, or new
+      // tool-call identity must not escape the earlier UNKNOWN.
+      if (conflictKey && typeof this.store.findUnknownByConflictKey === 'function') {
+        const blocker = await this.store.findUnknownByConflictKey(conflictKey, operationId);
+        if (blocker) {
+          return {
+            decision: GatewayDecision.BLOCK_CONFLICT_SCOPE,
+            state: OutcomeState.UNKNOWN,
+            operationId,
+            conflictKey,
+            blockingOperationId: blocker.operationId,
+          };
+        }
+      }
+
       if (existing?.state === OutcomeState.UNKNOWN) {
         let reconciliation;
         try {
           reconciliation = normalizeReconciliation(
-            await adapter.reconcile({ operationId, effectHash, payload, metadata, record: existing }),
+            await adapter.reconcile({ operationId, effectHash, conflictKey, payload, metadata, record: existing }),
           );
         } catch {
           return {
@@ -172,30 +224,22 @@ export class GatewayCore {
         await this.beforeProviderPreflight({
           operationId,
           effectHash,
+          conflictKey,
           payload,
           metadata,
           record: existing ?? null,
         });
       }
 
-      // Deterministic configuration/credential failures must happen before the
-      // crash boundary is recorded. A successful preflight is not evidence that
-      // a provider effect occurred; it only proves the adapter is ready to cross
-      // the boundary. Confirmed replay returns above and never needs preflight.
       if (typeof adapter.preflight === 'function') {
-        await adapter.preflight({ operationId, effectHash, payload, metadata, record: existing ?? null });
+        await adapter.preflight({ operationId, effectHash, conflictKey, payload, metadata, record: existing ?? null });
       }
 
-      // Optional commercial/admission work that must happen only when a real
-      // provider attempt is about to become possible belongs here: after
-      // conflict/replay/reconciliation and deterministic adapter preflight, but
-      // before durable UNKNOWN and before provider crossing. Phase 12D uses this
-      // to reserve one logical-operation meter unit durably. A denial or sync
-      // failure here prevents UNKNOWN creation and prevents provider execution.
       if (this.beforeProviderAttempt) {
         await this.beforeProviderAttempt({
           operationId,
           effectHash,
+          conflictKey,
           payload,
           metadata,
           record: existing ?? null,
@@ -206,6 +250,7 @@ export class GatewayCore {
       await this.store.put(operationId, {
         operationId,
         effectHash,
+        conflictKey,
         state: OutcomeState.UNKNOWN,
         result: null,
         providerReference: null,
@@ -214,10 +259,11 @@ export class GatewayCore {
       });
 
       try {
-        const result = await adapter.execute({ operationId, effectHash, payload, metadata });
+        const result = await adapter.execute({ operationId, effectHash, conflictKey, payload, metadata });
         const record = {
           operationId,
           effectHash,
+          conflictKey,
           state: OutcomeState.CONFIRMED,
           result,
           providerReference: result?.providerReference ?? null,
