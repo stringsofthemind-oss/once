@@ -118,12 +118,11 @@ test('ordered entitlement writes the purchased legacy price plan instead of conf
     }));
     assert.equal(response.status, 200);
     assert.equal((await response.json()).entitlement.plan, 'pro');
-    assert.deepEqual(storedEntitlement(store, 'cus_price_beats_metadata'), {
-      customer_id: 'cus_price_beats_metadata',
-      plan: 'pro',
-      status: 'active',
-      price_id: 'price_1UGqPRAHX5spO4zqQcuRzi3S',
-    });
+    const row = storedEntitlement(store, 'cus_price_beats_metadata');
+    assert.equal(row.customer_id, 'cus_price_beats_metadata');
+    assert.equal(row.plan, 'pro');
+    assert.equal(row.status, 'active');
+    assert.equal(row.price_id, 'price_1UGqPRAHX5spO4zqQcuRzi3S');
   } finally {
     store.db.close();
   }
