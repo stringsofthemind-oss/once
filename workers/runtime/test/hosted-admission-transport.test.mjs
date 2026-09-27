@@ -154,6 +154,20 @@ test('policy-enabled hosted HTTP executes once, meters once and replay does not 
     assert.equal(first.status, 200);
     assert.equal(replay.status, 200);
 
+    assert.equal(first.headers.get('x-once-rate-limit-limit'), '10');
+    assert.equal(first.headers.get('x-once-rate-limit-remaining'), '9');
+    assert.equal(first.headers.get('x-once-usage-limit'), '100000');
+    assert.equal(first.headers.get('x-once-usage-used'), '1');
+    assert.equal(first.headers.get('x-once-usage-period'), '2026-09');
+    assert.equal(first.headers.get('x-once-usage-metered'), 'true');
+
+    assert.equal(replay.headers.get('x-once-rate-limit-limit'), '10');
+    assert.equal(replay.headers.get('x-once-rate-limit-remaining'), '8');
+    assert.equal(replay.headers.get('x-once-usage-limit'), '100000');
+    assert.equal(replay.headers.get('x-once-usage-used'), '1');
+    assert.equal(replay.headers.get('x-once-usage-period'), '2026-09');
+    assert.equal(replay.headers.get('x-once-usage-metered'), 'false');
+
     const firstBody = await first.json();
     const replayBody = await replay.json();
     assert.equal(firstBody.decision, 'EXECUTE');
@@ -173,9 +187,8 @@ test('policy-enabled hosted HTTP executes once, meters once and replay does not 
       2,
     );
 
-    // Internal transport intentionally exposes only the safety result contract.
-    // Commercial admission metadata remains server-side until a separately
-    // reviewed public response/header contract is added.
+    // Admission internals remain out of the response body. Only the reviewed
+    // numeric operational header contract is exposed.
     assert.equal(Object.hasOwn(firstBody, 'admission'), false);
     const serialized = JSON.stringify(firstBody);
     assert.doesNotMatch(serialized, /once_test_admission_transport/);
@@ -260,6 +273,62 @@ test('policy-enabled hosted HTTP does not meter deterministic provider preflight
     assert.equal(effects, 0);
     assert.equal(store.sql.exec('SELECT COUNT(*) AS n FROM hosted_metered_operations')[0].n, 0);
     assert.equal(store.sql.exec('SELECT COUNT(*) AS n FROM hosted_gateway_operations')[0].n, 0);
+  } finally {
+    store.db.close();
+  }
+});
+
+test('operational headers and audit rows redact authorization, payload and free-form metadata', async () => {
+  const store = storage();
+  try {
+    const rawKey = 'once_test_redaction_secret_123';
+    const tenantId = 'tenant_redaction';
+    const payloadSecret = 'payload-secret-value-987';
+    const metadataSecret = 'metadata-secret-value-654';
+    await seedApiKey(store, rawKey, tenantId);
+    seedEntitlement(store, tenantId);
+
+    const admissionPolicy = new RuntimeHostedAdmissionPolicy({
+      ctx: createContext(store),
+      requestLimitPerMinute: 10,
+      clock: () => Date.parse('2026-09-27T00:10:00.000Z'),
+    });
+
+    const binding = new RuntimeHostedGatewayBinding({
+      ctx: createContext(store),
+      admissionPolicy,
+      resolveRegistration: registrationFactory({
+        execute: async () => ({ providerReference: 'effect_redaction' }),
+      }),
+    });
+
+    const requestBody = body('redaction-op');
+    requestBody.payload.note = payloadSecret;
+    requestBody.metadata = {
+      secret_token: metadataSecret,
+      nested: { authorization: rawKey },
+    };
+
+    const response = await dispatch(binding, rawKey, requestBody);
+    assert.equal(response.status, 200);
+    const publicBody = await response.json();
+    const headerText = JSON.stringify([...response.headers.entries()]);
+    const publicText = JSON.stringify(publicBody);
+    const auditText = JSON.stringify(
+      store.sql.exec('SELECT * FROM hosted_admission_audit_events ORDER BY event_id').map((row) => ({ ...row })),
+    );
+
+    for (const secret of [rawKey, payloadSecret, metadataSecret, 'resource_1']) {
+      assert.doesNotMatch(headerText, new RegExp(secret));
+      assert.doesNotMatch(auditText, new RegExp(secret));
+    }
+    for (const secret of [rawKey, payloadSecret, metadataSecret]) {
+      assert.doesNotMatch(publicText, new RegExp(secret));
+    }
+
+    assert.equal(response.headers.get('x-once-rate-limit-limit'), '10');
+    assert.equal(response.headers.get('x-once-usage-metered'), 'true');
+    assert.equal(Object.hasOwn(publicBody, 'admission'), false);
   } finally {
     store.db.close();
   }
