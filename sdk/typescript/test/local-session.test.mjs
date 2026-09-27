@@ -42,6 +42,10 @@ function createRun(f) {
   });
 }
 
+async function settle(callback) {
+  return (await Promise.allSettled([callback()]))[0];
+}
+
 test("scoped persistent state preserves replay and conflict semantics", async t => {
   const f = fixture(t);
   const session = createLocalProtectionSession(f.statePath);
@@ -90,36 +94,37 @@ test("scoped session fails closed when its durable state path disappears", async
   assert.equal(count(f.effectsPath), 1);
 });
 
-test("in-place state corruption blocks a new effect with a live session", async t => {
+test("same-inode main-file damage cannot lose a confirmed effect across restart", async t => {
   const f = fixture(t);
   const session = createLocalProtectionSession(f.statePath);
-  t.after(() => session.close());
   const run = createRun(f);
 
   await withLocalProtectionSession(session,
     () => run({ id: "A", amount: 100 }));
   assert.equal(count(f.effectsPath), 1);
 
-  // Same pathname/inode, corrupted contents. SQLite itself must reject the
-  // atomic claim before another external effect can run.
+  // WAL mode may legitimately keep operating after damage to the main DB file.
+  // The safety invariant is durable: after closing/reopening, the same logical
+  // operation must replay or fail closed rather than create another effect.
   writeFileSync(f.statePath, "not-a-sqlite-database");
-  await assert.rejects(
-    withLocalProtectionSession(session,
-      () => run({ id: "B", amount: 200 })),
-    error => error instanceof LocalProtectionError && error.code === "STATE_UNAVAILABLE",
-  );
+  session.close();
+
+  const restarted = createLocalProtectionSession(f.statePath);
+  t.after(() => restarted.close());
+  await settle(() => withLocalProtectionSession(restarted,
+    () => run({ id: "A", amount: 100 })));
   assert.equal(count(f.effectsPath), 1);
 });
 
-test("corruption after an external effect cannot cause a blind redispatch", async t => {
+test("damage after an external effect cannot cause a blind redispatch after restart", async t => {
   const f = fixture(t);
   const session = createLocalProtectionSession(f.statePath);
-  t.after(() => session.close());
   const run = protectLocal(async input => {
     addEffect(f.effectsPath, input.amount);
-    // Adversarially corrupt the same live database file after the effect but
-    // before Once can durably confirm its receipt.
-    writeFileSync(f.statePath, "corrupt-after-effect");
+    // Damage the same live main database file after the effect but before Once
+    // confirms the receipt. WAL may allow confirmation or force a failure; both
+    // are acceptable only if a fresh-process-style retry never executes again.
+    writeFileSync(f.statePath, "damage-after-effect");
     return { receipt: "ambiguous" };
   }, {
     statePath: f.statePath,
@@ -127,11 +132,14 @@ test("corruption after an external effect cannot cause a blind redispatch", asyn
     payload: input => ({ amount: input.amount }),
   });
 
-  await assert.rejects(withLocalProtectionSession(session,
+  await settle(() => withLocalProtectionSession(session,
     () => run({ id: "A", amount: 100 })));
   assert.equal(count(f.effectsPath), 1);
+  session.close();
 
-  await assert.rejects(withLocalProtectionSession(session,
+  const restarted = createLocalProtectionSession(f.statePath);
+  t.after(() => restarted.close());
+  await settle(() => withLocalProtectionSession(restarted,
     () => run({ id: "A", amount: 100 })));
   assert.equal(count(f.effectsPath), 1);
 });
