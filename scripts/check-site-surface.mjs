@@ -7,6 +7,7 @@ function read(path) {
 
 const tsPackage = JSON.parse(read("sdk/typescript/package.json"));
 const mcpPackage = JSON.parse(read("mcp/package.json"));
+const published = JSON.parse(read("docs/published-versions.json"));
 const pythonProject = read("sdk/python/pyproject.toml");
 const pageAnalytics = read("docs/page-analytics.js");
 const app = read("docs/app.js");
@@ -22,9 +23,26 @@ const siteTs = pageAnalytics.match(/ts:\s*"([^"]+)"/)?.[1];
 const sitePython = pageAnalytics.match(/python:\s*"([^"]+)"/)?.[1];
 const siteMcp = pageAnalytics.match(/mcp:\s*"([^"]+)"/)?.[1];
 
-assert.equal(siteTs, tsPackage.version, "homepage TS SDK version must match sdk/typescript/package.json");
+function patchVersion(value) {
+  assert.match(value, /^\d+\.\d+\.\d+$/, "expected a stable published version");
+  return value.split(".").map(Number);
+}
+
+function sourceAtLeastPublished(source, released) {
+  const a = patchVersion(source);
+  const b = patchVersion(released);
+  return a[0] > b[0] ||
+    (a[0] === b[0] && (a[1] > b[1] ||
+      (a[1] === b[1] && a[2] >= b[2])));
+}
+
+assert.equal(siteTs, published.ts, "homepage TS SDK version must match the published SDK version");
+assert.ok(sourceAtLeastPublished(tsPackage.version, published.ts),
+  "TS SDK source version must not precede its published version");
 assert.equal(sitePython, pythonVersion, "homepage Python SDK version must match sdk/python/pyproject.toml");
-assert.equal(siteMcp, mcpPackage.version, "homepage MCP version must match mcp/package.json");
+assert.equal(siteMcp, published.mcp, "homepage MCP version must match the published MCP version");
+assert.ok(sourceAtLeastPublished(mcpPackage.version, published.mcp),
+  "MCP source version must not precede its published version");
 
 assert.match(
   pageAnalytics,
