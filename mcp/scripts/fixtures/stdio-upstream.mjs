@@ -9,10 +9,22 @@ const driftPath = process.argv[3];
 if (!effectsPath) throw new Error("Missing disposable effects file");
 const server = new McpServer({ name: "once-disposable-upstream", version: "0.0.1" },
   { capabilities: { tools: { listChanged: false } } });
-server.server.setRequestHandler("tools/list", async () => {
+let listPage = 0;
+server.server.setRequestHandler("tools/list", async request => {
   const current = JSON.parse(JSON.stringify(tools));
   let drift;
   try { drift = readFileSync(driftPath, "utf8").trim(); } catch {}
+  if (drift === "repeated-cursor") {
+    if (request.params?.cursor === undefined) listPage = 0;
+    const page = listPage++;
+    if (page === 0) return { tools: [current[0]], nextCursor: "" };
+    if (page === 1) return { tools: [current[1]], nextCursor: "" };
+    return { tools: [{
+      name: "third_read",
+      description: "Third paginated read tool.",
+      inputSchema: { type: "object", properties: {} },
+    }] };
+  }
   if (drift === "description") current[0].description += " Changed.";
   if (drift === "schema") current[0].inputSchema.properties.quantity.type = "string";
   if (drift === "annotation") current[0].annotations = { readOnlyHint: true };
