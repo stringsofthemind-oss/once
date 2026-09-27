@@ -24,6 +24,10 @@ function utcPeriodKey(nowMs) {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
+function optionalInteger(value) {
+  return Number.isSafeInteger(value) && value >= 0 ? value : null;
+}
+
 /**
  * Phase 12D hosted admission policy.
  *
@@ -38,6 +42,11 @@ function utcPeriodKey(nowMs) {
  *
  * Retries/reconciliation/replays therefore cannot create a second logical unit,
  * including when the retry occurs in a later calendar month.
+ *
+ * Operational audit rows are deliberately allowlisted scalar metadata. They do
+ * not contain request payloads, authorization material, provider credentials,
+ * provider results or free-form metadata. They are observability records, not a
+ * replacement for the authoritative logical-operation meter tables.
  */
 export class RuntimeHostedAdmissionPolicy {
   constructor({
@@ -113,6 +122,71 @@ export class RuntimeHostedAdmissionPolicy {
         PRIMARY KEY (tenant_id, window_key)
       )
     `);
+
+    this.sql.exec(`
+      CREATE TABLE IF NOT EXISTS hosted_admission_audit_events (
+        event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tenant_id TEXT NOT NULL,
+        operation_id TEXT,
+        event_type TEXT NOT NULL,
+        protection TEXT,
+        plan TEXT,
+        rate_limit INTEGER,
+        rate_remaining INTEGER,
+        usage_limit INTEGER,
+        usage_used INTEGER,
+        usage_period TEXT,
+        created_at TEXT NOT NULL
+      )
+    `);
+    this.sql.exec(`
+      CREATE INDEX IF NOT EXISTS idx_hosted_admission_audit_tenant_event
+      ON hosted_admission_audit_events (tenant_id, event_id)
+    `);
+  }
+
+  recordAuditEvent({
+    tenantId,
+    operationId = null,
+    eventType,
+    protection = null,
+    plan = null,
+    rate = null,
+    usage = null,
+    nowMs,
+  }) {
+    requireString(tenantId, 'tenantId');
+    requireString(eventType, 'eventType');
+    const createdAt = new Date(nowMs).toISOString();
+
+    this.sql.exec(
+      `
+        INSERT INTO hosted_admission_audit_events (
+          tenant_id,
+          operation_id,
+          event_type,
+          protection,
+          plan,
+          rate_limit,
+          rate_remaining,
+          usage_limit,
+          usage_used,
+          usage_period,
+          created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+      tenantId,
+      typeof operationId === 'string' && operationId ? operationId : null,
+      eventType,
+      typeof protection === 'string' && protection ? protection : null,
+      typeof plan === 'string' && plan ? plan : null,
+      optionalInteger(rate?.limit),
+      optionalInteger(rate?.remaining),
+      optionalInteger(usage?.limit),
+      optionalInteger(usage?.used),
+      typeof usage?.period === 'string' && usage.period ? usage.period : null,
+      createdAt,
+    );
   }
 
   getEntitlement(tenantId) {
@@ -217,7 +291,7 @@ export class RuntimeHostedAdmissionPolicy {
     };
   }
 
-  async authorizeRequest({ tenantId, protection }) {
+  async authorizeRequest({ tenantId, operationId = null, protection }) {
     requireString(tenantId, 'tenantId');
 
     const nowMs = Number(this.clock());
@@ -227,19 +301,46 @@ export class RuntimeHostedAdmissionPolicy {
     // BYPASS is infrastructure-rate-limited but is not a protected billable
     // operation. This behavior is intentionally explicit and reviewable.
     if (protection === 'BYPASS') {
-      return {
+      const result = {
         protection: 'BYPASS',
         rate,
       };
+      this.recordAuditEvent({
+        tenantId,
+        operationId,
+        eventType: 'REQUEST_ADMITTED',
+        protection: 'BYPASS',
+        rate,
+        nowMs,
+      });
+      return result;
     }
 
     const { plan, monthlyLimit } = this.getActivePlan(tenantId);
-    return {
+    const period = utcPeriodKey(nowMs);
+    const usage = {
+      limit: monthlyLimit,
+      used: this.getMonthlyUsage(tenantId, period),
+      period,
+    };
+    const result = {
       protection: 'PROTECT',
       plan,
       limit: monthlyLimit,
+      usage,
       rate,
     };
+    this.recordAuditEvent({
+      tenantId,
+      operationId,
+      eventType: 'REQUEST_ADMITTED',
+      protection: 'PROTECT',
+      plan,
+      rate,
+      usage,
+      nowMs,
+    });
+    return result;
   }
 
   async reserveProtectedOperation({ tenantId, operationId, effectHash }) {
@@ -265,7 +366,7 @@ export class RuntimeHostedAdmissionPolicy {
         throw new HostedGatewayError('operation_effect_conflict', 409);
       }
       const firstPeriod = String(existing.first_period_key);
-      return {
+      const result = {
         metered: false,
         replay: true,
         plan,
@@ -273,6 +374,16 @@ export class RuntimeHostedAdmissionPolicy {
         used: this.getMonthlyUsage(tenantId, firstPeriod),
         period: firstPeriod,
       };
+      this.recordAuditEvent({
+        tenantId,
+        operationId,
+        eventType: 'METER_REUSED',
+        protection: 'PROTECT',
+        plan,
+        usage: { limit: monthlyLimit, used: result.used, period: firstPeriod },
+        nowMs,
+      });
+      return result;
     }
 
     const periodKey = utcPeriodKey(nowMs);
@@ -309,7 +420,7 @@ export class RuntimeHostedAdmissionPolicy {
         throw new HostedGatewayError('operation_effect_conflict', 409);
       }
       const firstPeriod = String(raced.first_period_key);
-      return {
+      const result = {
         metered: false,
         replay: true,
         plan,
@@ -317,13 +428,23 @@ export class RuntimeHostedAdmissionPolicy {
         used: this.getMonthlyUsage(tenantId, firstPeriod),
         period: firstPeriod,
       };
+      this.recordAuditEvent({
+        tenantId,
+        operationId,
+        eventType: 'METER_REUSED',
+        protection: 'PROTECT',
+        plan,
+        usage: { limit: monthlyLimit, used: result.used, period: firstPeriod },
+        nowMs,
+      });
+      return result;
     }
 
     // A newly accepted logical-operation reservation is a provider-crossing
     // prerequisite. Flush it before GatewayCore may write UNKNOWN or execute.
     await this.storage.sync();
 
-    return {
+    const result = {
       metered: true,
       replay: false,
       plan,
@@ -331,5 +452,15 @@ export class RuntimeHostedAdmissionPolicy {
       used: this.getMonthlyUsage(tenantId, periodKey),
       period: periodKey,
     };
+    this.recordAuditEvent({
+      tenantId,
+      operationId,
+      eventType: 'METER_RESERVED',
+      protection: 'PROTECT',
+      plan,
+      usage: { limit: monthlyLimit, used: result.used, period: periodKey },
+      nowMs,
+    });
+    return result;
   }
 }
