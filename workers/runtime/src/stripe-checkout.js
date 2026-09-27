@@ -1,6 +1,8 @@
+import { ONCE_DEVELOPER_SANDBOX_PRICE_ID } from './hosted-plan-catalog.mjs';
+
 const STRIPE_CHECKOUT_ENDPOINT = 'https://api.stripe.com/v1/checkout/sessions';
 
-export const ONCE_DEVELOPER_PRICE_ID = 'price_1UJyvzAHX5spO4zqEefb2D3I';
+export const ONCE_DEVELOPER_PRICE_ID = ONCE_DEVELOPER_SANDBOX_PRICE_ID;
 export const ONCE_CHECKOUT_SUCCESS_URL = 'https://onceexec.com/success?session_id={CHECKOUT_SESSION_ID}';
 export const ONCE_CHECKOUT_CANCEL_URL = 'https://onceexec.com/';
 

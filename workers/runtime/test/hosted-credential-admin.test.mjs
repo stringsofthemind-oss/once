@@ -101,6 +101,7 @@ test('staging rotate forwards a test secret internally but allowlists the outwar
           provider_action: 'refund.create',
           credentials: 'stored_encrypted',
           version_id: 'hpc_fixture',
+          key_version: 2,
           secret_key: secretKey,
           internal_debug: 'must_not_escape',
         });
@@ -115,7 +116,64 @@ test('staging rotate forwards a test secret internally but allowlists the outwar
   assert.doesNotMatch(text, /sk_test_super_secret_fixture_value/);
   assert.doesNotMatch(text, /internal_debug|must_not_escape/);
   assert.match(text, /stored_encrypted/);
+  assert.match(text, /"key_version":2/);
   assert.equal(response.headers.get('cache-control'), 'no-store');
+});
+
+test('staging rewrap forwards only tenant identity and allowlists key-version metadata', async () => {
+  let forwardedBody;
+  const response = await handleStagingHostedCredentialAdminRequest({
+    request: adminRequest({
+      action: 'rewrap',
+      tenant_id: 'tenant_rewrap',
+      secret_key: 'must_not_be_forwarded',
+      arbitrary: 'must_not_be_forwarded',
+    }),
+    env: {
+      ONCE_HOSTED_CREDENTIAL_ADMIN_ENABLED: 'staging',
+      ONCE_HOSTED_CREDENTIAL_ADMIN_TOKEN: ADMIN_TOKEN,
+    },
+    getDurableStub: async () => ({
+      async fetch(request) {
+        forwardedBody = await request.json();
+        return Response.json({
+          ok: true,
+          action: 'rewrap',
+          tenant_id: 'tenant_rewrap',
+          provider: 'stripe',
+          provider_action: 'refund.create',
+          version_id: 'hpc_new',
+          previous_version_id: 'hpc_old',
+          key_version: 2,
+          credentials: 'stored_encrypted',
+          rewrapped: true,
+          already_current: false,
+          secret_key: 'sk_test_never_escape',
+          internal_debug: 'must_not_escape',
+        });
+      },
+    }),
+  });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(forwardedBody, {
+    action: 'rewrap',
+    tenant_id: 'tenant_rewrap',
+  });
+  const body = await response.json();
+  assert.deepEqual(body, {
+    ok: true,
+    action: 'rewrap',
+    tenant_id: 'tenant_rewrap',
+    provider: 'stripe',
+    provider_action: 'refund.create',
+    version_id: 'hpc_new',
+    previous_version_id: 'hpc_old',
+    key_version: 2,
+    credentials: 'stored_encrypted',
+    rewrapped: true,
+    already_current: false,
+  });
 });
 
 test('staging route rejects live-looking Stripe secrets before durable object access', async () => {
@@ -143,6 +201,7 @@ test('staging route rejects live-looking Stripe secrets before durable object ac
 
 test('internal credential route refuses provisioning for an unknown tenant', async () => {
   let rotateCalls = 0;
+  let rewrapCalls = 0;
   const response = await handleHostedCredentialInternalRequest({
     request: internalRequest({
       action: 'rotate',
@@ -154,6 +213,9 @@ test('internal credential route refuses provisioning for an unknown tenant', asy
       async rotateStripeRefundSecret() {
         rotateCalls += 1;
       },
+      async rewrapStripeRefundSecret() {
+        rewrapCalls += 1;
+      },
       disableStripeRefundSecret() {
         return false;
       },
@@ -163,6 +225,7 @@ test('internal credential route refuses provisioning for an unknown tenant', asy
   assert.equal(response.status, 404);
   assert.equal((await response.json()).error, 'tenant_not_found');
   assert.equal(rotateCalls, 0);
+  assert.equal(rewrapCalls, 0);
 });
 
 test('internal rotate stores the tenant test credential and returns only safe metadata', async () => {
@@ -184,8 +247,12 @@ test('internal rotate stores the tenant test credential and returns only safe me
           provider: 'stripe',
           action: 'refund.create',
           versionId: 'hpc_0123456789abcdef0123456789abcdef',
+          keyVersion: 2,
           credentials: 'stored_encrypted',
         };
+      },
+      async rewrapStripeRefundSecret() {
+        throw new Error('must not rewrap');
       },
       disableStripeRefundSecret() {
         return false;
@@ -201,6 +268,52 @@ test('internal rotate stores the tenant test credential and returns only safe me
   assert.equal(body.credentials, 'stored_encrypted');
   assert.equal(body.provider, 'stripe');
   assert.equal(body.provider_action, 'refund.create');
+  assert.equal(body.key_version, 2);
+});
+
+test('internal rewrap returns only immutable-version migration metadata', async () => {
+  let observed = null;
+  const response = await handleHostedCredentialInternalRequest({
+    request: internalRequest({ action: 'rewrap', tenant_id: 'tenant_a' }),
+    tenantExists: async () => true,
+    credentialStore: {
+      async rotateStripeRefundSecret() {
+        throw new Error('must not rotate with caller-supplied secret');
+      },
+      async rewrapStripeRefundSecret(input) {
+        observed = input;
+        return {
+          rewrapped: true,
+          alreadyCurrent: false,
+          provider: 'stripe',
+          action: 'refund.create',
+          versionId: 'hpc_new_version',
+          previousVersionId: 'hpc_old_version',
+          keyVersion: 2,
+          credentials: 'stored_encrypted',
+        };
+      },
+      disableStripeRefundSecret() {
+        throw new Error('must not disable');
+      },
+    },
+  });
+
+  assert.deepEqual(observed, { tenantId: 'tenant_a' });
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    ok: true,
+    action: 'rewrap',
+    tenant_id: 'tenant_a',
+    provider: 'stripe',
+    provider_action: 'refund.create',
+    version_id: 'hpc_new_version',
+    previous_version_id: 'hpc_old_version',
+    key_version: 2,
+    credentials: 'stored_encrypted',
+    rewrapped: true,
+    already_current: false,
+  });
 });
 
 test('internal disable revokes the active alias without returning credential material', async () => {
@@ -211,6 +324,9 @@ test('internal disable revokes the active alias without returning credential mat
     credentialStore: {
       async rotateStripeRefundSecret() {
         throw new Error('must not rotate');
+      },
+      async rewrapStripeRefundSecret() {
+        throw new Error('must not rewrap');
       },
       disableStripeRefundSecret({ tenantId }) {
         disabledTenant = tenantId;

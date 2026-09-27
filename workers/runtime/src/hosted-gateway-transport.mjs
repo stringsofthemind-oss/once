@@ -20,6 +20,57 @@ function requestError(code, status, extra = {}) {
   return json({ error: code, ...extra }, status);
 }
 
+function safeIntegerHeader(value) {
+  return Number.isSafeInteger(value) && value >= 0 ? String(value) : null;
+}
+
+function operationalHeaders(result) {
+  const admission = result?.admission;
+  if (!admission || typeof admission !== 'object' || Array.isArray(admission)) return {};
+
+  const headers = {};
+  const rate = admission.rate;
+  const rateLimit = safeIntegerHeader(rate?.limit);
+  const rateRemaining = safeIntegerHeader(rate?.remaining);
+  if (rateLimit !== null) headers['x-once-rate-limit-limit'] = rateLimit;
+  if (rateRemaining !== null) headers['x-once-rate-limit-remaining'] = rateRemaining;
+
+  if (admission.protection === 'PROTECT') {
+    const currentUsage = admission.usage && typeof admission.usage === 'object'
+      ? { ...admission.usage }
+      : null;
+    const meter = admission.meter && typeof admission.meter === 'object'
+      ? admission.meter
+      : null;
+
+    // The request-admission usage snapshot represents the current billing
+    // period. If this exact request reserved a new unit in that same period,
+    // prefer the post-reservation count. Replays in a later month therefore do
+    // not incorrectly report the historical first-meter period as current use.
+    if (
+      currentUsage &&
+      meter?.metered === true &&
+      typeof meter.period === 'string' &&
+      meter.period === currentUsage.period &&
+      Number.isSafeInteger(meter.used) &&
+      meter.used >= 0
+    ) {
+      currentUsage.used = meter.used;
+    }
+
+    const usageLimit = safeIntegerHeader(currentUsage?.limit ?? admission.limit);
+    const usageUsed = safeIntegerHeader(currentUsage?.used);
+    if (usageLimit !== null) headers['x-once-usage-limit'] = usageLimit;
+    if (usageUsed !== null) headers['x-once-usage-used'] = usageUsed;
+    if (typeof currentUsage?.period === 'string' && /^\d{4}-\d{2}$/.test(currentUsage.period)) {
+      headers['x-once-usage-period'] = currentUsage.period;
+    }
+    headers['x-once-usage-metered'] = meter?.metered === true ? 'true' : 'false';
+  }
+
+  return headers;
+}
+
 async function readJsonBody(request, maxBodyBytes) {
   const declaredLength = Number(request.headers.get('content-length') || 0);
   if (Number.isFinite(declaredLength) && declaredLength > maxBodyBytes) {
@@ -73,12 +124,17 @@ function publicResult(result) {
 }
 
 /**
- * Internal HTTP adapter for the Phase 12C hosted gateway contract.
+ * Internal HTTP adapter for the hosted gateway contract.
  *
  * This function performs transport-only work: method/content checks, bounded
  * JSON parsing, stable error mapping and response normalization. Tenant auth,
  * server-owned effect binding, durable UNKNOWN/CONFIRMED state and provider
  * reconciliation remain inside RuntimeHostedGatewayBinding / HostedGatewayCore.
+ *
+ * Phase 12D may add allowlisted operational headers derived only from numeric
+ * admission/meter metadata. Admission internals, tenant identity, API keys,
+ * request payloads, credentials and provider results are never copied into
+ * these headers.
  */
 export async function handleHostedGatewayInternalRequest({
   request,
@@ -103,7 +159,7 @@ export async function handleHostedGatewayInternalRequest({
       authorization: request.headers.get('authorization'),
       body,
     });
-    return json(publicResult(result), 200);
+    return json(publicResult(result), 200, operationalHeaders(result));
   } catch (error) {
     if (error instanceof HostedGatewayError) {
       const status = Number.isInteger(error.status) ? error.status : 400;

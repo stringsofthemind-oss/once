@@ -227,7 +227,14 @@ function makeLazyAdapter(createAdapter) {
 }
 
 export class HostedGatewayCore {
-  constructor({ authenticator, storage, authority = new KeyedSerialAuthority(), resolveRegistration, clock }) {
+  constructor({
+    authenticator,
+    storage,
+    authority = new KeyedSerialAuthority(),
+    resolveRegistration,
+    admissionPolicy = null,
+    clock,
+  }) {
     if (!authenticator?.authenticate) {
       throw new TypeError('authenticator must implement authenticate');
     }
@@ -237,10 +244,21 @@ export class HostedGatewayCore {
     if (typeof resolveRegistration !== 'function') {
       throw new TypeError('resolveRegistration must be a function');
     }
+    if (
+      admissionPolicy !== null &&
+      (typeof admissionPolicy?.authorizeRequest !== 'function' ||
+        typeof admissionPolicy?.authorizeProviderAttempt !== 'function' ||
+        typeof admissionPolicy?.reserveProtectedOperation !== 'function')
+    ) {
+      throw new TypeError(
+        'admissionPolicy must implement authorizeRequest/authorizeProviderAttempt/reserveProtectedOperation',
+      );
+    }
     this.authenticator = authenticator;
     this.storage = storage;
     this.authority = authority;
     this.resolveRegistration = resolveRegistration;
+    this.admissionPolicy = admissionPolicy;
     this.clock = clock;
   }
 
@@ -296,6 +314,27 @@ export class HostedGatewayCore {
       action,
     });
 
+    const admissionContext = {
+      tenantId: principal.tenantId,
+      keyId: principal.keyId,
+      operationId,
+      effectHash,
+      provider,
+      action,
+      bindingVersion,
+      providerOperationKey,
+      protection: serverProtection,
+    };
+
+    // Request admission is deliberately limited to infrastructure-level policy
+    // such as rate limiting plus a non-authoritative usage snapshot. Active
+    // entitlement is required only if the state machine determines that a new
+    // provider attempt is necessary. That preserves safe confirmed replay and
+    // UNKNOWN reconciliation after subscription/lifecycle changes.
+    const requestAdmission = this.admissionPolicy
+      ? await this.admissionPolicy.authorizeRequest(admissionContext)
+      : null;
+
     const metadata = {
       ...(body.metadata && typeof body.metadata === 'object' && !Array.isArray(body.metadata)
         ? body.metadata
@@ -320,7 +359,25 @@ export class HostedGatewayCore {
         providerOperationKey,
       },
     });
-    const gateway = new GatewayCore({ store, ...(this.clock ? { clock: this.clock } : {}) });
+
+    let providerAttemptAdmission = null;
+    let meterReservation = null;
+    const gateway = new GatewayCore({
+      store,
+      ...(this.clock ? { clock: this.clock } : {}),
+      ...(this.admissionPolicy && serverProtection === 'PROTECT'
+        ? {
+            beforeProviderPreflight: async () => {
+              providerAttemptAdmission = await this.admissionPolicy.authorizeProviderAttempt(
+                admissionContext,
+              );
+            },
+            beforeProviderAttempt: async () => {
+              meterReservation = await this.admissionPolicy.reserveProtectedOperation(admissionContext);
+            },
+          }
+        : {}),
+    });
 
     const adapter = makeLazyAdapter(() => registration.createAdapter({
       tenantId: principal.tenantId,
@@ -346,6 +403,15 @@ export class HostedGatewayCore {
       effectHash,
       provider,
       action,
+      ...(requestAdmission || providerAttemptAdmission || meterReservation
+        ? {
+            admission: {
+              ...(requestAdmission ?? {}),
+              ...(providerAttemptAdmission ?? {}),
+              ...(meterReservation ? { meter: meterReservation } : {}),
+            },
+          }
+        : {}),
     };
   }
 }

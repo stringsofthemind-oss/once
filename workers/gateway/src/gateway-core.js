@@ -64,12 +64,25 @@ function normalizeReconciliation(result) {
 }
 
 export class GatewayCore {
-  constructor({ store, clock = () => new Date().toISOString() }) {
+  constructor({
+    store,
+    clock = () => new Date().toISOString(),
+    beforeProviderPreflight = null,
+    beforeProviderAttempt = null,
+  }) {
     if (!store?.withLock || !store?.get || !store?.put) {
       throw new TypeError('store must implement withLock/get/put');
     }
+    if (beforeProviderPreflight !== null && typeof beforeProviderPreflight !== 'function') {
+      throw new TypeError('beforeProviderPreflight must be a function');
+    }
+    if (beforeProviderAttempt !== null && typeof beforeProviderAttempt !== 'function') {
+      throw new TypeError('beforeProviderAttempt must be a function');
+    }
     this.store = store;
     this.clock = clock;
+    this.beforeProviderPreflight = beforeProviderPreflight;
+    this.beforeProviderAttempt = beforeProviderAttempt;
   }
 
   async execute(request, adapter) {
@@ -149,12 +162,44 @@ export class GatewayCore {
         }
       }
 
+      // Commercial/provider-attempt authorization belongs after all safe local
+      // replay/conflict/reconciliation exits. This lets an already-confirmed
+      // operation replay, and lets an UNKNOWN operation reconcile, even if the
+      // tenant's entitlement changed after the original attempt. If a new
+      // provider attempt is actually required, authorization still fails closed
+      // before adapter preflight or provider crossing.
+      if (this.beforeProviderPreflight) {
+        await this.beforeProviderPreflight({
+          operationId,
+          effectHash,
+          payload,
+          metadata,
+          record: existing ?? null,
+        });
+      }
+
       // Deterministic configuration/credential failures must happen before the
       // crash boundary is recorded. A successful preflight is not evidence that
       // a provider effect occurred; it only proves the adapter is ready to cross
       // the boundary. Confirmed replay returns above and never needs preflight.
       if (typeof adapter.preflight === 'function') {
         await adapter.preflight({ operationId, effectHash, payload, metadata, record: existing ?? null });
+      }
+
+      // Optional commercial/admission work that must happen only when a real
+      // provider attempt is about to become possible belongs here: after
+      // conflict/replay/reconciliation and deterministic adapter preflight, but
+      // before durable UNKNOWN and before provider crossing. Phase 12D uses this
+      // to reserve one logical-operation meter unit durably. A denial or sync
+      // failure here prevents UNKNOWN creation and prevents provider execution.
+      if (this.beforeProviderAttempt) {
+        await this.beforeProviderAttempt({
+          operationId,
+          effectHash,
+          payload,
+          metadata,
+          record: existing ?? null,
+        });
       }
 
       const startedAt = this.clock();

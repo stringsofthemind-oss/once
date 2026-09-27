@@ -1,7 +1,9 @@
 import runtime, { Q18Truth as RuntimeQ18Truth } from "./runtime-core.js";
 import { handleStripeCheckout } from "./stripe-checkout.js";
 import { RuntimeHostedGatewayBinding } from "./hosted-gateway-durable.mjs";
+import { createRuntimeHostedAdmissionPolicy } from "./hosted-entitlement-freshness.mjs";
 import { RuntimeHostedProviderCredentialStore } from "./hosted-provider-credentials.mjs";
+import { RuntimeHostedProviderKeyring } from "./hosted-provider-keyring.mjs";
 import {
   handleHostedCredentialInternalRequest,
   handleStagingHostedCredentialAdminRequest,
@@ -15,6 +17,10 @@ import {
   INTERNAL_HOSTED_EXECUTE_PATH,
 } from "./hosted-gateway-transport.mjs";
 import {
+  maybeHandlePublicHostedGatewayRequest,
+  PUBLIC_HOSTED_EXECUTE_PATH,
+} from "./hosted-public-execute.mjs";
+import {
   handleStagingHostedGatewayRequest,
   STAGING_HOSTED_EXECUTE_PATH,
 } from "./hosted-staging-execute.mjs";
@@ -27,6 +33,12 @@ import {
 } from "./hosted-staging-tenant-admin.mjs";
 import { createStagingStripeFetch } from "./hosted-staging-stripe-fault.mjs";
 import { createHostedStripeRefundResolver } from "./hosted-stripe-refund-registration.mjs";
+import {
+  handleHostedStripeEntitlementEvent,
+  maybeHandleHostedStripeEntitlementWebhook,
+  INTERNAL_HOSTED_ENTITLEMENT_EVENT_HOST,
+  INTERNAL_HOSTED_ENTITLEMENT_EVENT_PATH,
+} from "./hosted-stripe-entitlement-ordering.mjs";
 
 const PUBLIC_STATS_PATH = "/v1/public/stats";
 const STRIPE_CHECKOUT_PATH = "/v1/billing/checkout";
@@ -53,12 +65,27 @@ function publicStatsJson(data, status = 200) {
 }
 
 export class Q18Truth extends RuntimeQ18Truth {
+  getHostedProviderKeyring() {
+    if (!this._hostedProviderKeyring) {
+      this._hostedProviderKeyring = new RuntimeHostedProviderKeyring({
+        env: this.env || {},
+        bytesToBase64: (bytes) => this.providerBytesToBase64(bytes),
+        base64ToBytes: (value) => this.providerBase64ToBytes(value),
+        aadFor: (customerId, providerName, versionId) =>
+          this.providerConfigAad(customerId, providerName, versionId),
+      });
+    }
+    return this._hostedProviderKeyring;
+  }
+
   getHostedProviderCredentialStore() {
     if (!this._hostedProviderCredentialStore) {
+      const keyring = this.getHostedProviderKeyring();
       this._hostedProviderCredentialStore = new RuntimeHostedProviderCredentialStore({
         ctx: this.ctx,
-        encryptConfig: (...args) => this.encryptProviderConfig(...args),
-        decryptConfig: (...args) => this.decryptProviderConfig(...args),
+        encryptConfig: (...args) => keyring.encryptConfig(...args),
+        decryptConfig: (...args) => keyring.decryptConfig(...args),
+        currentKeyVersion: () => keyring.getCurrentKeyVersion(),
       });
     }
     return this._hostedProviderCredentialStore;
@@ -94,11 +121,27 @@ export class Q18Truth extends RuntimeQ18Truth {
     return this.getHostedStripeRefundResolver()(context);
   }
 
+  getHostedAdmissionPolicy() {
+    // Phase 12D is opt-in while under review. Existing Phase 12C staging/proof
+    // behavior remains unchanged unless this exact non-production gate is set.
+    if (String(this.env?.ONCE_HOSTED_ADMISSION_ENABLED || "") !== "phase12d") {
+      return null;
+    }
+    if (!this._hostedAdmissionPolicy) {
+      this._hostedAdmissionPolicy = createRuntimeHostedAdmissionPolicy({
+        ctx: this.ctx,
+        env: this.env || {},
+      });
+    }
+    return this._hostedAdmissionPolicy;
+  }
+
   getHostedGatewayBinding() {
     if (!this._hostedGatewayBinding) {
       this._hostedGatewayBinding = new RuntimeHostedGatewayBinding({
         ctx: this.ctx,
         resolveRegistration: (context) => this.resolveHostedGatewayRegistration(context),
+        admissionPolicy: this.getHostedAdmissionPolicy(),
       });
     }
     return this._hostedGatewayBinding;
@@ -106,6 +149,16 @@ export class Q18Truth extends RuntimeQ18Truth {
 
   async fetch(request) {
     const url = new URL(request.url);
+
+    if (
+      url.hostname === INTERNAL_HOSTED_ENTITLEMENT_EVENT_HOST &&
+      url.pathname === INTERNAL_HOSTED_ENTITLEMENT_EVENT_PATH
+    ) {
+      return handleHostedStripeEntitlementEvent({
+        request,
+        ctx: this.ctx,
+      });
+    }
 
     if (
       url.hostname === INTERNAL_HOSTED_CREDENTIAL_ADMIN_HOST &&
@@ -127,7 +180,7 @@ export class Q18Truth extends RuntimeQ18Truth {
     }
 
     // Deliberately internal-only: the outer Worker reaches this route only
-    // through the staging bridge or future reviewed hosted transport.
+    // through the staging bridge or a separately enabled public preview bridge.
     if (
       url.hostname === INTERNAL_HOSTED_EXECUTE_HOST &&
       url.pathname === INTERNAL_HOSTED_EXECUTE_PATH
@@ -165,6 +218,30 @@ export class Q18Truth extends RuntimeQ18Truth {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+
+    const orderedEntitlementWebhook = await maybeHandleHostedStripeEntitlementWebhook({
+      request,
+      env,
+      getDurableStub: async () => {
+        const id = env.Q18_TRUTH.idFromName(LEDGER_NAME);
+        return env.Q18_TRUTH.get(id);
+      },
+    });
+    if (orderedEntitlementWebhook !== null) return orderedEntitlementWebhook;
+
+    if (url.pathname === PUBLIC_HOSTED_EXECUTE_PATH) {
+      const hostedResponse = await maybeHandlePublicHostedGatewayRequest({
+        request,
+        env,
+        getDurableStub: async () => {
+          const id = env.Q18_TRUTH.idFromName(LEDGER_NAME);
+          return env.Q18_TRUTH.get(id);
+        },
+      });
+      if (hostedResponse !== null) return hostedResponse;
+      // Gate absent: deliberately fall through to the existing runtime's
+      // /v1/execute behavior. Merge alone is therefore not a cutover.
+    }
 
     if (url.pathname === STAGING_HOSTED_CREDENTIAL_ADMIN_PATH) {
       return handleStagingHostedCredentialAdminRequest({
