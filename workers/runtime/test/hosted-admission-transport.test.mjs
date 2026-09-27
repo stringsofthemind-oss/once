@@ -1,7 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { HostedGatewayError, sha256Hex } from '../../gateway/src/hosted-gateway-core.js';
+import {
+  HostedGatewayError,
+  computeHostedEffectHash,
+  sha256Hex,
+} from '../../gateway/src/hosted-gateway-core.js';
 import { RuntimeHostedAdmissionPolicy } from '../src/hosted-admission-policy.mjs';
 import { RuntimeHostedGatewayBinding } from '../src/hosted-gateway-durable.mjs';
 import {
@@ -76,6 +80,15 @@ function body(operationId, amount = 100) {
     target: { provider: 'fixture', action: 'effect.create' },
     payload: { resource: 'resource_1', amount },
   };
+}
+
+async function fixtureEffectHash(amount = 100) {
+  return computeHostedEffectHash({
+    provider: 'fixture',
+    action: 'effect.create',
+    bindingVersion: 'fixture-v1',
+    canonicalEffect: { resource: 'resource_1', amount },
+  });
 }
 
 function request(key, requestBody) {
@@ -329,6 +342,117 @@ test('operational headers and audit rows redact authorization, payload and free-
     assert.equal(response.headers.get('x-once-rate-limit-limit'), '10');
     assert.equal(response.headers.get('x-once-usage-metered'), 'true');
     assert.equal(Object.hasOwn(publicBody, 'admission'), false);
+  } finally {
+    store.db.close();
+  }
+});
+
+test('orphaned durable meter reservation is reused after a crash before UNKNOWN without double usage', async () => {
+  const store = storage();
+  try {
+    const rawKey = 'once_test_meter_crash_recovery';
+    const tenantId = 'tenant_meter_crash_recovery';
+    const operationId = 'meter-crash-op';
+    await seedApiKey(store, rawKey, tenantId);
+    seedEntitlement(store, tenantId);
+
+    const clock = () => Date.parse('2026-09-27T00:12:00.000Z');
+    const firstPolicy = new RuntimeHostedAdmissionPolicy({
+      ctx: createContext(store),
+      requestLimitPerMinute: 10,
+      clock,
+    });
+    const effectHash = await fixtureEffectHash(100);
+
+    // Simulate the exact crash edge: meter reservation is durable, but the
+    // process dies before GatewayCore writes its durable UNKNOWN operation.
+    await firstPolicy.authorizeRequest({
+      tenantId,
+      operationId,
+      effectHash,
+      protection: 'PROTECT',
+    });
+    const orphan = await firstPolicy.reserveProtectedOperation({
+      tenantId,
+      operationId,
+      effectHash,
+      protection: 'PROTECT',
+    });
+    assert.equal(orphan.metered, true);
+    assert.equal(store.sql.exec('SELECT used FROM hosted_usage_monthly')[0].used, 1);
+    assert.equal(store.sql.exec('SELECT COUNT(*) AS n FROM hosted_gateway_operations')[0].n, 0);
+
+    let effects = 0;
+    const restartedPolicy = new RuntimeHostedAdmissionPolicy({
+      ctx: createContext(store),
+      requestLimitPerMinute: 10,
+      clock,
+    });
+    const restartedBinding = new RuntimeHostedGatewayBinding({
+      ctx: createContext(store),
+      admissionPolicy: restartedPolicy,
+      resolveRegistration: registrationFactory({
+        execute: async () => ({ providerReference: `effect_${++effects}` }),
+      }),
+    });
+
+    const response = await dispatch(restartedBinding, rawKey, body(operationId, 100));
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).decision, 'EXECUTE');
+    assert.equal(response.headers.get('x-once-usage-metered'), 'false');
+    assert.equal(response.headers.get('x-once-usage-used'), '1');
+    assert.equal(effects, 1);
+    assert.equal(store.sql.exec('SELECT used FROM hosted_usage_monthly')[0].used, 1);
+    assert.equal(store.sql.exec('SELECT COUNT(*) AS n FROM hosted_metered_operations')[0].n, 1);
+    assert.equal(store.sql.exec('SELECT COUNT(*) AS n FROM hosted_gateway_operations')[0].n, 1);
+    assert.equal(
+      store.sql.exec("SELECT COUNT(*) AS n FROM hosted_admission_audit_events WHERE event_type = 'METER_REUSED'")[0].n,
+      1,
+    );
+  } finally {
+    store.db.close();
+  }
+});
+
+test('orphaned meter reservation fails closed if the logical identity is reused for a different effect', async () => {
+  const store = storage();
+  try {
+    const rawKey = 'once_test_meter_crash_conflict';
+    const tenantId = 'tenant_meter_crash_conflict';
+    const operationId = 'meter-crash-conflict-op';
+    await seedApiKey(store, rawKey, tenantId);
+    seedEntitlement(store, tenantId);
+
+    const clock = () => Date.parse('2026-09-27T00:13:00.000Z');
+    const firstPolicy = new RuntimeHostedAdmissionPolicy({
+      ctx: createContext(store),
+      clock,
+    });
+    const firstEffectHash = await fixtureEffectHash(100);
+    await firstPolicy.reserveProtectedOperation({
+      tenantId,
+      operationId,
+      effectHash: firstEffectHash,
+      protection: 'PROTECT',
+    });
+    assert.equal(store.sql.exec('SELECT COUNT(*) AS n FROM hosted_gateway_operations')[0].n, 0);
+
+    let effects = 0;
+    const restartedBinding = new RuntimeHostedGatewayBinding({
+      ctx: createContext(store),
+      admissionPolicy: new RuntimeHostedAdmissionPolicy({ ctx: createContext(store), clock }),
+      resolveRegistration: registrationFactory({
+        execute: async () => ({ providerReference: `effect_${++effects}` }),
+      }),
+    });
+
+    const response = await dispatch(restartedBinding, rawKey, body(operationId, 200));
+    assert.equal(response.status, 409);
+    assert.equal((await response.json()).error, 'operation_effect_conflict');
+    assert.equal(effects, 0);
+    assert.equal(store.sql.exec('SELECT used FROM hosted_usage_monthly')[0].used, 1);
+    assert.equal(store.sql.exec('SELECT COUNT(*) AS n FROM hosted_metered_operations')[0].n, 1);
+    assert.equal(store.sql.exec('SELECT COUNT(*) AS n FROM hosted_gateway_operations')[0].n, 0);
   } finally {
     store.db.close();
   }
