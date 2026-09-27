@@ -1,0 +1,35 @@
+[
+  {
+    "name": "create_order",
+    "description": "Create a disposable local order.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "operation_id": {
+          "type": "string"
+        },
+        "sku": {
+          "type": "string"
+        },
+        "quantity": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "operation_id",
+        "sku",
+        "quantity"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "read_count",
+    "description": "Read the number of disposable orders.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  }
+]

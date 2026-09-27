@@ -116,3 +116,7 @@ jobs:
       - name: Run Phase 13 MCP end-to-end regression
         working-directory: mcp
         run: node scripts/phase13-boundary-e2e.mjs
+
+      - name: Run Phase 13B disposable stdio process regression
+        working-directory: mcp
+        run: node scripts/phase13b-stdio-e2e.mjs
