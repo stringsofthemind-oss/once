@@ -64,15 +64,24 @@ function normalizeReconciliation(result) {
 }
 
 export class GatewayCore {
-  constructor({ store, clock = () => new Date().toISOString(), beforeProviderAttempt = null }) {
+  constructor({
+    store,
+    clock = () => new Date().toISOString(),
+    beforeProviderPreflight = null,
+    beforeProviderAttempt = null,
+  }) {
     if (!store?.withLock || !store?.get || !store?.put) {
       throw new TypeError('store must implement withLock/get/put');
+    }
+    if (beforeProviderPreflight !== null && typeof beforeProviderPreflight !== 'function') {
+      throw new TypeError('beforeProviderPreflight must be a function');
     }
     if (beforeProviderAttempt !== null && typeof beforeProviderAttempt !== 'function') {
       throw new TypeError('beforeProviderAttempt must be a function');
     }
     this.store = store;
     this.clock = clock;
+    this.beforeProviderPreflight = beforeProviderPreflight;
     this.beforeProviderAttempt = beforeProviderAttempt;
   }
 
@@ -151,6 +160,22 @@ export class GatewayCore {
             operationId,
           };
         }
+      }
+
+      // Commercial/provider-attempt authorization belongs after all safe local
+      // replay/conflict/reconciliation exits. This lets an already-confirmed
+      // operation replay, and lets an UNKNOWN operation reconcile, even if the
+      // tenant's entitlement changed after the original attempt. If a new
+      // provider attempt is actually required, authorization still fails closed
+      // before adapter preflight or provider crossing.
+      if (this.beforeProviderPreflight) {
+        await this.beforeProviderPreflight({
+          operationId,
+          effectHash,
+          payload,
+          metadata,
+          record: existing ?? null,
+        });
       }
 
       // Deterministic configuration/credential failures must happen before the
