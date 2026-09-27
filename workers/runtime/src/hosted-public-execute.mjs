@@ -6,6 +6,7 @@ import {
 
 export const PUBLIC_HOSTED_EXECUTE_PATH = '/v1/execute';
 export const PUBLIC_HOSTED_EXECUTE_PREVIEW_VALUE = 'phase12d-preview';
+export const PUBLIC_HOSTED_ADMISSION_VALUE = 'phase12d';
 
 const RESPONSE_HEADER_ALLOWLIST = Object.freeze([
   'content-type',
@@ -50,6 +51,11 @@ function copyResponseHeaders(response) {
  * runtime route. That means simply merging this code cannot cut production
  * `/v1/execute` traffic over to the hosted gateway.
  *
+ * Enabling the preview bridge without the Phase 12D admission policy is treated
+ * as a fail-closed configuration error. This prevents an operator from routing
+ * public traffic to the hosted safety core while accidentally omitting the
+ * entitlement/rate/meter layer reviewed for this phase.
+ *
  * The bridge performs transport-only work. Authentication, tenant scope,
  * effect binding, durable state, admission/metering, reconciliation and
  * provider execution remain inside the Durable Object hosted gateway.
@@ -83,6 +89,13 @@ export async function maybeHandlePublicHostedGatewayRequest({
     // Preserve the existing /v1/execute path exactly until a separate
     // environment cutover is explicitly approved.
     return null;
+  }
+
+  if (
+    String(env.ONCE_HOSTED_ADMISSION_ENABLED || '') !==
+    PUBLIC_HOSTED_ADMISSION_VALUE
+  ) {
+    return json({ error: 'hosted_gateway_unavailable' }, 503);
   }
 
   if (request.method !== 'POST') {
