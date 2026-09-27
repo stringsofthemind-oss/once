@@ -1,4 +1,7 @@
-import { HostedGatewayError } from '../../gateway/src/hosted-gateway-core.js';
+import {
+  HostedGatewayError,
+  sha256Hex,
+} from '../../gateway/src/hosted-gateway-core.js';
 
 export const DEFAULT_HOSTED_PLAN_LIMITS = Object.freeze({
   pro: 100_000,
@@ -28,6 +31,11 @@ function optionalInteger(value) {
   return Number.isSafeInteger(value) && value >= 0 ? value : null;
 }
 
+async function auditOperationFingerprint(tenantId, operationId) {
+  if (typeof operationId !== 'string' || operationId.length === 0) return null;
+  return `sha256:${await sha256Hex(`once-audit-v1\0${tenantId}\0${operationId}`)}`;
+}
+
 /**
  * Phase 12D hosted admission policy.
  *
@@ -44,9 +52,10 @@ function optionalInteger(value) {
  * including when the retry occurs in a later calendar month.
  *
  * Operational audit rows are deliberately allowlisted scalar metadata. They do
- * not contain request payloads, authorization material, provider credentials,
- * provider results or free-form metadata. They are observability records, not a
- * replacement for the authoritative logical-operation meter tables.
+ * not contain request payloads, raw operation IDs, authorization material,
+ * provider credentials, provider results or free-form metadata. Operation
+ * correlation uses a tenant-scoped one-way fingerprint. These rows are
+ * observability records, not a replacement for authoritative meter tables.
  */
 export class RuntimeHostedAdmissionPolicy {
   constructor({
@@ -127,7 +136,7 @@ export class RuntimeHostedAdmissionPolicy {
       CREATE TABLE IF NOT EXISTS hosted_admission_audit_events (
         event_id INTEGER PRIMARY KEY AUTOINCREMENT,
         tenant_id TEXT NOT NULL,
-        operation_id TEXT,
+        operation_fingerprint TEXT,
         event_type TEXT NOT NULL,
         protection TEXT,
         plan TEXT,
@@ -145,7 +154,7 @@ export class RuntimeHostedAdmissionPolicy {
     `);
   }
 
-  recordAuditEvent({
+  async recordAuditEvent({
     tenantId,
     operationId = null,
     eventType,
@@ -158,12 +167,13 @@ export class RuntimeHostedAdmissionPolicy {
     requireString(tenantId, 'tenantId');
     requireString(eventType, 'eventType');
     const createdAt = new Date(nowMs).toISOString();
+    const operationFingerprint = await auditOperationFingerprint(tenantId, operationId);
 
     this.sql.exec(
       `
         INSERT INTO hosted_admission_audit_events (
           tenant_id,
-          operation_id,
+          operation_fingerprint,
           event_type,
           protection,
           plan,
@@ -176,7 +186,7 @@ export class RuntimeHostedAdmissionPolicy {
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       tenantId,
-      typeof operationId === 'string' && operationId ? operationId : null,
+      operationFingerprint,
       eventType,
       typeof protection === 'string' && protection ? protection : null,
       typeof plan === 'string' && plan ? plan : null,
@@ -305,7 +315,7 @@ export class RuntimeHostedAdmissionPolicy {
         protection: 'BYPASS',
         rate,
       };
-      this.recordAuditEvent({
+      await this.recordAuditEvent({
         tenantId,
         operationId,
         eventType: 'REQUEST_ADMITTED',
@@ -330,7 +340,7 @@ export class RuntimeHostedAdmissionPolicy {
       usage,
       rate,
     };
-    this.recordAuditEvent({
+    await this.recordAuditEvent({
       tenantId,
       operationId,
       eventType: 'REQUEST_ADMITTED',
@@ -374,7 +384,7 @@ export class RuntimeHostedAdmissionPolicy {
         used: this.getMonthlyUsage(tenantId, firstPeriod),
         period: firstPeriod,
       };
-      this.recordAuditEvent({
+      await this.recordAuditEvent({
         tenantId,
         operationId,
         eventType: 'METER_REUSED',
@@ -428,7 +438,7 @@ export class RuntimeHostedAdmissionPolicy {
         used: this.getMonthlyUsage(tenantId, firstPeriod),
         period: firstPeriod,
       };
-      this.recordAuditEvent({
+      await this.recordAuditEvent({
         tenantId,
         operationId,
         eventType: 'METER_REUSED',
@@ -452,7 +462,7 @@ export class RuntimeHostedAdmissionPolicy {
       used: this.getMonthlyUsage(tenantId, periodKey),
       period: periodKey,
     };
-    this.recordAuditEvent({
+    await this.recordAuditEvent({
       tenantId,
       operationId,
       eventType: 'METER_RESERVED',
