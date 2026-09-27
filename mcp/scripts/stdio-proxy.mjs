@@ -67,6 +67,10 @@ export async function connectStdioProxy(rawConfig) {
   const config = validConfig(rawConfig);
   const upstream = new Client({ name: "once-upstream-proxy", version: "0.1.0" });
   let downstream;
+  let catalogInvalidated = false;
+  upstream.setNotificationHandler("notifications/tools/list_changed", () => {
+    catalogInvalidated = true;
+  });
   try {
     await upstream.connect(new StdioClientTransport({
       command: config.command,
@@ -76,6 +80,20 @@ export async function connectStdioProxy(rawConfig) {
     const tools = await listCompleteCatalog(upstream);
     if (catalogDigest(tools) !== config.expectedCatalogSha256) {
       throw new Error("TOOL_SCHEMA_CHANGED: upstream catalog differs from reviewed configuration");
+    }
+    let catalogCheck;
+    async function verifyCatalog() {
+      if (catalogInvalidated) {
+        throw new Error("TOOL_SCHEMA_CHANGED: upstream announced a catalog change");
+      }
+      // Verify before each dispatch; share an in-flight read across concurrent calls.
+      catalogCheck ??= listCompleteCatalog(upstream).then(current => {
+        if (catalogDigest(current) !== config.expectedCatalogSha256 || catalogInvalidated) {
+          catalogInvalidated = true;
+          throw new Error("TOOL_SCHEMA_CHANGED: upstream catalog differs from reviewed configuration");
+        }
+      }).finally(() => { catalogCheck = undefined; });
+      await catalogCheck;
     }
     const boundary = createMcpExecutionBoundary({
       serverId: config.serverId,
@@ -91,7 +109,14 @@ export async function connectStdioProxy(rawConfig) {
         },
       },
     });
-    downstream = createMcpProxyServer({ boundary, version: "phase13b" });
+    const checkedBoundary = {
+      listTools: () => boundary.listTools(),
+      async callTool(request) {
+        await verifyCatalog();
+        return boundary.callTool(request);
+      },
+    };
+    downstream = createMcpProxyServer({ boundary: checkedBoundary, version: "phase13b" });
     return {
       server: downstream,
       plan: boundary.plan,
