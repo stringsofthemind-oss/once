@@ -8,7 +8,7 @@ import { pathToFileURL } from "node:url";
 import { Client } from "@modelcontextprotocol/client";
 import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 import { serveStdio } from "@modelcontextprotocol/server/stdio";
-import { createMcpExecutionBoundary } from "@once-agent/sdk/connect";
+import * as OnceConnect from "@once-agent/sdk/connect";
 import { z } from "zod";
 import { createMcpProxyServer } from "../dist/proxy-server.js";
 
@@ -188,18 +188,36 @@ async function listCompleteCatalog(client, timeoutMs, onTimeout) {
   throw new Error("INVALID_TOOL_CATALOG: page limit exceeded");
 }
 
-export async function connectStdioProxy(rawConfig) {
+/**
+ * Connect the reviewed stdio proxy. `connectRuntime` is intentionally injectable
+ * for source-tree conformance tests; the published path defaults to the installed
+ * @once-agent/sdk/connect namespace. Newer SDKs expose scoped local state sessions,
+ * while older SDKs simply retain the proven per-call state-open behavior.
+ */
+export async function connectStdioProxy(rawConfig, connectRuntime = OnceConnect) {
   const [major, minor] = process.versions.node.split(".").map(Number);
   if (major < 24 || (major === 24 && minor < 15)) {
     throw new Error("NODE_VERSION_UNSUPPORTED: proxy mode requires Node 24.15+ for durable SQLite");
   }
+  if (typeof connectRuntime?.createMcpExecutionBoundary !== "function") {
+    throw new Error("SDK_BOUNDARY_UNAVAILABLE: createMcpExecutionBoundary is required");
+  }
+
   // Snapshot caller-owned configuration so later mutation cannot change trust policy.
   const config = validConfig(JSON.parse(JSON.stringify(rawConfig)));
   const upstream = new Client({ name: "once-upstream-proxy", version: "0.1.0" });
   const dispatchVerification = new AsyncLocalStorage();
+  const hasScopedState =
+    typeof connectRuntime.createLocalProtectionSession === "function" &&
+    typeof connectRuntime.withLocalProtectionSession === "function";
+  const localStateSession = hasScopedState
+    ? connectRuntime.createLocalProtectionSession(resolve(config.statePath))
+    : undefined;
   let downstream;
+  let closed = false;
   let catalogInvalidated = false;
   let upstreamUnavailable = false;
+
   function invalidateUpstream() {
     if (upstreamUnavailable) return;
     upstreamUnavailable = true;
@@ -214,6 +232,7 @@ export async function connectStdioProxy(rawConfig) {
   upstream.setNotificationHandler("notifications/tools/list_changed", () => {
     catalogInvalidated = true;
   });
+
   try {
     await withTimeout(
       upstream.connect(new StdioClientTransport({
@@ -226,6 +245,7 @@ export async function connectStdioProxy(rawConfig) {
       `MCP initialize/connect exceeded ${config.timeouts.connectMs} ms`,
       invalidateUpstream,
     );
+
     // Raw requests are authoritative for catalog integrity. Client.listTools()
     // in MCP client v2 auto-aggregates pages internally, so the proxy cannot
     // inspect pagination failures through that convenience API alone.
@@ -237,8 +257,6 @@ export async function connectStdioProxy(rawConfig) {
 
     // Prime the SDK's tool cache so callTool() keeps output-schema validation,
     // then cross-check the cached aggregate against the raw authoritative walk.
-    // If the SDK silently truncates pagination, fail closed rather than expose a
-    // partial tool universe or validate results against an incomplete cache.
     const sdkCatalog = await withTimeout(
       upstream.listTools(),
       config.timeouts.catalogMs,
@@ -253,6 +271,7 @@ export async function connectStdioProxy(rawConfig) {
     if (catalogDigest(tools) !== config.expectedCatalogSha256) {
       throw new Error("TOOL_SCHEMA_CHANGED: upstream catalog differs from reviewed configuration");
     }
+
     let catalogCheck;
     async function verifyCatalog() {
       assertUpstreamAvailable();
@@ -272,7 +291,8 @@ export async function connectStdioProxy(rawConfig) {
       }).finally(() => { catalogCheck = undefined; });
       await catalogCheck;
     }
-    const boundary = createMcpExecutionBoundary({
+
+    const boundary = connectRuntime.createMcpExecutionBoundary({
       serverId: config.serverId,
       tools,
       statePath: resolve(config.statePath),
@@ -281,8 +301,6 @@ export async function connectStdioProxy(rawConfig) {
         async callTool({ name, arguments: args }) {
           assertUpstreamAvailable();
           // Every actual upstream execution must still have a fresh catalog proof.
-          // Cached replay hints may skip the outer check, but they can never allow
-          // a real dispatch to cross this point without re-verification.
           if (!dispatchVerification.getStore()?.catalogVerified) {
             await verifyCatalog();
             assertUpstreamAvailable();
@@ -300,6 +318,7 @@ export async function connectStdioProxy(rawConfig) {
         },
       },
     });
+
     const protectedTools = new Set(boundary.plan.protect.map(entry => entry.name));
     const confirmedReplayKeys = new Set();
     function rememberConfirmedReplay(key) {
@@ -309,12 +328,11 @@ export async function connectStdioProxy(rawConfig) {
         confirmedReplayKeys.delete(confirmedReplayKeys.values().next().value);
       }
     }
+
     const checkedBoundary = {
       listTools: () => boundary.listTools(),
       async callTool(request) {
         assertUpstreamAvailable();
-        // Preserve the existing fail-closed behavior for an explicit list-change
-        // notification even when this exact protected request was confirmed before.
         if (catalogInvalidated) {
           throw new Error("TOOL_SCHEMA_CHANGED: upstream announced a catalog change");
         }
@@ -324,19 +342,20 @@ export async function connectStdioProxy(rawConfig) {
         const confirmedReplay = replayKey !== undefined && confirmedReplayKeys.has(replayKey);
         let catalogVerified = false;
 
-        // First protected attempts and all BYPASS calls keep the original strict
-        // pre-dispatch verification. Only an exact protected request that already
-        // returned successfully in this proxy process can take the replay fast path.
+        // First protected attempts and all BYPASS calls keep strict verification.
         if (!confirmedReplay) {
           await verifyCatalog();
           assertUpstreamAvailable();
           catalogVerified = true;
         }
 
-        const result = await dispatchVerification.run(
+        const invokeBoundary = () => dispatchVerification.run(
           { catalogVerified },
           () => boundary.callTool(request),
         );
+        const result = localStateSession
+          ? await connectRuntime.withLocalProtectionSession(localStateSession, invokeBoundary)
+          : await invokeBoundary();
 
         if (replayKey !== undefined) {
           rememberConfirmedReplay(replayKey);
@@ -344,15 +363,29 @@ export async function connectStdioProxy(rawConfig) {
         return result;
       },
     };
+
     downstream = createMcpProxyServer({ boundary: checkedBoundary, version: "phase13b" });
     return {
       server: downstream,
       plan: boundary.plan,
+      /** True only when the installed/injected SDK supports the scoped persistent state path. */
+      persistentLocalState: Boolean(localStateSession),
       async close() {
-        try { await downstream.close(); } finally { await closeQuietly(upstream); }
+        if (closed) return;
+        closed = true;
+        try {
+          await downstream.close();
+        } finally {
+          try {
+            localStateSession?.close();
+          } finally {
+            await closeQuietly(upstream);
+          }
+        }
       },
     };
   } catch (error) {
+    localStateSession?.close();
     try { await downstream?.close(); } finally { await closeQuietly(upstream); }
     throw error;
   }
