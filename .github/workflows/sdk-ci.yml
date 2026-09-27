@@ -113,11 +113,13 @@ jobs:
         run: npm ci
 
       - name: Pack source SDK for MCP integration
-        run: npm pack --silent
+        run: |
+          mkdir -p ../../.ci-sdk-pack
+          npm pack --silent --pack-destination ../../.ci-sdk-pack
 
       - name: Install packed source SDK into MCP integration
         working-directory: mcp
-        run: npm install --no-save --package-lock=false ../sdk/typescript/once-agent-sdk-0.1.13.tgz
+        run: npm install --no-save --package-lock=false ../.ci-sdk-pack/*.tgz
 
       - name: Build MCP proxy adapter
         working-directory: mcp
