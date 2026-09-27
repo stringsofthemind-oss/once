@@ -72,9 +72,32 @@ function requireString(value, name) {
 }
 
 function normalizeReconciliation(result) {
-  if (!result || typeof result !== 'object') return { status: 'UNKNOWN' };
+  if (!result || typeof result !== 'object' || Array.isArray(result)) {
+    return { status: 'UNKNOWN' };
+  }
+
   if (result.status === 'CONFIRMED') return result;
-  if (result.status === 'ABSENT' && result.authoritative === true) return result;
+
+  // Phase 14C preferred provider-neutral proof of absence. This is not a
+  // durable operation state or authorization grant; it only allows the normal
+  // protected preflight/admission path below to decide whether a new provider
+  // attempt may occur.
+  if (result.status === 'ABSENT_PROVEN') {
+    return { ...result, status: 'ABSENT_PROVEN' };
+  }
+
+  // Backward compatibility for existing adapters. Non-authoritative ABSENT is
+  // deliberately not upgraded to proven absence.
+  if (result.status === 'ABSENT' && result.authoritative === true) {
+    return { ...result, status: 'ABSENT_PROVEN' };
+  }
+
+  // MISMATCH is diagnostically distinct at the adapter boundary but remains
+  // fail-closed in the existing durable UNKNOWN state.
+  if (result.status === 'MISMATCH') {
+    return { ...result, status: 'MISMATCH' };
+  }
+
   return { status: 'UNKNOWN' };
 }
 
@@ -121,10 +144,6 @@ export class GatewayCore {
       return { decision: GatewayDecision.BYPASS, result };
     }
 
-    // When conflict fencing is requested, serialize the entire decision path on
-    // the conflict scope rather than only the operation ID. This prevents two
-    // different logical operations for the same external object from both
-    // observing an unfenced scope and crossing the provider boundary.
     const lockKey = conflictKey ? `conflict:${conflictKey}` : `operation:${operationId}`;
 
     return this.store.withLock(lockKey, async () => {
@@ -138,10 +157,7 @@ export class GatewayCore {
         };
       }
 
-      if (
-        existing &&
-        (existing.conflictKey ?? null) !== (conflictKey ?? null)
-      ) {
+      if (existing && (existing.conflictKey ?? null) !== (conflictKey ?? null)) {
         return {
           decision: GatewayDecision.CONFLICT,
           state: existing.state,
@@ -158,9 +174,6 @@ export class GatewayCore {
         };
       }
 
-      // A different unresolved logical operation on the same external scope is
-      // a hard fence. A fresh operation ID, changed payload, new process, or new
-      // tool-call identity must not escape the earlier UNKNOWN.
       if (conflictKey && typeof this.store.findUnknownByConflictKey === 'function') {
         const blocker = await this.store.findUnknownByConflictKey(conflictKey, operationId);
         if (blocker) {
@@ -205,7 +218,7 @@ export class GatewayCore {
           };
         }
 
-        if (reconciliation.status !== 'ABSENT') {
+        if (reconciliation.status !== 'ABSENT_PROVEN') {
           return {
             decision: GatewayDecision.BLOCK_UNKNOWN,
             state: OutcomeState.UNKNOWN,
@@ -214,12 +227,6 @@ export class GatewayCore {
         }
       }
 
-      // Commercial/provider-attempt authorization belongs after all safe local
-      // replay/conflict/reconciliation exits. This lets an already-confirmed
-      // operation replay, and lets an UNKNOWN operation reconcile, even if the
-      // tenant's entitlement changed after the original attempt. If a new
-      // provider attempt is actually required, authorization still fails closed
-      // before adapter preflight or provider crossing.
       if (this.beforeProviderPreflight) {
         await this.beforeProviderPreflight({
           operationId,
