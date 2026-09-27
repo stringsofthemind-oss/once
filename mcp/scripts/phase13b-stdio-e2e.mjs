@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
+import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 import { catalogDigest, connectStdioProxy } from "./stdio-proxy.mjs";
 
 const fixture = fileURLToPath(new URL("./fixtures/stdio-upstream.mjs", import.meta.url));
@@ -81,6 +82,27 @@ try {
   assert.equal(count(), 2);
   await assert.rejects(client.callTool(uncertain));
   assert.equal(count(), 2);
+  // Launch the real proxy executable as a distinct process, with its own upstream.
+  await client.close();
+  await proxy.close();
+  client = undefined;
+  proxy = undefined;
+  const configPath = path.join(dir, "mcp.json");
+  writeFileSync(configPath, JSON.stringify(config));
+  const cli = new Client({ name: "once-cli-downstream", version: "0.0.1" });
+  try {
+    await cli.connect(new StdioClientTransport({
+      command: process.execPath,
+      args: [fileURLToPath(new URL("./stdio-proxy.mjs", import.meta.url)),
+        "--config", configPath],
+    }));
+    assert.deepEqual((await cli.listTools()).tools.map(tool => tool.name),
+      ["create_order", "read_count"]);
+    assert.deepEqual(await cli.callTool(call), first);
+    assert.equal(count(), 2);
+  } finally {
+    await cli.close();
+  }
   console.log("ONCE PHASE 13B STDIO PROCESS: PASS");
 } finally {
   await client?.close();
