@@ -259,7 +259,7 @@ test('concurrent distinct operations cannot oversubscribe a one-operation quota 
   }
 });
 
-test('audit rows use an explicit scalar allowlist and never persist effect or credential material', async () => {
+test('audit rows use an explicit scalar allowlist and fingerprint raw operation identity', async () => {
   const store = storage();
   try {
     seedEntitlement(store, 'tenant_a');
@@ -270,13 +270,18 @@ test('audit rows use an explicit scalar allowlist and never persist effect or cr
     });
 
     const secretFingerprint = 'sha256:payload-secret-fingerprint';
-    const input = request({ effectHash: secretFingerprint });
+    const rawOperationId = 'op_sensitive_customer_reference_123';
+    const input = request({
+      operationId: rawOperationId,
+      effectHash: secretFingerprint,
+    });
     await policy.authorizeRequest(input);
     await policy.reserveProtectedOperation(input);
 
     const columns = store.sql.exec('PRAGMA table_info(hosted_admission_audit_events)')
       .map((row) => String(row.name));
     for (const forbidden of [
+      'operation_id',
       'effect_hash',
       'authorization',
       'api_key',
@@ -288,12 +293,13 @@ test('audit rows use an explicit scalar allowlist and never persist effect or cr
     ]) {
       assert.equal(columns.includes(forbidden), false);
     }
+    assert.equal(columns.includes('operation_fingerprint'), true);
 
     const rows = store.sql.exec(`
       SELECT
         event_type,
         tenant_id,
-        operation_id,
+        operation_fingerprint,
         protection,
         plan,
         rate_limit,
@@ -310,7 +316,11 @@ test('audit rows use an explicit scalar allowlist and never persist effect or cr
     assert.equal(rows[0].usage_used, 0);
     assert.equal(rows[1].event_type, 'METER_RESERVED');
     assert.equal(rows[1].usage_used, 1);
-    assert.doesNotMatch(JSON.stringify(rows), /payload-secret-fingerprint/);
+    assert.match(String(rows[0].operation_fingerprint), /^sha256:[a-f0-9]{64}$/);
+    assert.equal(rows[0].operation_fingerprint, rows[1].operation_fingerprint);
+    const serialized = JSON.stringify(rows);
+    assert.doesNotMatch(serialized, /payload-secret-fingerprint/);
+    assert.doesNotMatch(serialized, /op_sensitive_customer_reference_123/);
   } finally {
     store.db.close();
   }
