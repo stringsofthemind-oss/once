@@ -157,9 +157,25 @@ Therefore:
 - UNKNOWN may reconcile to CONFIRMED without a new provider attempt;
 - authoritative ABSENT reaches the new-provider-attempt boundary and fails closed if the subscription state is inactive, stale or ambiguous.
 
+## Public hosted preview dependency
+
+The approval-gated public `/v1/execute` preview is now deliberately stricter than internal/staging hosted execution.
+
+If `ONCE_HOSTED_PUBLIC_EXECUTE_ENABLED=phase12d-preview` is ever enabled, the public bridge also requires all three reviewed safety gates to be present with their exact values before it resolves the Durable Object:
+
+```text
+ONCE_HOSTED_ADMISSION_ENABLED=phase12d
+ONCE_HOSTED_ENTITLEMENT_FRESHNESS_ENABLED=phase12d
+ONCE_HOSTED_ENTITLEMENT_ORDERING_ENABLED=phase12d
+```
+
+Any missing or near-match prerequisite fails closed with an opaque `503 hosted_gateway_unavailable` before Durable Object access. The preview gate itself remains absent from staging and production, so this branch does not cut over public traffic.
+
+The freshness max-age/grace values are still operator-supplied and validated by the hosted admission policy. Enabling the public bridge does not select production timing values by itself.
+
 ## CI coverage
 
-At implementation head `801e26e9786c8b09a6984ab58a7947f3b339590f`, the runtime suite passed **130/130** with zero failures and the credential-free lost-ack proof still ended with exactly one external effect.
+At implementation head `14fffc825d801e0189370f15fadb9e42ccdfa86f`, the runtime suite passed **134/134** with zero failures and the credential-free lost-ack proof still ended with exactly one external effect.
 
 The Phase 12D runtime suite covers:
 
@@ -172,6 +188,9 @@ The Phase 12D runtime suite covers:
 - inactive entitlement retains base 403 behavior,
 - freshness re-check before meter reservation,
 - unsafe freshness configuration rejected,
+- stale entitlement blocks a new provider effect while confirmed replay remains local,
+- UNKNOWN reconciles to CONFIRMED after freshness expiry without re-execution,
+- same-second lifecycle ambiguity blocks provider construction/effect,
 - older active lifecycle event cannot overwrite newer cancellation,
 - duplicate event ID is idempotent,
 - ordered events populate the legacy Stripe event ledger for rollback-safe dedupe,
@@ -183,9 +202,11 @@ The Phase 12D runtime suite covers:
 - unsupported events do not mutate entitlement,
 - ordered webhook gate inert unless exact opt-in value is configured,
 - invalid signature rejected before Durable Object access,
-- verified public webhook forwards only parsed event JSON internally.
+- verified public webhook forwards only parsed event JSON internally,
+- public hosted preview refuses to activate unless admission, freshness and ordering gates are all exact,
+- public hosted preview rejects near-match lifecycle gate values before Durable Object access.
 
-Exact-head GitHub Actions for that implementation head were also green: Gateway core #133 and Worker CI #479.
+Exact-head GitHub Actions for that implementation head were green: Gateway core #138 / run `36286466915` and Worker CI #484 / run `36286466923`. The runtime deploy step was a dry-run only and reported that nothing was deployed.
 
 ## Remaining production decisions
 
@@ -195,7 +216,7 @@ This slice deliberately does not choose:
 2. production current-period grace,
 3. operational alerting/escalation for `lifecycle_ambiguous`,
 4. recovery policy if Stripe webhook delivery is unavailable for longer than the freshness window,
-5. whether ordering and freshness gates must become mandatory prerequisites of public `/v1/execute` cutover,
+5. the staged public `/v1/execute` canary, monitoring and rollback criteria before the already-required lifecycle safety gates are enabled,
 6. any production deployment or environment change.
 
 Those remain approval-gated production-readiness decisions.
