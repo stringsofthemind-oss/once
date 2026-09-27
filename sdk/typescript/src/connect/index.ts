@@ -89,3 +89,21 @@ export type {
   ConnectOpenAIAgentsFunctionToolsOptions,
   ConnectedOpenAIAgentsFunctionTools,
 } from "./openai-function-tools.js";
+
+export {
+  classifyRemoteMcpTool,
+  createMcpExecutionBoundary,
+  McpExecutionBoundaryError,
+} from "./mcp-execution-boundary.js";
+
+export type {
+  McpToolArguments,
+  McpToolCallRequest,
+  McpUpstreamClient,
+  McpBoundaryDecision,
+  McpBoundaryPlanEntry,
+  McpBoundaryPlan,
+  McpBoundaryOverride,
+  McpExecutionBoundaryOptions,
+  McpExecutionBoundary,
+} from "./mcp-execution-boundary.js";
