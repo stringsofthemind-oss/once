@@ -8,11 +8,12 @@ Phase 12D adds production-readiness controls around the merged Phase 12C hosted 
 
 This branch now contains:
 
-- active entitlement enforcement,
+- state-aware entitlement enforcement for new provider attempts,
 - per-tenant request-rate limiting,
 - one-per-logical-operation protected-operation metering,
 - monthly quota enforcement for new protected logical operations,
 - replay behavior that does not multiply usage across retries or calendar months,
+- safe confirmed replay and UNKNOWN reconciliation after entitlement lifecycle changes,
 - fail-closed effect-hash binding for a previously reserved logical identity,
 - allowlisted rate/usage response headers on the internal hosted transport,
 - allowlisted server-side admission audit events,
@@ -40,24 +41,30 @@ authenticate tenant
   -> derive tenant-scoped provider operation key
   -> request admission
        - request-rate limit
-       - entitlement/status/plan validation
+       - optional active-plan/current-period usage snapshot
   -> acquire logical-operation authority
   -> inspect durable operation state
        - effect drift -> semantic CONFLICT
        - CONFIRMED -> REPLAY_CONFIRMED
        - UNKNOWN -> reconcile before any re-execution
+           - CONFIRMED -> REPLAY_CONFIRMED
+           - UNKNOWN -> BLOCK_UNKNOWN
+           - authoritative ABSENT -> a new provider attempt may be considered
+  -> provider-attempt admission
+       - require active/trialing supported entitlement
   -> deterministic provider adapter preflight
        - missing/corrupt credential fails here
-       - no logical-operation meter unit is reserved yet
-  -> reserve logical-operation meter identity + quota
-  -> durable meter sync
+       - no new logical-operation meter unit is reserved yet
+  -> reserve/reuse logical-operation meter identity + quota
+       - re-check active entitlement after preflight
+  -> durable meter sync when a new meter unit is created
   -> write + sync durable UNKNOWN
   -> provider boundary
 ```
 
-This ordering is deliberate. Invalid requests cannot become billable, normal effect drift preserves the Phase 12C semantic `CONFLICT`, confirmed replay does not create a new unit, and deterministic provider configuration/credential failure does not consume a protected-operation unit.
+This ordering is deliberate. Invalid requests cannot become billable, normal effect drift preserves the Phase 12C semantic `CONFLICT`, confirmed replay does not create a new unit, UNKNOWN can reconcile safely after a subscription changes, and deterministic provider configuration/credential failure does not consume a new protected-operation unit.
 
-Request admission denial occurs before provider adapter construction. Meter reservation occurs only after deterministic preflight proves the adapter is ready for a real provider attempt.
+A missing or inactive entitlement blocks a **new provider attempt**, not the safety actions needed to replay an already-confirmed result or reconcile a prior UNKNOWN outcome. If UNKNOWN reconciliation is authoritative `ABSENT`, provider-attempt admission runs before preflight/re-execution and fails closed if entitlement is no longer active.
 
 ## Metering identity
 
@@ -83,7 +90,7 @@ Consequences:
 
 There is an intentionally conservative two-write boundary between durable meter reservation and the subsequent durable `UNKNOWN` record.
 
-If the process fails after the meter reservation is durably flushed but before `UNKNOWN` is durably written, the meter row survives without a hosted operation record. The branch now hostile-tests both recovery paths:
+If the process fails after the meter reservation is durably flushed but before `UNKNOWN` is durably written, the meter row survives without a hosted operation record. The branch hostile-tests both recovery paths:
 
 1. retrying the same logical operation with the same authoritative effect reuses the existing meter reservation, creates no second usage unit, then proceeds through the normal UNKNOWN/provider path;
 2. attempting to reuse that orphaned logical identity for a different effect fails closed with `operation_effect_conflict` and produces no provider effect.
@@ -136,16 +143,26 @@ A new logical-operation reservation is followed by `storage.sync()` before Gatew
 
 Audit rows are operational observability only, not billing authority. Their schema is an explicit scalar allowlist. They do not store raw operation IDs, effect hashes, authorization/API-key material, request payloads, free-form metadata, provider operation keys, provider results or credentials. Raw operation IDs are represented only by a tenant-scoped one-way SHA-256 fingerprint for correlation. Audit-retention/cleanup policy remains a production gate.
 
-## Entitlement source
+## Entitlement source and lifecycle semantics
 
-This slice reads the existing runtime `stripe_entitlements` table and accepts only:
+This slice reads the existing runtime `stripe_entitlements` table and treats only these statuses as active for a new provider attempt:
 
 ```text
 active
 trialing
 ```
 
-Missing or inactive entitlement fails closed with `403`. Entitlement is checked once at request admission and again at the provider-attempt reservation boundary so a status change during deterministic preflight cannot authorize a stale provider crossing.
+The policy intentionally separates three concerns:
+
+1. **Request admission** rate-limits the authenticated tenant and, when an active supported plan is available, may attach a current-period usage snapshot. Missing/inactive entitlement alone does not block this stage.
+2. **Provider-attempt admission** runs only after conflict/replay/reconciliation safe exits and requires active/trialing entitlement before adapter preflight.
+3. **Meter reservation** re-checks entitlement after deterministic preflight and immediately before a new meter reservation/UNKNOWN/provider boundary.
+
+This prevents a subscription transition from trapping prior safety state. CI explicitly proves:
+
+- an already-confirmed operation can still return `REPLAY_CONFIRMED` after the entitlement becomes inactive, without provider reconstruction or re-execution;
+- an existing UNKNOWN operation can still reconcile to `CONFIRMED` after the entitlement becomes inactive, without re-execution;
+- if UNKNOWN reconciliation instead returns authoritative `ABSENT`, inactive entitlement blocks the subsequent provider attempt with `403`, the operation remains UNKNOWN, and no second provider effect occurs.
 
 The default plan-limit map intentionally mirrors the legacy runtime's current values:
 
@@ -157,6 +174,8 @@ scale   2000000
 
 Those defaults are compatibility values, **not a new public pricing commitment**. Final commercial plan names/limits must be reconciled before production cutover.
 
+Production still needs a defined entitlement-freshness policy: webhook ordering, grace periods, current-period end semantics, delayed/corrupt lifecycle updates and recovery procedures are not settled by this slice.
+
 ## Rate limiting
 
 Rate limiting is separate from logical-operation metering.
@@ -164,6 +183,8 @@ Rate limiting is separate from logical-operation metering.
 The current implementation uses a per-tenant fixed one-minute window with a default limit of 120 requests/minute. Retries and replays consume request-rate capacity because rate limiting protects infrastructure; they do not consume another logical-operation unit.
 
 Authenticated `BYPASS` requests are rate-limited but do not consume protected-operation usage. Whether public BYPASS access requires commercial entitlement remains a product-policy decision before production cutover.
+
+Because rate limiting is request-level infrastructure protection, it can temporarily deny even replay/reconciliation requests once a tenant exhausts its request window. That is safe with respect to duplicate execution but is an availability/product-policy consideration before public cutover.
 
 ## Internal operational response headers
 
@@ -186,10 +207,15 @@ The response body still excludes the internal admission object. The header path 
 
 The runtime suite covers, among other existing safety regressions:
 
-- request admission after authoritative effect binding and before adapter construction,
+- request admission after authoritative effect binding,
+- state/conflict/replay/reconciliation handling before provider-attempt entitlement enforcement,
+- provider-attempt entitlement denial before lazy adapter preflight/provider crossing,
 - deterministic preflight before protected-operation metering,
 - semantic conflict and confirmed replay before meter reservation,
-- missing/inactive entitlement fail-closed behavior,
+- missing/inactive entitlement blocking new provider attempts without blocking safe prior-state recovery,
+- confirmed replay after entitlement cancellation without adapter construction,
+- UNKNOWN -> CONFIRMED reconciliation after entitlement cancellation without re-execution,
+- authoritative ABSENT + inactive entitlement blocking re-execution while preserving UNKNOWN,
 - one protected logical operation = one usage unit,
 - cross-month retry/replay without duplicate usage,
 - quota enforcement and concurrent quota boundary behavior,
@@ -220,10 +246,11 @@ It also does not change the core Once claim boundary: Once provides execution-sa
 ## Remaining Phase 12D production gates
 
 1. reconcile final commercial plan names/limits with Stripe entitlements,
-2. define entitlement freshness/lifecycle handling for production,
+2. define production entitlement freshness/lifecycle delivery policy (webhook ordering, grace and stale-state handling),
 3. define provider master-key key-version rotation/recovery,
 4. define rate-limit, meter and audit retention/cleanup policy,
 5. decide commercial treatment of orphaned meter reservations,
-6. design the public `/v1/execute` migration/cutover,
-7. keep production deployment separately approval-gated,
-8. keep live-provider/live-money enablement separately approval-gated.
+6. decide public BYPASS entitlement policy and replay/reconciliation rate-limit policy,
+7. design the public `/v1/execute` migration/cutover,
+8. keep production deployment separately approval-gated,
+9. keep live-provider/live-money enablement separately approval-gated.
