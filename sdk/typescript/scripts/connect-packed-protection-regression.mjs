@@ -200,6 +200,7 @@ try {
       `
 import {
   connectLocalAgentToolsetAuto,
+  createMcpExecutionBoundary,
 } from "@once-agent/sdk/connect";
 
 let effects = 0;
@@ -267,6 +268,57 @@ if (effects !== 1) process.exit(16);
 console.log("PACKED PROTECTED CLAIM PASS");
 console.log("PACKED PROTECTED REPLAY PASS");
 console.log("PACKED PAYLOAD CONFLICT PASS");
+
+let upstreamEffects = 0;
+const boundary = createMcpExecutionBoundary({
+  serverId: "packed-mcp-regression",
+  statePath: "./once-packed-mcp.sqlite",
+  tools: [{
+    name: "create_order",
+    description: "Create an external order.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        operation_id: { type: "string" },
+        sku: { type: "string" },
+      },
+      required: ["operation_id", "sku"],
+    },
+  }],
+  overrides: {
+    create_order: {
+      decision: "PROTECT",
+      identityFields: ["operation_id"],
+      effectFields: ["sku"],
+    },
+  },
+  upstream: {
+    async callTool() {
+      upstreamEffects += 1;
+      return { content: [{ type: "text", text: "order-" + upstreamEffects }] };
+    },
+  },
+});
+
+const order = {
+  name: "create_order",
+  arguments: { operation_id: "order-7", sku: "sku-1" },
+};
+const created = await boundary.callTool(order);
+const repeated = await boundary.callTool(order);
+if (upstreamEffects !== 1) process.exit(20);
+if (JSON.stringify(created) !== JSON.stringify(repeated)) process.exit(21);
+try {
+  await boundary.callTool({
+    name: "create_order",
+    arguments: { operation_id: "order-7", sku: "sku-2" },
+  });
+  process.exit(22);
+} catch (error) {
+  if (error?.code !== "CONFLICT") process.exit(23);
+}
+if (upstreamEffects !== 1) process.exit(24);
+console.log("PACKED MCP BOUNDARY PASS");
 `,
     ],
     {
@@ -283,6 +335,7 @@ console.log("PACKED PAYLOAD CONFLICT PASS");
     "PACKED PROTECTED CLAIM PASS",
     "PACKED PROTECTED REPLAY PASS",
     "PACKED PAYLOAD CONFLICT PASS",
+    "PACKED MCP BOUNDARY PASS",
   ]) {
     if (!runtime.stdout.includes(marker)) {
       throw new Error(
@@ -303,6 +356,7 @@ console.log("PACKED PAYLOAD CONFLICT PASS");
   console.log("PASS - retry replayed without a second effect");
   console.log("PASS - payload drift blocked before another effect");
   console.log("PASS - installed package created durable SQLite state");
+  console.log("PASS - installed MCP boundary suppresses replay and rejects drift");
 
   console.log("");
   console.log("ONCE CONNECT PACKED LOCAL PROTECTION REGRESSION PASSED");
