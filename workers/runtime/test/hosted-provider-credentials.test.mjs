@@ -19,6 +19,7 @@ async function createCredentialStore(store, env = { ONCE_PROVIDER_MASTER_KEY: ma
     ctx: { storage: store },
     encryptConfig: (...args) => runtime.encryptProviderConfig(...args),
     decryptConfig: (...args) => runtime.decryptProviderConfig(...args),
+    currentKeyVersion: () => runtime.getProviderMasterKeyVersion(),
     clock: () => '2026-09-26T21:30:00.000Z',
   });
   return { runtime, credentials };
@@ -40,13 +41,14 @@ test('hosted Stripe credentials are encrypted, tenant-scoped and rotate immutabl
 
     assert.equal(firstA.created, true);
     assert.equal(firstA.rotated, false);
+    assert.equal(firstA.keyVersion, 1);
     assert.equal(firstB.created, true);
     assert.notEqual(firstA.versionId, firstB.versionId);
     assert.equal(await credentials.getStripeRefundSecret({ tenantId: 'tenant_a' }), 'sk_test_tenant_a_v1');
     assert.equal(await credentials.getStripeRefundSecret({ tenantId: 'tenant_b' }), 'sk_test_tenant_b_v1');
 
     const rowsBefore = store.sql.exec(`
-      SELECT customer_id, provider_name, provider_type, encrypted_config, version_id
+      SELECT customer_id, provider_name, provider_type, encrypted_config, version_id, key_version
       FROM provider_versions
       WHERE provider_name = ?
       ORDER BY customer_id, created_at
@@ -55,6 +57,7 @@ test('hosted Stripe credentials are encrypted, tenant-scoped and rotate immutabl
     for (const row of rowsBefore) {
       assert.equal(row.provider_name, HOSTED_STRIPE_CREDENTIAL_ALIAS);
       assert.equal(row.provider_type, HOSTED_STRIPE_CREDENTIAL_TYPE);
+      assert.equal(row.key_version, 1);
       assert.match(row.version_id, /^hpc_[a-f0-9]{32}$/);
       assert.doesNotMatch(String(row.encrypted_config), /sk_test_tenant_/);
     }
@@ -65,6 +68,7 @@ test('hosted Stripe credentials are encrypted, tenant-scoped and rotate immutabl
     });
     assert.equal(rotatedA.created, false);
     assert.equal(rotatedA.rotated, true);
+    assert.equal(rotatedA.keyVersion, 1);
     assert.notEqual(rotatedA.versionId, firstA.versionId);
     assert.equal(await credentials.getStripeRefundSecret({ tenantId: 'tenant_a' }), 'sk_test_tenant_a_v2');
     assert.equal(await credentials.getStripeRefundSecret({ tenantId: 'tenant_b' }), 'sk_test_tenant_b_v1');
@@ -191,6 +195,190 @@ test('missing provider master key fails closed during lookup and never returns p
       WHERE customer_id = ? AND provider_name = ?
     `, 'tenant_master_key', HOSTED_STRIPE_CREDENTIAL_ALIAS)[0];
     assert.doesNotMatch(String(row.encrypted_config), /sk_test_master_key_fixture/);
+  } finally {
+    store.db.close();
+  }
+});
+
+test('provider master-key rotation reads the exact previous key version and writes only the new version', async () => {
+  const store = storage();
+  try {
+    const oldKey = masterKey(11);
+    const newKey = masterKey(12);
+
+    const seeded = await createCredentialStore(store, {
+      ONCE_PROVIDER_MASTER_KEY: oldKey,
+      ONCE_PROVIDER_MASTER_KEY_VERSION: '1',
+    });
+    const oldCredential = await seeded.credentials.rotateStripeRefundSecret({
+      tenantId: 'tenant_key_rotation',
+      secretKey: 'sk_test_key_rotation_old',
+    });
+    assert.equal(oldCredential.keyVersion, 1);
+
+    const rotating = await createCredentialStore(store, {
+      ONCE_PROVIDER_MASTER_KEY: newKey,
+      ONCE_PROVIDER_MASTER_KEY_VERSION: '2',
+      ONCE_PROVIDER_PREVIOUS_MASTER_KEY: oldKey,
+      ONCE_PROVIDER_PREVIOUS_MASTER_KEY_VERSION: '1',
+    });
+
+    assert.equal(
+      await rotating.credentials.getStripeRefundSecret({ tenantId: 'tenant_key_rotation' }),
+      'sk_test_key_rotation_old',
+    );
+
+    const newCredential = await rotating.credentials.rotateStripeRefundSecret({
+      tenantId: 'tenant_key_rotation',
+      secretKey: 'sk_test_key_rotation_new',
+    });
+    assert.equal(newCredential.keyVersion, 2);
+    assert.equal(
+      await rotating.credentials.getStripeRefundSecret({ tenantId: 'tenant_key_rotation' }),
+      'sk_test_key_rotation_new',
+    );
+
+    const rows = store.sql.exec(`
+      SELECT version_id, key_version, encrypted_config
+      FROM provider_versions
+      WHERE customer_id = ? AND provider_name = ?
+      ORDER BY key_version, version_id
+    `, 'tenant_key_rotation', HOSTED_STRIPE_CREDENTIAL_ALIAS);
+    assert.deepEqual(rows.map((row) => Number(row.key_version)), [1, 2]);
+    for (const row of rows) {
+      assert.doesNotMatch(String(row.encrypted_config), /sk_test_key_rotation_/);
+    }
+  } finally {
+    store.db.close();
+  }
+});
+
+test('old provider key version fails closed when its previous key is no longer configured', async () => {
+  const store = storage();
+  try {
+    const oldKey = masterKey(21);
+    const newKey = masterKey(22);
+    const seeded = await createCredentialStore(store, {
+      ONCE_PROVIDER_MASTER_KEY: oldKey,
+      ONCE_PROVIDER_MASTER_KEY_VERSION: '1',
+    });
+    await seeded.credentials.rotateStripeRefundSecret({
+      tenantId: 'tenant_missing_previous',
+      secretKey: 'sk_test_missing_previous',
+    });
+
+    const withoutPrevious = await createCredentialStore(store, {
+      ONCE_PROVIDER_MASTER_KEY: newKey,
+      ONCE_PROVIDER_MASTER_KEY_VERSION: '2',
+    });
+    await assert.rejects(
+      withoutPrevious.credentials.getStripeRefundSecret({ tenantId: 'tenant_missing_previous' }),
+      /provider_key_version_unsupported/,
+    );
+  } finally {
+    store.db.close();
+  }
+});
+
+test('rewrap migrates active credential ciphertext to the current master key without exposing or changing the provider secret', async () => {
+  const store = storage();
+  try {
+    const oldKey = masterKey(31);
+    const newKey = masterKey(32);
+    const seeded = await createCredentialStore(store, {
+      ONCE_PROVIDER_MASTER_KEY: oldKey,
+      ONCE_PROVIDER_MASTER_KEY_VERSION: '1',
+    });
+    const oldCredential = await seeded.credentials.rotateStripeRefundSecret({
+      tenantId: 'tenant_rewrap',
+      secretKey: 'sk_test_rewrap_fixture',
+    });
+
+    const rotating = await createCredentialStore(store, {
+      ONCE_PROVIDER_MASTER_KEY: newKey,
+      ONCE_PROVIDER_MASTER_KEY_VERSION: '2',
+      ONCE_PROVIDER_PREVIOUS_MASTER_KEY: oldKey,
+      ONCE_PROVIDER_PREVIOUS_MASTER_KEY_VERSION: '1',
+    });
+    const rewrapped = await rotating.credentials.rewrapStripeRefundSecret({
+      tenantId: 'tenant_rewrap',
+    });
+
+    assert.equal(rewrapped.rewrapped, true);
+    assert.equal(rewrapped.alreadyCurrent, false);
+    assert.equal(rewrapped.previousVersionId, oldCredential.versionId);
+    assert.equal(rewrapped.keyVersion, 2);
+    assert.notEqual(rewrapped.versionId, oldCredential.versionId);
+    assert.equal(Object.hasOwn(rewrapped, 'secretKey'), false);
+
+    const currentOnly = await createCredentialStore(store, {
+      ONCE_PROVIDER_MASTER_KEY: newKey,
+      ONCE_PROVIDER_MASTER_KEY_VERSION: '2',
+    });
+    assert.equal(
+      await currentOnly.credentials.getStripeRefundSecret({ tenantId: 'tenant_rewrap' }),
+      'sk_test_rewrap_fixture',
+    );
+
+    const rowCountBeforeNoop = Number(store.sql.exec(`
+      SELECT COUNT(*) AS n
+      FROM provider_versions
+      WHERE customer_id = ? AND provider_name = ?
+    `, 'tenant_rewrap', HOSTED_STRIPE_CREDENTIAL_ALIAS)[0].n);
+    const noOp = await currentOnly.credentials.rewrapStripeRefundSecret({ tenantId: 'tenant_rewrap' });
+    const rowCountAfterNoop = Number(store.sql.exec(`
+      SELECT COUNT(*) AS n
+      FROM provider_versions
+      WHERE customer_id = ? AND provider_name = ?
+    `, 'tenant_rewrap', HOSTED_STRIPE_CREDENTIAL_ALIAS)[0].n);
+    assert.equal(noOp.rewrapped, false);
+    assert.equal(noOp.alreadyCurrent, true);
+    assert.equal(rowCountAfterNoop, rowCountBeforeNoop);
+
+    const rows = store.sql.exec(`
+      SELECT version_id, key_version, encrypted_config
+      FROM provider_versions
+      WHERE customer_id = ? AND provider_name = ?
+      ORDER BY key_version, version_id
+    `, 'tenant_rewrap', HOSTED_STRIPE_CREDENTIAL_ALIAS);
+    assert.deepEqual(rows.map((row) => Number(row.key_version)), [1, 2]);
+    for (const row of rows) {
+      assert.doesNotMatch(String(row.encrypted_config), /sk_test_rewrap_fixture/);
+    }
+  } finally {
+    store.db.close();
+  }
+});
+
+test('ambiguous or conflicting provider keyring configuration fails closed before encryption', async () => {
+  const store = storage();
+  try {
+    const conflicting = await createCredentialStore(store, {
+      ONCE_PROVIDER_MASTER_KEY: masterKey(41),
+      ONCE_PROVIDER_MASTER_KEY_VERSION: '2',
+      ONCE_PROVIDER_PREVIOUS_MASTER_KEY: masterKey(42),
+      ONCE_PROVIDER_PREVIOUS_MASTER_KEY_VERSION: '2',
+    });
+    await assert.rejects(
+      conflicting.credentials.rotateStripeRefundSecret({
+        tenantId: 'tenant_conflicting_keyring',
+        secretKey: 'sk_test_conflicting_keyring',
+      }),
+      /provider_previous_master_key_version_conflict/,
+    );
+
+    const incomplete = await createCredentialStore(store, {
+      ONCE_PROVIDER_MASTER_KEY: masterKey(43),
+      ONCE_PROVIDER_MASTER_KEY_VERSION: '2',
+      ONCE_PROVIDER_PREVIOUS_MASTER_KEY: masterKey(44),
+    });
+    await assert.rejects(
+      incomplete.credentials.rotateStripeRefundSecret({
+        tenantId: 'tenant_incomplete_keyring',
+        secretKey: 'sk_test_incomplete_keyring',
+      }),
+      /provider_previous_master_key_configuration_invalid/,
+    );
   } finally {
     store.db.close();
   }
