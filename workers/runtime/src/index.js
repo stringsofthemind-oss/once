@@ -17,6 +17,10 @@ import {
   INTERNAL_HOSTED_EXECUTE_PATH,
 } from "./hosted-gateway-transport.mjs";
 import {
+  maybeHandlePublicHostedGatewayRequest,
+  PUBLIC_HOSTED_EXECUTE_PATH,
+} from "./hosted-public-execute.mjs";
+import {
   handleStagingHostedGatewayRequest,
   STAGING_HOSTED_EXECUTE_PATH,
 } from "./hosted-staging-execute.mjs";
@@ -157,7 +161,7 @@ export class Q18Truth extends RuntimeQ18Truth {
     }
 
     // Deliberately internal-only: the outer Worker reaches this route only
-    // through the staging bridge or future reviewed hosted transport.
+    // through the staging bridge or a separately enabled public preview bridge.
     if (
       url.hostname === INTERNAL_HOSTED_EXECUTE_HOST &&
       url.pathname === INTERNAL_HOSTED_EXECUTE_PATH
@@ -195,6 +199,20 @@ export class Q18Truth extends RuntimeQ18Truth {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+
+    if (url.pathname === PUBLIC_HOSTED_EXECUTE_PATH) {
+      const hostedResponse = await maybeHandlePublicHostedGatewayRequest({
+        request,
+        env,
+        getDurableStub: async () => {
+          const id = env.Q18_TRUTH.idFromName(LEDGER_NAME);
+          return env.Q18_TRUTH.get(id);
+        },
+      });
+      if (hostedResponse !== null) return hostedResponse;
+      // Gate absent: deliberately fall through to the existing runtime's
+      // /v1/execute behavior. Merge alone is therefore not a cutover.
+    }
 
     if (url.pathname === STAGING_HOSTED_CREDENTIAL_ADMIN_PATH) {
       return handleStagingHostedCredentialAdminRequest({
