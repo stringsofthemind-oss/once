@@ -39,17 +39,19 @@ async function auditOperationFingerprint(tenantId, operationId) {
 /**
  * Phase 12D hosted admission policy.
  *
- * Request-level admission (rate + entitlement) happens after authoritative
- * effect binding but before adapter construction. Logical-operation metering is
- * a separate reservation invoked by GatewayCore only after conflict/replay
- * checks and deterministic provider preflight, immediately before durable
- * UNKNOWN and the provider boundary.
+ * Request-level admission applies infrastructure rate limiting and may return a
+ * non-authoritative active-plan usage snapshot. It deliberately does not block
+ * on entitlement lifecycle state: confirmed replay and UNKNOWN reconciliation
+ * must remain available after an original attempt even if entitlement changes.
+ *
+ * Active entitlement is enforced by authorizeProviderAttempt only after the
+ * core state machine determines a new provider attempt may be required, and
+ * before adapter preflight. Logical-operation metering is a later reservation
+ * invoked only after deterministic provider preflight, immediately before
+ * durable UNKNOWN and the provider boundary.
  *
  * Metering identity is global across billing periods:
  *   one (tenant_id, operation_id) -> first authoritative effect_hash
- *
- * Retries/reconciliation/replays therefore cannot create a second logical unit,
- * including when the retry occurs in a later calendar month.
  *
  * Operational audit rows are deliberately allowlisted scalar metadata. They do
  * not contain request payloads, raw operation IDs, authorization material,
@@ -104,9 +106,6 @@ export class RuntimeHostedAdmissionPolicy {
       )
     `);
 
-    // Keep meter-row creation and monthly aggregate increment in one SQLite
-    // statement transaction. INSERT OR IGNORE below means this trigger fires
-    // exactly once for each globally unique logical operation.
     this.sql.exec(`
       CREATE TRIGGER IF NOT EXISTS hosted_metered_operations_usage_insert
       AFTER INSERT ON hosted_metered_operations
@@ -258,6 +257,17 @@ export class RuntimeHostedAdmissionPolicy {
     return { plan, monthlyLimit };
   }
 
+  getOptionalActivePlan(tenantId) {
+    const entitlement = this.getEntitlement(tenantId);
+    if (!entitlement) return null;
+    const status = String(entitlement.status || '').trim().toLowerCase();
+    if (!ACTIVE_ENTITLEMENT_STATUSES.has(status)) return null;
+    const plan = String(entitlement.plan || '').trim().toLowerCase();
+    const monthlyLimit = Number(this.planLimits[plan]);
+    if (!Number.isSafeInteger(monthlyLimit) || monthlyLimit < 1) return null;
+    return { plan, monthlyLimit };
+  }
+
   applyRateLimit(tenantId, nowMs) {
     const windowKey = Math.floor(nowMs / 60_000);
     const nowIso = new Date(nowMs).toISOString();
@@ -308,8 +318,6 @@ export class RuntimeHostedAdmissionPolicy {
     if (!Number.isFinite(nowMs)) throw new HostedGatewayError('admission_clock_invalid', 500);
     const rate = this.applyRateLimit(tenantId, nowMs);
 
-    // BYPASS is infrastructure-rate-limited but is not a protected billable
-    // operation. This behavior is intentionally explicit and reviewable.
     if (protection === 'BYPASS') {
       const result = {
         protection: 'BYPASS',
@@ -326,6 +334,43 @@ export class RuntimeHostedAdmissionPolicy {
       return result;
     }
 
+    const active = this.getOptionalActivePlan(tenantId);
+    const result = {
+      protection: 'PROTECT',
+      rate,
+    };
+    if (active) {
+      const period = utcPeriodKey(nowMs);
+      const usage = {
+        limit: active.monthlyLimit,
+        used: this.getMonthlyUsage(tenantId, period),
+        period,
+      };
+      Object.assign(result, {
+        plan: active.plan,
+        limit: active.monthlyLimit,
+        usage,
+      });
+    }
+
+    await this.recordAuditEvent({
+      tenantId,
+      operationId,
+      eventType: 'REQUEST_ADMITTED',
+      protection: 'PROTECT',
+      plan: result.plan ?? null,
+      rate,
+      usage: result.usage ?? null,
+      nowMs,
+    });
+    return result;
+  }
+
+  async authorizeProviderAttempt({ tenantId, operationId = null }) {
+    requireString(tenantId, 'tenantId');
+
+    const nowMs = Number(this.clock());
+    if (!Number.isFinite(nowMs)) throw new HostedGatewayError('admission_clock_invalid', 500);
     const { plan, monthlyLimit } = this.getActivePlan(tenantId);
     const period = utcPeriodKey(nowMs);
     const usage = {
@@ -338,15 +383,13 @@ export class RuntimeHostedAdmissionPolicy {
       plan,
       limit: monthlyLimit,
       usage,
-      rate,
     };
     await this.recordAuditEvent({
       tenantId,
       operationId,
-      eventType: 'REQUEST_ADMITTED',
+      eventType: 'PROVIDER_ATTEMPT_ADMITTED',
       protection: 'PROTECT',
       plan,
-      rate,
       usage,
       nowMs,
     });
@@ -361,18 +404,14 @@ export class RuntimeHostedAdmissionPolicy {
     const nowMs = Number(this.clock());
     if (!Number.isFinite(nowMs)) throw new HostedGatewayError('admission_clock_invalid', 500);
 
-    // Re-read entitlement at the provider-attempt boundary. If a subscription
-    // changed after request admission but before deterministic preflight ended,
-    // execution fails closed rather than crossing under stale authorization.
+    // Re-read entitlement at the final provider-attempt boundary. If a
+    // subscription changes during deterministic preflight, execution still
+    // fails closed rather than crossing under stale authorization.
     const { plan, monthlyLimit } = this.getActivePlan(tenantId);
 
     const existing = this.getMeteredOperation(tenantId, operationId);
     if (existing) {
       if (String(existing.effect_hash) !== effectHash) {
-        // This can only be reached when a prior meter reservation survived but
-        // its hosted operation record did not (for example, a crash between the
-        // meter sync and UNKNOWN write). Never reuse that accepted identity for
-        // a different effect.
         throw new HostedGatewayError('operation_effect_conflict', 409);
       }
       const firstPeriod = String(existing.first_period_key);
