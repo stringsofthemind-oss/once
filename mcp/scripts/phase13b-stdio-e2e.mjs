@@ -167,6 +167,25 @@ try {
     proxy = undefined;
     unlinkSync(driftPath);
   }
+  // The upstream exits after committing an effect. A fresh Once process
+  // must retain UNKNOWN and refuse to execute it a second time.
+  proxy = await connectStdioProxy(config);
+  client = await attach(proxy);
+  const crashing = { name: "create_order",
+    arguments: { operation_id: "order-crash", sku: "crash", quantity: 1 } };
+  await assert.rejects(client.callTool(crashing));
+  assert.equal(count(), 4);
+  await client.close();
+  await proxy.close();
+  client = undefined;
+  proxy = await connectStdioProxy(config);
+  client = await attach(proxy);
+  await assert.rejects(client.callTool(crashing));
+  assert.equal(count(), 4);
+  await client.close();
+  await proxy.close();
+  client = undefined;
+  proxy = undefined;
   // Separate state/effects prevent benchmark writes from masking safety counts.
   const benchEffects = path.join(dir, "benchmark-effects.jsonl");
   const benchConfig = { ...config,
