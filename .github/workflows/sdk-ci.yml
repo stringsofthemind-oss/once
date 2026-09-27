@@ -96,6 +96,9 @@ jobs:
       - name: Run source-tree local regressions
         run: npm run test:local
 
+      - name: Run MCP boundary mutation regressions
+        run: node --test ./test/connect/mcp-execution-boundary-mutation.test.mjs
+
       - name: Run packed Connect local protection regression
         run: npm run test:connect-package-protected
 

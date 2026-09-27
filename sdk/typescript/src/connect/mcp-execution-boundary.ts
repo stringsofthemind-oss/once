@@ -3,6 +3,9 @@ import {
   type LocalObservation,
 } from "../local.js";
 import {
+  canonicalizeConnectPayload,
+} from "./binding.js";
+import {
   resolveConnectToolOperationIdentity,
 } from "./identity.js";
 import {
@@ -82,7 +85,7 @@ export interface McpExecutionBoundaryOptions<Result = unknown> {
 
 export interface McpExecutionBoundary<Result = unknown> {
   readonly plan: Readonly<McpBoundaryPlan>;
-  /** Exact authoritative tool descriptors to expose to the downstream MCP client. */
+  /** Fresh copies of the authoritative tool descriptors to expose downstream. */
   listTools(): Readonly<{ tools: readonly ConnectToolDescriptor[] }>;
   /** The only supported tools/call crossing for this connected upstream server. */
   callTool(request: McpToolCallRequest): Promise<Result>;
@@ -94,6 +97,11 @@ export class McpExecutionBoundaryError extends Error {
     this.name = "McpExecutionBoundaryError";
   }
 }
+
+type CatalogEntry = Readonly<{
+  descriptor: Readonly<ConnectToolDescriptor>;
+  canonical: string;
+}>;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -151,6 +159,97 @@ function validateFieldList(
   }
 
   return Object.freeze(normalized);
+}
+
+function snapshotToolDescriptor(tool: ConnectToolDescriptor): CatalogEntry {
+  let canonical: string;
+
+  try {
+    canonical = canonicalizeConnectPayload(
+      tool as unknown as Record<string, unknown>,
+    );
+  } catch {
+    throw new McpExecutionBoundaryError(
+      "INVALID_TOOL_MANIFEST",
+      `MCP tool descriptor ${tool.name} is not canonical JSON-safe data.`,
+    );
+  }
+
+  const descriptor = JSON.parse(canonical) as ConnectToolDescriptor;
+
+  return Object.freeze({
+    descriptor: Object.freeze(descriptor),
+    canonical,
+  });
+}
+
+function freshToolDescriptor(entry: CatalogEntry): ConnectToolDescriptor {
+  return JSON.parse(entry.canonical) as ConnectToolDescriptor;
+}
+
+function snapshotOverride<Result>(
+  toolName: string,
+  value: unknown,
+): Readonly<McpBoundaryOverride<Result>> | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (!isRecord(value)) {
+    throw new McpExecutionBoundaryError(
+      "INVALID_OVERRIDE",
+      `Local override for ${toolName} must be a plain object.`,
+    );
+  }
+
+  const decision = value.decision;
+
+  if (
+    decision !== undefined &&
+    decision !== CONNECT_TOOL_DECISION.PROTECT &&
+    decision !== CONNECT_TOOL_DECISION.BYPASS
+  ) {
+    throw new McpExecutionBoundaryError(
+      "INVALID_OVERRIDE",
+      `Invalid local routing decision for ${toolName}.`,
+    );
+  }
+
+  for (const callback of ["id", "payload", "reconcile"] as const) {
+    if (
+      value[callback] !== undefined &&
+      typeof value[callback] !== "function"
+    ) {
+      throw new McpExecutionBoundaryError(
+        "INVALID_OVERRIDE",
+        `${toolName}.${callback} must be a function when configured.`,
+      );
+    }
+  }
+
+  const identityFields = validateFieldList(
+    value.identityFields as readonly string[] | undefined,
+    `${toolName}.identityFields`,
+  );
+  const effectFields = validateFieldList(
+    value.effectFields as readonly string[] | undefined,
+    `${toolName}.effectFields`,
+  );
+
+  return Object.freeze({
+    ...(decision !== undefined ? { decision } : {}),
+    ...(typeof value.id === "function"
+      ? { id: value.id as McpBoundaryOverride<Result>["id"] }
+      : {}),
+    ...(typeof value.payload === "function"
+      ? { payload: value.payload as McpBoundaryOverride<Result>["payload"] }
+      : {}),
+    ...(identityFields ? { identityFields } : {}),
+    ...(effectFields ? { effectFields } : {}),
+    ...(typeof value.reconcile === "function"
+      ? { reconcile: value.reconcile as McpBoundaryOverride<Result>["reconcile"] }
+      : {}),
+  });
 }
 
 function safetyDescriptor(
@@ -255,10 +354,10 @@ export function classifyRemoteMcpTool(
 function buildPlan(
   serverId: string,
   tools: readonly ConnectToolDescriptor[],
-  overrides: McpExecutionBoundaryOptions["overrides"],
+  overrides: ReadonlyMap<string, Readonly<McpBoundaryOverride>>,
 ): Readonly<McpBoundaryPlan> {
   const entries = tools.map(tool =>
-    classifyRemoteMcpTool(tool, overrides?.[tool.name]),
+    classifyRemoteMcpTool(tool, overrides.get(tool.name)),
   );
   const protect = entries.filter(
     entry => entry.decision === CONNECT_TOOL_DECISION.PROTECT,
@@ -301,6 +400,8 @@ function plainArguments(value: unknown): McpToolArguments {
  * a direct executable path to `upstream.callTool()` is an intentional bypass.
  *
  * Phase 13A invariants:
+ * - the authoritative tool catalog and reviewed local policy are snapshotted at
+ *   boundary creation so later caller mutation cannot change routing;
  * - JSON-RPC/request IDs are transport correlation only;
  * - remote annotations can never downgrade a tool to BYPASS;
  * - UNKNOWN tools never reach the upstream server;
@@ -329,6 +430,8 @@ export function createMcpExecutionBoundary<Result = unknown>(
     );
   }
 
+  const upstreamCall = options.upstream.callTool.bind(options.upstream);
+  const statePath = options.statePath;
   const tools = toolArray(options.tools);
 
   if (!tools) {
@@ -338,7 +441,7 @@ export function createMcpExecutionBoundary<Result = unknown>(
     );
   }
 
-  const descriptors = new Map<string, ConnectToolDescriptor>();
+  const catalog = new Map<string, CatalogEntry>();
 
   for (const tool of tools) {
     if (
@@ -353,14 +456,14 @@ export function createMcpExecutionBoundary<Result = unknown>(
       );
     }
 
-    if (descriptors.has(tool.name)) {
+    if (catalog.has(tool.name)) {
       throw new McpExecutionBoundaryError(
         "DUPLICATE_TOOL_NAME",
         `Duplicate MCP tool name: ${tool.name}.`,
       );
     }
 
-    descriptors.set(tool.name, tool);
+    catalog.set(tool.name, snapshotToolDescriptor(tool));
   }
 
   if (options.overrides !== undefined && !isRecord(options.overrides)) {
@@ -370,30 +473,55 @@ export function createMcpExecutionBoundary<Result = unknown>(
     );
   }
 
+  const trustedOverrides = new Map<
+    string,
+    Readonly<McpBoundaryOverride<Result>>
+  >();
+
   if (options.overrides) {
-    for (const name of Object.keys(options.overrides)) {
-      if (!descriptors.has(name)) {
+    for (const [name, configured] of Object.entries(options.overrides)) {
+      if (!catalog.has(name)) {
         throw new McpExecutionBoundaryError(
           "INVALID_OVERRIDE",
           `Local override refers to undeclared MCP tool ${name}.`,
         );
       }
+
+      const snapshot = snapshotOverride<Result>(name, configured);
+      if (snapshot) {
+        trustedOverrides.set(name, snapshot);
+      }
     }
   }
 
+  const authoritativeTools = Object.freeze(
+    [...catalog.values()].map(entry => entry.descriptor),
+  );
+
   // Validate trusted field declarations before any call can be attempted.
-  for (const [name, descriptor] of descriptors) {
-    safetyDescriptor(serverId, descriptor, options.overrides?.[name]);
+  for (const descriptor of authoritativeTools) {
+    safetyDescriptor(
+      serverId,
+      descriptor,
+      trustedOverrides.get(descriptor.name),
+    );
   }
 
-  const plan = buildPlan(serverId, tools, options.overrides);
-  const publicTools = Object.freeze([...tools]);
+  const plan = buildPlan(
+    serverId,
+    authoritativeTools,
+    trustedOverrides,
+  );
 
   return Object.freeze({
     plan,
 
     listTools() {
-      return Object.freeze({ tools: publicTools });
+      return Object.freeze({
+        tools: Object.freeze(
+          [...catalog.values()].map(entry => freshToolDescriptor(entry)),
+        ),
+      });
     },
 
     async callTool(request: McpToolCallRequest): Promise<Result> {
@@ -408,17 +536,18 @@ export function createMcpExecutionBoundary<Result = unknown>(
         );
       }
 
-      const descriptor = descriptors.get(request.name);
+      const entry = catalog.get(request.name);
 
-      if (!descriptor) {
+      if (!entry) {
         throw new McpExecutionBoundaryError(
           "TOOL_NOT_FOUND",
           `MCP tool is not present in the authoritative catalog: ${request.name}.`,
         );
       }
 
+      const descriptor = entry.descriptor;
       const input = plainArguments(request.arguments);
-      const override = options.overrides?.[request.name];
+      const override = trustedOverrides.get(request.name);
       const route = classifyRemoteMcpTool(descriptor, override);
 
       if (route.decision === CONNECT_TOOL_DECISION.UNKNOWN) {
@@ -429,7 +558,7 @@ export function createMcpExecutionBoundary<Result = unknown>(
       }
 
       if (route.decision === CONNECT_TOOL_DECISION.BYPASS) {
-        return options.upstream.callTool({
+        return upstreamCall({
           name: request.name,
           arguments: input,
           ...(request.requestId !== undefined
@@ -443,18 +572,20 @@ export function createMcpExecutionBoundary<Result = unknown>(
         descriptor,
         override,
       );
+      const toolName = request.name;
+      const requestId = request.requestId;
 
       const protectedCall = protectLocal(
         async (protectedInput: McpToolArguments): Promise<Result> =>
-          options.upstream.callTool({
-            name: request.name,
+          upstreamCall({
+            name: toolName,
             arguments: protectedInput,
-            ...(request.requestId !== undefined
-              ? { requestId: request.requestId }
+            ...(requestId !== undefined
+              ? { requestId }
               : {}),
           }),
         {
-          statePath: options.statePath,
+          statePath,
           id: (protectedInput) => {
             const explicitIdentity = override?.id?.(protectedInput);
             const identity = resolveConnectToolOperationIdentity({
@@ -502,7 +633,7 @@ export function createMcpExecutionBoundary<Result = unknown>(
 
             return {
               serverId,
-              tool: request.name,
+              tool: toolName,
               effect: selected,
             };
           },
