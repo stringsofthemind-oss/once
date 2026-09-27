@@ -33,6 +33,12 @@ import {
 } from "./hosted-staging-tenant-admin.mjs";
 import { createStagingStripeFetch } from "./hosted-staging-stripe-fault.mjs";
 import { createHostedStripeRefundResolver } from "./hosted-stripe-refund-registration.mjs";
+import {
+  handleHostedStripeEntitlementEvent,
+  maybeHandleHostedStripeEntitlementWebhook,
+  INTERNAL_HOSTED_ENTITLEMENT_EVENT_HOST,
+  INTERNAL_HOSTED_ENTITLEMENT_EVENT_PATH,
+} from "./hosted-stripe-entitlement-ordering.mjs";
 
 const PUBLIC_STATS_PATH = "/v1/public/stats";
 const STRIPE_CHECKOUT_PATH = "/v1/billing/checkout";
@@ -145,6 +151,16 @@ export class Q18Truth extends RuntimeQ18Truth {
     const url = new URL(request.url);
 
     if (
+      url.hostname === INTERNAL_HOSTED_ENTITLEMENT_EVENT_HOST &&
+      url.pathname === INTERNAL_HOSTED_ENTITLEMENT_EVENT_PATH
+    ) {
+      return handleHostedStripeEntitlementEvent({
+        request,
+        ctx: this.ctx,
+      });
+    }
+
+    if (
       url.hostname === INTERNAL_HOSTED_CREDENTIAL_ADMIN_HOST &&
       url.pathname === INTERNAL_HOSTED_CREDENTIAL_ADMIN_PATH
     ) {
@@ -202,6 +218,16 @@ export class Q18Truth extends RuntimeQ18Truth {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+
+    const orderedEntitlementWebhook = await maybeHandleHostedStripeEntitlementWebhook({
+      request,
+      env,
+      getDurableStub: async () => {
+        const id = env.Q18_TRUTH.idFromName(LEDGER_NAME);
+        return env.Q18_TRUTH.get(id);
+      },
+    });
+    if (orderedEntitlementWebhook !== null) return orderedEntitlementWebhook;
 
     if (url.pathname === PUBLIC_HOSTED_EXECUTE_PATH) {
       const hostedResponse = await maybeHandlePublicHostedGatewayRequest({
