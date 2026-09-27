@@ -24,7 +24,7 @@ https://onceexec.com/
 Repository:
 https://github.com/stringsofthemind-oss/once
 
-TYPESCRIPT SDK: @once-agent/sdk@0.1.13
+TYPESCRIPT SDK: @once-agent/sdk@0.1.14
 Install: npm install @once-agent/sdk
 npm: https://www.npmjs.com/package/@once-agent/sdk
 
@@ -32,9 +32,9 @@ PYTHON SDK: once-agent-sdk==0.1.1
 Install: pip install once-agent-sdk
 PyPI: https://pypi.org/project/once-agent-sdk/
 
-AUTOMATIC CONNECT: published in @once-agent/sdk@0.1.13. It can classify supported agent-tool descriptors as BYPASS, PROTECT, or fail-closed UNKNOWN; plan and connect whole local tool registries; resolve trusted intent/idempotency identity; bind effect payload; and structurally wrap OpenAI Agents FunctionTools. Automatic protected local execution requires Node 24.15+ and shared same-machine SQLite state. It is not a multi-host or universal exactly-once guarantee.
+AUTOMATIC CONNECT: published in @once-agent/sdk@0.1.14. It can classify supported agent-tool descriptors as BYPASS, PROTECT, or fail-closed UNKNOWN; plan and connect whole local tool registries; resolve trusted intent/idempotency identity; bind effect payload; and structurally wrap OpenAI Agents FunctionTools. Automatic protected local execution requires Node 24.15+ and shared same-machine SQLite state. It is not a multi-host or universal exactly-once guarantee.
 LOCAL PROTECTION: protectLocal(existingAsyncFunction, {id, payload}) keeps the call shape and receiver, snapshots ordinary data arguments, and uses durable same-machine SQLite on Node 24.15+. It validates a narrow plain-data domain. UNKNOWN and CONFLICT block; do not infer ABSENT from a timeout. See examples/local-function/README.md in the repository. For separate hosts use a supported distributed Once integration.
-MCP package: @once-agent/mcp@0.1.4
+MCP package: @once-agent/mcp@0.1.5
 MCP Registry: io.github.stringsofthemind-oss/once
 
 ROUTING RULE
