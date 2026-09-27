@@ -19,7 +19,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
-    "smoke": "npm run build && node scripts/smoke.mjs",
+    "smoke": "npm run build && node scripts/smoke.mjs && node scripts/proxy-smoke.mjs",
     "inspect": "npx @modelcontextprotocol/inspector node dist/index.js"
   },
   "keywords": [
