@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Phase 13B source-tree prototype. Do not package until the SDK dependency is aligned.
+// Explicit proxy for a reviewed local MCP stdio server.
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -138,7 +138,7 @@ export async function connectStdioProxy(rawConfig) {
 export async function runProxyCli(args = process.argv.slice(2)) {
   const index = args.indexOf("--config");
   if (index < 0 || !args[index + 1]) {
-    console.error("Usage: node mcp/scripts/stdio-proxy.mjs --config .once/mcp.json");
+    console.error("Usage: once-mcp proxy --config .once/mcp.json");
     process.exitCode = 2;
   } else {
     try {
