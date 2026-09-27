@@ -72,9 +72,32 @@ function requireString(value, name) {
 }
 
 function normalizeReconciliation(result) {
-  if (!result || typeof result !== 'object') return { status: 'UNKNOWN' };
+  if (!result || typeof result !== 'object' || Array.isArray(result)) {
+    return { status: 'UNKNOWN' };
+  }
+
   if (result.status === 'CONFIRMED') return result;
-  if (result.status === 'ABSENT' && result.authoritative === true) return result;
+
+  // Phase 14C preferred provider-neutral proof of absence. This is not a
+  // durable operation state or authorization grant; it only allows the normal
+  // protected preflight/admission path below to decide whether a new provider
+  // attempt may occur.
+  if (result.status === 'ABSENT_PROVEN') {
+    return { ...result, status: 'ABSENT_PROVEN' };
+  }
+
+  // Backward compatibility for existing adapters. Non-authoritative ABSENT is
+  // deliberately not upgraded to proven absence.
+  if (result.status === 'ABSENT' && result.authoritative === true) {
+    return { ...result, status: 'ABSENT_PROVEN' };
+  }
+
+  // MISMATCH is diagnostically distinct at the adapter boundary but remains
+  // fail-closed in the existing durable UNKNOWN state.
+  if (result.status === 'MISMATCH') {
+    return { ...result, status: 'MISMATCH' };
+  }
+
   return { status: 'UNKNOWN' };
 }
 
@@ -205,7 +228,7 @@ export class GatewayCore {
           };
         }
 
-        if (reconciliation.status !== 'ABSENT') {
+        if (reconciliation.status !== 'ABSENT_PROVEN') {
           return {
             decision: GatewayDecision.BLOCK_UNKNOWN,
             state: OutcomeState.UNKNOWN,
