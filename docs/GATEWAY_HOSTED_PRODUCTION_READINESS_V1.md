@@ -1,27 +1,31 @@
 # Once Hosted Gateway Production Readiness V1 — Phase 12D
 
-Status: first local/CI implementation slice. **Not deployed. Not wired to the public production `/v1/execute`.**
+Status: implementation and CI review slice. **Not deployed. Not wired to the public production `/v1/execute`.**
 
-Phase 12D begins the production-readiness layer around the Phase 12C hosted safety core. The goal is to add commercial admission controls without weakening the execution-safety invariants already proven in staging.
+Phase 12D adds production-readiness controls around the merged Phase 12C hosted safety core without weakening its execution-safety invariants.
 
-## Scope of this first slice
+## Implemented in this slice
 
-This slice adds a two-phase hosted admission policy for:
+This branch now contains:
 
 - active entitlement enforcement,
 - per-tenant request-rate limiting,
 - one-per-logical-operation protected-operation metering,
 - monthly quota enforcement for new protected logical operations,
 - replay behavior that does not multiply usage across retries or calendar months,
-- fail-closed effect-hash binding for a previously reserved logical identity.
+- fail-closed effect-hash binding for a previously reserved logical identity,
+- allowlisted rate/usage response headers on the internal hosted transport,
+- allowlisted server-side admission audit events,
+- explicit authorization/payload/metadata redaction regressions,
+- hostile recovery tests for the durable meter-sync -> durable UNKNOWN-sync crash window.
 
-The runtime wiring is deliberately opt-in behind the exact environment value:
+The runtime wiring remains deliberately opt-in behind the exact environment value:
 
 ```text
 ONCE_HOSTED_ADMISSION_ENABLED=phase12d
 ```
 
-No current environment has been changed by this PR. With the flag absent, the merged Phase 12C hosted path behaves as before.
+No environment has been changed by this PR. With the flag absent, the merged Phase 12C hosted path behaves as before.
 
 ## Required ordering
 
@@ -51,13 +55,13 @@ authenticate tenant
   -> provider boundary
 ```
 
-This ordering is deliberate. An invalid request cannot become billable, a normal effect conflict preserves the Phase 12C semantic `CONFLICT` response, a confirmed replay does not create a new unit, and deterministic provider configuration/credential failure does not consume a protected-operation unit.
+This ordering is deliberate. Invalid requests cannot become billable, normal effect drift preserves the Phase 12C semantic `CONFLICT`, confirmed replay does not create a new unit, and deterministic provider configuration/credential failure does not consume a protected-operation unit.
 
 Request admission denial occurs before provider adapter construction. Meter reservation occurs only after deterministic preflight proves the adapter is ready for a real provider attempt.
 
 ## Metering identity
 
-The target billing identity is one protected logical operation, not one HTTP request:
+The billing identity under test is one protected logical operation, not one HTTP request:
 
 ```text
 (tenant_id, operation_id) -> authoritative effect_hash
@@ -75,7 +79,16 @@ Consequences:
 - different operation ID: a new logical-operation unit only when it reaches the provider-attempt boundary,
 - `BYPASS`: never consumes protected-operation usage.
 
-There is one intentionally conservative crash edge. If a meter reservation is durably flushed and the process fails before the subsequent durable `UNKNOWN` record is written, the meter row still binds that logical operation ID to its first effect hash. A later retry of the same effect continues without another unit. A later attempt to reuse that accepted identity for a different effect fails closed with `operation_effect_conflict` rather than silently changing identity.
+## Meter-sync -> UNKNOWN-sync crash edge
+
+There is an intentionally conservative two-write boundary between durable meter reservation and the subsequent durable `UNKNOWN` record.
+
+If the process fails after the meter reservation is durably flushed but before `UNKNOWN` is durably written, the meter row survives without a hosted operation record. The branch now hostile-tests both recovery paths:
+
+1. retrying the same logical operation with the same authoritative effect reuses the existing meter reservation, creates no second usage unit, then proceeds through the normal UNKNOWN/provider path;
+2. attempting to reuse that orphaned logical identity for a different effect fails closed with `operation_effect_conflict` and produces no provider effect.
+
+This proves fail-safe/idempotent recovery behavior for the edge. It does **not** eliminate the commercial fairness question: a durable meter unit can exist even if a crash occurred before the provider attempt and the caller never retries. Refund/adjustment treatment for such an orphan remains a production billing-policy gate.
 
 ## Durable tables introduced by the policy
 
@@ -101,15 +114,31 @@ hosted_execute_rate_limits
   request_count
   updated_at
   PRIMARY KEY (tenant_id, window_key)
+
+hosted_admission_audit_events
+  event_id
+  tenant_id
+  operation_fingerprint
+  event_type
+  protection
+  plan
+  rate_limit
+  rate_remaining
+  usage_limit
+  usage_used
+  usage_period
+  created_at
 ```
 
-An SQLite `AFTER INSERT` trigger updates the monthly aggregate when and only when a new logical-operation meter row is inserted. This keeps the meter-row creation and aggregate increment in one SQLite statement transaction. `INSERT OR IGNORE` plus a post-insert identity check makes a duplicate reservation idempotent.
+An SQLite `AFTER INSERT` trigger updates the monthly aggregate when and only when a new logical-operation meter row is inserted. This keeps meter-row creation and aggregate increment in one SQLite statement transaction. `INSERT OR IGNORE` plus a post-insert identity check makes duplicate reservation idempotent.
 
 A new logical-operation reservation is followed by `storage.sync()` before GatewayCore can write `UNKNOWN` or cross the provider boundary.
 
+Audit rows are operational observability only, not billing authority. Their schema is an explicit scalar allowlist. They do not store raw operation IDs, effect hashes, authorization/API-key material, request payloads, free-form metadata, provider operation keys, provider results or credentials. Raw operation IDs are represented only by a tenant-scoped one-way SHA-256 fingerprint for correlation. Audit-retention/cleanup policy remains a production gate.
+
 ## Entitlement source
 
-This first slice reads the existing runtime `stripe_entitlements` table and accepts only:
+This slice reads the existing runtime `stripe_entitlements` table and accepts only:
 
 ```text
 active
@@ -126,24 +155,60 @@ startup  500000
 scale   2000000
 ```
 
-Those defaults are compatibility values, **not a new public pricing commitment**. Phase 12D must separately reconcile commercial plan names/limits before production cutover.
+Those defaults are compatibility values, **not a new public pricing commitment**. Final commercial plan names/limits must be reconciled before production cutover.
 
 ## Rate limiting
 
-Rate limiting is separate from metering.
+Rate limiting is separate from logical-operation metering.
 
-The first implementation uses a per-tenant fixed one-minute window with a default limit of 120 requests/minute. Retries and replays can consume request-rate capacity because rate limiting protects infrastructure; they do not consume another logical-operation unit.
+The current implementation uses a per-tenant fixed one-minute window with a default limit of 120 requests/minute. Retries and replays consume request-rate capacity because rate limiting protects infrastructure; they do not consume another logical-operation unit.
 
-Authenticated `BYPASS` requests are rate-limited but do not require a protected-operation meter unit. Whether public BYPASS access requires a commercial entitlement remains a product-policy decision before production cutover.
+Authenticated `BYPASS` requests are rate-limited but do not consume protected-operation usage. Whether public BYPASS access requires commercial entitlement remains a product-policy decision before production cutover.
 
-A rate-limit denial is `429` and happens before adapter construction/provider crossing.
+## Internal operational response headers
+
+When the opt-in admission policy is active, successful internal hosted responses may contain only the reviewed operational header set:
+
+```text
+x-once-rate-limit-limit
+x-once-rate-limit-remaining
+x-once-usage-limit
+x-once-usage-used
+x-once-usage-period
+x-once-usage-metered
+```
+
+The response body still excludes the internal admission object. The header path accepts only non-negative integer counters and the validated `YYYY-MM` period. It does not copy tenant identity, API keys, payload fields, credentials, provider results or free-form metadata into headers.
+
+`x-once-usage-metered=true` means that request created the new protected logical-operation meter unit. Retry/replay or reuse of an existing meter reservation reports `false`.
+
+## Evidence in CI
+
+The runtime suite covers, among other existing safety regressions:
+
+- request admission after authoritative effect binding and before adapter construction,
+- deterministic preflight before protected-operation metering,
+- semantic conflict and confirmed replay before meter reservation,
+- missing/inactive entitlement fail-closed behavior,
+- one protected logical operation = one usage unit,
+- cross-month retry/replay without duplicate usage,
+- quota enforcement and concurrent quota boundary behavior,
+- BYPASS rate limiting without protected-operation usage,
+- durable meter sync before UNKNOWN/provider crossing,
+- internal HTTP execution/replay with one provider effect and one meter unit,
+- safe rate/usage header values,
+- audit-field allowlisting and raw operation-ID fingerprinting,
+- authorization/API-key, payload and free-form metadata redaction,
+- same-effect recovery from an orphaned meter reservation without double usage,
+- changed-effect failure from an orphaned meter reservation without provider crossing,
+- the existing credential-free lost-ack proof with exactly one external effect.
 
 ## Claim boundary
 
 This slice does **not** claim:
 
 - production hosted billing is enabled,
-- the new hosted admission policy is active in staging or production,
+- the Phase 12D admission policy is active in staging or production,
 - the current commercial pricing table is final,
 - public `/v1/execute` cutover is complete,
 - Stripe live mode is enabled,
@@ -152,41 +217,13 @@ This slice does **not** claim:
 
 It also does not change the core Once claim boundary: Once provides execution-safety semantics under stated assumptions; it does not claim universal exactly-once execution.
 
-## Tests in this slice
+## Remaining Phase 12D production gates
 
-The test suite covers:
-
-- request admission runs after authoritative effect binding and before adapter construction,
-- request admission denial prevents adapter/provider construction,
-- effect-hash mismatch never reaches request admission,
-- deterministic adapter preflight failure never reserves a logical-operation unit,
-- normal effect drift remains semantic `CONFLICT` and does not reserve another unit,
-- missing entitlement fails closed with no meter row,
-- inactive entitlement fails closed,
-- first logical operation consumes one unit,
-- retry/replay does not consume another unit,
-- replay in a later month does not consume another unit,
-- changed effect hash for an orphaned prior meter reservation fails closed without another unit,
-- quota blocks only new operations,
-- concurrent distinct operations cannot oversubscribe a one-operation quota while the first meter sync is pending,
-- request-rate limiting is independent from logical-operation metering,
-- `BYPASS` never consumes protected-operation usage,
-- logical-operation reservation crosses `storage.sync()` before execution can continue,
-- policy-enabled internal hosted HTTP executes once, meters once and replay does not multiply usage,
-- policy-enabled internal hosted HTTP rejects missing entitlement before adapter construction,
-- deterministic provider preflight failure through the internal HTTP path creates neither a meter row nor hosted operation state,
-- the internal transport does not expose admission metadata, tenant identity or API-key material before a separately reviewed public response contract exists.
-
-Exact-head CI after adding the internal transport coverage passed Gateway core and Worker CI, with 84/84 runtime tests plus the credential-free lost-ack proof.
-
-## Next Phase 12D slices
-
-After this foundation is green and reviewed:
-
-1. add safe response usage/rate headers and audit events,
-2. add broader explicit secret/payload redaction regressions,
-3. reconcile final commercial plan names/limits with Stripe entitlements,
-4. define production key-version rotation/recovery,
-5. hostile-test crash recovery around the meter-sync -> UNKNOWN-sync boundary,
+1. reconcile final commercial plan names/limits with Stripe entitlements,
+2. define entitlement freshness/lifecycle handling for production,
+3. define provider master-key key-version rotation/recovery,
+4. define rate-limit, meter and audit retention/cleanup policy,
+5. decide commercial treatment of orphaned meter reservations,
 6. design the public `/v1/execute` migration/cutover,
-7. keep production deployment and live-provider enablement separately approval-gated.
+7. keep production deployment separately approval-gated,
+8. keep live-provider/live-money enablement separately approval-gated.
