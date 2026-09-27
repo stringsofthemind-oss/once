@@ -104,9 +104,30 @@ function sanitizeInternalAdminResult(body, status) {
       provider: 'stripe',
       provider_action: 'refund.create',
       version_id: String(body.version_id || ''),
-      credentials: body.credentials === 'stored_encrypted' ? 'stored_encrypted' : 'stored_encrypted',
+      key_version: Number.isSafeInteger(Number(body.key_version))
+        ? Number(body.key_version)
+        : null,
+      credentials: 'stored_encrypted',
       created: body.created === true,
       rotated: body.rotated === true,
+    }, status);
+  }
+
+  if (body.action === 'rewrap') {
+    return json({
+      ok: body.ok === true,
+      action: 'rewrap',
+      tenant_id: String(body.tenant_id || ''),
+      provider: 'stripe',
+      provider_action: 'refund.create',
+      version_id: String(body.version_id || ''),
+      previous_version_id: String(body.previous_version_id || ''),
+      key_version: Number.isSafeInteger(Number(body.key_version))
+        ? Number(body.key_version)
+        : null,
+      credentials: 'stored_encrypted',
+      rewrapped: body.rewrapped === true,
+      already_current: body.already_current === true,
     }, status);
   }
 
@@ -162,7 +183,7 @@ export async function handleStagingHostedCredentialAdminRequest({
   if (!tenantId) return json({ error: 'invalid_tenant_id' }, 400);
 
   const action = String(parsed.body.action || '').trim().toLowerCase();
-  if (action !== 'rotate' && action !== 'disable') {
+  if (action !== 'rotate' && action !== 'rewrap' && action !== 'disable') {
     return json({ error: 'invalid_credential_action' }, 400);
   }
 
@@ -263,9 +284,27 @@ export async function handleHostedCredentialInternalRequest({
         provider: result.provider,
         provider_action: result.action,
         version_id: result.versionId,
+        key_version: result.keyVersion,
         credentials: result.credentials,
         created: result.created,
         rotated: result.rotated,
+      });
+    }
+
+    if (action === 'rewrap') {
+      const result = await credentialStore.rewrapStripeRefundSecret({ tenantId });
+      return json({
+        ok: true,
+        action: 'rewrap',
+        tenant_id: tenantId,
+        provider: result.provider,
+        provider_action: result.action,
+        version_id: result.versionId,
+        previous_version_id: result.previousVersionId,
+        key_version: result.keyVersion,
+        credentials: result.credentials,
+        rewrapped: result.rewrapped,
+        already_current: result.alreadyCurrent,
       });
     }
 
