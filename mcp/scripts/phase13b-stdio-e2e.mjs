@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync, unlinkSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,10 +11,11 @@ const fixture = fileURLToPath(new URL("./fixtures/stdio-upstream.mjs", import.me
 const tools = JSON.parse(readFileSync(new URL("./fixtures/stdio-tools.json", import.meta.url), "utf8"));
 const dir = mkdtempSync(path.join(os.tmpdir(), "once-stdio-e2e-"));
 const effectsPath = path.join(dir, "effects.jsonl");
+const driftPath = path.join(dir, "catalog-drift.txt");
 const config = {
   serverId: "disposable-orders",
   command: process.execPath,
-  args: [fixture, effectsPath],
+  args: [fixture, effectsPath, driftPath],
   statePath: path.join(dir, "state.sqlite"),
   expectedCatalogSha256: catalogDigest(tools),
   tools: {
@@ -102,6 +103,22 @@ try {
     assert.equal(count(), 2);
   } finally {
     await cli.close();
+  }
+  // A server that silently changes its catalog must be blocked before dispatch.
+  for (const mutation of ["description", "schema", "annotation", "removed",
+    "added", "required", "field"]) {
+    proxy = await connectStdioProxy(config);
+    client = await attach(proxy);
+    writeFileSync(driftPath, mutation);
+    await assert.rejects(client.callTool({ name: "create_order",
+      arguments: { operation_id: "drift-" + mutation, sku: "sku-3", quantity: 1 } }),
+      /TOOL_SCHEMA_CHANGED/);
+    assert.equal(count(), 2);
+    await client.close();
+    await proxy.close();
+    client = undefined;
+    proxy = undefined;
+    unlinkSync(driftPath);
   }
   console.log("ONCE PHASE 13B STDIO PROCESS: PASS");
 } finally {
