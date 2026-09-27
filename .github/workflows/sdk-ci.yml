@@ -1,4 +1,4 @@
-# PR #46 full-regression trigger only; workflow behavior unchanged.
+# Phase 13 extends SDK CI so MCP boundary changes exercise the combined end-to-end path.
 name: SDK CI
 
 on:
@@ -6,6 +6,7 @@ on:
     paths:
       - "sdk/typescript/**"
       - "sdk/python/**"
+      - "mcp/**"
       - "conformance/**"
       - ".github/workflows/sdk-ci.yml"
   push:
@@ -15,6 +16,7 @@ on:
     paths:
       - "sdk/typescript/**"
       - "sdk/python/**"
+      - "mcp/**"
       - "conformance/**"
       - ".github/workflows/sdk-ci.yml"
 
@@ -99,3 +101,15 @@ jobs:
 
       - name: Run packed Gateway local protection regression
         run: npm run test:gateway-package-protected
+
+      - name: Install MCP proxy test dependencies
+        working-directory: mcp
+        run: npm ci
+
+      - name: Build MCP proxy adapter
+        working-directory: mcp
+        run: npm run build
+
+      - name: Run Phase 13 MCP end-to-end regression
+        working-directory: mcp
+        run: node scripts/phase13-boundary-e2e.mjs
