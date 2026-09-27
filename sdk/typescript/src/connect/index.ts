@@ -107,3 +107,14 @@ export type {
   McpExecutionBoundaryOptions,
   McpExecutionBoundary,
 } from "./mcp-execution-boundary.js";
+
+// Advanced execution-context hook used by long-lived Connect adapters such as
+// the MCP stdio proxy. Generic protectLocal callers retain per-call state opens.
+export {
+  createLocalProtectionSession,
+  withLocalProtectionSession,
+} from "../local.js";
+
+export type {
+  LocalProtectionSession,
+} from "../local.js";
