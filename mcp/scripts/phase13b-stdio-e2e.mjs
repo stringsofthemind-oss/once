@@ -62,6 +62,32 @@ try {
   assert.equal(count(), 1);
   const read = await client.callTool({ name: "read_count", arguments: {} });
   assert.equal(read.content[0].text, "1");
+  // Small CI microbenchmark: the same disposable process through direct MCP
+  // and through Once. These are observations, not a production latency claim.
+  const direct = new Client({ name: "once-latency-control", version: "0.0.1" });
+  await direct.connect(new StdioClientTransport({
+    command: config.command, args: config.args,
+  }));
+  const sample = async fn => {
+    const values = [];
+    for (let i = 0; i < 25; i++) {
+      const started = performance.now();
+      await fn();
+      values.push(performance.now() - started);
+    }
+    values.sort((a, b) => a - b);
+    return { p50: Number(values[12].toFixed(2)), p95: Number(values[23].toFixed(2)) };
+  };
+  try {
+    const directRead = await sample(() =>
+      direct.callTool({ name: "read_count", arguments: {} }));
+    const bypass = await sample(() =>
+      client.callTool({ name: "read_count", arguments: {} }));
+    const replay = await sample(() => client.callTool(call));
+    console.log("ONCE PHASE13B LATENCY MS", JSON.stringify({ directRead, bypass, replay }));
+  } finally {
+    await direct.close();
+  }
   await assert.rejects(client.callTool({ name: "create_order",
     arguments: { operation_id: "order-1", sku: "sku-1", quantity: 2 } }));
   assert.equal(count(), 1);
