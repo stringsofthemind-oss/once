@@ -1,10 +1,20 @@
 import { randomUUID } from "node:crypto";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { types } from "node:util";
 import { canonicalizeConnectPayload, fingerprintConnectPayload } from "./connect/binding.js";
 
 type JsonObject = Record<string, unknown>;
+type DatabaseSyncConstructor = typeof import("node:sqlite").DatabaseSync;
+type LocalDatabase = InstanceType<DatabaseSyncConstructor>;
+
+type StateFileIdentity = Readonly<{
+  dev: bigint;
+  ino: bigint;
+  birthtimeNs: bigint;
+}>;
+
+const LOCAL_STATE_SCHEMA = "CREATE TABLE IF NOT EXISTS local_operations (id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('CLAIMED','UNKNOWN','CONFIRMED')), result_json TEXT, owner TEXT, lease_until INTEGER);";
 
 export type LocalObservation<T> =
   | { state: "CONFIRMED"; result: T }
@@ -21,6 +31,8 @@ export interface LocalProtectionOptions<A extends unknown[], T> {
   reconcile?: (context: { id: string; payload: JsonObject }) => Promise<LocalObservation<T>> | LocalObservation<T>;
   /** Time before an abandoned claim can be reconciled. No redispatch follows ABSENT. */
   leaseMs?: number;
+  /** Advanced shared state session. The default protectLocal path still opens state per call. */
+  session?: LocalProtectionSession;
 }
 
 export class LocalProtectionError extends Error {
@@ -37,6 +49,147 @@ type Row = {
   owner: string | null;
   lease_until: number | null;
 };
+
+function resolvedStatePath(value?: string): string {
+  return path.resolve(value ?? path.join(process.cwd(), ".once", "operations.sqlite"));
+}
+
+function assertSupportedLocalRuntime(): void {
+  const [major, minor] = process.versions.node.split(".").map(Number);
+  if (major < 24 || (major === 24 && minor < 15)) {
+    throw new LocalProtectionError("UNSUPPORTED_RUNTIME", "Local SQLite protection requires Node.js 24.15 or later. Use a supported Node runtime or the hosted Once execution path.");
+  }
+}
+
+async function loadDatabaseSync(): Promise<DatabaseSyncConstructor> {
+  assertSupportedLocalRuntime();
+  try {
+    return (await import("node:sqlite")).DatabaseSync;
+  } catch (cause) {
+    throw new LocalProtectionError("SQLITE_UNAVAILABLE", "Node SQLite is unavailable. Enable node:sqlite or use the hosted Once execution path; the operation was not dispatched.", { cause });
+  }
+}
+
+async function openLocalDatabase(statePath: string): Promise<LocalDatabase> {
+  const DatabaseSync = await loadDatabaseSync();
+  let db: LocalDatabase | undefined;
+  try {
+    mkdirSync(path.dirname(statePath), { recursive: true });
+    db = new DatabaseSync(statePath, { timeout: 30_000 });
+    db.exec(`PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; ${LOCAL_STATE_SCHEMA}`);
+    return db;
+  } catch (cause) {
+    if (db) {
+      try { db.close(); } catch { /* Preserve the initialization error. */ }
+    }
+    throw new LocalProtectionError("STATE_UNAVAILABLE", `Cannot open durable Once state at ${statePath}. The operation was not dispatched. Restore access to this same file before retrying.`, { cause });
+  }
+}
+
+function stateFileIdentity(statePath: string): StateFileIdentity {
+  const state = statSync(statePath, { bigint: true });
+  return Object.freeze({
+    dev: state.dev,
+    ino: state.ino,
+    birthtimeNs: state.birthtimeNs,
+  });
+}
+
+function sameStateFile(a: StateFileIdentity, b: StateFileIdentity): boolean {
+  return a.dev === b.dev && a.ino === b.ino && a.birthtimeNs === b.birthtimeNs;
+}
+
+/**
+ * Explicit reusable durable-state session for a long-lived execution boundary.
+ * It keeps WAL/FULL durability and the same protectLocal state machine while
+ * avoiding repeated SQLite open/setup cost. The path identity is checked before
+ * every protected call; disappearance/replacement permanently invalidates the
+ * session so an open handle can never silently mask loss of the reviewed state.
+ */
+export class LocalProtectionSession {
+  readonly statePath: string;
+  #db: LocalDatabase | undefined;
+  #identity: StateFileIdentity | undefined;
+  #opening: Promise<LocalDatabase> | undefined;
+  #closed = false;
+
+  constructor(statePath?: string) {
+    this.statePath = resolvedStatePath(statePath);
+  }
+
+  async databaseForCall(): Promise<LocalDatabase> {
+    if (this.#closed) {
+      throw new LocalProtectionError("STATE_UNAVAILABLE", `Durable Once state session for ${this.statePath} is closed or invalid. Restart the execution boundary before retrying; no operation was dispatched.`);
+    }
+
+    if (this.#db) {
+      this.assertStateIdentity();
+      return this.#db;
+    }
+
+    if (!this.#opening) {
+      this.#opening = (async () => {
+        const db = await openLocalDatabase(this.statePath);
+        let identity: StateFileIdentity;
+        try {
+          identity = stateFileIdentity(this.statePath);
+        } catch (cause) {
+          try { db.close(); } catch { /* Preserve state identity failure. */ }
+          throw new LocalProtectionError("STATE_UNAVAILABLE", `Cannot verify durable Once state at ${this.statePath}. No operation was dispatched.`, { cause });
+        }
+        if (this.#closed) {
+          try { db.close(); } catch { /* Session close is authoritative. */ }
+          throw new LocalProtectionError("STATE_UNAVAILABLE", `Durable Once state session for ${this.statePath} was closed during initialization. No operation was dispatched.`);
+        }
+        this.#db = db;
+        this.#identity = identity;
+        return db;
+      })().finally(() => {
+        this.#opening = undefined;
+      });
+    }
+
+    return this.#opening;
+  }
+
+  assertStateIdentity(): void {
+    if (this.#closed) {
+      throw new LocalProtectionError("STATE_UNAVAILABLE", `Durable Once state session for ${this.statePath} is closed or invalid. Restart the execution boundary before retrying; no operation was dispatched.`);
+    }
+    if (!this.#db || !this.#identity) return;
+
+    let current: StateFileIdentity;
+    try {
+      current = stateFileIdentity(this.statePath);
+    } catch (cause) {
+      this.invalidate();
+      throw new LocalProtectionError("STATE_UNAVAILABLE", `Durable Once state at ${this.statePath} disappeared while the execution boundary was live. The boundary is invalidated; no operation was dispatched.`, { cause });
+    }
+
+    if (!sameStateFile(this.#identity, current)) {
+      this.invalidate();
+      throw new LocalProtectionError("STATE_UNAVAILABLE", `Durable Once state at ${this.statePath} was replaced while the execution boundary was live. The boundary is invalidated; no operation was dispatched.`);
+    }
+  }
+
+  invalidate(): void {
+    this.#closed = true;
+    const db = this.#db;
+    this.#db = undefined;
+    this.#identity = undefined;
+    if (db) {
+      try { db.close(); } catch { /* Invalidated state stays fail-closed. */ }
+    }
+  }
+
+  close(): void {
+    this.invalidate();
+  }
+}
+
+export function createLocalProtectionSession(statePath?: string): LocalProtectionSession {
+  return new LocalProtectionSession(statePath);
+}
 
 // Local mode accepts JSON-like data with no hidden behavior. Callable/provider
 // handles may travel through arguments by identity, but cannot be payloads or
@@ -143,10 +296,13 @@ export function protectLocal<A extends unknown[], T>(
   if (typeof operation !== "function" || typeof options?.id !== "function" || typeof options.payload !== "function") {
     throw new LocalProtectionError("INVALID_CONFIGURATION", "protectLocal requires an async operation plus id and payload functions. The id must survive retries; payload must include every effect-bearing input.");
   }
-  const statePath = path.resolve(options.statePath ?? path.join(process.cwd(), ".once", "operations.sqlite"));
+  const statePath = resolvedStatePath(options.statePath);
   const leaseMs = options.leaseMs ?? 30_000;
   if (!Number.isSafeInteger(leaseMs) || leaseMs <= 0) {
     throw new LocalProtectionError("INVALID_LEASE", "leaseMs must be a positive integer in milliseconds.");
+  }
+  if (options.session && options.session.statePath !== statePath) {
+    throw new LocalProtectionError("INVALID_CONFIGURATION", "A shared local protection session must use the same statePath as the protected operation.");
   }
 
   return async function (this: unknown, ...args: A): Promise<T> {
@@ -157,47 +313,32 @@ export function protectLocal<A extends unknown[], T>(
     }
     const payload = copyData(options.payload(...callArgs)) as JsonObject;
     const fingerprint = fingerprintConnectPayload(payload);
-    if (Number(process.versions.node.split(".")[0]) < 24 ||
-        (Number(process.versions.node.split(".")[0]) === 24 && Number(process.versions.node.split(".")[1]) < 15)) {
-      throw new LocalProtectionError("UNSUPPORTED_RUNTIME", "Local SQLite protection requires Node.js 24.15 or later. Use a supported Node runtime or the hosted Once execution path.");
-    }
-    let DatabaseSync: typeof import("node:sqlite").DatabaseSync;
-    try {
-      ({ DatabaseSync } = await import("node:sqlite"));
-    } catch (cause) {
-      throw new LocalProtectionError("SQLITE_UNAVAILABLE", "Node SQLite is unavailable. Enable node:sqlite or use the hosted Once execution path; the operation was not dispatched.", { cause });
-    }
-    let db!: InstanceType<typeof DatabaseSync>;
-    try {
-      mkdirSync(path.dirname(statePath), { recursive: true });
-      db = new DatabaseSync(statePath, { timeout: 30_000 });
-      db.exec("PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; CREATE TABLE IF NOT EXISTS local_operations (id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('CLAIMED','UNKNOWN','CONFIRMED')), result_json TEXT, owner TEXT, lease_until INTEGER);");
-    } catch (cause) {
-      if (db) {
-        try { db.close(); } catch { /* Preserve the initialization error. */ }
-      }
-      throw new LocalProtectionError("STATE_UNAVAILABLE", `Cannot open durable Once state at ${statePath}. The operation was not dispatched. Restore access to this same file before retrying.`, { cause });
-    }
-
-    const owner = randomUUID();
-    let shouldDispatch = false;
-    let row: Row;
-    try {
-      db.exec("BEGIN IMMEDIATE");
-      row = db.prepare("SELECT fingerprint,state,result_json,owner,lease_until FROM local_operations WHERE id=?").get(id) as Row;
-      if (!row) {
-        db.prepare("INSERT INTO local_operations(id,fingerprint,state,result_json,owner,lease_until) VALUES(?,?,'CLAIMED',NULL,?,?)")
-          .run(id, fingerprint, owner, Date.now() + leaseMs);
-        shouldDispatch = true;
-      }
-      db.exec("COMMIT");
-    } catch (cause) {
-      if (db.isTransaction) db.exec("ROLLBACK");
-      db.close();
-      throw new LocalProtectionError("STATE_UNAVAILABLE", "Could not atomically claim durable Once state. The operation was not dispatched; retry with the same id after restoring state access.", { cause });
-    }
+    const sharedSession = options.session;
+    const db = sharedSession
+      ? await sharedSession.databaseForCall()
+      : await openLocalDatabase(statePath);
+    const closeAfterCall = !sharedSession;
 
     try {
+      const owner = randomUUID();
+      let shouldDispatch = false;
+      let row: Row;
+      try {
+        db.exec("BEGIN IMMEDIATE");
+        row = db.prepare("SELECT fingerprint,state,result_json,owner,lease_until FROM local_operations WHERE id=?").get(id) as Row;
+        if (!row) {
+          db.prepare("INSERT INTO local_operations(id,fingerprint,state,result_json,owner,lease_until) VALUES(?,?,'CLAIMED',NULL,?,?)")
+            .run(id, fingerprint, owner, Date.now() + leaseMs);
+          shouldDispatch = true;
+        }
+        db.exec("COMMIT");
+      } catch (cause) {
+        if (db.isTransaction) {
+          try { db.exec("ROLLBACK"); } catch { sharedSession?.invalidate(); }
+        }
+        throw new LocalProtectionError("STATE_UNAVAILABLE", "Could not atomically claim durable Once state. The operation was not dispatched; retry with the same id after restoring state access.", { cause });
+      }
+
       if (!shouldDispatch) {
         if (row!.fingerprint !== fingerprint) {
           throw new LocalProtectionError("CONFLICT", `Logical action ${id} has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched.`);
@@ -206,7 +347,6 @@ export function protectLocal<A extends unknown[], T>(
         if (row!.state === "CLAIMED" && row!.lease_until! > Date.now()) {
           throw new LocalProtectionError("IN_FLIGHT", `Logical action ${id} is still in flight. Wait and retry with the same id; do not call the underlying operation directly.`);
         }
-        // Persist uncertainty before any fallible external lookup.
         db.prepare("UPDATE local_operations SET state='UNKNOWN',owner=NULL,lease_until=NULL WHERE id=? AND state='CLAIMED'").run(id);
         if (!options.reconcile) {
           throw new LocalProtectionError("UNKNOWN", `Outcome of ${id} is unknown. Supply an authoritative reconcile callback or investigate provider truth; no second write was dispatched.`);
@@ -240,8 +380,6 @@ export function protectLocal<A extends unknown[], T>(
         return decodeResult<T>(resultJson);
       }
 
-      // Recheck handles whose state the selectors might have read while the
-      // claim was being established. A changed claim stays uncertain.
       let currentFingerprint: string;
       try {
         if (options.id(...callArgs) !== id) {
@@ -258,20 +396,48 @@ export function protectLocal<A extends unknown[], T>(
         db.prepare("UPDATE local_operations SET state='UNKNOWN',owner=NULL,lease_until=NULL WHERE id=? AND state='CLAIMED' AND owner=?").run(id, owner);
         throw new LocalProtectionError("PAYLOAD_DRIFT", `Payload of ${id} changed before dispatch. No operation was dispatched.`);
       }
+
+      if (sharedSession) {
+        try {
+          sharedSession.assertStateIdentity();
+        } catch (cause) {
+          try {
+            db.prepare("UPDATE local_operations SET state='UNKNOWN',owner=NULL,lease_until=NULL WHERE id=? AND state='CLAIMED' AND owner=?").run(id, owner);
+          } catch { /* The session is already fail-closed. */ }
+          throw cause;
+        }
+      }
+
       let result: T;
       try {
         result = await operation.apply(this, callArgs);
       } catch (cause) {
-        db.prepare("UPDATE local_operations SET state='UNKNOWN',owner=NULL,lease_until=NULL WHERE id=? AND state='CLAIMED' AND owner=?").run(id, owner);
+        try {
+          db.prepare("UPDATE local_operations SET state='UNKNOWN',owner=NULL,lease_until=NULL WHERE id=? AND state='CLAIMED' AND owner=?").run(id, owner);
+        } catch { sharedSession?.invalidate(); }
         throw new LocalProtectionError("UNKNOWN", `Operation ${id} threw after dispatch; its external outcome may be unknown. Reconcile provider truth before retrying.`, { cause });
       }
       let resultJson: string;
       try {
         resultJson = encodeResult(result);
       } catch (cause) {
-        db.prepare("UPDATE local_operations SET state='UNKNOWN',owner=NULL,lease_until=NULL WHERE id=? AND state='CLAIMED' AND owner=?").run(id, owner);
+        try {
+          db.prepare("UPDATE local_operations SET state='UNKNOWN',owner=NULL,lease_until=NULL WHERE id=? AND state='CLAIMED' AND owner=?").run(id, owner);
+        } catch { sharedSession?.invalidate(); }
         throw new LocalProtectionError("UNREPLAYABLE_RESULT", `Operation ${id} returned a non-JSON-safe result. Outcome is UNKNOWN; return a JSON-safe receipt and reconcile before retrying.`, { cause });
       }
+
+      if (sharedSession) {
+        try {
+          sharedSession.assertStateIdentity();
+        } catch (cause) {
+          try {
+            db.prepare("UPDATE local_operations SET state='UNKNOWN',owner=NULL,lease_until=NULL WHERE id=? AND state='CLAIMED' AND owner=?").run(id, owner);
+          } catch { /* The session is already fail-closed. */ }
+          throw new LocalProtectionError("UNKNOWN", `Operation ${id} completed but its durable state path changed before confirmation. The external outcome may be unknown; do not retry until state is restored.`, { cause });
+        }
+      }
+
       const update = db.prepare("UPDATE local_operations SET state='CONFIRMED',result_json=?,owner=NULL,lease_until=NULL WHERE id=? AND state='CLAIMED' AND owner=?")
         .run(resultJson, id, owner);
       if (update.changes !== 1) {
@@ -279,7 +445,7 @@ export function protectLocal<A extends unknown[], T>(
       }
       return decodeResult<T>(resultJson);
     } finally {
-      db.close();
+      if (closeAfterCall) db.close();
     }
   };
 }
