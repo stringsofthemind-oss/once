@@ -4,9 +4,9 @@
   // Kept in lockstep with package metadata by
   // scripts/check-site-surface.mjs.
   const SITE_VERSIONS = Object.freeze({
-    ts: "0.1.12",
+    ts: "0.1.13",
     python: "0.1.1",
-    mcp: "0.1.3"
+    mcp: "0.1.4"
   });
 
   const releaseLine =
