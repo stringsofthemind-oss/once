@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { randomUUID } from "node:crypto";
 import { mkdirSync, statSync } from "node:fs";
 import path from "node:path";
@@ -187,8 +188,21 @@ export class LocalProtectionSession {
   }
 }
 
+const localProtectionSessionContext = new AsyncLocalStorage<LocalProtectionSession>();
+
 export function createLocalProtectionSession(statePath?: string): LocalProtectionSession {
   return new LocalProtectionSession(statePath);
+}
+
+/** Scope one explicit shared session to the protected calls started by callback. */
+export function withLocalProtectionSession<T>(
+  session: LocalProtectionSession,
+  callback: () => T,
+): T {
+  if (!(session instanceof LocalProtectionSession)) {
+    throw new LocalProtectionError("INVALID_CONFIGURATION", "withLocalProtectionSession requires a LocalProtectionSession created by this SDK instance.");
+  }
+  return localProtectionSessionContext.run(session, callback);
 }
 
 // Local mode accepts JSON-like data with no hidden behavior. Callable/provider
@@ -313,7 +327,9 @@ export function protectLocal<A extends unknown[], T>(
     }
     const payload = copyData(options.payload(...callArgs)) as JsonObject;
     const fingerprint = fingerprintConnectPayload(payload);
-    const sharedSession = options.session;
+    const contextualSession = localProtectionSessionContext.getStore();
+    const sharedSession = options.session ??
+      (contextualSession?.statePath === statePath ? contextualSession : undefined);
     const db = sharedSession
       ? await sharedSession.databaseForCall()
       : await openLocalDatabase(statePath);
