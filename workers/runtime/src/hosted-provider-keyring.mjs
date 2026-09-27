@@ -10,6 +10,16 @@ function parseKeyVersion(value, name, fallback = null) {
   return version;
 }
 
+function normalizeBytes(value, errorCode) {
+  try {
+    // Runtime helpers can originate in another VM realm in the test harness.
+    // Copy into this module's Uint8Array realm before WebCrypto consumption.
+    return new Uint8Array(value);
+  } catch {
+    throw new Error(errorCode);
+  }
+}
+
 /**
  * Key-version-aware AES-GCM helper for hosted provider credentials.
  *
@@ -108,13 +118,14 @@ export class RuntimeHostedProviderKeyring {
       throw new Error('provider_key_version_unsupported');
     }
 
-    let bytes;
+    let decoded;
     try {
-      bytes = this.base64ToBytes(encoded);
+      decoded = this.base64ToBytes(encoded);
     } catch {
       throw new Error('provider_master_key_invalid');
     }
-    if (!(bytes instanceof Uint8Array) || bytes.byteLength !== 32) {
+    const bytes = normalizeBytes(decoded, 'provider_master_key_invalid');
+    if (bytes.byteLength !== 32) {
       throw new Error('provider_master_key_invalid_length');
     }
     return bytes;
@@ -146,11 +157,15 @@ export class RuntimeHostedProviderKeyring {
     const key = await this.getCryptoKeyForVersion(keyVersion);
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const plaintext = textEncoder.encode(JSON.stringify(config));
+    const additionalData = normalizeBytes(
+      this.aadFor(customerId, providerName, versionId),
+      'provider_config_aad_invalid',
+    );
     const encrypted = await crypto.subtle.encrypt(
       {
         name: 'AES-GCM',
         iv,
-        additionalData: this.aadFor(customerId, providerName, versionId),
+        additionalData,
         tagLength: 128,
       },
       key,
@@ -175,17 +190,26 @@ export class RuntimeHostedProviderKeyring {
     const version = parseKeyVersion(keyVersion, 'provider_key_version');
     const key = await this.getCryptoKeyForVersion(version);
 
-    let iv;
-    let encryptedBytes;
+    let decodedIv;
+    let decodedEncrypted;
     try {
-      iv = this.base64ToBytes(ivB64);
-      encryptedBytes = this.base64ToBytes(encryptedConfig);
+      decodedIv = this.base64ToBytes(ivB64);
+      decodedEncrypted = this.base64ToBytes(encryptedConfig);
     } catch {
       throw new Error('provider_config_ciphertext_invalid');
     }
-    if (!(iv instanceof Uint8Array) || iv.byteLength !== 12) {
+    const iv = normalizeBytes(decodedIv, 'provider_config_ciphertext_invalid');
+    const encryptedBytes = normalizeBytes(
+      decodedEncrypted,
+      'provider_config_ciphertext_invalid',
+    );
+    if (iv.byteLength !== 12) {
       throw new Error('provider_config_iv_invalid');
     }
+    const additionalData = normalizeBytes(
+      this.aadFor(customerId, providerName, versionId),
+      'provider_config_aad_invalid',
+    );
 
     let plaintext;
     try {
@@ -193,7 +217,7 @@ export class RuntimeHostedProviderKeyring {
         {
           name: 'AES-GCM',
           iv,
-          additionalData: this.aadFor(customerId, providerName, versionId),
+          additionalData,
           tagLength: 128,
         },
         key,
