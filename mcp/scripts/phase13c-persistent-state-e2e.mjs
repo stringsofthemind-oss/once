@@ -8,6 +8,9 @@ import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 import * as SourceConnect from "../../sdk/typescript/dist/connect/index.js";
 import { catalogDigest, connectStdioProxy } from "./stdio-proxy.mjs";
 
+const SourceBoundaryOnly = Object.freeze({
+  createMcpExecutionBoundary: SourceConnect.createMcpExecutionBoundary,
+});
 const fixture = fileURLToPath(new URL("./fixtures/stdio-upstream.mjs", import.meta.url));
 const tools = JSON.parse(readFileSync(new URL("./fixtures/stdio-tools.json", import.meta.url), "utf8"));
 const root = mkdtempSync(path.join(os.tmpdir(), "once-phase13c-persistent-"));
@@ -67,10 +70,11 @@ async function closePair(client, proxy) {
   }
 }
 
-function percentile(values, p) {
+function summarize(values) {
   const sorted = [...values].sort((a, b) => a - b);
-  return Number(sorted[Math.min(sorted.length - 1,
+  const at = p => Number(sorted[Math.min(sorted.length - 1,
     Math.floor((sorted.length - 1) * p))].toFixed(2));
+  return { p50: at(0.50), p95: at(0.95) };
 }
 
 async function sample(fn, n = 25) {
@@ -80,7 +84,7 @@ async function sample(fn, n = 25) {
     await fn(i);
     values.push(performance.now() - started);
   }
-  return { p50: percentile(values, 0.50), p95: percentile(values, 0.95) };
+  return summarize(values);
 }
 
 try {
@@ -184,30 +188,72 @@ try {
   client = undefined;
   proxy = undefined;
 
-  // Source-tree end-to-end latency comparison. This is a disposable CI sample,
-  // not a production performance claim.
-  const bench = configFor("benchmark");
-  proxy = await connectStdioProxy(bench.config, SourceConnect);
-  client = await attach(proxy, "persistent-benchmark");
+  // Compare source-tree transient and persistent paths on the same runner and
+  // alternate sample order to reduce cache/order bias. This is diagnostic CI
+  // evidence, not a production latency claim.
+  const persistentBench = configFor("benchmark-persistent");
+  const transientBench = configFor("benchmark-transient");
+  const directBench = configFor("benchmark-direct");
+  const persistentProxy = await connectStdioProxy(persistentBench.config, SourceConnect);
+  const transientProxy = await connectStdioProxy(transientBench.config, SourceBoundaryOnly);
+  assert.equal(persistentProxy.persistentLocalState, true);
+  assert.equal(transientProxy.persistentLocalState, false);
+  const persistentClient = await attach(persistentProxy, "persistent-benchmark");
+  const transientClient = await attach(transientProxy, "transient-benchmark");
   const direct = new Client({ name: "persistent-direct-control", version: "0.0.1" });
   await direct.connect(new StdioClientTransport({
-    command: bench.config.command,
-    args: bench.config.args,
+    command: directBench.config.command,
+    args: directBench.config.args,
   }));
   try {
+    // Warm the long-lived state session so startup is not confused with steady-state writes.
+    await persistentClient.callTool({
+      name: "create_order",
+      arguments: { operation_id: "persistent-warm", sku: "bench", quantity: 1 },
+    });
+    await transientClient.callTool({
+      name: "create_order",
+      arguments: { operation_id: "transient-warm", sku: "bench", quantity: 1 },
+    });
+
     const directFirst = await sample(i => direct.callTool({
       name: "create_order",
       arguments: { operation_id: `direct-${i}`, sku: "bench", quantity: 1 },
+    }), 30);
+
+    const persistentValues = [];
+    const transientValues = [];
+    const timed = async (target, request, values) => {
+      const started = performance.now();
+      await target.callTool(request);
+      values.push(performance.now() - started);
+    };
+    for (let i = 0; i < 30; i++) {
+      const persistentRequest = {
+        name: "create_order",
+        arguments: { operation_id: `once-p-${i}`, sku: "bench", quantity: 1 },
+      };
+      const transientRequest = {
+        name: "create_order",
+        arguments: { operation_id: `once-t-${i}`, sku: "bench", quantity: 1 },
+      };
+      if (i % 2 === 0) {
+        await timed(persistentClient, persistentRequest, persistentValues);
+        await timed(transientClient, transientRequest, transientValues);
+      } else {
+        await timed(transientClient, transientRequest, transientValues);
+        await timed(persistentClient, persistentRequest, persistentValues);
+      }
+    }
+    console.log("ONCE PHASE13C FIRST CALL A/B LATENCY MS", JSON.stringify({
+      directFirst,
+      transientFirst: summarize(transientValues),
+      persistentFirst: summarize(persistentValues),
     }));
-    const persistentFirst = await sample(i => client.callTool({
-      name: "create_order",
-      arguments: { operation_id: `once-${i}`, sku: "bench", quantity: 1 },
-    }));
-    console.log("ONCE PHASE13C PERSISTENT FIRST CALL LATENCY MS",
-      JSON.stringify({ directFirst, persistentFirst }));
   } finally {
     await direct.close();
-    await closePair(client, proxy);
+    await closePair(persistentClient, persistentProxy);
+    await closePair(transientClient, transientProxy);
   }
 
   // All proxy sessions have closed; cleanup must not be held open by SQLite.
