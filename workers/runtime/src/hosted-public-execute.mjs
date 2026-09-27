@@ -7,6 +7,8 @@ import {
 export const PUBLIC_HOSTED_EXECUTE_PATH = '/v1/execute';
 export const PUBLIC_HOSTED_EXECUTE_PREVIEW_VALUE = 'phase12d-preview';
 export const PUBLIC_HOSTED_ADMISSION_VALUE = 'phase12d';
+export const PUBLIC_HOSTED_ENTITLEMENT_FRESHNESS_VALUE = 'phase12d';
+export const PUBLIC_HOSTED_ENTITLEMENT_ORDERING_VALUE = 'phase12d';
 
 const RESPONSE_HEADER_ALLOWLIST = Object.freeze([
   'content-type',
@@ -42,6 +44,16 @@ function copyResponseHeaders(response) {
   return headers;
 }
 
+function reviewedHostedSafetyStackEnabled(env) {
+  return (
+    String(env.ONCE_HOSTED_ADMISSION_ENABLED || '') === PUBLIC_HOSTED_ADMISSION_VALUE &&
+    String(env.ONCE_HOSTED_ENTITLEMENT_FRESHNESS_ENABLED || '') ===
+      PUBLIC_HOSTED_ENTITLEMENT_FRESHNESS_VALUE &&
+    String(env.ONCE_HOSTED_ENTITLEMENT_ORDERING_ENABLED || '') ===
+      PUBLIC_HOSTED_ENTITLEMENT_ORDERING_VALUE
+  );
+}
+
 /**
  * Approval-gated public bridge for the reviewed hosted execute transport.
  *
@@ -51,10 +63,12 @@ function copyResponseHeaders(response) {
  * runtime route. That means simply merging this code cannot cut production
  * `/v1/execute` traffic over to the hosted gateway.
  *
- * Enabling the preview bridge without the Phase 12D admission policy is treated
- * as a fail-closed configuration error. This prevents an operator from routing
- * public traffic to the hosted safety core while accidentally omitting the
- * entitlement/rate/meter layer reviewed for this phase.
+ * The public preview is intentionally stricter than the internal/staging hosted
+ * path: enabling it requires the reviewed Phase 12D admission, entitlement
+ * freshness and entitlement-ordering gates together. Any partial configuration
+ * fails closed before Durable Object access. This prevents public provider
+ * attempts from relying on active-looking subscription state whose freshness or
+ * delivery ordering has not been placed under the Phase 12D controls.
  *
  * The bridge performs transport-only work. Authentication, tenant scope,
  * effect binding, durable state, admission/metering, reconciliation and
@@ -91,10 +105,7 @@ export async function maybeHandlePublicHostedGatewayRequest({
     return null;
   }
 
-  if (
-    String(env.ONCE_HOSTED_ADMISSION_ENABLED || '') !==
-    PUBLIC_HOSTED_ADMISSION_VALUE
-  ) {
+  if (!reviewedHostedSafetyStackEnabled(env)) {
     return json({ error: 'hosted_gateway_unavailable' }, 503);
   }
 
