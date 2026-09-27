@@ -203,7 +203,20 @@ The response body still excludes the internal admission object. The header path 
 
 `x-once-usage-metered=true` means that request created the new protected logical-operation meter unit. Retry/replay or reuse of an existing meter reservation reports `false`.
 
-## Evidence in CI
+## Exact-head CI evidence
+
+Exact reviewed head before this evidence-only documentation commit:
+
+```text
+1369b91a0cb0b0a8f83ec32d5109aead9a2f1ab7
+```
+
+- Gateway core #100 / run `36282923607`: **PASS**
+- Worker CI #446 / run `36282923534`: **PASS**
+- runtime suite: **91/91 PASS, 0 failed**
+- entitlement lifecycle regressions: **PASS**
+- meter-sync -> UNKNOWN-sync hostile recovery regressions: **PASS**
+- credential-free lost-ack proof: **PASS / exactly one external effect**
 
 The runtime suite covers, among other existing safety regressions:
 
