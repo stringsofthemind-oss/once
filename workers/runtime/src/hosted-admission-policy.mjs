@@ -2,7 +2,10 @@ import {
   HostedGatewayError,
   sha256Hex,
 } from '../../gateway/src/hosted-gateway-core.js';
-import { LEGACY_HOSTED_PLAN_LIMITS } from './hosted-plan-catalog.mjs';
+import {
+  LEGACY_HOSTED_PLAN_LIMITS,
+  resolveHostedStripePlan,
+} from './hosted-plan-catalog.mjs';
 
 export const DEFAULT_HOSTED_PLAN_LIMITS = LEGACY_HOSTED_PLAN_LIMITS;
 
@@ -199,13 +202,20 @@ export class RuntimeHostedAdmissionPolicy {
     return sqlRows(
       this.sql,
       `
-        SELECT plan, status, current_period_end
+        SELECT plan, status, price_id, current_period_end
         FROM stripe_entitlements
         WHERE customer_id = ?
         LIMIT 1
       `,
       tenantId,
     )[0] ?? null;
+  }
+
+  getAuthoritativePlan(entitlement) {
+    return resolveHostedStripePlan({
+      priceId: entitlement?.price_id,
+      metadataPlan: entitlement?.plan,
+    }).plan;
   }
 
   getMeteredOperation(tenantId, operationId) {
@@ -246,7 +256,7 @@ export class RuntimeHostedAdmissionPolicy {
       throw new HostedGatewayError('entitlement_inactive', 403);
     }
 
-    const plan = String(entitlement.plan || '').trim().toLowerCase();
+    const plan = this.getAuthoritativePlan(entitlement);
     const monthlyLimit = Number(this.planLimits[plan]);
     if (!Number.isSafeInteger(monthlyLimit) || monthlyLimit < 1) {
       throw new HostedGatewayError('entitlement_plan_unsupported', 403);
@@ -259,7 +269,7 @@ export class RuntimeHostedAdmissionPolicy {
     if (!entitlement) return null;
     const status = String(entitlement.status || '').trim().toLowerCase();
     if (!ACTIVE_ENTITLEMENT_STATUSES.has(status)) return null;
-    const plan = String(entitlement.plan || '').trim().toLowerCase();
+    const plan = this.getAuthoritativePlan(entitlement);
     const monthlyLimit = Number(this.planLimits[plan]);
     if (!Number.isSafeInteger(monthlyLimit) || monthlyLimit < 1) return null;
     return { plan, monthlyLimit };

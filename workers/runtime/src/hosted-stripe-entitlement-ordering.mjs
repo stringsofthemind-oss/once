@@ -10,6 +10,7 @@ const SUBSCRIPTION_EVENTS = new Set([
   'customer.subscription.updated',
   'customer.subscription.deleted',
 ]);
+const ACTIVE_ENTITLEMENT_STATUSES = new Set(['active', 'trialing']);
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -324,6 +325,17 @@ function markEntitlementAmbiguous(sql, { customerId, eventCreated }) {
   );
 }
 
+function markLegacyEntitlementAmbiguousPreservingBaseline(sql, customerId) {
+  sql.exec(
+    `
+      UPDATE stripe_entitlements
+      SET status = 'lifecycle_ambiguous'
+      WHERE customer_id = ?
+    `,
+    customerId,
+  );
+}
+
 function legacyBaselineRejectsEvent(existingEntitlement, eventCreated) {
   if (!existingEntitlement) return false;
   const baselineMs = Date.parse(String(existingEntitlement.updated_at || ''));
@@ -340,8 +352,10 @@ function legacyBaselineRejectsEvent(existingEntitlement, eventCreated) {
  * inactive (`lifecycle_ambiguous`) until a strictly newer event resolves it.
  *
  * During first opt-in on an existing legacy entitlement ledger, the existing
- * `updated_at` is treated as a conservative ordering floor until a strictly
- * newer Stripe event establishes the new per-customer ordering authority.
+ * `updated_at` is treated as a conservative receipt-time floor until a strictly
+ * newer Stripe event establishes the new per-customer ordering authority. A
+ * legacy active/trialing row is made lifecycle-ambiguous if an incoming event
+ * cannot be safely ordered against that receipt-time floor.
  */
 export async function handleHostedStripeEntitlementEvent({ request, ctx }) {
   if (!ctx?.storage?.sql?.exec || typeof ctx.storage.sync !== 'function') {
@@ -406,12 +420,25 @@ export async function handleHostedStripeEntitlementEvent({ request, ctx }) {
   const existingEntitlement = getExistingEntitlement(sql, parsed.customerId);
 
   if (!current && legacyBaselineRejectsEvent(existingEntitlement, eventCreated)) {
+    const legacyStatus = String(existingEntitlement?.status || '').trim().toLowerCase();
+    const mustFailClosed = ACTIVE_ENTITLEMENT_STATUSES.has(legacyStatus);
+    if (mustFailClosed) {
+      // Legacy updated_at was receipt time, while ordered events use Stripe's
+      // event.created. If those clocks cannot establish order, preserving an
+      // active/trialing legacy row could authorize a provider attempt after an
+      // unseen cancellation. Make it inactive without moving the receipt-time
+      // floor; only an event strictly newer than that floor may establish the
+      // new ordering authority.
+      markLegacyEntitlementAmbiguousPreservingBaseline(sql, parsed.customerId);
+    }
     recordLifecycleEvent(sql, {
       eventId,
       eventType,
       customerId: parsed.customerId,
       eventCreated,
-      outcome: 'IGNORED_PRE_ORDERING_BASELINE',
+      outcome: mustFailClosed
+        ? 'AMBIGUOUS_PRE_ORDERING_BASELINE'
+        : 'IGNORED_PRE_ORDERING_BASELINE',
       processedAt,
     });
     await ctx.storage.sync();
@@ -420,6 +447,7 @@ export async function handleHostedStripeEntitlementEvent({ request, ctx }) {
       duplicate: false,
       processed: false,
       stale: true,
+      ...(mustFailClosed ? { ambiguous: true } : {}),
       baseline: 'legacy_entitlement_updated_at',
       event_id: eventId,
       type: eventType,

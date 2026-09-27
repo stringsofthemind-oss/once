@@ -5,7 +5,13 @@ import { HostedGatewayError } from '../../gateway/src/hosted-gateway-core.js';
 import { RuntimeHostedAdmissionPolicy } from '../src/hosted-admission-policy.mjs';
 import { storage } from './harness.mjs';
 
-function seedEntitlement(store, tenantId, { plan = 'pro', status = 'active' } = {}) {
+const LEGACY_PRO_PRICE_ID = 'price_1UGqPRAHX5spO4zqQcuRzi3S';
+
+function seedEntitlement(
+  store,
+  tenantId,
+  { plan = 'pro', status = 'active', priceId = LEGACY_PRO_PRICE_ID } = {},
+) {
   store.sql.exec(`
     CREATE TABLE IF NOT EXISTS stripe_entitlements (
       customer_id TEXT PRIMARY KEY,
@@ -21,16 +27,18 @@ function seedEntitlement(store, tenantId, { plan = 'pro', status = 'active' } = 
     `
       INSERT INTO stripe_entitlements (
         customer_id, subscription_id, plan, status, price_id, current_period_end, updated_at
-      ) VALUES (?, ?, ?, ?, NULL, NULL, ?)
+      ) VALUES (?, ?, ?, ?, ?, NULL, ?)
       ON CONFLICT(customer_id) DO UPDATE SET
         plan = excluded.plan,
         status = excluded.status,
+        price_id = excluded.price_id,
         updated_at = excluded.updated_at
     `,
     tenantId,
     `sub_${tenantId}`,
     plan,
     status,
+    priceId,
     new Date().toISOString(),
   );
 }
@@ -75,6 +83,24 @@ test('missing entitlement permits rate-only request admission but blocks a new p
     await rejectsCode(policy.authorizeProviderAttempt(request()), 'entitlement_required', 403);
     assert.equal(store.sql.exec('SELECT COUNT(*) AS n FROM hosted_metered_operations')[0].n, 0);
     assert.equal(store.sql.exec('SELECT COUNT(*) AS n FROM hosted_usage_monthly')[0].n, 0);
+  } finally {
+    store.db.close();
+  }
+});
+
+test('missing or unknown Stripe price cannot be promoted by the stored plan', async () => {
+  const store = storage();
+  try {
+    seedEntitlement(store, 'tenant_a', { plan: 'pro', priceId: null });
+    const policy = new RuntimeHostedAdmissionPolicy({ ctx: { storage: store } });
+    const admission = await policy.authorizeRequest(request());
+    assert.equal(admission.protection, 'PROTECT');
+    assert.equal(Object.hasOwn(admission, 'plan'), false);
+    await rejectsCode(policy.authorizeProviderAttempt(request()), 'entitlement_plan_unsupported', 403);
+
+    seedEntitlement(store, 'tenant_a', { plan: 'pro', priceId: 'price_unknown_fixture' });
+    await rejectsCode(policy.authorizeProviderAttempt(request()), 'entitlement_plan_unsupported', 403);
+    assert.equal(store.sql.exec('SELECT COUNT(*) AS n FROM hosted_metered_operations')[0].n, 0);
   } finally {
     store.db.close();
   }
@@ -150,10 +176,10 @@ test('same tenant operation cannot reserve a second effect hash', async () => {
 test('monthly logical-operation quota blocks only new reservations and still permits existing logical operation', async () => {
   const store = storage();
   try {
-    seedEntitlement(store, 'tenant_a', { plan: 'tiny' });
+    seedEntitlement(store, 'tenant_a');
     const policy = new RuntimeHostedAdmissionPolicy({
       ctx: { storage: store },
-      planLimits: { tiny: 2 },
+      planLimits: { pro: 2 },
       clock: () => Date.parse('2026-09-26T12:00:00.000Z'),
     });
 
@@ -240,7 +266,7 @@ test('BYPASS requests are rate-limited but never consume protected-operation usa
 test('concurrent distinct operations cannot oversubscribe a one-operation quota while first sync is pending', async () => {
   const store = storage();
   try {
-    seedEntitlement(store, 'tenant_a', { plan: 'tiny' });
+    seedEntitlement(store, 'tenant_a');
     let releaseSync;
     let syncEntered = false;
     store.sync = () => {
@@ -249,7 +275,7 @@ test('concurrent distinct operations cannot oversubscribe a one-operation quota 
     };
     const policy = new RuntimeHostedAdmissionPolicy({
       ctx: { storage: store },
-      planLimits: { tiny: 1 },
+      planLimits: { pro: 1 },
       clock: () => Date.parse('2026-09-26T12:00:00.000Z'),
     });
 

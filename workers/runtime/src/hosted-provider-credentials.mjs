@@ -159,9 +159,15 @@ export class RuntimeHostedProviderCredentialStore {
     };
   }
 
-  async rotateStripeRefundSecret({ tenantId, secretKey }) {
+  async rotateStripeRefundSecret({ tenantId, secretKey, expectedCurrentVersionId = null }) {
     const tenant = this.normalizeTenantId(tenantId);
     const secret = this.validateStripeTestSecret(secretKey);
+    const expectedVersion = expectedCurrentVersionId === null
+      ? null
+      : requireNonEmptyString(expectedCurrentVersionId, 'expectedCurrentVersionId');
+    if (expectedVersion !== null && !/^hpc_[a-f0-9]{32}$/.test(expectedVersion)) {
+      throw new TypeError('expectedCurrentVersionId is invalid');
+    }
     const versionId = newVersionId();
 
     const encrypted = await this.encryptConfig(
@@ -238,28 +244,51 @@ export class RuntimeHostedProviderCredentialStore {
         now,
       );
 
-      this.sql.exec(
-        `
-          INSERT INTO provider_aliases (
-            customer_id,
-            provider_name,
-            current_version_id,
-            created_at,
-            updated_at,
-            disabled_at
-          ) VALUES (?, ?, ?, ?, ?, NULL)
-          ON CONFLICT(customer_id, provider_name)
-          DO UPDATE SET
-            current_version_id = excluded.current_version_id,
-            updated_at = excluded.updated_at,
-            disabled_at = NULL
-        `,
-        tenant,
-        HOSTED_STRIPE_CREDENTIAL_ALIAS,
-        versionId,
-        now,
-        now,
-      );
+      if (expectedVersion !== null) {
+        this.sql.exec(
+          `
+            UPDATE provider_aliases
+            SET current_version_id = ?, updated_at = ?
+            WHERE
+              customer_id = ?
+              AND provider_name = ?
+              AND current_version_id = ?
+              AND disabled_at IS NULL
+          `,
+          versionId,
+          now,
+          tenant,
+          HOSTED_STRIPE_CREDENTIAL_ALIAS,
+          expectedVersion,
+        );
+        const changed = Number(sqlRows(this.sql, 'SELECT changes() AS changes')[0]?.changes ?? 0);
+        if (changed !== 1) {
+          throw new Error('hosted_provider_credential_alias_changed');
+        }
+      } else {
+        this.sql.exec(
+          `
+            INSERT INTO provider_aliases (
+              customer_id,
+              provider_name,
+              current_version_id,
+              created_at,
+              updated_at,
+              disabled_at
+            ) VALUES (?, ?, ?, ?, ?, NULL)
+            ON CONFLICT(customer_id, provider_name)
+            DO UPDATE SET
+              current_version_id = excluded.current_version_id,
+              updated_at = excluded.updated_at,
+              disabled_at = NULL
+          `,
+          tenant,
+          HOSTED_STRIPE_CREDENTIAL_ALIAS,
+          versionId,
+          now,
+          now,
+        );
+      }
     });
 
     return {
@@ -303,7 +332,9 @@ export class RuntimeHostedProviderCredentialStore {
    * Re-encrypts the active hosted Stripe credential under the currently active
    * provider master-key version without changing the provider credential itself.
    * Immutable history is preserved: a new provider_versions row is created and
-   * the alias moves only after decrypt -> encrypt -> verify succeeds.
+   * the alias moves only after decrypt -> encrypt -> verify succeeds. The alias
+   * advance is compare-and-swap guarded so a concurrent rotate or disable wins
+   * rather than being silently overwritten by a stale rewrap.
    *
    * No plaintext credential is returned to the caller.
    */
@@ -333,14 +364,29 @@ export class RuntimeHostedProviderCredentialStore {
       }
     }
 
-    const secret = await this.getStripeRefundSecret({ tenantId: credential.tenant });
-    if (!secret) {
-      throw new Error('hosted_provider_credential_unavailable');
+    const config = await this.decryptConfig(
+      credential.tenant,
+      HOSTED_STRIPE_CREDENTIAL_ALIAS,
+      credential.versionId,
+      credential.row.encrypted_config,
+      credential.row.iv_b64,
+      credential.keyVersion,
+    );
+    if (
+      !config ||
+      typeof config !== 'object' ||
+      Array.isArray(config) ||
+      config.purpose !== 'refund.create' ||
+      config.mode !== 'test'
+    ) {
+      throw new Error('hosted_provider_credential_plaintext_invalid');
     }
+    const secret = this.validateStripeTestSecret(config.secretKey);
 
     const rotated = await this.rotateStripeRefundSecret({
       tenantId: credential.tenant,
       secretKey: secret,
+      expectedCurrentVersionId: credential.versionId,
     });
 
     if (

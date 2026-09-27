@@ -15,6 +15,8 @@ import {
 } from '../src/hosted-stripe-entitlement-ordering.mjs';
 import { storage } from './harness.mjs';
 
+const LEGACY_PRO_PRICE_ID = 'price_1UGqPRAHX5spO4zqQcuRzi3S';
+
 function ctx(store) {
   return { storage: store };
 }
@@ -43,15 +45,17 @@ function setEntitlement(store, tenantId, {
     `
       INSERT INTO stripe_entitlements (
         customer_id, subscription_id, plan, status, price_id, current_period_end, updated_at
-      ) VALUES (?, ?, 'pro', ?, NULL, ?, ?)
+      ) VALUES (?, ?, 'pro', ?, ?, ?, ?)
       ON CONFLICT(customer_id) DO UPDATE SET
         status = excluded.status,
+        price_id = excluded.price_id,
         current_period_end = excluded.current_period_end,
         updated_at = excluded.updated_at
     `,
     tenantId,
     `sub_${tenantId}`,
     status,
+    LEGACY_PRO_PRICE_ID,
     currentPeriodEnd,
     updatedAt,
   );
@@ -162,7 +166,7 @@ function subscriptionEvent({ id, created, tenantId, type = 'customer.subscriptio
         status: 'active',
         current_period_end: created + 3600,
         metadata: { plan: 'pro' },
-        items: { data: [] },
+        items: { data: [{ price: { id: LEGACY_PRO_PRICE_ID } }] },
       },
     },
   };

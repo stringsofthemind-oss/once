@@ -8,6 +8,8 @@ import {
 } from '../src/hosted-entitlement-freshness.mjs';
 import { storage } from './harness.mjs';
 
+const LEGACY_PRO_PRICE_ID = 'price_1UGqPRAHX5spO4zqQcuRzi3S';
+
 function ensureEntitlements(store) {
   store.sql.exec(`
     CREATE TABLE IF NOT EXISTS stripe_entitlements (
@@ -39,15 +41,17 @@ function seedEntitlement(store, {
         price_id,
         current_period_end,
         updated_at
-      ) VALUES (?, ?, 'pro', ?, NULL, ?, ?)
+      ) VALUES (?, ?, 'pro', ?, ?, ?, ?)
       ON CONFLICT(customer_id) DO UPDATE SET
         status = excluded.status,
+        price_id = excluded.price_id,
         current_period_end = excluded.current_period_end,
         updated_at = excluded.updated_at
     `,
     tenantId,
     `sub_${tenantId}`,
     status,
+    LEGACY_PRO_PRICE_ID,
     currentPeriodEnd,
     updatedAt,
   );
