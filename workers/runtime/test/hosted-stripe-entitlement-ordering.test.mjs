@@ -167,6 +167,110 @@ test('duplicate Stripe event is idempotent', async () => {
   }
 });
 
+test('ordered lifecycle also populates the legacy Stripe event ledger for rollback-safe dedupe', async () => {
+  const store = storage();
+  try {
+    ensureEntitlements(store);
+    const event = subscriptionEvent({ id: 'evt_rollback_dedupe', created: NOW_SECONDS });
+    assert.equal((await (await apply(store, event)).json()).processed, true);
+    const legacyRow = store.sql.exec(
+      `SELECT event_id, type FROM stripe_events WHERE event_id = ?`,
+      'evt_rollback_dedupe',
+    )[0];
+    assert.equal(legacyRow.event_id, 'evt_rollback_dedupe');
+    assert.equal(legacyRow.type, 'customer.subscription.updated');
+  } finally {
+    store.db.close();
+  }
+});
+
+test('event already processed by the legacy webhook is a duplicate on first ordered handling', async () => {
+  const store = storage();
+  try {
+    ensureEntitlements(store);
+    store.sql.exec(`
+      CREATE TABLE stripe_events (
+        event_id TEXT PRIMARY KEY,
+        type TEXT NOT NULL,
+        processed_at TEXT NOT NULL
+      )
+    `);
+    store.sql.exec(
+      `INSERT INTO stripe_events (event_id, type, processed_at) VALUES (?, ?, ?)`,
+      'evt_legacy_duplicate',
+      'customer.subscription.updated',
+      '2026-09-27T01:00:00.000Z',
+    );
+
+    const response = await apply(store, subscriptionEvent({
+      id: 'evt_legacy_duplicate',
+      created: NOW_SECONDS,
+    }));
+    const body = await response.json();
+    assert.equal(body.duplicate, true);
+    assert.equal(body.outcome, 'LEGACY_ALREADY_PROCESSED');
+    assert.equal(entitlement(store), null);
+    assert.equal(
+      store.sql.exec(
+        `SELECT outcome FROM hosted_entitlement_lifecycle_events WHERE event_id = ?`,
+        'evt_legacy_duplicate',
+      )[0].outcome,
+      'LEGACY_ALREADY_PROCESSED',
+    );
+  } finally {
+    store.db.close();
+  }
+});
+
+test('existing legacy entitlement is a conservative floor until a strictly newer event establishes ordering authority', async () => {
+  const store = storage();
+  try {
+    ensureEntitlements(store);
+    store.sql.exec(
+      `
+        INSERT INTO stripe_entitlements (
+          customer_id, subscription_id, plan, status, price_id, current_period_end, updated_at
+        ) VALUES (?, ?, 'pro', 'canceled', NULL, NULL, ?)
+      `,
+      'cus_ordered',
+      'sub_legacy',
+      new Date(NOW_SECONDS * 1000).toISOString(),
+    );
+
+    const preBaseline = await apply(store, subscriptionEvent({
+      id: 'evt_pre_baseline',
+      created: NOW_SECONDS - 1,
+      status: 'active',
+    }));
+    const preBody = await preBaseline.json();
+    assert.equal(preBody.processed, false);
+    assert.equal(preBody.stale, true);
+    assert.equal(preBody.baseline, 'legacy_entitlement_updated_at');
+    assert.equal(entitlement(store).status, 'canceled');
+    assert.equal(
+      store.sql.exec(`SELECT COUNT(*) AS n FROM hosted_entitlement_event_order`)[0].n,
+      0,
+    );
+
+    const newer = await apply(store, subscriptionEvent({
+      id: 'evt_post_baseline',
+      created: NOW_SECONDS + 1,
+      status: 'active',
+    }));
+    assert.equal((await newer.json()).processed, true);
+    assert.equal(entitlement(store).status, 'active');
+    assert.equal(
+      store.sql.exec(
+        `SELECT latest_event_id FROM hosted_entitlement_event_order WHERE customer_id = ?`,
+        'cus_ordered',
+      )[0].latest_event_id,
+      'evt_post_baseline',
+    );
+  } finally {
+    store.db.close();
+  }
+});
+
 test('distinct lifecycle events in the same Stripe created-second fail closed as ambiguous', async () => {
   const store = storage();
   try {
