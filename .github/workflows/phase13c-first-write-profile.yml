@@ -1,0 +1,83 @@
+name: Phase 13C First Write Profile
+
+on:
+  push:
+    branches:
+      - phase13c/mcp-first-write-latency
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  profile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: sdk/typescript
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+          cache: npm
+          cache-dependency-path: sdk/typescript/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - name: Profile local first-write setup
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { mkdtempSync, rmSync } from 'node:fs';
+          import os from 'node:os';
+          import path from 'node:path';
+          import { protectLocal } from './dist/local.js';
+
+          const dir = mkdtempSync(path.join(os.tmpdir(), 'once-first-write-profile-'));
+          const statePath = path.join(dir, 'state.sqlite');
+          const N = 80;
+          const percentile = (values, p) => {
+            const sorted = [...values].sort((a, b) => a - b);
+            return Number(sorted[Math.min(sorted.length - 1, Math.floor((sorted.length - 1) * p))].toFixed(3));
+          };
+          const sample = async fn => {
+            const values = [];
+            for (let i = 0; i < N; i++) {
+              const started = performance.now();
+              await fn(i);
+              values.push(performance.now() - started);
+            }
+            return { p50: percentile(values, 0.50), p95: percentile(values, 0.95) };
+          };
+
+          try {
+            const direct = await sample(async () => {});
+
+            const reused = protectLocal(
+              async input => ({ ok: true, id: input.id }),
+              {
+                statePath,
+                id: input => input.id,
+                payload: input => ({ value: input.value }),
+              },
+            );
+            const reusedWrapper = await sample(i => reused({ id: `reuse-${i}`, value: i }));
+
+            const rebuiltWrapper = await sample(i => {
+              const call = protectLocal(
+                async input => ({ ok: true, id: input.id }),
+                {
+                  statePath,
+                  id: input => input.id,
+                  payload: input => ({ value: input.value }),
+                },
+              );
+              return call({ id: `rebuild-${i}`, value: i });
+            });
+
+            console.log('ONCE FIRST WRITE PROFILE', JSON.stringify({ direct, reusedWrapper, rebuiltWrapper }));
+          } finally {
+            rmSync(dir, { recursive: true, force: true });
+          }
+          NODE
