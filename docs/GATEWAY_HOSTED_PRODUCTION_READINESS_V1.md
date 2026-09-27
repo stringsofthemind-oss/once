@@ -22,15 +22,22 @@ This branch now contains:
 - key-version-aware hosted provider credential encryption,
 - controlled current/previous provider master-key rotation,
 - immutable active-credential rewrap under a new master-key version without returning plaintext credentials,
-- explicit-cutoff, bounded cleanup for operational rate-limit and admission-audit rows that never prunes safety or billing authority.
+- explicit-cutoff, bounded cleanup for operational rate-limit and admission-audit rows that never prunes safety or billing authority,
+- an approval-gated public `/v1/execute` preview bridge that preserves the existing route unless the exact cutover flag is enabled.
 
-The runtime wiring remains deliberately opt-in behind the exact environment value:
+The admission/runtime policy remains deliberately opt-in behind the exact environment value:
 
 ```text
 ONCE_HOSTED_ADMISSION_ENABLED=phase12d
 ```
 
-No environment has been changed by this PR. With the flag absent, the merged Phase 12C hosted path behaves as before.
+The public hosted bridge has a separate exact gate:
+
+```text
+ONCE_HOSTED_PUBLIC_EXECUTE_ENABLED=phase12d-preview
+```
+
+No environment has been changed by this PR. With the public preview flag absent, `/v1/execute` explicitly falls through to the existing runtime route. Merging this code therefore cannot, by itself, cut production execute traffic over to the hosted gateway.
 
 ## Required ordering
 
@@ -225,7 +232,7 @@ This branch does **not** automatically rotate any environment secret, bulk-migra
 
 ## Operational retention mechanism
 
-Phase 12D now includes a bounded cleanup primitive for **operational telemetry only**. It deliberately does not choose a retention period and it is not wired to a scheduler or public route.
+Phase 12D includes a bounded cleanup primitive for **operational telemetry only**. It deliberately does not choose a retention period and it is not wired to a scheduler or public route.
 
 The cleanup primitive can delete only:
 
@@ -249,6 +256,37 @@ hosted_gateway_operations
 The meter identity and monthly usage ledger therefore remain durable even when short-lived infrastructure rate windows and operational audit telemetry are removed. CI explicitly seeds authority rows, runs cleanup, and verifies those authority rows remain unchanged.
 
 Production still needs policy decisions for the actual rate-limit/audit retention durations, invocation cadence, scheduler/operator ownership, observability for cleanup failures and any eventual archival requirement. No cleanup has been run against staging or production by this branch.
+
+## Public `/v1/execute` preview bridge and cutover boundary
+
+Phase 12D now contains the outer public transport needed for a future hosted-gateway cutover, but it is intentionally inert unless an exact separate environment value is configured:
+
+```text
+ONCE_HOSTED_PUBLIC_EXECUTE_ENABLED=phase12d-preview
+```
+
+The bridge uses a nullable handoff contract. For `/v1/execute` with the gate absent, it returns no response to the outer Worker, which then continues into the pre-existing runtime handler. This makes the compatibility invariant explicit:
+
+```text
+merge code + gate absent -> existing /v1/execute behavior
+merge code + exact preview gate -> hosted gateway bridge
+```
+
+When the preview gate is enabled, the bridge:
+
+- accepts only `POST`,
+- enforces the reviewed 64 KiB hosted request-body bound before Durable Object access,
+- forwards only `Authorization`, `Content-Type`, a recomputed `Content-Length`, and the body to the synthetic internal hosted endpoint,
+- does not forward cookies, arbitrary debug headers or other caller metadata,
+- leaves authentication, tenant identity, effect binding, durable state, admission/metering, reconciliation and provider execution inside the authoritative Durable Object,
+- maps Durable Object resolution/fetch failures to an opaque `503 hosted_gateway_unavailable`,
+- returns `no-store` and `nosniff`,
+- forwards only the reviewed content type plus the six allowlisted Once rate/usage headers from the internal response,
+- strips arbitrary internal, tenant, provider and `Set-Cookie` response headers.
+
+CI proves that the gate-absent path returns control for legacy fallthrough without resolving the Durable Object, unrelated routes are ignored, oversized bodies are rejected before DO access, request forwarding is allowlisted, response metadata is allowlisted and infrastructure failures remain opaque.
+
+This is **not a production cutover**. The branch does not set the preview flag in any environment. Production still needs a separately approved rollout plan covering compatibility/canary scope, monitoring, rollback criteria and the eventual transition from preview gating to the permanent hosted route.
 
 ## Rate limiting
 
@@ -282,14 +320,15 @@ The response body still excludes the internal admission object. The header path 
 The latest reviewed implementation head before this documentation-only commit is:
 
 ```text
-a7900b94a6019f7a94079052a159626680c23aac
+a152e0e384721284ca91f4562465989014503bd0
 ```
 
 At that implementation head:
 
-- Gateway core #114 / run `36284322120`: **PASS**
-- Worker CI #460 / run `36284322045`: **PASS**
-- runtime suite: **101/101 PASS, 0 failed**
+- Gateway core #119 / run `36284747876`: **PASS**
+- Worker CI #465 / run `36284747848`: **PASS**
+- runtime suite: **108/108 PASS, 0 failed**
+- public hosted execute preview regressions: **PASS**
 - operational retention regressions: **PASS**
 - provider master-key version/rewrap regressions: **PASS**
 - entitlement lifecycle regressions: **PASS**
@@ -321,6 +360,7 @@ The runtime suite covers, among other existing safety regressions:
 - exact-version provider master-key selection and fail-closed missing-version behavior,
 - immutable hosted credential rewrap under a new current master-key version without plaintext return,
 - explicit-cutoff bounded cleanup of operational rate/audit state while preserving authoritative meter/usage state,
+- gate-absent public execute legacy fallthrough and gate-enabled strict hosted transport forwarding,
 - the existing credential-free lost-ack proof with exactly one external effect.
 
 ## Claim boundary
@@ -329,8 +369,9 @@ This slice does **not** claim:
 
 - production hosted billing is enabled,
 - the Phase 12D admission policy is active in staging or production,
+- the hosted public execute preview gate is active in staging or production,
 - the current commercial pricing table is final,
-- public `/v1/execute` cutover is complete,
+- public `/v1/execute` cutover has occurred,
 - Stripe live mode is enabled,
 - production credentials are provisioned,
 - production provider master keys were changed,
@@ -347,6 +388,6 @@ It also does not change the core Once claim boundary: Once provides execution-sa
 4. choose production rate-limit/audit retention durations, cleanup invocation cadence and operational ownership/observability,
 5. decide commercial treatment of orphaned meter reservations,
 6. decide public BYPASS entitlement policy and replay/reconciliation rate-limit policy,
-7. design the public `/v1/execute` migration/cutover,
+7. define and approve the `/v1/execute` compatibility/canary/monitoring/rollback rollout plan before enabling the preview gate,
 8. keep production deployment separately approval-gated,
 9. keep live-provider/live-money enablement separately approval-gated.
