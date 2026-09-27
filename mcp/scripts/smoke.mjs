@@ -25,6 +25,13 @@ const transport = new StdioClientTransport({
 try {
   await client.connect(transport);
 
+  const serverVersion = client.getServerVersion();
+  if (serverVersion?.name !== "once-agent" || serverVersion.version !== "0.1.5") {
+    throw new Error(
+      `Unexpected MCP server identity/version: ${JSON.stringify(serverVersion)}`
+    );
+  }
+
   const { tools } = await client.listTools();
   const names = tools.map(tool => tool.name).sort();
 
