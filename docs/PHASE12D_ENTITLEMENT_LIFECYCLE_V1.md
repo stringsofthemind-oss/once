@@ -129,6 +129,26 @@ For an accepted ordered event, `stripe_entitlements.updated_at` is derived from 
 
 This matters because a delayed old event arriving now must not make old control-plane state look freshly observed. The ordering layer prevents it from replacing newer state, and the freshness layer can independently reject an active-looking snapshot whose provider lifecycle timestamp has aged beyond the configured window.
 
+## Stripe price authority and commercial boundary
+
+The ordered hosted entitlement path treats the Stripe subscription item's `price.id` as the authoritative plan identity. Subscription `metadata.plan` is diagnostic only: it cannot override a known purchased price and cannot promote an unknown or missing price into an entitled plan.
+
+The shared hosted plan catalogue currently recognizes:
+
+- the current sandbox Developer Checkout price as `developer`;
+- the legacy sandbox `pro`, `startup` and `scale` price IDs for migration compatibility.
+
+An unknown or missing Stripe price is stored as plan `unknown`. A conflicting metadata plan does not change that result.
+
+Phase 12D intentionally does **not** assign a protected-operation limit to the new `developer` plan, nor does it invent final Team/Scale/Enterprise limits. The current admission default contains only the legacy compatibility limits. Therefore an active entitlement carrying the recognized Developer sandbox price still fails closed with `403 entitlement_plan_unsupported` before a new provider attempt until the commercial plan limits are explicitly approved.
+
+This separates two decisions that must not be conflated:
+
+1. **billing identity** — which Stripe price the customer actually purchased;
+2. **execution authorization** — which approved usage limit that price is allowed to authorize.
+
+The first is now provider-authoritative. The second remains an explicit production/commercial approval gate.
+
 ## Safety ordering
 
 These controls do not move entitlement checks ahead of replay/reconciliation safe exits.
@@ -155,7 +175,7 @@ Therefore:
 
 - confirmed replay can remain available after cancellation/staleness;
 - UNKNOWN may reconcile to CONFIRMED without a new provider attempt;
-- authoritative ABSENT reaches the new-provider-attempt boundary and fails closed if the subscription state is inactive, stale or ambiguous.
+- authoritative ABSENT reaches the new-provider-attempt boundary and fails closed if the subscription state is inactive, stale, ambiguous or mapped to an unsupported commercial plan.
 
 ## Public hosted preview dependency
 
@@ -171,11 +191,11 @@ ONCE_HOSTED_ENTITLEMENT_ORDERING_ENABLED=phase12d
 
 Any missing or near-match prerequisite fails closed with an opaque `503 hosted_gateway_unavailable` before Durable Object access. The preview gate itself remains absent from staging and production, so this branch does not cut over public traffic.
 
-The freshness max-age/grace values are still operator-supplied and validated by the hosted admission policy. Enabling the public bridge does not select production timing values by itself.
+The freshness max-age/grace values are still operator-supplied and validated by the hosted admission policy. Enabling the public bridge does not select production timing values or commercial plan limits by itself.
 
 ## CI coverage
 
-At implementation head `14fffc825d801e0189370f15fadb9e42ccdfa86f`, the runtime suite passed **134/134** with zero failures and the credential-free lost-ack proof still ended with exactly one external effect.
+At implementation head `d5abc2ff2ee3c9714808af5d947f8fe1723b6006`, the runtime suite passed **142/142** with zero failures and the credential-free lost-ack proof still ended with exactly one external effect.
 
 The Phase 12D runtime suite covers:
 
@@ -204,19 +224,26 @@ The Phase 12D runtime suite covers:
 - invalid signature rejected before Durable Object access,
 - verified public webhook forwards only parsed event JSON internally,
 - public hosted preview refuses to activate unless admission, freshness and ordering gates are all exact,
-- public hosted preview rejects near-match lifecycle gate values before Durable Object access.
+- public hosted preview rejects near-match lifecycle gate values before Durable Object access,
+- current Developer sandbox Checkout price is sourced from the shared catalogue,
+- known Stripe price outranks conflicting metadata,
+- unknown/missing Stripe price cannot be promoted by metadata,
+- ordered entitlement writes the purchased price-derived plan,
+- current Developer sandbox price resolves to `developer` but fails closed because no commercial usage limit has been approved,
+- unknown price resolves to `unknown` and fails closed at provider-attempt admission.
 
-Exact-head GitHub Actions for that implementation head were green: Gateway core #138 / run `36286466915` and Worker CI #484 / run `36286466923`. The runtime deploy step was a dry-run only and reported that nothing was deployed.
+Exact-head GitHub Actions for that implementation head were green: Gateway core #147 / run `36287306161` and Worker CI #493 / run `36287306159`. The runtime deploy step was a dry-run only and reported that nothing was deployed.
 
 ## Remaining production decisions
 
 This slice deliberately does not choose:
 
-1. production freshness max-age,
-2. production current-period grace,
-3. operational alerting/escalation for `lifecycle_ambiguous`,
-4. recovery policy if Stripe webhook delivery is unavailable for longer than the freshness window,
-5. the staged public `/v1/execute` canary, monitoring and rollback criteria before the already-required lifecycle safety gates are enabled,
-6. any production deployment or environment change.
+1. final public plan names, live Stripe price mappings or per-plan protected-operation limits,
+2. production freshness max-age,
+3. production current-period grace,
+4. operational alerting/escalation for `lifecycle_ambiguous`,
+5. recovery policy if Stripe webhook delivery is unavailable for longer than the freshness window,
+6. the staged public `/v1/execute` canary, monitoring and rollback criteria before the already-required lifecycle safety gates are enabled,
+7. any production deployment or live-provider/live-money change.
 
 Those remain approval-gated production-readiness decisions.
