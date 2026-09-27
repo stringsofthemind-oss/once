@@ -9,6 +9,10 @@ Phase 12D adds production-readiness controls around the merged Phase 12C hosted 
 This branch now contains:
 
 - state-aware entitlement enforcement for new provider attempts,
+- opt-in entitlement freshness enforcement with fail-closed stale-state handling,
+- opt-in monotonic Stripe lifecycle ordering with stale-event suppression and same-second ambiguity handling,
+- Stripe-price-authoritative hosted plan identity with metadata unable to override or promote an unknown price,
+- a shared hosted Stripe price catalogue covering the current Developer sandbox price plus legacy migration aliases,
 - per-tenant request-rate limiting,
 - one-per-logical-operation protected-operation metering,
 - monthly quota enforcement for new protected logical operations,
@@ -23,7 +27,7 @@ This branch now contains:
 - controlled current/previous provider master-key rotation,
 - immutable active-credential rewrap under a new master-key version without returning plaintext credentials,
 - explicit-cutoff, bounded cleanup for operational rate-limit and admission-audit rows that never prunes safety or billing authority,
-- an approval-gated public `/v1/execute` preview bridge that preserves the existing route unless the exact cutover flag is enabled.
+- an approval-gated public `/v1/execute` preview bridge that preserves the existing route unless the exact cutover flag and reviewed lifecycle prerequisites are enabled.
 
 The admission/runtime policy remains deliberately opt-in behind the exact environment value:
 
@@ -31,11 +35,20 @@ The admission/runtime policy remains deliberately opt-in behind the exact enviro
 ONCE_HOSTED_ADMISSION_ENABLED=phase12d
 ```
 
+The lifecycle hardening gates are separately opt-in:
+
+```text
+ONCE_HOSTED_ENTITLEMENT_FRESHNESS_ENABLED=phase12d
+ONCE_HOSTED_ENTITLEMENT_ORDERING_ENABLED=phase12d
+```
+
 The public hosted bridge has a separate exact gate:
 
 ```text
 ONCE_HOSTED_PUBLIC_EXECUTE_ENABLED=phase12d-preview
 ```
+
+The public preview requires all three reviewed Phase 12D safety gates above. If the preview flag is set while admission, freshness or ordering is missing or near-matched, the bridge fails closed before Durable Object access.
 
 No environment has been changed by this PR. With the public preview flag absent, `/v1/execute` explicitly falls through to the existing runtime route. Merging this code therefore cannot, by itself, cut production execute traffic over to the hosted gateway.
 
@@ -63,11 +76,12 @@ authenticate tenant
            - authoritative ABSENT -> a new provider attempt may be considered
   -> provider-attempt admission
        - require active/trialing supported entitlement
+       - when enabled, require fresh lifecycle state
   -> deterministic provider adapter preflight
        - missing/corrupt credential fails here
        - no new logical-operation meter unit is reserved yet
   -> reserve/reuse logical-operation meter identity + quota
-       - re-check active entitlement after preflight
+       - re-check active/fresh entitlement after preflight
   -> durable meter sync when a new meter unit is created
   -> write + sync durable UNKNOWN
   -> provider boundary
@@ -75,7 +89,7 @@ authenticate tenant
 
 This ordering is deliberate. Invalid requests cannot become billable, normal effect drift preserves the Phase 12C semantic `CONFLICT`, confirmed replay does not create a new unit, UNKNOWN can reconcile safely after a subscription changes, and deterministic provider configuration/credential failure does not consume a new protected-operation unit.
 
-A missing or inactive entitlement blocks a **new provider attempt**, not the safety actions needed to replay an already-confirmed result or reconcile a prior UNKNOWN outcome. If UNKNOWN reconciliation is authoritative `ABSENT`, provider-attempt admission runs before preflight/re-execution and fails closed if entitlement is no longer active.
+A missing, inactive, stale, ambiguous or commercially unsupported entitlement blocks a **new provider attempt**, not the safety actions needed to replay an already-confirmed result or reconcile a prior UNKNOWN outcome. If UNKNOWN reconciliation is authoritative `ABSENT`, provider-attempt admission runs before preflight/re-execution and fails closed if the entitlement can no longer authorize a new effect.
 
 ## Metering identity
 
@@ -154,7 +168,7 @@ A new logical-operation reservation is followed by `storage.sync()` before Gatew
 
 Audit rows are operational observability only, not billing authority. Their schema is an explicit scalar allowlist. They do not store raw operation IDs, effect hashes, authorization/API-key material, request payloads, free-form metadata, provider operation keys, provider results or credentials. Raw operation IDs are represented only by a tenant-scoped one-way SHA-256 fingerprint for correlation.
 
-## Entitlement source and lifecycle semantics
+## Entitlement source, Stripe price authority and lifecycle semantics
 
 This slice reads the existing runtime `stripe_entitlements` table and treats only these statuses as active for a new provider attempt:
 
@@ -166,16 +180,20 @@ trialing
 The policy intentionally separates three concerns:
 
 1. **Request admission** rate-limits the authenticated tenant and, when an active supported plan is available, may attach a current-period usage snapshot. Missing/inactive entitlement alone does not block this stage.
-2. **Provider-attempt admission** runs only after conflict/replay/reconciliation safe exits and requires active/trialing entitlement before adapter preflight.
-3. **Meter reservation** re-checks entitlement after deterministic preflight and immediately before a new meter reservation/UNKNOWN/provider boundary.
+2. **Provider-attempt admission** runs only after conflict/replay/reconciliation safe exits and requires active/trialing entitlement before adapter preflight. When the freshness gate is enabled, stale lifecycle state also fails closed here.
+3. **Meter reservation** re-checks entitlement and freshness after deterministic preflight and immediately before a new meter reservation/UNKNOWN/provider boundary.
 
 This prevents a subscription transition from trapping prior safety state. CI explicitly proves:
 
-- an already-confirmed operation can still return `REPLAY_CONFIRMED` after the entitlement becomes inactive, without provider reconstruction or re-execution;
-- an existing UNKNOWN operation can still reconcile to `CONFIRMED` after the entitlement becomes inactive, without re-execution;
-- if UNKNOWN reconciliation instead returns authoritative `ABSENT`, inactive entitlement blocks the subsequent provider attempt with `403`, the operation remains UNKNOWN, and no second provider effect occurs.
+- an already-confirmed operation can still return `REPLAY_CONFIRMED` after the entitlement becomes inactive or stale, without provider reconstruction or re-execution;
+- an existing UNKNOWN operation can still reconcile to `CONFIRMED` after the entitlement becomes inactive or stale, without re-execution;
+- if UNKNOWN reconciliation instead returns authoritative `ABSENT`, an entitlement that is inactive, stale, ambiguous or commercially unsupported blocks the subsequent provider attempt before a new provider effect.
 
-The default plan-limit map intentionally mirrors the legacy runtime's current values:
+For ordered hosted lifecycle handling, the Stripe subscription item's `price.id` is now the authoritative plan identity. Subscription `metadata.plan` is diagnostic only: it cannot override a known price and cannot turn an unknown/missing price into an entitled plan.
+
+The shared catalogue recognizes the current sandbox Developer Checkout price as `developer` and retains the three older sandbox price IDs as migration aliases for `pro`, `startup` and `scale`. Unknown or missing price IDs resolve to `unknown`.
+
+The default hosted admission limits remain only the legacy compatibility values:
 
 ```text
 pro      100000
@@ -183,9 +201,11 @@ startup  500000
 scale   2000000
 ```
 
-Those defaults are compatibility values, **not a new public pricing commitment**. Final commercial plan names/limits must be reconciled before production cutover.
+Those values are **migration compatibility, not a new public pricing commitment**. No protected-operation limit is assigned to `developer`, `team` or any future commercial tier by this branch. Therefore the current Developer sandbox price can be identified correctly while still failing closed with `403 entitlement_plan_unsupported` before a new provider attempt until its usage limit is explicitly approved.
 
-Production still needs a defined entitlement-freshness policy: webhook ordering, grace periods, current-period end semantics, delayed/corrupt lifecycle updates and recovery procedures are not settled by this slice.
+This deliberately separates provider-authoritative billing identity from commercial execution authorization. Final public plan names, live Stripe price mappings and per-plan limits remain production approval gates.
+
+The ordered lifecycle path also prevents old Stripe events from overwriting newer state, fails closed on same-created-second ambiguity, and derives accepted `updated_at` from Stripe `event.created` rather than local receipt time. Freshness can independently reject an active-looking entitlement whose lifecycle observation has aged beyond configured bounds.
 
 ## Provider master-key versioning and recovery
 
@@ -259,7 +279,7 @@ Production still needs policy decisions for the actual rate-limit/audit retentio
 
 ## Public `/v1/execute` preview bridge and cutover boundary
 
-Phase 12D now contains the outer public transport needed for a future hosted-gateway cutover, but it is intentionally inert unless an exact separate environment value is configured:
+Phase 12D contains the outer public transport needed for a future hosted-gateway cutover, but it is intentionally inert unless an exact separate environment value is configured:
 
 ```text
 ONCE_HOSTED_PUBLIC_EXECUTE_ENABLED=phase12d-preview
@@ -269,10 +289,20 @@ The bridge uses a nullable handoff contract. For `/v1/execute` with the gate abs
 
 ```text
 merge code + gate absent -> existing /v1/execute behavior
-merge code + exact preview gate -> hosted gateway bridge
+merge code + exact preview gate + exact safety prerequisites -> hosted gateway bridge
 ```
 
-When the preview gate is enabled, the bridge:
+When preview is requested, the bridge first requires this exact prerequisite stack:
+
+```text
+ONCE_HOSTED_ADMISSION_ENABLED=phase12d
+ONCE_HOSTED_ENTITLEMENT_FRESHNESS_ENABLED=phase12d
+ONCE_HOSTED_ENTITLEMENT_ORDERING_ENABLED=phase12d
+```
+
+A missing or near-match prerequisite returns opaque `503 hosted_gateway_unavailable` before Durable Object access.
+
+When the preview gate and prerequisite stack are enabled, the bridge:
 
 - accepts only `POST`,
 - enforces the reviewed 64 KiB hosted request-body bound before Durable Object access,
@@ -284,9 +314,9 @@ When the preview gate is enabled, the bridge:
 - forwards only the reviewed content type plus the six allowlisted Once rate/usage headers from the internal response,
 - strips arbitrary internal, tenant, provider and `Set-Cookie` response headers.
 
-CI proves that the gate-absent path returns control for legacy fallthrough without resolving the Durable Object, unrelated routes are ignored, oversized bodies are rejected before DO access, request forwarding is allowlisted, response metadata is allowlisted and infrastructure failures remain opaque.
+CI proves that the gate-absent path returns control for legacy fallthrough without resolving the Durable Object, missing/near-match safety prerequisites fail before DO access, unrelated routes are ignored, oversized bodies are rejected before DO access, request forwarding is allowlisted, response metadata is allowlisted and infrastructure failures remain opaque.
 
-This is **not a production cutover**. The branch does not set the preview flag in any environment. Production still needs a separately approved rollout plan covering compatibility/canary scope, monitoring, rollback criteria and the eventual transition from preview gating to the permanent hosted route.
+This is **not a production cutover**. The branch does not set the preview or safety flags in any environment. Production still needs a separately approved rollout plan covering compatibility/canary scope, monitoring, rollback criteria and the eventual transition from preview gating to the permanent hosted route.
 
 ## Rate limiting
 
@@ -317,23 +347,25 @@ The response body still excludes the internal admission object. The header path 
 
 ## CI evidence
 
-The latest reviewed implementation head before this documentation-only commit is:
+The latest reviewed implementation head before these documentation-only updates is:
 
 ```text
-a152e0e384721284ca91f4562465989014503bd0
+d5abc2ff2ee3c9714808af5d947f8fe1723b6006
 ```
 
 At that implementation head:
 
-- Gateway core #119 / run `36284747876`: **PASS**
-- Worker CI #465 / run `36284747848`: **PASS**
-- runtime suite: **108/108 PASS, 0 failed**
-- public hosted execute preview regressions: **PASS**
+- Gateway core #147 / run `36287306161`: **PASS**
+- Worker CI #493 / run `36287306159`: **PASS**
+- runtime suite: **142/142 PASS, 0 failed**
+- Stripe plan-authority regressions: **PASS**
+- public hosted preview full-prerequisite regressions: **PASS**
+- entitlement freshness and ordered-lifecycle regressions: **PASS**
 - operational retention regressions: **PASS**
 - provider master-key version/rewrap regressions: **PASS**
-- entitlement lifecycle regressions: **PASS**
 - meter-sync -> UNKNOWN-sync hostile recovery regressions: **PASS**
 - credential-free lost-ack proof: **PASS / exactly one external effect**
+- runtime deployment step: **dry-run only / nothing deployed**
 
 The runtime suite covers, among other existing safety regressions:
 
@@ -342,10 +374,10 @@ The runtime suite covers, among other existing safety regressions:
 - provider-attempt entitlement denial before lazy adapter preflight/provider crossing,
 - deterministic preflight before protected-operation metering,
 - semantic conflict and confirmed replay before meter reservation,
-- missing/inactive entitlement blocking new provider attempts without blocking safe prior-state recovery,
+- missing/inactive/stale entitlement blocking new provider attempts without blocking safe prior-state recovery,
 - confirmed replay after entitlement cancellation without adapter construction,
-- UNKNOWN -> CONFIRMED reconciliation after entitlement cancellation without re-execution,
-- authoritative ABSENT + inactive entitlement blocking re-execution while preserving UNKNOWN,
+- UNKNOWN -> CONFIRMED reconciliation after entitlement cancellation/freshness expiry without re-execution,
+- authoritative ABSENT + inactive/stale entitlement blocking re-execution while preserving safety state,
 - one protected logical operation = one usage unit,
 - cross-month retry/replay without duplicate usage,
 - quota enforcement and concurrent quota boundary behavior,
@@ -360,6 +392,10 @@ The runtime suite covers, among other existing safety regressions:
 - exact-version provider master-key selection and fail-closed missing-version behavior,
 - immutable hosted credential rewrap under a new current master-key version without plaintext return,
 - explicit-cutoff bounded cleanup of operational rate/audit state while preserving authoritative meter/usage state,
+- ordered Stripe lifecycle monotonicity and rollback-safe event dedupe,
+- provider-authoritative Stripe price mapping with metadata unable to override/promote,
+- recognition of the current Developer sandbox price without silently inventing a commercial usage limit,
+- unknown/missing Stripe prices failing closed for new provider attempts,
 - gate-absent public execute legacy fallthrough and gate-enabled strict hosted transport forwarding,
 - the existing credential-free lost-ack proof with exactly one external effect.
 
@@ -369,8 +405,9 @@ This slice does **not** claim:
 
 - production hosted billing is enabled,
 - the Phase 12D admission policy is active in staging or production,
+- entitlement freshness or ordered lifecycle handling is active in staging or production,
 - the hosted public execute preview gate is active in staging or production,
-- the current commercial pricing table is final,
+- the current commercial pricing/usage table is final,
 - public `/v1/execute` cutover has occurred,
 - Stripe live mode is enabled,
 - production credentials are provisioned,
@@ -382,8 +419,8 @@ It also does not change the core Once claim boundary: Once provides execution-sa
 
 ## Remaining Phase 12D production gates
 
-1. reconcile final commercial plan names/limits with Stripe entitlements,
-2. define production entitlement freshness/lifecycle delivery policy (webhook ordering, grace and stale-state handling),
+1. approve final public plan names, live Stripe price mappings and per-plan protected-operation limits,
+2. choose production entitlement freshness max-age/grace values and stale/ambiguous-state alert/recovery procedures,
 3. define and rehearse the approval-gated operational bulk-check/rollover runbook for provider master-key migration,
 4. choose production rate-limit/audit retention durations, cleanup invocation cadence and operational ownership/observability,
 5. decide commercial treatment of orphaned meter reservations,
