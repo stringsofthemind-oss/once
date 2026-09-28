@@ -6,13 +6,37 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".": {"types":"./dist/index.d.ts","import":"./dist/index.js","require":"./dist-cjs/index.js"},
-    "./connect": {"types":"./dist/connect/index.d.ts","import":"./dist/connect/index.js","require":"./dist-cjs/connect/index.js"},
-    "./discovery": {"types":"./dist/discovery/index.d.ts","import":"./dist/discovery/index.js","require":"./dist-cjs/discovery/index.js"},
-    "./gateway": {"types":"./dist/gateway/index.d.ts","import":"./dist/gateway/index.js","require":"./dist-cjs/gateway/index.js"},
-    "./reconciliation": {"types":"./dist/reconciliation/index.d.ts","import":"./dist/reconciliation/index.js","require":"./dist-cjs/reconciliation/index.js"}
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist-cjs/index.js"
+    },
+    "./connect": {
+      "types": "./dist/connect/index.d.ts",
+      "import": "./dist/connect/index.js",
+      "require": "./dist-cjs/connect/index.js"
+    },
+    "./discovery": {
+      "types": "./dist/discovery/index.d.ts",
+      "import": "./dist/discovery/index.js",
+      "require": "./dist-cjs/discovery/index.js"
+    },
+    "./gateway": {
+      "types": "./dist/gateway/index.d.ts",
+      "import": "./dist/gateway/index.js",
+      "require": "./dist-cjs/gateway/index.js"
+    },
+    "./reconciliation": {
+      "types": "./dist/reconciliation/index.d.ts",
+      "import": "./dist/reconciliation/index.js",
+      "require": "./dist-cjs/reconciliation/index.js"
+    }
   },
-  "files": ["dist","README.md","dist-cjs"],
+  "files": [
+    "dist",
+    "README.md",
+    "dist-cjs"
+  ],
   "scripts": {
     "build": "npm run build:esm && npm run build:cjs",
     "typecheck": "tsc --noEmit",
@@ -59,13 +83,44 @@
     "test:setup-persistence": "npm run build && node ./scripts/setup-persistence-regression.mjs",
     "prepack": "npm run build"
   },
-  "keywords": ["ai","agents","ai-agents","mcp","model-context-protocol","idempotency","reliability","execution-safety","safe-retries","retry-safety","agent-safety","distributed-systems","ambiguous-timeout","duplicate-side-effects","provider-reconciliation"],
+  "keywords": [
+    "ai",
+    "agents",
+    "ai-agents",
+    "mcp",
+    "model-context-protocol",
+    "idempotency",
+    "reliability",
+    "execution-safety",
+    "safe-retries",
+    "retry-safety",
+    "agent-safety",
+    "distributed-systems",
+    "ambiguous-timeout",
+    "duplicate-side-effects",
+    "provider-reconciliation"
+  ],
   "license": "MIT",
-  "engines": {"node": ">=18"},
-  "devDependencies": {"@types/node": "^26.6.1"},
-  "bin": {"once":"dist/once-cli.js","once-monitor":"dist/monitor-cli.js","once-dataset":"dist/dataset-cli.js"},
-  "dependencies": {"typescript": "^5.9.0"},
-  "repository": {"type":"git","url":"git+https://github.com/stringsofthemind-oss/once.git"},
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.1"
+  },
+  "bin": {
+    "once": "dist/once-cli.js",
+    "once-monitor": "dist/monitor-cli.js",
+    "once-dataset": "dist/dataset-cli.js"
+  },
+  "dependencies": {
+    "typescript": "^5.9.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stringsofthemind-oss/once.git"
+  },
   "homepage": "https://onceexec.com/",
-  "bugs": {"url":"https://github.com/stringsofthemind-oss/once/issues"}
+  "bugs": {
+    "url": "https://github.com/stringsofthemind-oss/once/issues"
+  }
 }
