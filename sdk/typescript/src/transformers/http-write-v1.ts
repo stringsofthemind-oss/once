@@ -31,122 +31,251 @@ export type HttpWriteTransformResult =
 function hasOperationIdParameter(
   functionSource: string
 ): boolean {
-  const match = functionSource.match(/\(([^)]*)\)/);
-  if (!match) return false;
 
-  const parameters = match[1]
-    .split(",")
-    .map(parameter => parameter.trim().replace(/^\.\.\./, "").split(/[:=]/)[0].trim());
+  const match =
+    functionSource.match(
+      /\(([^)]*)\)/
+    );
 
-  return parameters.includes("operationId");
-}
+  if (!match) {
+    return false;
+  }
 
-function quote(value: string): string {
-  return JSON.stringify(value);
-}
+  const parameters =
+    match[1]
+      .split(",")
+      .map(
+        parameter =>
+          parameter
+            .trim()
+            .replace(
+              /^\.\.\./,
+              ""
+            )
+            .split(/[:=]/)[0]
+            .trim()
+      );
 
-function hasSupportedJsonContentTypeHeader(options: string): boolean {
-  const headerMatch = options.match(
-    /\bheaders\s*:\s*\{\s*(["'])Content-Type\1\s*:\s*(["'])application\/json\2\s*\}/
+  return parameters.includes(
+    "operationId"
   );
+}
 
-  if (!headerMatch) return false;
+function quote(
+  value: string
+): string {
 
-  return (options.match(/\bheaders\s*:/g) ?? []).length === 1;
+  return JSON.stringify(
+    value
+  );
 }
 
 export function transformHttpWriteV1(
   input: HttpWriteTransformInput
 ): HttpWriteTransformResult {
-  const provider = input.provider.trim();
+
+  const provider =
+    input.provider.trim();
 
   if (!provider) {
-    return { eligible: false, reason: "A configured provider is required." };
-  }
-
-  if (!hasOperationIdParameter(input.functionSource)) {
     return {
       eligible: false,
-      reason: "The surrounding function must already receive a stable operationId parameter."
+      reason:
+        "A configured provider is required."
     };
   }
 
-  const statement = input.statement.replace(/\r\n/g, "\n").trim();
-
-  if (!/^await\s+fetch\s*\(/.test(statement)) {
+  if (
+    !hasOperationIdParameter(
+      input.functionSource
+    )
+  ) {
     return {
       eligible: false,
-      reason: "Only an unused-response `await fetch(...)` statement is supported."
+      reason:
+        "The surrounding function must already receive a stable operationId parameter."
     };
   }
 
-  const callMatch = statement.match(
-    /^await\s+fetch\s*\(\s*(["'])(https:\/\/[^"'\\]+)\1\s*,\s*\{([\s\S]*)\}\s*\)\s*;?$/
-  );
+  const statement =
+    input.statement
+      .replace(
+        /\r\n/g,
+        "\n"
+      )
+      .trim();
+
+  /*
+   * Deliberately require an unused-response
+   * await fetch(...) expression statement.
+   *
+   * return await fetch(...)
+   * const x = await fetch(...)
+   *
+   * are not accepted because Once.execute()
+   * does not have the same return contract as
+   * the native Fetch Response object.
+   */
+  if (
+    !/^await\s+fetch\s*\(/.test(
+      statement
+    )
+  ) {
+    return {
+      eligible: false,
+      reason:
+        "Only an unused-response `await fetch(...)` statement is supported."
+    };
+  }
+
+  const callMatch =
+    statement.match(
+      /^await\s+fetch\s*\(\s*(["'])(https:\/\/[^"'\\]+)\1\s*,\s*\{([\s\S]*)\}\s*\)\s*;?$/
+    );
 
   if (!callMatch) {
     return {
       eligible: false,
-      reason: "Only a literal HTTPS URL and an inline fetch options object are supported."
+      reason:
+        "Only a literal HTTPS URL and an inline fetch options object are supported."
     };
   }
 
-  const url = callMatch[2];
-  const options = callMatch[3];
+  const url =
+    callMatch[2];
 
-  const keys = Array.from(
-    options.matchAll(/(?:^|,|\n)\s*([A-Za-z_$][A-Za-z0-9_$]*)\s*:/g),
-    match => match[1]
-  );
+  const options =
+    callMatch[3];
 
-  const uniqueKeys = Array.from(new Set(keys)).sort();
-  const baseKeys = ["body", "method"];
-  const jsonHeaderKeys = ["body", "headers", "method"];
-  const isBaseShape =
-    uniqueKeys.length === baseKeys.length &&
-    uniqueKeys.every((key, index) => key === baseKeys[index]);
-  const isJsonHeaderShape =
-    uniqueKeys.length === jsonHeaderKeys.length &&
-    uniqueKeys.every((key, index) => key === jsonHeaderKeys[index]);
+  /*
+   * Supported fetch options are either:
+   *
+   * method + body
+   *
+   * or method + body + the exact static
+   * Content-Type: application/json header.
+   *
+   * Arbitrary headers still require a richer
+   * semantics-preserving transformer.
+   */
+  const keys =
+    Array.from(
+      options.matchAll(
+        /(?:^|,|\n)\s*([A-Za-z_$][A-Za-z0-9_$]*)\s*:/g
+      ),
+      match =>
+        match[1]
+    );
 
-  if (!isBaseShape && !isJsonHeaderShape) {
+  const uniqueKeys =
+    Array.from(
+      new Set(keys)
+    ).sort();
+
+  const baseShape =
+    uniqueKeys.length === 2 &&
+    uniqueKeys[0] === "body" &&
+    uniqueKeys[1] === "method";
+
+  const jsonHeaderShape =
+    uniqueKeys.length === 3 &&
+    uniqueKeys[0] === "body" &&
+    uniqueKeys[1] === "headers" &&
+    uniqueKeys[2] === "method";
+
+  if (
+    !baseShape &&
+    !jsonHeaderShape
+  ) {
     return {
       eligible: false,
-      reason: "Supported fetch options are `method` + `body`, optionally with exactly `headers: { \"Content-Type\": \"application/json\" }`."
+      reason:
+        "Supports `method` and `body`, optionally with the exact static JSON Content-Type header."
     };
   }
 
-  if (isJsonHeaderShape && !hasSupportedJsonContentTypeHeader(options)) {
-    return {
-      eligible: false,
-      reason: "Only the exact static `Content-Type: application/json` header is supported."
-    };
+  if (jsonHeaderShape) {
+    const headerMatch =
+      options.match(
+        /\bheaders\s*:\s*\{\s*(["'])Content-Type\1\s*:\s*(["'])application\/json\2\s*\}/
+      );
+
+    const headerOccurrences =
+      (
+        options.match(
+          /\bheaders\s*:/g
+        ) ?? []
+      ).length;
+
+    if (
+      !headerMatch ||
+      headerOccurrences !== 1
+    ) {
+      return {
+        eligible: false,
+        reason:
+          "Only the exact static `Content-Type: application/json` header is supported."
+      };
+    }
   }
 
-  const methodMatch = options.match(/\bmethod\s*:\s*(["'])POST\1/);
+  const methodMatch =
+    options.match(
+      /\bmethod\s*:\s*(["'])POST\1/
+    );
+
   if (!methodMatch) {
-    return { eligible: false, reason: "Only literal POST requests are supported." };
+    return {
+      eligible: false,
+      reason:
+        "Supports only literal POST requests."
+    };
   }
 
-  const bodyMatch = options.match(
-    /\bbody\s*:\s*JSON\.stringify\(\s*([A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)*)\s*\)/
-  );
+  const bodyMatch =
+    options.match(
+      /\bbody\s*:\s*JSON\.stringify\(\s*([A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)*)\s*\)/
+    );
 
   if (!bodyMatch) {
     return {
       eligible: false,
-      reason: "Requires body: JSON.stringify(<simple expression>)."
+      reason:
+        "Requires body: JSON.stringify(<simple expression>)."
     };
   }
 
-  const bodyExpression = bodyMatch[1];
-  const methodOccurrences = (options.match(/\bmethod\s*:/g) ?? []).length;
-  const bodyOccurrences = (options.match(/\bbody\s*:/g) ?? []).length;
+  const bodyExpression =
+    bodyMatch[1];
 
-  if (methodOccurrences !== 1 || bodyOccurrences !== 1) {
+  /*
+   * Ensure the recognized expressions account
+   * for the expected option values rather than
+   * accepting an object containing additional
+   * unsupported executable syntax.
+   */
+  const methodOccurrences =
+    (
+      options.match(
+        /\bmethod\s*:/g
+      ) ?? []
+    ).length;
+
+  const bodyOccurrences =
+    (
+      options.match(
+        /\bbody\s*:/g
+      ) ?? []
+    ).length;
+
+  if (
+    methodOccurrences !== 1 ||
+    bodyOccurrences !== 1
+  ) {
     return {
       eligible: false,
-      reason: "Duplicate method/body options are not supported."
+      reason:
+        "Duplicate method/body options are not supported."
     };
   }
 
@@ -165,12 +294,16 @@ export function transformHttpWriteV1(
 
   return {
     eligible: true,
-    transformer: HTTP_WRITE_TRANSFORMER_ID,
+    transformer:
+      HTTP_WRITE_TRANSFORMER_ID,
     replacement,
-    actionType: "http_write_v1",
-    method: "POST",
+    actionType:
+      "http_write_v1",
+    method:
+      "POST",
     url,
     bodyExpression,
-    requiresOnceBinding: true
+    requiresOnceBinding:
+      true
   };
 }
