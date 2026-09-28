@@ -64,7 +64,7 @@
     "test:transformer-protect": "npm run build && node ./scripts/transformer-protect-regression.mjs",
     "test:binding": "npm run build && node ./scripts/once-binding-regression.mjs",
     "test:patch-planner": "npm run build && node ./scripts/http-patch-planner-regression.mjs",
-    "test:apply": "npm run build && node ./scripts/apply-engine-regression.mjs && node ./scripts/apply-regression.mjs",
+    "test:apply": "npm run build && node ./scripts/apply-engine-regression.mjs && node ./scripts/apply-regression.mjs && node ./scripts/doctor-safe-apply-regression.mjs",
     "test:package": "npm run build && node ./scripts/package-isolation-regression.mjs",
     "test:consumer": "npm run build && node ./scripts/consumer-package-regression.mjs",
     "test:id-conformance": "npm run build && node ./scripts/id-conformance-regression.mjs",
