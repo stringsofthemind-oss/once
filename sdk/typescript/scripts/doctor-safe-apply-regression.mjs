@@ -196,7 +196,7 @@ try {
   );
   assert.match(
     applied.stdout,
-    /Route proof: PENDING \(HOSTED_LOST_ACK_REPLAY_V1\)/
+    /Route proof: PENDING \(ONCE_EXECUTE_LOST_ACK_REPLAY_V1\)/
   );
   assert.match(
     applied.stdout,
@@ -234,8 +234,8 @@ try {
   assert.equal(receipt.once_protected, false);
   assert.equal(receipt.provider, "doctor-safe-apply-provider");
   assert.equal(receipt.transformer_id, "ts_fetch_post_void_v1");
-  assert.equal(receipt.execution_route, "HOSTED_ONCE_EXECUTE_V1");
-  assert.equal(receipt.route_proof.required, "HOSTED_LOST_ACK_REPLAY_V1");
+  assert.equal(receipt.execution_route, "ONCE_SDK_EXECUTE_V1");
+  assert.equal(receipt.route_proof.required, "ONCE_EXECUTE_LOST_ACK_REPLAY_V1");
   assert.equal(receipt.route_proof.state, "PENDING");
   assert.equal(receipt.route_proof.verified_at, null);
   assert.match(receipt.source_sha256, /^[a-f0-9]{64}$/);
@@ -251,11 +251,11 @@ try {
   );
   assert.match(
     currentStatus.stdout,
-    /Execution route: HOSTED_ONCE_EXECUTE_V1/
+    /Execution route: ONCE_SDK_EXECUTE_V1/
   );
   assert.match(
     currentStatus.stdout,
-    /Route proof: PENDING \(HOSTED_LOST_ACK_REPLAY_V1\)/
+    /Route proof: PENDING \(ONCE_EXECUTE_LOST_ACK_REPLAY_V1\)/
   );
   assert.match(
     currentStatus.stdout,
