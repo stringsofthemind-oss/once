@@ -679,7 +679,7 @@ if (
   !String(
     unsupported.transformer_reason ?? ""
   ).includes(
-    "exactly the fetch options"
+    "Supports `method` and `body`"
   )
 ) {
   throw new Error(
