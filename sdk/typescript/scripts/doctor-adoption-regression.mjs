@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {
+  access,
   mkdtemp,
   mkdir,
   readFile,
@@ -99,6 +100,30 @@ try {
   );
   assert.match(
     result.stdout,
+    /PROTECTION READINESS/
+  );
+  assert.match(
+    result.stdout,
+    /Tool\/capability records:/
+  );
+  assert.match(
+    result.stdout,
+    /Configured tool sources:/
+  );
+  assert.match(
+    result.stdout,
+    /PROTECT_PRIORITY/
+  );
+  assert.match(
+    result.stdout,
+    /CRITICAL_GAP/
+  );
+  assert.match(
+    result.stdout,
+    /Discovery remained local\/read-only: no tool was invoked, no configured stdio server was launched, and no provider was contacted\./
+  );
+  assert.match(
+    result.stdout,
     /npx --yes --package=@once-agent\/sdk once protect .* --all --snippets/
   );
   assert.match(
@@ -110,6 +135,13 @@ try {
     await readFile(sourcePath, "utf8"),
     source,
     "doctor must not modify source files"
+  );
+
+  await assert.rejects(
+    access(
+      path.join(root, ".once")
+    ),
+    "default doctor must not create Once project state"
   );
 
   const connection =
@@ -145,6 +177,10 @@ try {
     { encoding: "utf8", env }
   );
   assert.equal(emptyResult.status, 0);
+  assert.match(
+    emptyResult.stdout,
+    /PROTECTION READINESS/
+  );
   assert.match(
     emptyResult.stdout,
     /npx --yes --package=@once-agent\/sdk once scan .* --no-estimate/
