@@ -610,7 +610,7 @@ export async function runDoctor(
         "ONE PROVEN PATCHABLE TRANSFORMATION APPLIED"
       );
       console.log(
-        "Route proof: PENDING (HOSTED_LOST_ACK_REPLAY_V1)"
+        "Route proof: PENDING (ONCE_EXECUTE_LOST_ACK_REPLAY_V1)"
       );
       console.log(
         "This does not claim that every project tool or execution-safety gap is now protected."
