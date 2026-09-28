@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {
+  access,
   mkdir,
   mkdtemp,
   readFile,
@@ -73,6 +74,7 @@ async function createProject(name, source, allowedUrls) {
   return {
     directory,
     sourcePath,
+    receiptPath: path.join(once, "protection-status.json"),
     source
   };
 }
@@ -149,12 +151,16 @@ try {
   );
   assert.match(
     missingProtect.stderr,
-    /doctor --apply requires --protect/
+    /doctor --apply requires --protect/i
   );
   assert.equal(
     await readFile(success.sourcePath, "utf8"),
     oneCandidateSource,
     "rejected apply must not modify source"
+  );
+  await assert.rejects(
+    access(success.receiptPath),
+    "rejected apply must not create a protection receipt"
   );
 
   const applied = runDoctor(
@@ -182,7 +188,15 @@ try {
   );
   assert.match(
     applied.stdout,
+    /Protection receipt: .*protection-status\.json/
+  );
+  assert.match(
+    applied.stdout,
     /ONE PROVEN PATCHABLE TRANSFORMATION APPLIED/
+  );
+  assert.match(
+    applied.stdout,
+    /Route proof: PENDING \(HOSTED_LOST_ACK_REPLAY_V1\)/
   );
   assert.match(
     applied.stdout,
@@ -211,6 +225,69 @@ try {
     /await fetch\(/
   );
 
+  const receipt = JSON.parse(
+    await readFile(success.receiptPath, "utf8")
+  );
+
+  assert.equal(receipt.schema_version, 1);
+  assert.equal(receipt.status, "APPLIED_PENDING_ROUTE_PROOF");
+  assert.equal(receipt.once_protected, false);
+  assert.equal(receipt.provider, "doctor-safe-apply-provider");
+  assert.equal(receipt.transformer_id, "ts_fetch_post_void_v1");
+  assert.equal(receipt.execution_route, "HOSTED_ONCE_EXECUTE_V1");
+  assert.equal(receipt.route_proof.required, "HOSTED_LOST_ACK_REPLAY_V1");
+  assert.equal(receipt.route_proof.state, "PENDING");
+  assert.equal(receipt.route_proof.verified_at, null);
+  assert.match(receipt.source_sha256, /^[a-f0-9]{64}$/);
+  assert.match(receipt.applied_sha256, /^[a-f0-9]{64}$/);
+  assert.notEqual(receipt.source_sha256, receipt.applied_sha256);
+
+  const currentStatus = runDoctor(success.directory);
+  assert.equal(currentStatus.status, 0);
+  assert.match(currentStatus.stdout, /PROTECTION STATUS/);
+  assert.match(
+    currentStatus.stdout,
+    /Applied transformation receipt: CURRENT/
+  );
+  assert.match(
+    currentStatus.stdout,
+    /Execution route: HOSTED_ONCE_EXECUTE_V1/
+  );
+  assert.match(
+    currentStatus.stdout,
+    /Route proof: PENDING \(HOSTED_LOST_ACK_REPLAY_V1\)/
+  );
+  assert.match(
+    currentStatus.stdout,
+    /Protection claim: pending route-matched hostile-retry proof\./
+  );
+  assert.doesNotMatch(
+    currentStatus.stdout,
+    /ONCE PROTECTED/
+  );
+
+  await writeFile(
+    success.sourcePath,
+    transformed + "\n// customer changed source after Once apply\n",
+    "utf8"
+  );
+
+  const staleStatus = runDoctor(success.directory);
+  assert.equal(staleStatus.status, 0);
+  assert.match(staleStatus.stdout, /PROTECTION STATUS/);
+  assert.match(
+    staleStatus.stdout,
+    /Applied transformation receipt: STALE_SOURCE/
+  );
+  assert.match(
+    staleStatus.stdout,
+    /protected source changed after the recorded Once transformation/i
+  );
+  assert.doesNotMatch(
+    staleStatus.stdout,
+    /ONCE PROTECTED/
+  );
+
   const ambiguous = await createProject(
     "ambiguous",
     twoCandidateSource,
@@ -235,6 +312,10 @@ try {
     await readFile(ambiguous.sourcePath, "utf8"),
     twoCandidateSource,
     "ambiguous apply must not modify application source"
+  );
+  await assert.rejects(
+    access(ambiguous.receiptPath),
+    "ambiguous apply must not create a protection receipt"
   );
 
   console.log("doctor safe apply regression: PASS");
