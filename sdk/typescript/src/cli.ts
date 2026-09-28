@@ -60,13 +60,19 @@ function printHelp(): void {
   console.log("Commands:");
 
   console.log(
-    "  once doctor [directory] [--protect] [--connection] [--tools] [--tools-live=<host/name>] [--tools-watch-ms=<ms>]"
+    "  once doctor [directory] [--protect] [--apply] [--verify] [--connection] [--tools] [--tools-live=<host/name>] [--tools-watch-ms=<ms>]"
   );
   console.log(
-    "      Run the low-friction local safety check. No API key required."
+    "      Run the low-friction local safety check. No API key required unless network verification is explicitly requested."
   );
   console.log(
-    "      Use --protect to generate a review plan and snippets without changing source."
+    "      Use --protect to generate review/autoprotect plans and snippets without changing source."
+  );
+  console.log(
+    "      Use --protect --apply to invoke the existing transactional apply engine only when exactly one supported PATCHABLE transformation is proven."
+  );
+  console.log(
+    "      Use --verify to run the route-matched synthetic lost-ack proof against Once; this requires ONCE_API_KEY and never calls the configured application provider."
   );
   console.log(
     "      Use --connection to also verify the hosted Once API connection."
@@ -82,6 +88,17 @@ function printHelp(): void {
   );
   console.log(
     "      Live tool enumeration/watch never launches configured stdio servers and does not follow redirects."
+  );
+
+  console.log("");
+  console.log(
+    "  once prove"
+  );
+  console.log(
+    "      Run an isolated synthetic lost-ack/retry proof using local durable Once state."
+  );
+  console.log(
+    "      No real project tool or provider is called. Requires Node.js 24.15+."
   );
 
   console.log("");
@@ -160,7 +177,19 @@ function printHelp(): void {
     "  once doctor . --protect"
   );
   console.log(
+    "  once doctor . --protect --apply"
+  );
+  console.log(
+    "  once doctor . --protect --apply --verify"
+  );
+  console.log(
+    "  once doctor . --verify"
+  );
+  console.log(
     "  once doctor . --connection"
+  );
+  console.log(
+    "  once prove"
   );
   console.log(
     "  once protect ."
@@ -205,6 +234,28 @@ async function main(): Promise<void> {
           value =>
             !value.startsWith("--")
         ) ?? ".";
+
+      const apply =
+        args.includes("--apply");
+      const protect =
+        args.includes("--protect");
+      const verify =
+        args.includes("--verify");
+
+      if (apply && !protect) {
+        throw new Error(
+          "doctor --apply requires --protect. The review and automatic wiring plans must be generated before source mutation is considered."
+        );
+      }
+
+      if (
+        verify &&
+        !process.env.ONCE_API_KEY?.trim()
+      ) {
+        throw new Error(
+          "doctor --verify requires ONCE_API_KEY before any source mutation or network verification is attempted."
+        );
+      }
 
       const liveSelectors =
         args
@@ -267,8 +318,9 @@ async function main(): Promise<void> {
       await runDoctor(
         requestedPath,
         {
-          protect:
-            args.includes("--protect"),
+          protect,
+          apply,
+          verify,
           connection:
             args.includes("--connection")
         }
@@ -502,6 +554,23 @@ async function main(): Promise<void> {
         );
       }
 
+      return;
+    }
+
+    case "prove": {
+      if (args.length > 0) {
+        throw new Error(
+          "once prove does not accept project paths or provider arguments; it runs only an isolated synthetic local proof."
+        );
+      }
+
+      const {
+        printSyntheticProtectionProof
+      } = await import(
+        "./synthetic-proof.js"
+      );
+
+      await printSyntheticProtectionProof();
       return;
     }
 

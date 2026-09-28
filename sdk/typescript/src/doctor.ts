@@ -18,13 +18,50 @@ import {
   runProtect
 } from "./protect.js";
 
+import {
+  applyProtectionPlan
+} from "./apply.js";
+
+import {
+  discoverToolGraph,
+  type ToolDiscoveryResult
+} from "./tool-discovery.js";
+
+import type {
+  ToolActionBand
+} from "./tool-importance.js";
+
+import {
+  writeAutoprotectPlan
+} from "./autoprotect-plan.js";
+
+import {
+  inspectProtectionReceipt,
+  writeProtectionReceipt
+} from "./protection-receipt.js";
+
+import {
+  verifyProtectionRoute
+} from "./protection-route-proof.js";
+
 export type DoctorOptions = {
   protect?: boolean;
+  apply?: boolean;
+  verify?: boolean;
   connection?: boolean;
 };
 
 const standaloneCli =
   "npx --yes --package=@once-agent/sdk once";
+
+const actionBands: ToolActionBand[] = [
+  "BYPASS",
+  "OBSERVE",
+  "REVIEW",
+  "QUALIFY",
+  "PROTECT_PRIORITY",
+  "CRITICAL_GAP"
+];
 
 function confidenceRank(
   confidence: Finding["confidence"]
@@ -97,6 +134,176 @@ function printCandidate(
   );
 }
 
+async function printProtectionReadiness(
+  requestedPath: string
+): Promise<ToolDiscoveryResult> {
+  const discovery =
+    await discoverToolGraph(
+      requestedPath
+    );
+
+  const counts =
+    new Map<ToolActionBand, number>(
+      actionBands.map(
+        (band): [ToolActionBand, number] => [
+          band,
+          0
+        ]
+      )
+    );
+
+  for (const tool of discovery.tools) {
+    const band =
+      tool.once.actionPriority.band;
+
+    counts.set(
+      band,
+      (counts.get(band) ?? 0) + 1
+    );
+  }
+
+  const protectionGaps =
+    (counts.get("PROTECT_PRIORITY") ?? 0) +
+    (counts.get("CRITICAL_GAP") ?? 0);
+
+  const unresolved =
+    (counts.get("REVIEW") ?? 0) +
+    (counts.get("QUALIFY") ?? 0);
+
+  console.log("");
+  console.log("PROTECTION READINESS");
+  console.log("--------------------");
+  console.log(
+    `Tool/capability records: ${discovery.tools.length}`
+  );
+  console.log(
+    `Configured tool sources: ${discovery.configuredSources.length}`
+  );
+  console.log(
+    `BYPASS ${counts.get("BYPASS") ?? 0}   OBSERVE ${counts.get("OBSERVE") ?? 0}   REVIEW ${counts.get("REVIEW") ?? 0}`
+  );
+  console.log(
+    `QUALIFY ${counts.get("QUALIFY") ?? 0}   PROTECT_PRIORITY ${counts.get("PROTECT_PRIORITY") ?? 0}   CRITICAL_GAP ${counts.get("CRITICAL_GAP") ?? 0}`
+  );
+  console.log("");
+
+  if (protectionGaps > 0) {
+    console.log(
+      `! ${protectionGaps} high-priority execution-safety gap${protectionGaps === 1 ? "" : "s"} detected.`
+    );
+  } else {
+    console.log(
+      "✓ No high-priority execution-safety gaps were identified by the current local evidence."
+    );
+  }
+
+  if (unresolved > 0) {
+    console.log(
+      `! ${unresolved} tool/capability record${unresolved === 1 ? "" : "s"} still require qualification or review.`
+    );
+  }
+
+  console.log(
+    "Discovery remained local/read-only: no tool was invoked, no configured stdio server was launched, and no provider was contacted."
+  );
+
+  return discovery;
+}
+
+async function printProtectionStatus(
+  requestedPath: string
+): Promise<void> {
+  const inspection =
+    await inspectProtectionReceipt(
+      requestedPath
+    );
+
+  if (!inspection) {
+    return;
+  }
+
+  console.log("");
+  console.log("PROTECTION STATUS");
+  console.log("-----------------");
+
+  if (inspection.state === "INVALID_RECEIPT") {
+    console.log("! Protection receipt: INVALID");
+    console.log(`  ${inspection.detail}`);
+    console.log(
+      "  No protection claim is made from this receipt."
+    );
+    return;
+  }
+
+  if (inspection.state === "STALE_SOURCE") {
+    console.log("! Applied transformation receipt: STALE_SOURCE");
+    console.log(`  ${inspection.detail}`);
+    console.log(
+      `  Recorded route: ${inspection.receipt.execution_route}`
+    );
+    console.log(
+      "  Re-run Doctor/Protect before relying on the recorded wiring."
+    );
+    return;
+  }
+
+  console.log("✓ Applied transformation receipt: CURRENT");
+  console.log(
+    `  Callsite: ${inspection.receipt.callsite_ref}`
+  );
+  console.log(
+    `  Execution route: ${inspection.receipt.execution_route}`
+  );
+  console.log(
+    `  Route proof: ${inspection.receipt.route_proof.state} (${inspection.receipt.route_proof.required})`
+  );
+
+  if (inspection.state === "CURRENT_PROTECTED") {
+    console.log(
+      `  Proof operation: ${inspection.receipt.route_proof.operation_id}`
+    );
+    console.log(
+      `  Proof attempts/effects: ${inspection.receipt.route_proof.attempts}/${inspection.receipt.route_proof.side_effects}`
+    );
+    console.log("  ONCE PROTECTED");
+    return;
+  }
+
+  console.log(
+    "  Protection claim: pending route-matched hostile-retry proof."
+  );
+}
+
+async function configuredProvider(
+  requestedPath: string
+): Promise<string> {
+  const raw = await fs.readFile(
+    path.join(
+      path.resolve(requestedPath),
+      ".once",
+      "config.json"
+    ),
+    "utf8"
+  );
+
+  const parsed = JSON.parse(
+    raw.replace(/^\uFEFF/, "")
+  ) as {
+    provider?: {
+      name?: string;
+    };
+  };
+
+  const provider = parsed.provider?.name?.trim();
+  if (!provider) {
+    throw new Error(
+      "Configured provider missing while creating protection receipt."
+    );
+  }
+
+  return provider;
+}
+
 async function runConnectionDoctor(): Promise<void> {
   console.log("");
   console.log("HOSTED CONNECTION");
@@ -159,6 +366,12 @@ export async function runDoctor(
   requestedPath: string,
   options: DoctorOptions = {}
 ): Promise<void> {
+  if (options.apply && !options.protect) {
+    throw new Error(
+      "Doctor --apply requires --protect so the review and automatic wiring plans are generated before the existing transactional apply engine is allowed to run."
+    );
+  }
+
   const root = path.resolve(requestedPath);
   const stat = await fs.stat(root);
 
@@ -172,9 +385,13 @@ export async function runDoctor(
   console.log("Once Doctor");
   console.log("-----------");
   console.log(`Directory: ${root}`);
-  console.log("Mode: local + read-only");
+  console.log(
+    `Mode: ${options.verify ? "local assessment + explicit synthetic route verification" : options.apply ? "local assessment + explicit transactional apply" : "local + read-only"}`
+  );
   console.log("Source uploaded: no");
-  console.log("API key required: no");
+  console.log(
+    `API key required: ${options.verify || options.connection ? "yes for requested network verification" : "no"}`
+  );
 
   const nodeVersion = process.versions.node;
   const cliReady =
@@ -279,6 +496,15 @@ export async function runDoctor(
     }
   }
 
+  const discovery =
+    await printProtectionReadiness(
+      requestedPath
+    );
+
+  await printProtectionStatus(
+    requestedPath
+  );
+
   console.log("");
   console.log("NEXT STEP");
   console.log("---------");
@@ -288,14 +514,21 @@ export async function runDoctor(
       "Review protection guidance without changing source code:"
     );
     console.log(
-      `  ${standaloneCli} protect ${printableTarget(requestedPath)} --all --snippets`
+      `  ${standaloneCli} doctor ${printableTarget(requestedPath)} --protect`
     );
     console.log("");
     console.log(
-      "Generate a machine-readable protection plan:"
+      "Apply only if Once can prove exactly one supported PATCHABLE transformation:"
     );
     console.log(
-      `  ${standaloneCli} protect ${printableTarget(requestedPath)} --all --write-plan`
+      `  ${standaloneCli} doctor ${printableTarget(requestedPath)} --protect --apply`
+    );
+    console.log("");
+    console.log(
+      "Apply and then run the route-matched synthetic lost-ack proof in one explicit command:"
+    );
+    console.log(
+      `  ${standaloneCli} doctor ${printableTarget(requestedPath)} --protect --apply --verify`
     );
   } else {
     console.log(
@@ -308,7 +541,9 @@ export async function runDoctor(
 
   console.log("");
   console.log(
-    "No source files were changed. Detection is heuristic; review candidates before applying protection."
+    options.apply
+      ? "Source mutation was explicitly requested. The apply engine will still refuse zero, multiple, stale or unsupported PATCHABLE candidates."
+      : "No source files were changed. Detection is heuristic; review candidates before applying protection."
   );
 
   if (options.protect) {
@@ -316,7 +551,9 @@ export async function runDoctor(
     console.log("PROTECTION REVIEW");
     console.log("-----------------");
     console.log(
-      "Generating .once/protect-plan.json and integration snippets. Source files will remain unchanged."
+      options.apply
+        ? "Generating review artifacts before attempting the existing transactional apply boundary."
+        : "Generating .once/protect-plan.json, .once/autoprotect-plan.json and integration snippets. Source files will remain unchanged."
     );
 
     await runProtect(
@@ -326,6 +563,123 @@ export async function runDoctor(
         writePlan: true,
         writeSnippets: true
       }
+    );
+
+    await writeAutoprotectPlan(
+      requestedPath,
+      discovery
+    );
+
+    if (options.apply) {
+      console.log("");
+      console.log("SAFE APPLY");
+      console.log("----------");
+
+      const result =
+        await applyProtectionPlan(
+          requestedPath
+        );
+
+      let receiptPath: string;
+
+      try {
+        const provider =
+          await configuredProvider(
+            requestedPath
+          );
+
+        const receipt =
+          await writeProtectionReceipt(
+            requestedPath,
+            {
+              callsiteRef: result.callsiteRef,
+              file: result.file,
+              provider,
+              sourceSha256: result.sourceSha256,
+              appliedSha256: result.appliedSha256
+            }
+          );
+
+        receiptPath = receipt.path;
+      } catch (error) {
+        await fs.copyFile(
+          result.backupPath,
+          path.resolve(
+            root,
+            result.file
+          )
+        );
+
+        throw new Error(
+          "Protection receipt could not be persisted; the source transformation was rolled back and no protection claim was recorded.",
+          {
+            cause: error instanceof Error
+              ? error
+              : undefined
+          }
+        );
+      }
+
+      console.log(
+        `Applied: ${result.file}`
+      );
+      console.log(
+        `Backup: ${result.backupPath}`
+      );
+      console.log(
+        `Protection receipt: ${path.relative(root, receiptPath)}`
+      );
+      console.log(
+        "Post-write TypeScript verification: PASS"
+      );
+      console.log(
+        "ONE PROVEN PATCHABLE TRANSFORMATION APPLIED"
+      );
+      console.log(
+        "Route proof: PENDING (ONCE_EXECUTE_LOST_ACK_REPLAY_V1)"
+      );
+      console.log(
+        "This does not claim that every project tool or execution-safety gap is now protected."
+      );
+    }
+  }
+
+  if (options.verify) {
+    console.log("");
+    console.log("ROUTE VERIFICATION");
+    console.log("------------------");
+    console.log(
+      "Synthetic provider only: blind_test (the configured application provider is not invoked)."
+    );
+    console.log(
+      "Injecting a lost acknowledgement after the first successful Once response, then allowing the SDK to retry the same operation ID."
+    );
+
+    const proof =
+      await verifyProtectionRoute(
+        requestedPath
+      );
+
+    console.log(
+      `Proof operation: ${proof.operationId}`
+    );
+    console.log(
+      `SDK execute requests: ${proof.executeRequests}`
+    );
+    console.log(
+      `Ledger attempts: ${proof.attempts}`
+    );
+    console.log(
+      `Synthetic external effects: ${proof.sideEffects}`
+    );
+    console.log(
+      `Ledger state: ${proof.ledgerState}`
+    );
+    console.log(
+      "ROUTE-MATCHED LOST-ACK PROOF: PASS"
+    );
+    console.log(
+      "ONCE PROTECTED"
     );
   }
 
