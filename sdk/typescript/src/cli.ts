@@ -60,16 +60,19 @@ function printHelp(): void {
   console.log("Commands:");
 
   console.log(
-    "  once doctor [directory] [--protect] [--apply] [--connection] [--tools] [--tools-live=<host/name>] [--tools-watch-ms=<ms>]"
+    "  once doctor [directory] [--protect] [--apply] [--verify] [--connection] [--tools] [--tools-live=<host/name>] [--tools-watch-ms=<ms>]"
   );
   console.log(
-    "      Run the low-friction local safety check. No API key required."
+    "      Run the low-friction local safety check. No API key required unless network verification is explicitly requested."
   );
   console.log(
     "      Use --protect to generate review/autoprotect plans and snippets without changing source."
   );
   console.log(
     "      Use --protect --apply to invoke the existing transactional apply engine only when exactly one supported PATCHABLE transformation is proven."
+  );
+  console.log(
+    "      Use --verify to run the route-matched synthetic lost-ack proof against Once; this requires ONCE_API_KEY and never calls the configured application provider."
   );
   console.log(
     "      Use --connection to also verify the hosted Once API connection."
@@ -166,6 +169,12 @@ function printHelp(): void {
     "  once doctor . --protect --apply"
   );
   console.log(
+    "  once doctor . --protect --apply --verify"
+  );
+  console.log(
+    "  once doctor . --verify"
+  );
+  console.log(
     "  once doctor . --connection"
   );
   console.log(
@@ -216,6 +225,8 @@ async function main(): Promise<void> {
         args.includes("--apply");
       const protect =
         args.includes("--protect");
+      const verify =
+        args.includes("--verify");
 
       if (apply && !protect) {
         throw new Error(
@@ -286,6 +297,7 @@ async function main(): Promise<void> {
         {
           protect,
           apply,
+          verify,
           connection:
             args.includes("--connection")
         }
