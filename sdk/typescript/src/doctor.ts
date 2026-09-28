@@ -19,12 +19,17 @@ import {
 } from "./protect.js";
 
 import {
-  discoverToolGraph
+  discoverToolGraph,
+  type ToolDiscoveryResult
 } from "./tool-discovery.js";
 
 import type {
   ToolActionBand
 } from "./tool-importance.js";
+
+import {
+  writeAutoprotectPlan
+} from "./autoprotect-plan.js";
 
 export type DoctorOptions = {
   protect?: boolean;
@@ -116,7 +121,7 @@ function printCandidate(
 
 async function printProtectionReadiness(
   requestedPath: string
-): Promise<void> {
+): Promise<ToolDiscoveryResult> {
   const discovery =
     await discoverToolGraph(
       requestedPath
@@ -125,7 +130,10 @@ async function printProtectionReadiness(
   const counts =
     new Map<ToolActionBand, number>(
       actionBands.map(
-        band => [band, 0]
+        (band): [ToolActionBand, number] => [
+          band,
+          0
+        ]
       )
     );
 
@@ -183,6 +191,8 @@ async function printProtectionReadiness(
   console.log(
     "Discovery remained local/read-only: no tool was invoked, no configured stdio server was launched, and no provider was contacted."
   );
+
+  return discovery;
 }
 
 async function runConnectionDoctor(): Promise<void> {
@@ -367,9 +377,10 @@ export async function runDoctor(
     }
   }
 
-  await printProtectionReadiness(
-    requestedPath
-  );
+  const discovery =
+    await printProtectionReadiness(
+      requestedPath
+    );
 
   console.log("");
   console.log("NEXT STEP");
@@ -408,7 +419,7 @@ export async function runDoctor(
     console.log("PROTECTION REVIEW");
     console.log("-----------------");
     console.log(
-      "Generating .once/protect-plan.json and integration snippets. Source files will remain unchanged."
+      "Generating .once/protect-plan.json, .once/autoprotect-plan.json and integration snippets. Source files will remain unchanged."
     );
 
     await runProtect(
@@ -418,6 +429,11 @@ export async function runDoctor(
         writePlan: true,
         writeSnippets: true
       }
+    );
+
+    await writeAutoprotectPlan(
+      requestedPath,
+      discovery
     );
   }
 
