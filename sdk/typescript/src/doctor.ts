@@ -40,9 +40,14 @@ import {
   writeProtectionReceipt
 } from "./protection-receipt.js";
 
+import {
+  verifyProtectionRoute
+} from "./protection-route-proof.js";
+
 export type DoctorOptions = {
   protect?: boolean;
   apply?: boolean;
+  verify?: boolean;
   connection?: boolean;
 };
 
@@ -252,6 +257,18 @@ async function printProtectionStatus(
   console.log(
     `  Route proof: ${inspection.receipt.route_proof.state} (${inspection.receipt.route_proof.required})`
   );
+
+  if (inspection.state === "CURRENT_PROTECTED") {
+    console.log(
+      `  Proof operation: ${inspection.receipt.route_proof.operation_id}`
+    );
+    console.log(
+      `  Proof attempts/effects: ${inspection.receipt.route_proof.attempts}/${inspection.receipt.route_proof.side_effects}`
+    );
+    console.log("  ONCE PROTECTED");
+    return;
+  }
+
   console.log(
     "  Protection claim: pending route-matched hostile-retry proof."
   );
@@ -369,10 +386,12 @@ export async function runDoctor(
   console.log("-----------");
   console.log(`Directory: ${root}`);
   console.log(
-    `Mode: ${options.apply ? "local assessment + explicit transactional apply" : "local + read-only"}`
+    `Mode: ${options.verify ? "local assessment + explicit synthetic route verification" : options.apply ? "local assessment + explicit transactional apply" : "local + read-only"}`
   );
   console.log("Source uploaded: no");
-  console.log("API key required: no");
+  console.log(
+    `API key required: ${options.verify || options.connection ? "yes for requested network verification" : "no"}`
+  );
 
   const nodeVersion = process.versions.node;
   const cliReady =
@@ -504,6 +523,13 @@ export async function runDoctor(
     console.log(
       `  ${standaloneCli} doctor ${printableTarget(requestedPath)} --protect --apply`
     );
+    console.log("");
+    console.log(
+      "Apply and then run the route-matched synthetic lost-ack proof in one explicit command:"
+    );
+    console.log(
+      `  ${standaloneCli} doctor ${printableTarget(requestedPath)} --protect --apply --verify`
+    );
   } else {
     console.log(
       "If you know a consequential operation exists, review the full scanner output:"
@@ -616,6 +642,45 @@ export async function runDoctor(
         "This does not claim that every project tool or execution-safety gap is now protected."
       );
     }
+  }
+
+  if (options.verify) {
+    console.log("");
+    console.log("ROUTE VERIFICATION");
+    console.log("------------------");
+    console.log(
+      "Synthetic provider only: blind_test (the configured application provider is not invoked)."
+    );
+    console.log(
+      "Injecting a lost acknowledgement after the first successful Once response, then allowing the SDK to retry the same operation ID."
+    );
+
+    const proof =
+      await verifyProtectionRoute(
+        requestedPath
+      );
+
+    console.log(
+      `Proof operation: ${proof.operationId}`
+    );
+    console.log(
+      `SDK execute requests: ${proof.executeRequests}`
+    );
+    console.log(
+      `Ledger attempts: ${proof.attempts}`
+    );
+    console.log(
+      `Synthetic external effects: ${proof.sideEffects}`
+    );
+    console.log(
+      `Ledger state: ${proof.ledgerState}`
+    );
+    console.log(
+      "ROUTE-MATCHED LOST-ACK PROOF: PASS"
+    );
+    console.log(
+      "ONCE PROTECTED"
+    );
   }
 
   if (options.connection) {
