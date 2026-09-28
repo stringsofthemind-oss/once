@@ -95,7 +95,10 @@ function printHelp(): void {
     "  once prove"
   );
   console.log(
-    "      Run an isolated local lost-ack retry proof using a temporary synthetic effect. Requires Node.js 24.15+."
+    "      Run an isolated synthetic lost-ack/retry proof using local durable Once state."
+  );
+  console.log(
+    "      No real project tool or provider is called. Requires Node.js 24.15+."
   );
 
   console.log("");
@@ -242,6 +245,15 @@ async function main(): Promise<void> {
       if (apply && !protect) {
         throw new Error(
           "doctor --apply requires --protect. The review and automatic wiring plans must be generated before source mutation is considered."
+        );
+      }
+
+      if (
+        verify &&
+        !process.env.ONCE_API_KEY?.trim()
+      ) {
+        throw new Error(
+          "doctor --verify requires ONCE_API_KEY before any source mutation or network verification is attempted."
         );
       }
 
@@ -546,46 +558,19 @@ async function main(): Promise<void> {
     }
 
     case "prove": {
+      if (args.length > 0) {
+        throw new Error(
+          "once prove does not accept project paths or provider arguments; it runs only an isolated synthetic local proof."
+        );
+      }
+
       const {
-        runSyntheticProtectionProof
+        printSyntheticProtectionProof
       } = await import(
         "./synthetic-proof.js"
       );
 
-      const result =
-        await runSyntheticProtectionProof();
-
-      console.log("");
-      console.log(
-        "ONCE SYNTHETIC PROTECTION PROOF"
-      );
-      console.log(
-        "-------------------------------"
-      );
-      console.log(
-        `Operation: ${result.operationId}`
-      );
-      console.log(
-        `First attempt: ${result.firstState}`
-      );
-      console.log(
-        `Immediate retry: ${result.retryState}`
-      );
-      console.log(
-        `Reconciliation: ${result.reconciledState}`
-      );
-      console.log(
-        `Durable replay: ${result.replayState}`
-      );
-      console.log(
-        `External synthetic effects: ${result.effectCount}`
-      );
-      console.log(
-        "PROOF: PASS"
-      );
-      console.log(
-        "Exactly one temporary synthetic effect was produced across the lost-ack ambiguity and retry."
-      );
+      await printSyntheticProtectionProof();
       return;
     }
 
