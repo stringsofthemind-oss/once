@@ -19,6 +19,10 @@ import {
 } from "./protect.js";
 
 import {
+  applyProtectionPlan
+} from "./apply.js";
+
+import {
   discoverToolGraph,
   type ToolDiscoveryResult
 } from "./tool-discovery.js";
@@ -33,6 +37,7 @@ import {
 
 export type DoctorOptions = {
   protect?: boolean;
+  apply?: boolean;
   connection?: boolean;
 };
 
@@ -257,6 +262,12 @@ export async function runDoctor(
   requestedPath: string,
   options: DoctorOptions = {}
 ): Promise<void> {
+  if (options.apply && !options.protect) {
+    throw new Error(
+      "Doctor --apply requires --protect so the review and automatic wiring plans are generated before the existing transactional apply engine is allowed to run."
+    );
+  }
+
   const root = path.resolve(requestedPath);
   const stat = await fs.stat(root);
 
@@ -270,7 +281,9 @@ export async function runDoctor(
   console.log("Once Doctor");
   console.log("-----------");
   console.log(`Directory: ${root}`);
-  console.log("Mode: local + read-only");
+  console.log(
+    `Mode: ${options.apply ? "local assessment + explicit transactional apply" : "local + read-only"}`
+  );
   console.log("Source uploaded: no");
   console.log("API key required: no");
 
@@ -391,14 +404,14 @@ export async function runDoctor(
       "Review protection guidance without changing source code:"
     );
     console.log(
-      `  ${standaloneCli} protect ${printableTarget(requestedPath)} --all --snippets`
+      `  ${standaloneCli} doctor ${printableTarget(requestedPath)} --protect`
     );
     console.log("");
     console.log(
-      "Generate a machine-readable protection plan:"
+      "Apply only if Once can prove exactly one supported PATCHABLE transformation:"
     );
     console.log(
-      `  ${standaloneCli} protect ${printableTarget(requestedPath)} --all --write-plan`
+      `  ${standaloneCli} doctor ${printableTarget(requestedPath)} --protect --apply`
     );
   } else {
     console.log(
@@ -411,7 +424,9 @@ export async function runDoctor(
 
   console.log("");
   console.log(
-    "No source files were changed. Detection is heuristic; review candidates before applying protection."
+    options.apply
+      ? "Source mutation was explicitly requested. The apply engine will still refuse zero, multiple, stale or unsupported PATCHABLE candidates."
+      : "No source files were changed. Detection is heuristic; review candidates before applying protection."
   );
 
   if (options.protect) {
@@ -419,7 +434,9 @@ export async function runDoctor(
     console.log("PROTECTION REVIEW");
     console.log("-----------------");
     console.log(
-      "Generating .once/protect-plan.json, .once/autoprotect-plan.json and integration snippets. Source files will remain unchanged."
+      options.apply
+        ? "Generating review artifacts before attempting the existing transactional apply boundary."
+        : "Generating .once/protect-plan.json, .once/autoprotect-plan.json and integration snippets. Source files will remain unchanged."
     );
 
     await runProtect(
@@ -435,6 +452,33 @@ export async function runDoctor(
       requestedPath,
       discovery
     );
+
+    if (options.apply) {
+      console.log("");
+      console.log("SAFE APPLY");
+      console.log("----------");
+
+      const result =
+        await applyProtectionPlan(
+          requestedPath
+        );
+
+      console.log(
+        `Applied: ${result.file}`
+      );
+      console.log(
+        `Backup: ${result.backupPath}`
+      );
+      console.log(
+        "Post-write TypeScript verification: PASS"
+      );
+      console.log(
+        "ONE PROVEN PATCHABLE TRANSFORMATION APPLIED"
+      );
+      console.log(
+        "This does not claim that every project tool or execution-safety gap is now protected."
+      );
+    }
   }
 
   if (options.connection) {
