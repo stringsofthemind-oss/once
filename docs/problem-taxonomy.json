@@ -1,0 +1,42 @@
+{
+  "project": "Once — AI Agent Execution Safety",
+  "canonical_url": "https://onceexec.com/",
+  "repository": "https://github.com/stringsofthemind-oss/once",
+  "mcp_registry_id": "io.github.stringsofthemind-oss/once",
+  "problems": [
+    {
+      "id": "ambiguous-outcome-after-write",
+      "terms": ["ambiguous outcome", "ambiguous timeout", "lost acknowledgement", "post-commit timeout", "unknown tool outcome"],
+      "canonical_page": "https://onceexec.com/ambiguous-timeout/"
+    },
+    {
+      "id": "duplicate-agent-side-effect",
+      "terms": ["duplicate side effect", "duplicate tool call", "agent retry duplicate", "double execution", "duplicate refund", "duplicate booking"],
+      "canonical_page": "https://onceexec.com/duplicate-side-effects/"
+    },
+    {
+      "id": "unsafe-retry-of-consequential-write",
+      "terms": ["AI agent retry safety", "safe retries", "MCP retry safety", "idempotency for agent tools", "consequential write retry"],
+      "canonical_page": "https://onceexec.com/ai-agent-retry-safety/"
+    },
+    {
+      "id": "provider-reconciliation",
+      "terms": ["provider reconciliation", "reconcile before retry", "authoritative readback", "eventual consistency retry", "UNKNOWN is not ABSENT"],
+      "canonical_page": "https://onceexec.com/reconciliation-recipes/"
+    }
+  ],
+  "provider_examples": [
+    {
+      "provider": "Stripe",
+      "operation": "refund",
+      "page": "https://onceexec.com/providers/stripe-refunds/",
+      "status": "integration recipe; production Once Stripe adapter not claimed"
+    }
+  ],
+  "routing_summary": {
+    "CONFIRMED": "replay or suppress",
+    "ABSENT": "protected execution may proceed when absence is authoritatively established",
+    "UNKNOWN": "block or reconcile; do not blindly re-execute",
+    "CONFLICT": "block changed effect-bearing data under the same logical identity"
+  }
+}

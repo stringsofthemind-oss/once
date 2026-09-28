@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1">
+<meta name="description" content="Practical reconciliation recipes for AI-agent writes after ambiguous outcomes: provider idempotency, authoritative readback, eventual consistency, and permanently unknown results.">
+<link rel="canonical" href="https://onceexec.com/reconciliation-recipes/"><link rel="describedby" type="text/plain" href="../llms.txt">
+<title>Provider Reconciliation Recipes for AI Agent Retries | Once</title>
+<link rel="stylesheet" href="../discovery.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Provider reconciliation recipes for safe AI-agent retries","mainEntityOfPage":"https://onceexec.com/reconciliation-recipes/","about":["provider reconciliation","safe retry","ambiguous outcome","idempotency key","eventual consistency","AI agent execution safety"],"publisher":{"@type":"Organization","name":"Once","url":"https://onceexec.com/"}}</script>
+</head>
+<body>
+<header class="topbar"><a class="brand" href="../">Once<span>.</span></a><nav><a href="../duplicate-side-effects/">Live demo</a><a href="../ambiguous-timeout/">Timeouts</a><a href="../providers/stripe-refunds/">Stripe example</a><a href="https://github.com/stringsofthemind-oss/once">GitHub</a></nav></header>
+<main class="wrap"><section class="hero"><div class="eyebrow">RECONCILIATION RECIPES</div><h1>When a write becomes ambiguous, ask what the provider can actually prove.</h1><p>Retry safety depends less on the timeout itself than on the provider contract available after it.</p></section><article>
+<div class="answer"><strong>Decision rule:</strong> never promote uncertainty to ABSENT merely because a response was lost or a local record is missing. Use the strongest available provider evidence; otherwise preserve UNKNOWN.</div>
+<h2>1. Provider-native idempotency key</h2><p>Bind the provider idempotency key to the same stable logical operation identity used by Once. A retry of the same logical action reuses that key and the same effect-bearing request. If the provider rejects changed parameters under the same key, treat that as a conflict rather than inventing a fresh operation.</p>
+<h2>2. Authoritative readback by provider object ID</h2><p>If the first response exposed a durable provider object ID, persist it as soon as it is trustworthy. After uncertainty, retrieve that exact object and map the provider state to CONFIRMED, ABSENT only when the provider contract truly establishes absence, or UNKNOWN.</p>
+<h2>3. Lookup by stable business or request identity</h2><p>If the direct object ID was lost but the provider supports lookup by a stable request key, external reference, metadata field, or business identity, reconcile against that key. Reject multiple incompatible matches instead of selecting the newest candidate.</p>
+<h2>4. Eventual consistency</h2><p>A temporarily empty read is not necessarily proof that nothing happened. Keep UNKNOWN through the documented visibility window, retry bounded reads, and only transition to ABSENT when the provider semantics make absence authoritative enough for another protected write.</p>
+<h2>5. No authoritative lookup</h2><p>If the provider offers neither safe idempotency nor a trustworthy read path, Once cannot manufacture certainty. Preserve UNKNOWN, block automatic replay, and require an operator or a provider-specific recovery procedure.</p>
+<h2>6. Definitive pre-dispatch failure</h2><p>Failures that provably occur before the provider can begin the side effect can be classified differently from post-dispatch transport loss. The burden of proof belongs on the ABSENT transition.</p>
+<div class="claim"><strong>Important:</strong> reconciliation quality is provider-specific. A 404, missing local row, timeout, or process crash is not automatically authoritative evidence of ABSENT.</div>
+<div class="cta"><h2>Concrete example</h2><p>The Stripe refund recipe shows how provider idempotency and refund readback fit this model without claiming that Once currently ships a universal Stripe adapter.</p><p><a href="../providers/stripe-refunds/">Read the Stripe refund recipe</a> · <a href="../duplicate-side-effects/">Run the duplicate-effect demo</a></p></div>
+</article></main></body></html>
