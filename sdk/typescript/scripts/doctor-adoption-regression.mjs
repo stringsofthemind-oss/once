@@ -124,7 +124,11 @@ try {
   );
   assert.match(
     result.stdout,
-    /npx --yes --package=@once-agent\/sdk once protect .* --all --snippets/
+    /npx --yes --package=@once-agent\/sdk once doctor .* --protect/
+  );
+  assert.match(
+    result.stdout,
+    /npx --yes --package=@once-agent\/sdk once doctor .* --protect --apply/
   );
   assert.match(
     result.stdout,
