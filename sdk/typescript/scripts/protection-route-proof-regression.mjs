@@ -10,6 +10,9 @@ import os from "node:os";
 import path from "node:path";
 
 import {
+  runDoctor,
+} from "../dist/doctor.js";
+import {
   inspectProtectionReceipt,
   writeProtectionReceipt,
 } from "../dist/protection-receipt.js";
@@ -20,6 +23,14 @@ import {
 const root = await mkdtemp(
   path.join(os.tmpdir(), "once-sdk-route-proof-")
 );
+
+async function writeJson(file, value) {
+  await writeFile(
+    file,
+    JSON.stringify(value, null, 2) + "\n",
+    "utf8",
+  );
+}
 
 async function createAppliedProject(name) {
   const directory = path.join(root, name);
@@ -50,6 +61,75 @@ async function createAppliedProject(name) {
       provider: "configured-app-provider",
       sourceSha256: "0".repeat(64),
       appliedSha256: sha,
+    },
+  );
+
+  return {
+    directory,
+    sourcePath,
+    source,
+  };
+}
+
+async function createGuidedProject(name) {
+  const directory = path.join(root, name);
+  const src = path.join(directory, "src");
+  const once = path.join(directory, ".once");
+  await mkdir(src, { recursive: true });
+  await mkdir(once, { recursive: true });
+
+  const sourcePath = path.join(src, "order.ts");
+  const source = `
+export async function createOrder(
+  operationId: string,
+  payload: unknown
+) {
+  await fetch(
+    "https://api.example.invalid/orders",
+    {
+      method: "POST",
+      body: JSON.stringify(payload)
+    }
+  );
+}
+`.trimStart();
+
+  await writeFile(sourcePath, source, "utf8");
+
+  await writeJson(
+    path.join(directory, "package.json"),
+    {
+      name: `once-guided-route-proof-${name}`,
+      private: true,
+    },
+  );
+
+  await writeJson(
+    path.join(once, "config.json"),
+    {
+      version: 1,
+      provider: {
+        name: "guided-app-provider",
+        type: "http_v1",
+        version_id: "pv_00000000000000000000000000000000",
+      },
+    },
+  );
+
+  await writeJson(
+    path.join(once, "provider-capabilities.json"),
+    {
+      schema_version: 1,
+      provider: "guided-app-provider",
+      capabilities: [
+        {
+          category: "HTTP_WRITE",
+          action_type: "http_write_v1",
+          allowed_urls: [
+            "https://api.example.invalid/orders",
+          ],
+        },
+      ],
     },
   );
 
@@ -231,6 +311,82 @@ try {
     "CURRENT_PENDING_PROOF",
     "failed hostile-retry proof must not promote the protection receipt"
   );
+
+  // ============================================================
+  // GUIDED PHASE 15 FLOW: ASSESS -> APPLY -> VERIFY -> BADGE
+  // ============================================================
+
+  const guided = await createGuidedProject("guided");
+  const guidedFake = createFakeOnceFetch();
+  const originalFetch = globalThis.fetch;
+  const originalApiKey = process.env.ONCE_API_KEY;
+  const originalBaseUrl = process.env.ONCE_BASE_URL;
+  const originalLog = console.log;
+  const output = [];
+
+  try {
+    globalThis.fetch = guidedFake.fetchImpl;
+    process.env.ONCE_API_KEY = "once_test_route_proof";
+    process.env.ONCE_BASE_URL = "https://once.test";
+    console.log = (...values) => {
+      output.push(values.map(String).join(" "));
+    };
+
+    await runDoctor(
+      guided.directory,
+      {
+        protect: true,
+        apply: true,
+        verify: true,
+      },
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    console.log = originalLog;
+
+    if (originalApiKey === undefined) {
+      delete process.env.ONCE_API_KEY;
+    } else {
+      process.env.ONCE_API_KEY = originalApiKey;
+    }
+
+    if (originalBaseUrl === undefined) {
+      delete process.env.ONCE_BASE_URL;
+    } else {
+      process.env.ONCE_BASE_URL = originalBaseUrl;
+    }
+  }
+
+  const guidedOutput = output.join("\n");
+
+  assert.match(guidedOutput, /PROTECTION READINESS/);
+  assert.match(guidedOutput, /AUTOMATIC WIRING PLAN/);
+  assert.match(guidedOutput, /SAFE APPLY/);
+  assert.match(
+    guidedOutput,
+    /ONE PROVEN PATCHABLE TRANSFORMATION APPLIED/,
+  );
+  assert.match(guidedOutput, /ROUTE VERIFICATION/);
+  assert.match(
+    guidedOutput,
+    /ROUTE-MATCHED LOST-ACK PROOF: PASS/,
+  );
+  assert.match(guidedOutput, /ONCE PROTECTED/);
+  assert.equal(guidedFake.attempts, 2);
+  assert.equal(guidedFake.sideEffects, 1);
+
+  const guidedSource = await readFile(guided.sourcePath, "utf8");
+  assert.match(
+    guidedSource,
+    /await new __OnceAgentClient\(\)\.execute\(/,
+  );
+  assert.doesNotMatch(guidedSource, /await fetch\(/);
+
+  const guidedInspection = await inspectProtectionReceipt(guided.directory);
+  assert.equal(guidedInspection.state, "CURRENT_PROTECTED");
+  assert.equal(guidedInspection.receipt.once_protected, true);
+  assert.equal(guidedInspection.receipt.route_proof.attempts, 2);
+  assert.equal(guidedInspection.receipt.route_proof.side_effects, 1);
 
   console.log("protection route proof regression: PASS");
 } finally {
