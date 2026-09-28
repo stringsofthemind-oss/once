@@ -52,6 +52,10 @@ import {
   printMcpToolRefreshReport
 } from "./mcp-tool-refresh-report.js";
 
+import {
+  printSyntheticProtectionProof
+} from "./synthetic-proof.js";
+
 function printHelp(): void {
   console.log("");
   console.log("Once");
@@ -105,6 +109,17 @@ function printHelp(): void {
   );
   console.log(
     "      Use --apply to transactionally apply exactly one PATCHABLE candidate."
+  );
+
+  console.log("");
+  console.log(
+    "  once prove"
+  );
+  console.log(
+    "      Run an isolated synthetic lost-ack/retry proof using local durable Once state."
+  );
+  console.log(
+    "      No real project tool or provider is called. Requires Node.js 24.15+."
   );
 
   console.log("");
@@ -173,6 +188,9 @@ function printHelp(): void {
   );
   console.log(
     "  once protect . --apply"
+  );
+  console.log(
+    "  once prove"
   );
   console.log(
     "  once setup ."
@@ -309,6 +327,17 @@ async function main(): Promise<void> {
         }
       }
 
+      return;
+    }
+
+    case "prove": {
+      if (args.length > 0) {
+        throw new Error(
+          "once prove does not accept project paths or provider arguments; it runs only an isolated synthetic local proof."
+        );
+      }
+
+      await printSyntheticProtectionProof();
       return;
     }
 
