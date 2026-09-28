@@ -35,6 +35,11 @@ import {
   writeAutoprotectPlan
 } from "./autoprotect-plan.js";
 
+import {
+  inspectProtectionReceipt,
+  writeProtectionReceipt
+} from "./protection-receipt.js";
+
 export type DoctorOptions = {
   protect?: boolean;
   apply?: boolean;
@@ -198,6 +203,88 @@ async function printProtectionReadiness(
   );
 
   return discovery;
+}
+
+async function printProtectionStatus(
+  requestedPath: string
+): Promise<void> {
+  const inspection =
+    await inspectProtectionReceipt(
+      requestedPath
+    );
+
+  if (!inspection) {
+    return;
+  }
+
+  console.log("");
+  console.log("PROTECTION STATUS");
+  console.log("-----------------");
+
+  if (inspection.state === "INVALID_RECEIPT") {
+    console.log("! Protection receipt: INVALID");
+    console.log(`  ${inspection.detail}`);
+    console.log(
+      "  No protection claim is made from this receipt."
+    );
+    return;
+  }
+
+  if (inspection.state === "STALE_SOURCE") {
+    console.log("! Applied transformation receipt: STALE_SOURCE");
+    console.log(`  ${inspection.detail}`);
+    console.log(
+      `  Recorded route: ${inspection.receipt.execution_route}`
+    );
+    console.log(
+      "  Re-run Doctor/Protect before relying on the recorded wiring."
+    );
+    return;
+  }
+
+  console.log("✓ Applied transformation receipt: CURRENT");
+  console.log(
+    `  Callsite: ${inspection.receipt.callsite_ref}`
+  );
+  console.log(
+    `  Execution route: ${inspection.receipt.execution_route}`
+  );
+  console.log(
+    `  Route proof: ${inspection.receipt.route_proof.state} (${inspection.receipt.route_proof.required})`
+  );
+  console.log(
+    "  Protection claim: pending route-matched hostile-retry proof."
+  );
+}
+
+async function configuredProvider(
+  requestedPath: string
+): Promise<string> {
+  const raw = await fs.readFile(
+    path.join(
+      path.resolve(requestedPath),
+      ".once",
+      "config.json"
+    ),
+    "utf8"
+  );
+
+  const parsed = JSON.parse(
+    raw.replace(/^\uFEFF/, "")
+  ) as {
+    provider?: {
+      name?: string;
+    };
+  };
+
+  const provider = parsed.provider?.name?.trim();
+  if (!provider) {
+    throw new Error(
+      "Configured provider missing while creating protection receipt."
+    );
+  }
+
+  return provider;
 }
 
 async function runConnectionDoctor(): Promise<void> {
@@ -395,6 +482,10 @@ export async function runDoctor(
       requestedPath
     );
 
+  await printProtectionStatus(
+    requestedPath
+  );
+
   console.log("");
   console.log("NEXT STEP");
   console.log("---------");
@@ -463,6 +554,46 @@ export async function runDoctor(
           requestedPath
         );
 
+      let receiptPath: string;
+
+      try {
+        const provider =
+          await configuredProvider(
+            requestedPath
+          );
+
+        const receipt =
+          await writeProtectionReceipt(
+            requestedPath,
+            {
+              callsiteRef: result.callsiteRef,
+              file: result.file,
+              provider,
+              sourceSha256: result.sourceSha256,
+              appliedSha256: result.appliedSha256
+            }
+          );
+
+        receiptPath = receipt.path;
+      } catch (error) {
+        await fs.copyFile(
+          result.backupPath,
+          path.resolve(
+            root,
+            result.file
+          )
+        );
+
+        throw new Error(
+          "Protection receipt could not be persisted; the source transformation was rolled back and no protection claim was recorded.",
+          {
+            cause: error instanceof Error
+              ? error
+              : undefined
+          }
+        );
+      }
+
       console.log(
         `Applied: ${result.file}`
       );
@@ -470,10 +601,16 @@ export async function runDoctor(
         `Backup: ${result.backupPath}`
       );
       console.log(
+        `Protection receipt: ${path.relative(root, receiptPath)}`
+      );
+      console.log(
         "Post-write TypeScript verification: PASS"
       );
       console.log(
         "ONE PROVEN PATCHABLE TRANSFORMATION APPLIED"
+      );
+      console.log(
+        "Route proof: PENDING (HOSTED_LOST_ACK_REPLAY_V1)"
       );
       console.log(
         "This does not claim that every project tool or execution-safety gap is now protected."
