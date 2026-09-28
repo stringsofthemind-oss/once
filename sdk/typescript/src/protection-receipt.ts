@@ -5,11 +5,11 @@ import path from "node:path";
 export const PROTECTION_RECEIPT_FILE =
   "protection-status.json" as const;
 
-export const HOSTED_ONCE_EXECUTE_ROUTE =
-  "HOSTED_ONCE_EXECUTE_V1" as const;
+export const ONCE_SDK_EXECUTE_ROUTE =
+  "ONCE_SDK_EXECUTE_V1" as const;
 
-export const HOSTED_LOST_ACK_PROOF =
-  "HOSTED_LOST_ACK_REPLAY_V1" as const;
+export const ONCE_EXECUTE_LOST_ACK_PROOF =
+  "ONCE_EXECUTE_LOST_ACK_REPLAY_V1" as const;
 
 export type ProtectionReceipt = Readonly<{
   schema_version: 1;
@@ -22,9 +22,9 @@ export type ProtectionReceipt = Readonly<{
   transformer_id: "ts_fetch_post_void_v1";
   source_sha256: string;
   applied_sha256: string;
-  execution_route: typeof HOSTED_ONCE_EXECUTE_ROUTE;
+  execution_route: typeof ONCE_SDK_EXECUTE_ROUTE;
   route_proof: Readonly<{
-    required: typeof HOSTED_LOST_ACK_PROOF;
+    required: typeof ONCE_EXECUTE_LOST_ACK_PROOF;
     state: "PENDING";
     verified_at: null;
   }>;
@@ -82,9 +82,9 @@ function isProtectionReceipt(value: unknown): value is ProtectionReceipt {
     receipt.transformer_id === "ts_fetch_post_void_v1" &&
     typeof receipt.source_sha256 === "string" &&
     typeof receipt.applied_sha256 === "string" &&
-    receipt.execution_route === HOSTED_ONCE_EXECUTE_ROUTE &&
+    receipt.execution_route === ONCE_SDK_EXECUTE_ROUTE &&
     Boolean(routeProof) &&
-    routeProof?.required === HOSTED_LOST_ACK_PROOF &&
+    routeProof?.required === ONCE_EXECUTE_LOST_ACK_PROOF &&
     routeProof?.state === "PENDING" &&
     routeProof?.verified_at === null
   );
@@ -113,9 +113,9 @@ export async function writeProtectionReceipt(
     transformer_id: "ts_fetch_post_void_v1",
     source_sha256: input.sourceSha256,
     applied_sha256: input.appliedSha256,
-    execution_route: HOSTED_ONCE_EXECUTE_ROUTE,
+    execution_route: ONCE_SDK_EXECUTE_ROUTE,
     route_proof: Object.freeze({
-      required: HOSTED_LOST_ACK_PROOF,
+      required: ONCE_EXECUTE_LOST_ACK_PROOF,
       state: "PENDING",
       verified_at: null,
     }),
@@ -132,8 +132,8 @@ export async function writeProtectionReceipt(
 
     // Windows does not reliably replace an existing target with rename().
     // Removing the old receipt first is safe because the receipt is secondary
-    // metadata: applyProtectionPlan rolls application source back if this write
-    // fails, and Doctor treats a missing receipt as no protection claim.
+    // metadata: Doctor rolls application source back if this write fails, and
+    // a missing receipt can never create a protection claim.
     await fs.rm(target, { force: true });
     await fs.rename(temporary, target);
   } catch (error) {
