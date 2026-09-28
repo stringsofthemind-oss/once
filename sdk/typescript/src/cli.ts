@@ -92,6 +92,14 @@ function printHelp(): void {
 
   console.log("");
   console.log(
+    "  once prove"
+  );
+  console.log(
+    "      Run an isolated local lost-ack retry proof using a temporary synthetic effect. Requires Node.js 24.15+."
+  );
+
+  console.log("");
+  console.log(
     "  once protect [directory]"
   );
   console.log(
@@ -176,6 +184,9 @@ function printHelp(): void {
   );
   console.log(
     "  once doctor . --connection"
+  );
+  console.log(
+    "  once prove"
   );
   console.log(
     "  once protect ."
@@ -531,6 +542,50 @@ async function main(): Promise<void> {
         );
       }
 
+      return;
+    }
+
+    case "prove": {
+      const {
+        runSyntheticProtectionProof
+      } = await import(
+        "./synthetic-proof.js"
+      );
+
+      const result =
+        await runSyntheticProtectionProof();
+
+      console.log("");
+      console.log(
+        "ONCE SYNTHETIC PROTECTION PROOF"
+      );
+      console.log(
+        "-------------------------------"
+      );
+      console.log(
+        `Operation: ${result.operationId}`
+      );
+      console.log(
+        `First attempt: ${result.firstState}`
+      );
+      console.log(
+        `Immediate retry: ${result.retryState}`
+      );
+      console.log(
+        `Reconciliation: ${result.reconciledState}`
+      );
+      console.log(
+        `Durable replay: ${result.replayState}`
+      );
+      console.log(
+        `External synthetic effects: ${result.effectCount}`
+      );
+      console.log(
+        "PROOF: PASS"
+      );
+      console.log(
+        "Exactly one temporary synthetic effect was produced across the lost-ack ambiguity and retry."
+      );
       return;
     }
 
