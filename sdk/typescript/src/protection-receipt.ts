@@ -11,10 +11,8 @@ export const ONCE_SDK_EXECUTE_ROUTE =
 export const ONCE_EXECUTE_LOST_ACK_PROOF =
   "ONCE_EXECUTE_LOST_ACK_REPLAY_V1" as const;
 
-export type ProtectionReceipt = Readonly<{
+type ProtectionReceiptBase = Readonly<{
   schema_version: 1;
-  status: "APPLIED_PENDING_ROUTE_PROOF";
-  once_protected: false;
   applied_at: string;
   callsite_ref: string;
   file: string;
@@ -23,6 +21,11 @@ export type ProtectionReceipt = Readonly<{
   source_sha256: string;
   applied_sha256: string;
   execution_route: typeof ONCE_SDK_EXECUTE_ROUTE;
+}>;
+
+export type PendingProtectionReceipt = ProtectionReceiptBase & Readonly<{
+  status: "APPLIED_PENDING_ROUTE_PROOF";
+  once_protected: false;
   route_proof: Readonly<{
     required: typeof ONCE_EXECUTE_LOST_ACK_PROOF;
     state: "PENDING";
@@ -30,10 +33,31 @@ export type ProtectionReceipt = Readonly<{
   }>;
 }>;
 
+export type VerifiedProtectionReceipt = ProtectionReceiptBase & Readonly<{
+  status: "PROTECTED";
+  once_protected: true;
+  route_proof: Readonly<{
+    required: typeof ONCE_EXECUTE_LOST_ACK_PROOF;
+    state: "PASS";
+    verified_at: string;
+    operation_id: string;
+    attempts: number;
+    side_effects: 1;
+  }>;
+}>;
+
+export type ProtectionReceipt =
+  | PendingProtectionReceipt
+  | VerifiedProtectionReceipt;
+
 export type ProtectionReceiptInspection =
   | Readonly<{
       state: "CURRENT_PENDING_PROOF";
-      receipt: ProtectionReceipt;
+      receipt: PendingProtectionReceipt;
+    }>
+  | Readonly<{
+      state: "CURRENT_PROTECTED";
+      receipt: VerifiedProtectionReceipt;
     }>
   | Readonly<{
       state: "STALE_SOURCE";
@@ -53,6 +77,12 @@ export interface WriteProtectionReceiptInput {
   appliedSha256: string;
 }
 
+export interface VerifiedRouteProofInput {
+  operationId: string;
+  attempts: number;
+  sideEffects: number;
+}
+
 function sha256(value: string): string {
   return createHash("sha256")
     .update(value.replace(/\r\n/g, "\n"), "utf8")
@@ -63,6 +93,22 @@ function receiptPath(root: string): string {
   return path.join(root, ".once", PROTECTION_RECEIPT_FILE);
 }
 
+function hasBaseReceiptShape(
+  receipt: Record<string, unknown>
+): boolean {
+  return (
+    receipt.schema_version === 1 &&
+    typeof receipt.applied_at === "string" &&
+    typeof receipt.callsite_ref === "string" &&
+    typeof receipt.file === "string" &&
+    typeof receipt.provider === "string" &&
+    receipt.transformer_id === "ts_fetch_post_void_v1" &&
+    typeof receipt.source_sha256 === "string" &&
+    typeof receipt.applied_sha256 === "string" &&
+    receipt.execution_route === ONCE_SDK_EXECUTE_ROUTE
+  );
+}
+
 function isProtectionReceipt(value: unknown): value is ProtectionReceipt {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return false;
@@ -71,30 +117,45 @@ function isProtectionReceipt(value: unknown): value is ProtectionReceipt {
   const receipt = value as Record<string, unknown>;
   const routeProof = receipt.route_proof as Record<string, unknown> | undefined;
 
-  return (
-    receipt.schema_version === 1 &&
+  if (
+    !hasBaseReceiptShape(receipt) ||
+    !routeProof ||
+    routeProof.required !== ONCE_EXECUTE_LOST_ACK_PROOF
+  ) {
+    return false;
+  }
+
+  if (
     receipt.status === "APPLIED_PENDING_ROUTE_PROOF" &&
-    receipt.once_protected === false &&
-    typeof receipt.applied_at === "string" &&
-    typeof receipt.callsite_ref === "string" &&
-    typeof receipt.file === "string" &&
-    typeof receipt.provider === "string" &&
-    receipt.transformer_id === "ts_fetch_post_void_v1" &&
-    typeof receipt.source_sha256 === "string" &&
-    typeof receipt.applied_sha256 === "string" &&
-    receipt.execution_route === ONCE_SDK_EXECUTE_ROUTE &&
-    Boolean(routeProof) &&
-    routeProof?.required === ONCE_EXECUTE_LOST_ACK_PROOF &&
-    routeProof?.state === "PENDING" &&
-    routeProof?.verified_at === null
-  );
+    receipt.once_protected === false
+  ) {
+    return (
+      routeProof.state === "PENDING" &&
+      routeProof.verified_at === null
+    );
+  }
+
+  if (
+    receipt.status === "PROTECTED" &&
+    receipt.once_protected === true
+  ) {
+    return (
+      routeProof.state === "PASS" &&
+      typeof routeProof.verified_at === "string" &&
+      typeof routeProof.operation_id === "string" &&
+      Number.isSafeInteger(routeProof.attempts) &&
+      Number(routeProof.attempts) >= 2 &&
+      routeProof.side_effects === 1
+    );
+  }
+
+  return false;
 }
 
-export async function writeProtectionReceipt(
-  requestedPath: string,
-  input: WriteProtectionReceiptInput,
-): Promise<{ path: string; receipt: ProtectionReceipt }> {
-  const root = path.resolve(requestedPath);
+async function persistReceipt(
+  root: string,
+  receipt: ProtectionReceipt,
+): Promise<string> {
   const onceDirectory = path.join(root, ".once");
   const target = receiptPath(root);
   const temporary = path.join(
@@ -102,7 +163,35 @@ export async function writeProtectionReceipt(
     `.once-protection-status-${process.pid}-${Date.now()}.tmp`,
   );
 
-  const receipt: ProtectionReceipt = Object.freeze({
+  await fs.mkdir(onceDirectory, { recursive: true });
+
+  try {
+    await fs.writeFile(
+      temporary,
+      JSON.stringify(receipt, null, 2) + "\n",
+      { encoding: "utf8", flag: "wx" },
+    );
+
+    // Windows does not reliably replace an existing target with rename().
+    // Removing the old receipt first is safe because this metadata never grants
+    // execution authority. A missing receipt means no protection claim.
+    await fs.rm(target, { force: true });
+    await fs.rename(temporary, target);
+  } catch (error) {
+    await fs.rm(temporary, { force: true });
+    throw error;
+  }
+
+  return target;
+}
+
+export async function writeProtectionReceipt(
+  requestedPath: string,
+  input: WriteProtectionReceiptInput,
+): Promise<{ path: string; receipt: PendingProtectionReceipt }> {
+  const root = path.resolve(requestedPath);
+
+  const receipt: PendingProtectionReceipt = Object.freeze({
     schema_version: 1,
     status: "APPLIED_PENDING_ROUTE_PROOF",
     once_protected: false,
@@ -121,26 +210,7 @@ export async function writeProtectionReceipt(
     }),
   });
 
-  await fs.mkdir(onceDirectory, { recursive: true });
-
-  try {
-    await fs.writeFile(
-      temporary,
-      JSON.stringify(receipt, null, 2) + "\n",
-      { encoding: "utf8", flag: "wx" },
-    );
-
-    // Windows does not reliably replace an existing target with rename().
-    // Removing the old receipt first is safe because the receipt is secondary
-    // metadata: Doctor rolls application source back if this write fails, and
-    // a missing receipt can never create a protection claim.
-    await fs.rm(target, { force: true });
-    await fs.rename(temporary, target);
-  } catch (error) {
-    await fs.rm(temporary, { force: true });
-    throw error;
-  }
-
+  const target = await persistReceipt(root, receipt);
   return { path: target, receipt };
 }
 
@@ -210,8 +280,86 @@ export async function inspectProtectionReceipt(
     };
   }
 
+  if (parsed.status === "PROTECTED") {
+    return {
+      state: "CURRENT_PROTECTED",
+      receipt: parsed,
+    };
+  }
+
   return {
     state: "CURRENT_PENDING_PROOF",
     receipt: parsed,
   };
+}
+
+export async function markProtectionReceiptVerified(
+  requestedPath: string,
+  proof: VerifiedRouteProofInput,
+): Promise<{ path: string; receipt: VerifiedProtectionReceipt }> {
+  if (
+    typeof proof.operationId !== "string" ||
+    proof.operationId.trim() === "" ||
+    !Number.isSafeInteger(proof.attempts) ||
+    proof.attempts < 2 ||
+    proof.sideEffects !== 1
+  ) {
+    throw new Error(
+      "Route proof cannot promote protection without a stable proof operation, at least two attempts, and exactly one synthetic side effect.",
+    );
+  }
+
+  const inspection = await inspectProtectionReceipt(requestedPath);
+
+  if (!inspection) {
+    throw new Error(
+      "No protection receipt exists. Apply a supported transformation before route verification.",
+    );
+  }
+
+  if (inspection.state === "INVALID_RECEIPT") {
+    throw new Error(
+      `Protection receipt is invalid: ${inspection.detail}`,
+    );
+  }
+
+  if (inspection.state === "STALE_SOURCE") {
+    throw new Error(
+      `Protection receipt is stale: ${inspection.detail}`,
+    );
+  }
+
+  if (inspection.state === "CURRENT_PROTECTED") {
+    return {
+      path: receiptPath(path.resolve(requestedPath)),
+      receipt: inspection.receipt,
+    };
+  }
+
+  const verifiedAt = new Date().toISOString();
+  const receipt: VerifiedProtectionReceipt = Object.freeze({
+    schema_version: 1,
+    status: "PROTECTED",
+    once_protected: true,
+    applied_at: inspection.receipt.applied_at,
+    callsite_ref: inspection.receipt.callsite_ref,
+    file: inspection.receipt.file,
+    provider: inspection.receipt.provider,
+    transformer_id: inspection.receipt.transformer_id,
+    source_sha256: inspection.receipt.source_sha256,
+    applied_sha256: inspection.receipt.applied_sha256,
+    execution_route: inspection.receipt.execution_route,
+    route_proof: Object.freeze({
+      required: ONCE_EXECUTE_LOST_ACK_PROOF,
+      state: "PASS",
+      verified_at: verifiedAt,
+      operation_id: proof.operationId,
+      attempts: proof.attempts,
+      side_effects: 1,
+    }),
+  });
+
+  const root = path.resolve(requestedPath);
+  const target = await persistReceipt(root, receipt);
+  return { path: target, receipt };
 }
