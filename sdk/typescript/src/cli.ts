@@ -60,13 +60,16 @@ function printHelp(): void {
   console.log("Commands:");
 
   console.log(
-    "  once doctor [directory] [--protect] [--connection] [--tools] [--tools-live=<host/name>] [--tools-watch-ms=<ms>]"
+    "  once doctor [directory] [--protect] [--apply] [--connection] [--tools] [--tools-live=<host/name>] [--tools-watch-ms=<ms>]"
   );
   console.log(
     "      Run the low-friction local safety check. No API key required."
   );
   console.log(
-    "      Use --protect to generate a review plan and snippets without changing source."
+    "      Use --protect to generate review/autoprotect plans and snippets without changing source."
+  );
+  console.log(
+    "      Use --protect --apply to invoke the existing transactional apply engine only when exactly one supported PATCHABLE transformation is proven."
   );
   console.log(
     "      Use --connection to also verify the hosted Once API connection."
@@ -160,6 +163,9 @@ function printHelp(): void {
     "  once doctor . --protect"
   );
   console.log(
+    "  once doctor . --protect --apply"
+  );
+  console.log(
     "  once doctor . --connection"
   );
   console.log(
@@ -205,6 +211,17 @@ async function main(): Promise<void> {
           value =>
             !value.startsWith("--")
         ) ?? ".";
+
+      const apply =
+        args.includes("--apply");
+      const protect =
+        args.includes("--protect");
+
+      if (apply && !protect) {
+        throw new Error(
+          "doctor --apply requires --protect. The review and automatic wiring plans must be generated before source mutation is considered."
+        );
+      }
 
       const liveSelectors =
         args
@@ -267,8 +284,8 @@ async function main(): Promise<void> {
       await runDoctor(
         requestedPath,
         {
-          protect:
-            args.includes("--protect"),
+          protect,
+          apply,
           connection:
             args.includes("--connection")
         }
