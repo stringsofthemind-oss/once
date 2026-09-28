@@ -247,7 +247,7 @@ console.log(
 );
 
 //
-// Unsupported headers
+// Static JSON Content-Type header
 //
 
 const headers =
@@ -273,11 +273,23 @@ const headers =
 
 assert.equal(
   headers.eligible,
-  false
+  true
+);
+
+if (!headers.eligible) {
+  throw new Error(
+    headers.reason
+  );
+}
+
+assert.equal(
+  headers.replacement,
+  good.replacement,
+  "Static JSON Content-Type must preserve the same Once action semantics"
 );
 
 console.log(
-  "PASS - unsupported fetch options rejected"
+  "PASS - static application/json Content-Type header transformed"
 );
 
 //

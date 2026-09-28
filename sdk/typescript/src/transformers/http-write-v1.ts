@@ -148,12 +148,14 @@ export function transformHttpWriteV1(
     callMatch[3];
 
   /*
-   * v0.6 allows exactly two fetch options:
+   * Supported fetch options are either:
    *
-   * method
-   * body
+   * method + body
    *
-   * Anything else requires a richer
+   * or method + body + the exact static
+   * Content-Type: application/json header.
+   *
+   * Arbitrary headers still require a richer
    * semantics-preserving transformer.
    */
   const keys =
@@ -170,16 +172,51 @@ export function transformHttpWriteV1(
       new Set(keys)
     ).sort();
 
+  const baseShape =
+    uniqueKeys.length === 2 &&
+    uniqueKeys[0] === "body" &&
+    uniqueKeys[1] === "method";
+
+  const jsonHeaderShape =
+    uniqueKeys.length === 3 &&
+    uniqueKeys[0] === "body" &&
+    uniqueKeys[1] === "headers" &&
+    uniqueKeys[2] === "method";
+
   if (
-    uniqueKeys.length !== 2 ||
-    uniqueKeys[0] !== "body" ||
-    uniqueKeys[1] !== "method"
+    !baseShape &&
+    !jsonHeaderShape
   ) {
     return {
       eligible: false,
       reason:
-        "v0.6 supports exactly the fetch options `method` and `body`."
+        "Supports `method` and `body`, optionally with the exact static JSON Content-Type header."
     };
+  }
+
+  if (jsonHeaderShape) {
+    const headerMatch =
+      options.match(
+        /\bheaders\s*:\s*\{\s*(["'])Content-Type\1\s*:\s*(["'])application\/json\2\s*\}/
+      );
+
+    const headerOccurrences =
+      (
+        options.match(
+          /\bheaders\s*:/g
+        ) ?? []
+      ).length;
+
+    if (
+      !headerMatch ||
+      headerOccurrences !== 1
+    ) {
+      return {
+        eligible: false,
+        reason:
+          "Only the exact static `Content-Type: application/json` header is supported."
+      };
+    }
   }
 
   const methodMatch =
@@ -191,7 +228,7 @@ export function transformHttpWriteV1(
     return {
       eligible: false,
       reason:
-        "v0.6 supports only literal POST requests."
+        "Supports only literal POST requests."
     };
   }
 
@@ -204,7 +241,7 @@ export function transformHttpWriteV1(
     return {
       eligible: false,
       reason:
-        "v0.6 requires body: JSON.stringify(<simple expression>)."
+        "Requires body: JSON.stringify(<simple expression>)."
     };
   }
 

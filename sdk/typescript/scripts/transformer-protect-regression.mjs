@@ -146,7 +146,8 @@ export async function sendUnsupported(
     {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "X-Unsupported": "true"
       },
       body: JSON.stringify(payload)
     }
@@ -679,7 +680,7 @@ if (
   !String(
     unsupported.transformer_reason ?? ""
   ).includes(
-    "exactly the fetch options"
+    "Only the exact static `Content-Type: application/json` header is supported."
   )
 ) {
   throw new Error(
