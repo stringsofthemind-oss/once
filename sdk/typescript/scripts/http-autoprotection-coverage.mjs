@@ -93,9 +93,7 @@ await fetch(
   {
     id: "headers-reference",
     category: "headers",
-    expectedEligible: true,
-    intendedSafe: false,
-    knownBaselineAnomaly: true,
+    expectedEligible: false,
     statement: `
 await fetch(
   "https://api.example.invalid/orders",
@@ -293,11 +291,11 @@ const observedCoverage = (observedEligible / total) * 100;
 const intendedSafeCoverage = (intendedSafe / total) * 100;
 
 assert.equal(total, 15);
-assert.equal(observedEligible, 3);
-assert.equal(observedRejected, 12);
+assert.equal(observedEligible, 2);
+assert.equal(observedRejected, 13);
 assert.equal(intendedSafe, 2);
-assert.equal(anomalies.length, 1);
-assert.equal(observedCoverage.toFixed(2), "20.00");
+assert.equal(anomalies.length, 0);
+assert.equal(observedCoverage.toFixed(2), "13.33");
 assert.equal(intendedSafeCoverage.toFixed(2), "13.33");
 
 const rejectionCounts = new Map();

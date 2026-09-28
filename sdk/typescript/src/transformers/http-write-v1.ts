@@ -172,6 +172,27 @@ export function transformHttpWriteV1(
       new Set(keys)
     ).sort();
 
+  /*
+   * Fail closed on shorthand headers such as:
+   *
+   *   { method: "POST", headers, body: ... }
+   *
+   * The explicit key:value extraction above does
+   * not count shorthand object properties.
+   */
+  const shorthandHeaders =
+    /(?:^|,|\n)\s*headers\s*(?=,|\n|$)/.test(
+      options
+    );
+
+  if (shorthandHeaders) {
+    return {
+      eligible: false,
+      reason:
+        "Only the exact static `Content-Type: application/json` header is supported."
+    };
+  }
+
   const baseShape =
     uniqueKeys.length === 2 &&
     uniqueKeys[0] === "body" &&

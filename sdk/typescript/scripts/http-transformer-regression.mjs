@@ -293,6 +293,48 @@ console.log(
 );
 
 //
+// Shorthand headers reference
+//
+
+const shorthandHeaders =
+  transformHttpWriteV1({
+    statement: `
+      await fetch(
+        "https://api.example.invalid/orders",
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify(payload)
+        }
+      );
+    `,
+    functionSource:
+      goodFunction,
+    provider:
+      "customer-http"
+  });
+
+assert.equal(
+  shorthandHeaders.eligible,
+  false
+);
+
+if (shorthandHeaders.eligible) {
+  throw new Error(
+    "Shorthand headers unexpectedly became transformable"
+  );
+}
+
+assert.equal(
+  shorthandHeaders.reason,
+  "Only the exact static `Content-Type: application/json` header is supported."
+);
+
+console.log(
+  "PASS - shorthand headers reference rejected"
+);
+
+//
 // Wrong method
 //
 
