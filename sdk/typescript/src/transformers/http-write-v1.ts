@@ -156,7 +156,17 @@ export function transformHttpWriteV1(
    * Content-Type: application/json header.
    *
    * Arbitrary headers still require a richer
-   * semantics-preserving transformer.
+   * semantics-preserving action/runtime contract.
+   *
+   * In particular, source Authorization headers
+   * must not be copied into the protected action:
+   * registered provider authorization is resolved
+   * separately by the Once runtime.
+   *
+   * Until http_write_v1 can carry and execute
+   * arbitrary headers with equivalent semantics,
+   * additional, dynamic, referenced, spread, and
+   * Authorization headers remain fail-closed.
    */
   const keys =
     Array.from(
