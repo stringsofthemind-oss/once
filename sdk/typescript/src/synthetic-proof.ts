@@ -61,10 +61,13 @@ async function appendEffect(
 }
 
 export async function runSyntheticProtectionProof(): Promise<SyntheticProtectionProof> {
-  const [major, minor] =
+  const versionParts =
     process.versions.node
       .split(".")
       .map(value => Number.parseInt(value, 10));
+
+  const major = versionParts[0] ?? 0;
+  const minor = versionParts[1] ?? 0;
 
   if (
     major < 24 ||
@@ -191,7 +194,7 @@ export async function runSyntheticProtectionProof(): Promise<SyntheticProtection
 
     const reconciled =
       protectLocal(
-        async (): Promise<ProofReceipt> => {
+        async (_value: ProofInput): Promise<ProofReceipt> => {
           throw new Error(
             "synthetic reconciliation must not dispatch the protected effect"
           );
