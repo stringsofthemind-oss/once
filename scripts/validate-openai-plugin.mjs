@@ -14,6 +14,7 @@ const paths = {
   reference: path.join(pluginRoot, "skills", "protect-consequential-writes", "references", "routing-cases.md"),
   evals: path.join(pluginRoot, "evals", "routing-cases.json"),
   readme: path.join(pluginRoot, "README.md"),
+  published: path.join(root, "docs", "published-versions.json"),
 };
 
 function assert(condition, message) {
@@ -32,11 +33,12 @@ for (const [name, file] of Object.entries(paths)) {
   });
 }
 
-const [manifest, marketplace, mcp, evals, skill, agent, launcher, readme] = await Promise.all([
+const [manifest, marketplace, mcp, evals, published, skill, agent, launcher, readme] = await Promise.all([
   readJson(paths.manifest),
   readJson(paths.marketplace),
   readJson(paths.mcp),
   readJson(paths.evals),
+  readJson(paths.published),
   readFile(paths.skill, "utf8"),
   readFile(paths.agent, "utf8"),
   readFile(paths.launcher, "utf8"),
@@ -85,7 +87,14 @@ const onceServer = mcp.mcpServers?.once;
 assert(onceServer, "MCP config must define mcpServers.once");
 assert(onceServer.command === "node", "Once MCP launcher must use node");
 assert(Array.isArray(onceServer.args) && onceServer.args[0] === "./scripts/once-mcp.cjs", "Once MCP launcher path is incorrect");
-assert(launcher.includes("@once-agent/mcp@0.1.4"), "MCP package must be pinned to @once-agent/mcp@0.1.4");
+assert(
+  launcher.includes(`@once-agent/mcp@${published.mcp}`),
+  `MCP package must be pinned to published @once-agent/mcp@${published.mcp}`
+);
+assert(
+  readme.includes(`@once-agent/mcp@${published.mcp}`),
+  `Codex plugin README must describe published @once-agent/mcp@${published.mcp}`
+);
 
 assert(skill.startsWith("---\n"), "Skill must start with YAML frontmatter");
 assert(/\nname:\s*protect-consequential-writes\n/.test(skill), "Skill frontmatter name is incorrect");
@@ -100,7 +109,10 @@ for (const phrase of [
 ]) {
   assert(skill.includes(phrase), `Skill is missing routing/safety phrase: ${phrase}`);
 }
-assert(skill.includes("@once-agent/sdk@0.1.13"), "Skill CLI fallback must pin @once-agent/sdk@0.1.13");
+assert(
+  skill.includes(`@once-agent/sdk@${published.ts}`),
+  `Skill CLI fallback must pin published @once-agent/sdk@${published.ts}`
+);
 assert(
   skill.includes("Decide whether Once applies before invoking any Once skill or MCP tool."),
   "Skill must require applicability routing before Once tool invocation"
@@ -137,5 +149,5 @@ assert(!combined.includes("[TODO:"), "Plugin package contains unresolved TODO pl
 console.log("OPENAI CODEX PLUGIN: PASS");
 console.log(`Plugin: ${manifest.interface.displayName} v${manifest.version}`);
 console.log(`Routing evals: ${evals.positive.length} positive / ${evals.negative.length} negative`);
-console.log(`MCP: @once-agent/mcp@0.1.4`);
-console.log(`SDK fallback: @once-agent/sdk@0.1.13`);
+console.log(`MCP: @once-agent/mcp@${published.mcp}`);
+console.log(`SDK fallback: @once-agent/sdk@${published.ts}`);
