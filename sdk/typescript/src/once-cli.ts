@@ -15,8 +15,10 @@
  */
 
 const explicitArgs = process.argv.slice(2);
+const zeroFriction = explicitArgs.length === 0;
+const startedAt = performance.now();
 
-if (explicitArgs.length === 0) {
+if (zeroFriction) {
   process.argv.push(
     "doctor",
     ".",
@@ -32,3 +34,17 @@ if (explicitArgs.length === 0) {
 }
 
 await import("./cli.js");
+
+if (zeroFriction && !process.exitCode) {
+  const {
+    measureAdoptionMetrics,
+    printAdoptionMetrics
+  } = await import("./adoption-metrics.js");
+
+  const metrics = await measureAdoptionMetrics(
+    ".",
+    performance.now() - startedAt
+  );
+
+  printAdoptionMetrics(metrics);
+}

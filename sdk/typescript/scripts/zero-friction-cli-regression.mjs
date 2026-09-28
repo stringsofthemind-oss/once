@@ -50,6 +50,11 @@ try {
   );
   assert.match(bare.stdout, /PROTECTION READINESS/);
   assert.match(bare.stdout, /AUTOMATIC WIRING PLAN/);
+  assert.match(bare.stdout, /AUTOPROTECTION METRICS/);
+  assert.match(bare.stdout, /Autoprotection Rate: \d+(?:\.\d+)?%/);
+  assert.match(bare.stdout, /Verified Protection Rate: \d+(?:\.\d+)?%/);
+  assert.match(bare.stdout, /Time-to-Protected: not yet achieved/);
+  assert.match(bare.stdout, /no telemetry is sent/i);
   assert.equal(
     await readFile(sourcePath, "utf8"),
     source,
@@ -70,6 +75,7 @@ try {
   assert.equal(explicit.status, 0);
   assert.match(explicit.stdout, /^\s*Once\s*$/m);
   assert.match(explicit.stdout, /once doctor/);
+  assert.doesNotMatch(explicit.stdout, /AUTOPROTECTION METRICS/);
 
   console.log("zero-friction CLI regression: PASS");
 } finally {
