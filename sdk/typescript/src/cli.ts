@@ -52,10 +52,6 @@ import {
   printMcpToolRefreshReport
 } from "./mcp-tool-refresh-report.js";
 
-import {
-  printSyntheticProtectionProof
-} from "./synthetic-proof.js";
-
 function printHelp(): void {
   console.log("");
   console.log("Once");
@@ -336,6 +332,12 @@ async function main(): Promise<void> {
           "once prove does not accept project paths or provider arguments; it runs only an isolated synthetic local proof."
         );
       }
+
+      const {
+        printSyntheticProtectionProof
+      } = await import(
+        "./synthetic-proof.js"
+      );
 
       await printSyntheticProtectionProof();
       return;
