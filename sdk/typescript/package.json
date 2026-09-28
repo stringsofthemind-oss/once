@@ -108,7 +108,7 @@
     "@types/node": "^26.6.1"
   },
   "bin": {
-    "once": "dist/cli.js",
+    "once": "dist/once-cli.js",
     "once-monitor": "dist/monitor-cli.js",
     "once-dataset": "dist/dataset-cli.js"
   },
