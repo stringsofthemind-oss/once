@@ -4,7 +4,7 @@ const command = process.platform === "win32" ? "npx.cmd" : "npx";
 
 const child = spawn(
   command,
-  ["-y", "@once-agent/mcp@0.1.4"],
+  ["-y", "@once-agent/mcp@0.1.5"],
   {
     stdio: "inherit",
     env: process.env,
