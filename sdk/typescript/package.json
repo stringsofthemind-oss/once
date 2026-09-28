@@ -38,6 +38,7 @@
     "dist-cjs"
   ],
   "scripts": {
+    "benchmark:http-autoprotection": "node ./scripts/http-autoprotection-coverage.mjs",
     "build": "npm run build:esm && npm run build:cjs",
     "typecheck": "tsc --noEmit",
     "benchmark:scan": "npm run build && node ./scripts/scan-benchmark.mjs",
