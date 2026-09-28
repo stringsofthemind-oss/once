@@ -18,6 +18,14 @@ import {
   runProtect
 } from "./protect.js";
 
+import {
+  discoverToolGraph
+} from "./tool-discovery.js";
+
+import type {
+  ToolActionBand
+} from "./tool-importance.js";
+
 export type DoctorOptions = {
   protect?: boolean;
   connection?: boolean;
@@ -25,6 +33,15 @@ export type DoctorOptions = {
 
 const standaloneCli =
   "npx --yes --package=@once-agent/sdk once";
+
+const actionBands: ToolActionBand[] = [
+  "BYPASS",
+  "OBSERVE",
+  "REVIEW",
+  "QUALIFY",
+  "PROTECT_PRIORITY",
+  "CRITICAL_GAP"
+];
 
 function confidenceRank(
   confidence: Finding["confidence"]
@@ -94,6 +111,77 @@ function printCandidate(
   );
   console.log(
     `   ${finding.reason}`
+  );
+}
+
+async function printProtectionReadiness(
+  requestedPath: string
+): Promise<void> {
+  const discovery =
+    await discoverToolGraph(
+      requestedPath
+    );
+
+  const counts =
+    new Map<ToolActionBand, number>(
+      actionBands.map(
+        band => [band, 0]
+      )
+    );
+
+  for (const tool of discovery.tools) {
+    const band =
+      tool.once.actionPriority.band;
+
+    counts.set(
+      band,
+      (counts.get(band) ?? 0) + 1
+    );
+  }
+
+  const protectionGaps =
+    (counts.get("PROTECT_PRIORITY") ?? 0) +
+    (counts.get("CRITICAL_GAP") ?? 0);
+
+  const unresolved =
+    (counts.get("REVIEW") ?? 0) +
+    (counts.get("QUALIFY") ?? 0);
+
+  console.log("");
+  console.log("PROTECTION READINESS");
+  console.log("--------------------");
+  console.log(
+    `Tool/capability records: ${discovery.tools.length}`
+  );
+  console.log(
+    `Configured tool sources: ${discovery.configuredSources.length}`
+  );
+  console.log(
+    `BYPASS ${counts.get("BYPASS") ?? 0}   OBSERVE ${counts.get("OBSERVE") ?? 0}   REVIEW ${counts.get("REVIEW") ?? 0}`
+  );
+  console.log(
+    `QUALIFY ${counts.get("QUALIFY") ?? 0}   PROTECT_PRIORITY ${counts.get("PROTECT_PRIORITY") ?? 0}   CRITICAL_GAP ${counts.get("CRITICAL_GAP") ?? 0}`
+  );
+  console.log("");
+
+  if (protectionGaps > 0) {
+    console.log(
+      `! ${protectionGaps} high-priority execution-safety gap${protectionGaps === 1 ? "" : "s"} detected.`
+    );
+  } else {
+    console.log(
+      "✓ No high-priority execution-safety gaps were identified by the current local evidence."
+    );
+  }
+
+  if (unresolved > 0) {
+    console.log(
+      `! ${unresolved} tool/capability record${unresolved === 1 ? "" : "s"} still require qualification or review.`
+    );
+  }
+
+  console.log(
+    "Discovery remained local/read-only: no tool was invoked, no configured stdio server was launched, and no provider was contacted."
   );
 }
 
@@ -278,6 +366,10 @@ export async function runDoctor(
       );
     }
   }
+
+  await printProtectionReadiness(
+    requestedPath
+  );
 
   console.log("");
   console.log("NEXT STEP");
