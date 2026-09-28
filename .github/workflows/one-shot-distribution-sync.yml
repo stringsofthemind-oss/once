@@ -1,0 +1,120 @@
+name: One-shot distribution sync
+
+on:
+  push:
+    branches:
+      - "ops/distribution-sync-sdk-0.1.14-mcp-0.1.5"
+    paths:
+      - ".github/workflows/one-shot-distribution-sync.yml"
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  distribution-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify frozen distribution inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(node -p "require('./sdk/typescript/package.json').version")" = "0.1.14"
+          test "$(node -p "require('./mcp/package.json').version")" = "0.1.5"
+          test "$(node -p "require('./mcp/package.json').mcpName")" = "io.github.stringsofthemind-oss/once"
+          test "$(jq -r '.version' mcp/server.json)" = "0.1.5"
+          test "$(jq -r '.packages[0].version' mcp/server.json)" = "0.1.5"
+          test "$(jq -r '.name' mcp/server.json)" = "io.github.stringsofthemind-oss/once"
+          git cat-file -e 1292d2c70c737adcd68c8f83e7a72ef5b30fc354^{commit}
+          test "$(git show 1292d2c70c737adcd68c8f83e7a72ef5b30fc354:sdk/typescript/package.json | jq -r '.version')" = "0.1.14"
+          echo "FROZEN DISTRIBUTION INPUTS: PASS"
+
+      - name: Install MCP Publisher
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+          chmod +x ./mcp-publisher
+          ./mcp-publisher --help >/dev/null
+
+      - name: Validate MCP Registry metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./mcp-publisher validate mcp/server.json
+
+      - name: Publish MCP Registry version 0.1.5 if missing
+        shell: bash
+        run: |
+          set -euo pipefail
+          REGISTRY_URL='https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.stringsofthemind-oss%2Fonce&version=latest'
+          if curl -fsSL "$REGISTRY_URL" | jq -e '.. | objects | select(.name? == "io.github.stringsofthemind-oss/once" and .version? == "0.1.5")' >/dev/null; then
+            echo "MCP Registry already exposes Once 0.1.5; publish skipped."
+          else
+            ./mcp-publisher login github-oidc
+            ./mcp-publisher publish mcp/server.json
+          fi
+
+      - name: Create GitHub SDK v0.1.14 release if missing
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view v0.1.14 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "GitHub Release v0.1.14 already exists; creation skipped."
+          else
+            cat > /tmp/once-sdk-0.1.14-notes.md <<'EOF'
+          ## Once SDK 0.1.14
+
+          This GitHub Release aligns the repository release page with the already-published `@once-agent/sdk@0.1.14` package.
+
+          Release source commit: `1292d2c70c737adcd68c8f83e7a72ef5b30fc354`.
+
+          ### Highlights
+          - Includes the SDK release state through the Phase 13C persistent MCP/replay work present at the frozen 0.1.14 release commit.
+          - Preserves conservative execution-safety behavior: stable logical operation identity, fail-closed ambiguity, durable replay, and provider reconciliation boundaries.
+          - No universal exactly-once claim is made.
+
+          ### Distribution note
+          This action does **not** republish npm packages. It creates the missing GitHub release/tag for the already-published SDK version. The current MCP package is `@once-agent/mcp@0.1.5`.
+          EOF
+            gh release create v0.1.14 \
+              --repo "$GITHUB_REPOSITORY" \
+              --target 1292d2c70c737adcd68c8f83e7a72ef5b30fc354 \
+              --title "Once SDK 0.1.14" \
+              --notes-file /tmp/once-sdk-0.1.14-notes.md \
+              --latest
+          fi
+
+      - name: Verify GitHub release target
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release view v0.1.14 --repo "$GITHUB_REPOSITORY" >/dev/null
+          git fetch --force origin refs/tags/v0.1.14:refs/tags/v0.1.14
+          test "$(git rev-list -n 1 v0.1.14)" = "1292d2c70c737adcd68c8f83e7a72ef5b30fc354"
+          echo "GITHUB RELEASE v0.1.14: PASS"
+
+      - name: Verify MCP Registry latest version
+        shell: bash
+        run: |
+          set -euo pipefail
+          REGISTRY_URL='https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.stringsofthemind-oss%2Fonce&version=latest'
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            if curl -fsSL "$REGISTRY_URL" | jq -e '.. | objects | select(.name? == "io.github.stringsofthemind-oss/once" and .version? == "0.1.5")' >/dev/null; then
+              echo "MCP REGISTRY 0.1.5: PASS"
+              exit 0
+            fi
+            echo "Registry propagation check $attempt/10 not ready yet"
+            sleep 6
+          done
+          echo "MCP Registry did not expose Once 0.1.5 within the verification window" >&2
+          exit 1
