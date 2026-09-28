@@ -46,7 +46,7 @@
     "test:dataset-seal": "npm run build && node ./scripts/dataset-seal-regression.mjs",
     "test:dataset-progress": "npm run build && node ./scripts/dataset-progress-regression.mjs",
     "test:agent-discovery": "node ./scripts/agent-discovery-regression.mjs",
-    "test:doctor": "npm run build && node ./scripts/doctor-adoption-regression.mjs",
+    "test:doctor": "npm run build && node ./scripts/doctor-adoption-regression.mjs && node ./scripts/zero-friction-cli-regression.mjs",
     "test:monitor": "npm run build && node ./scripts/monitor-snapshot-regression.mjs",
     "test:tool-discovery": "npm run build && node ./scripts/tool-discovery-regression.mjs && node ./scripts/mcp-live-discovery-regression.mjs && node ./scripts/mcp-tool-refresh-regression.mjs && node ./scripts/runtime-tool-discovery-regression.mjs && node ./scripts/vercel-runtime-tool-discovery-regression.mjs && node ./scripts/langchain-runtime-discovery-regression.mjs && node ./scripts/execution-observation-regression.mjs && node ./scripts/openai-agents-execution-observer-regression.mjs && node ./scripts/vercel-execution-observer-regression.mjs && node ./scripts/langchain-execution-observer-regression.mjs && node ./scripts/otel-execution-observer-regression.mjs && node ./scripts/phase11d-evidence-ladder-regression.mjs",
     "test:gateway": "npm run build && node ./scripts/gateway-planner-regression.mjs && node ./scripts/gateway-broker-regression.mjs && node ./scripts/gateway-tool-graph-binding-regression.mjs && node ./scripts/gateway-openai-function-tools-regression.mjs",
@@ -108,7 +108,7 @@
     "@types/node": "^26.6.1"
   },
   "bin": {
-    "once": "dist/cli.js",
+    "once": "dist/once-cli.js",
     "once-monitor": "dist/monitor-cli.js",
     "once-dataset": "dist/dataset-cli.js"
   },
