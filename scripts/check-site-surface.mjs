@@ -15,6 +15,12 @@ const styles = read("docs/styles.css");
 const wrangler = read("workers/runtime/wrangler.jsonc");
 const runtimeEntry = read("workers/runtime/src/index.js");
 const runtimeCore = read("workers/runtime/src/runtime-core.js");
+const rootReadme = read("README.md");
+const codexLauncher = read("plugins/openai/once/scripts/once-mcp.cjs");
+const claudeLauncher = read("plugins/claude-code/once/scripts/once-mcp.cjs");
+const codexSkill = read("plugins/openai/once/skills/protect-consequential-writes/SKILL.md");
+const codexReadme = read("plugins/openai/once/README.md");
+const claudeReadme = read("plugins/claude-code/once/README.md");
 
 const pythonVersion = pythonProject.match(/^version\s*=\s*"([^"]+)"/m)?.[1];
 assert.ok(pythonVersion, "could not read Python SDK version");
@@ -43,6 +49,35 @@ assert.equal(sitePython, pythonVersion, "homepage Python SDK version must match 
 assert.equal(siteMcp, published.mcp, "homepage MCP version must match the published MCP version");
 assert.ok(sourceAtLeastPublished(mcpPackage.version, published.mcp),
   "MCP source version must not precede its published version");
+
+assert.ok(
+  rootReadme.includes(`@once-agent/sdk@${published.ts}`),
+  "root README must name the current published TypeScript SDK version",
+);
+assert.ok(
+  rootReadme.includes(`@once-agent/mcp@${published.mcp}`),
+  "root README must name the current published MCP version",
+);
+assert.ok(
+  codexLauncher.includes(`@once-agent/mcp@${published.mcp}`),
+  "Codex launcher must pin the current published MCP version",
+);
+assert.ok(
+  claudeLauncher.includes(`@once-agent/mcp@${published.mcp}`),
+  "Claude Code launcher must pin the current published MCP version",
+);
+assert.ok(
+  codexSkill.includes(`@once-agent/sdk@${published.ts}`),
+  "Codex CLI fallback must pin the current published TypeScript SDK version",
+);
+assert.ok(
+  codexReadme.includes(`@once-agent/mcp@${published.mcp}`),
+  "Codex plugin README must match the current published MCP version",
+);
+assert.ok(
+  claudeReadme.includes(`@once-agent/mcp@${published.mcp}`),
+  "Claude Code plugin README must match the current published MCP version",
+);
 
 assert.match(
   pageAnalytics,
@@ -162,5 +197,5 @@ const visibleVersionLine =
   `TS SDK ${siteTs} · PY SDK ${sitePython} · MCP ${siteMcp}`;
 
 console.log(
-  `PASS site surface: ${visibleVersionLine}; live counter route present; heartbeat=1s red-pulse; usage-pulse=cyan`,
+  `PASS site surface: ${visibleVersionLine}; launchers/docs aligned; live counter route present; heartbeat=1s red-pulse; usage-pulse=cyan`,
 );
