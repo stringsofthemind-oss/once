@@ -146,7 +146,8 @@ export async function sendUnsupported(
     {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "X-Unsupported": "true"
       },
       body: JSON.stringify(payload)
     }
