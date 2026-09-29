@@ -293,7 +293,203 @@ console.log(
 );
 
 //
-// Wrong method
+// Shorthand headers reference
+//
+
+const shorthandHeaders =
+  transformHttpWriteV1({
+    statement: `
+      await fetch(
+        "https://api.example.invalid/orders",
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify(payload)
+        }
+      );
+    `,
+    functionSource:
+      goodFunction,
+    provider:
+      "customer-http"
+  });
+
+assert.equal(
+  shorthandHeaders.eligible,
+  false
+);
+
+if (shorthandHeaders.eligible) {
+  throw new Error(
+    "Shorthand headers unexpectedly became transformable"
+  );
+}
+
+assert.equal(
+  shorthandHeaders.reason,
+  "Only the exact static `Content-Type: application/json` header is supported."
+);
+
+console.log(
+  "PASS - shorthand headers reference rejected"
+);
+
+//
+//
+// Bounded static X-API-Version must be preserved
+//
+
+const additionalStaticHeader =
+  transformHttpWriteV1({
+    statement: `
+      await fetch(
+        "https://api.example.invalid/orders",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-API-Version": "2026-09-01"
+          },
+          body: JSON.stringify(payload)
+        }
+      );
+    `,
+    functionSource:
+      goodFunction,
+    provider:
+      "customer-http"
+  });
+
+assert.equal(
+  additionalStaticHeader.eligible,
+  true
+);
+
+if (!additionalStaticHeader.eligible) {
+  throw new Error(
+    additionalStaticHeader.reason
+  );
+}
+
+assert.match(
+  additionalStaticHeader.replacement,
+  /headers_json:/
+);
+
+assert.match(
+  additionalStaticHeader.replacement,
+  /\\"content-type\\":\\"application\/json\\"/
+);
+
+assert.match(
+  additionalStaticHeader.replacement,
+  /\\"x-api-version\\":\\"2026-09-01\\"/
+);
+
+console.log(
+  "PASS - additional static header preserved"
+);
+// Static Authorization must remain fail-closed
+//
+
+const staticAuthorization =
+  transformHttpWriteV1({
+    statement: `
+      await fetch(
+        "https://api.example.invalid/orders",
+        {
+          method: "POST",
+          headers: {
+            "Authorization":
+              "Bearer fixed-test-token"
+          },
+          body: JSON.stringify(payload)
+        }
+      );
+    `,
+    functionSource:
+      goodFunction,
+    provider:
+      "customer-http"
+  });
+
+assert.equal(
+  staticAuthorization.eligible,
+  false
+);
+
+console.log(
+  "PASS - static Authorization rejected"
+);
+
+//
+// Dynamic Authorization must remain fail-closed
+//
+
+const dynamicAuthorization =
+  transformHttpWriteV1({
+    statement: `
+      await fetch(
+        "https://api.example.invalid/orders",
+        {
+          method: "POST",
+          headers: {
+            "Authorization":
+              "Bearer " + token
+          },
+          body: JSON.stringify(payload)
+        }
+      );
+    `,
+    functionSource:
+      goodFunction,
+    provider:
+      "customer-http"
+  });
+
+assert.equal(
+  dynamicAuthorization.eligible,
+  false
+);
+
+console.log(
+  "PASS - dynamic Authorization rejected"
+);
+
+//
+// Spread headers must remain fail-closed
+//
+
+const spreadHeaders =
+  transformHttpWriteV1({
+    statement: `
+      await fetch(
+        "https://api.example.invalid/orders",
+        {
+          method: "POST",
+          headers: {
+            ...headers
+          },
+          body: JSON.stringify(payload)
+        }
+      );
+    `,
+    functionSource:
+      goodFunction,
+    provider:
+      "customer-http"
+  });
+
+assert.equal(
+  spreadHeaders.eligible,
+  false
+);
+
+console.log(
+  "PASS - spread headers rejected"
+);
+
+//// Wrong method
 //
 
 const put =

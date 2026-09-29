@@ -587,3 +587,324 @@ test('receipt cannot bypass a missing required HTTP replay', async () => {
 
   store.db.close();
 });
+
+for (const headerCase of [
+  {
+    name: 'non-string',
+    headers_json: {
+      'content-type': 'application/json'
+    },
+    error: 'invalid_http_write_v1_headers_json'
+  },
+  {
+    name: 'malformed JSON',
+    headers_json: '{"content-type":',
+    error: 'invalid_http_write_v1_headers_json'
+  },
+  {
+    name: 'array',
+    headers_json: '["application/json"]',
+    error: 'invalid_http_write_v1_headers_json'
+  },
+  {
+    name: 'unsupported header',
+    headers_json: JSON.stringify({
+      authorization: 'Bearer forbidden'
+    }),
+    error: 'unsupported_http_write_v1_header'
+  }
+]) {
+  test(`registered HTTP headers_json fails closed before provider execution: ${headerCase.name}`, async () => {
+    const { Runtime } = await loadRuntime();
+    const store = storage();
+
+    try {
+      const runtime = new Runtime(
+        { storage: store },
+        {}
+      );
+
+      runtime.getRegisteredHttpV1Config =
+        async () => ({
+          allowedUrls: [
+            'https://api.example.com/orders'
+          ],
+          responseReplay: true
+        });
+
+      let effects = 0;
+
+      runtime.getProvider = async () =>
+        undefined;
+
+      runtime.executeProvider = async () => {
+        ++effects;
+
+        throw new Error(
+          'invalid headers_json may not execute provider'
+        );
+      };
+
+      const result = await execute(
+        runtime,
+        `headers-json-fail-closed-${headerCase.name.replace(/\s+/g, '-')}`,
+        {
+          provider: registered,
+          action: {
+            type: 'http_write_v1',
+            method: 'POST',
+            url: 'https://api.example.com/orders',
+            body_json: JSON.stringify({
+              order_id:
+                'ord_headers_json_fail_closed'
+            }),
+            headers_json:
+              headerCase.headers_json
+          }
+        }
+      );
+
+      assert.equal(result.status, 400);
+      assert.equal(effects, 0);
+
+      const payload = await result.json();
+
+      assert.equal(
+        payload.error,
+        headerCase.error
+      );
+    } finally {
+      store.db.close();
+    }
+  });
+}
+test('registered HTTP headers_json permits static x-api-version passthrough', async () => {
+  const { Runtime } = await loadRuntime();
+  const store = storage();
+
+  try {
+    const runtime = new Runtime(
+      { storage: store },
+      {}
+    );
+
+    runtime.getRegisteredHttpV1Config =
+      async () => ({
+        allowedUrls: [
+          'https://api.example.com/orders'
+        ],
+        responseReplay: true
+      });
+
+    let observedAction = null;
+
+    runtime.getProvider = async () =>
+      undefined;
+
+    runtime.executeProvider = async (
+      provider,
+      operationId,
+      action
+    ) => {
+      observedAction = action;
+
+      return {
+        side_effects: 1
+      };
+    };
+
+    const result = await execute(
+      runtime,
+      'headers-json-x-api-version',
+      {
+        provider: registered,
+        action: {
+          type: 'http_write_v1',
+          method: 'POST',
+          url:
+            'https://api.example.com/orders',
+          body_json: '{}',
+          headers_json: JSON.stringify({
+            'content-type':
+              'application/json',
+            'x-api-version':
+              '2026-09-01'
+          })
+        }
+      }
+    );
+
+    assert.equal(result.status, 200);
+    assert.ok(observedAction);
+
+    assert.equal(
+      observedAction.headers_json,
+      JSON.stringify({
+        'content-type':
+          'application/json',
+        'x-api-version':
+          '2026-09-01'
+      })
+    );
+  } finally {
+    store.db.close();
+  }
+});
+
+test('registered HTTP headers_json rejects authorization even with x-api-version present', async () => {
+  const { Runtime } = await loadRuntime();
+  const store = storage();
+
+  try {
+    const runtime = new Runtime(
+      { storage: store },
+      {}
+    );
+
+    runtime.getRegisteredHttpV1Config =
+      async () => ({
+        allowedUrls: [
+          'https://api.example.com/orders'
+        ],
+        responseReplay: true
+      });
+
+    let effects = 0;
+
+    runtime.getProvider = async () =>
+      undefined;
+
+    runtime.executeProvider = async () => {
+      ++effects;
+
+      throw new Error(
+        'authorization header may not execute provider'
+      );
+    };
+
+    const result = await execute(
+      runtime,
+      'headers-json-auth-negative-control',
+      {
+        provider: registered,
+        action: {
+          type: 'http_write_v1',
+          method: 'POST',
+          url:
+            'https://api.example.com/orders',
+          body_json: '{}',
+          headers_json: JSON.stringify({
+            'content-type':
+              'application/json',
+            'x-api-version':
+              '2026-09-01',
+            authorization:
+              'Bearer forbidden'
+          })
+        }
+      }
+    );
+
+    assert.equal(result.status, 400);
+    assert.equal(effects, 0);
+
+    const payload = await result.json();
+
+    assert.equal(
+      payload.error,
+      'unsupported_http_write_v1_header'
+    );
+  } finally {
+    store.db.close();
+  }
+});
+test('registered HTTP execution forwards preserved static action headers to adapter', async () => {
+  const context = await loadRuntime();
+  const store = storage();
+  const runtime = new context.Runtime({ storage: store }, {});
+
+  try {
+    const providerIdentity =
+      'registered_http_v1:pv_' + 'a'.repeat(32);
+
+    const action = {
+      type: 'http_write_v1',
+      method: 'POST',
+      url: 'https://api.example.com/orders',
+      body_text: JSON.stringify({
+        order_id: 'ord_static_header_regression'
+      }),
+      headers_json: JSON.stringify({
+        'content-type': 'application/json'
+      })
+    };
+
+    runtime.getRegisteredHttpV1Config = async () => ({
+      baseUrl: 'https://provider.test',
+      token: 'fixture',
+      allowedUrls: ['https://api.example.com/orders'],
+      responseReplay: true
+    });
+
+    let capturedUrl = null;
+    let capturedOptions = null;
+
+    context.fetch = async (url, options) => {
+      capturedUrl = String(url);
+      capturedOptions = options;
+
+      return Response.json({
+        operation_id: 'header-forwarding-regression',
+        provider_executed: true,
+        side_effects: 1,
+        executed_at: '2026-09-29T00:00:00.000Z',
+        http_response: {
+          status: 200,
+          body_text: '{"ok":true}',
+          headers: {
+            'content-type': 'application/json'
+          }
+        }
+      });
+    };
+
+    await runtime.executeRegisteredHttpV1Provider(
+      providerIdentity,
+      'header-forwarding-regression',
+      action
+    );
+
+    assert.equal(
+      capturedUrl,
+      'https://provider.test/execute'
+    );
+
+    assert.equal(
+      capturedOptions.method,
+      'POST'
+    );
+
+    const adapterRequest = JSON.parse(
+      capturedOptions.body
+    );
+
+    assert.equal(
+      adapterRequest.operation_id,
+      'header-forwarding-regression'
+    );
+
+    assert.deepEqual(
+      adapterRequest.action,
+      action
+    );
+
+    assert.equal(
+      adapterRequest.action.headers_json,
+      JSON.stringify({
+        'content-type': 'application/json'
+      })
+    );
+  } finally {
+    store.db.close();
+  }
+});

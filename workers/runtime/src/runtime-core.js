@@ -4483,6 +4483,11 @@ var Q18Truth = class extends DurableObject {
           409
         );
       }
+      let executionAction =
+        body.action === void 0
+          ? {}
+          : body.action;
+
       if (operationProvider.startsWith(
         "registered_http_v1:"
       )) {
@@ -4528,6 +4533,133 @@ var Q18Truth = class extends DurableObject {
             },
             400
           );
+        }
+
+        let actionHeaders = {};
+
+        if (action.headers_json !== void 0) {
+          if (typeof action.headers_json !== "string") {
+            return json(
+              {
+                error: "invalid_http_write_v1_headers_json",
+                operation_id: operationId
+              },
+              400
+            );
+          }
+
+          let parsedHeaders;
+
+          try {
+            parsedHeaders =
+              JSON.parse(
+                action.headers_json
+              );
+          } catch {
+            return json(
+              {
+                error: "invalid_http_write_v1_headers_json",
+                operation_id: operationId
+              },
+              400
+            );
+          }
+
+          if (
+            !parsedHeaders ||
+            typeof parsedHeaders !== "object" ||
+            Array.isArray(parsedHeaders)
+          ) {
+            return json(
+              {
+                error: "invalid_http_write_v1_headers_json",
+                operation_id: operationId
+              },
+              400
+            );
+          }
+
+          const normalizedHeaders = {};
+
+          for (
+            const [rawName, rawValue]
+            of Object.entries(parsedHeaders)
+          ) {
+            const name =
+              String(rawName)
+                .trim()
+                .toLowerCase();
+
+            if (typeof rawValue !== "string") {
+              return json(
+                {
+                  error:
+                    "unsupported_http_write_v1_header",
+                  operation_id:
+                    operationId
+                },
+                400
+              );
+            }
+
+            if (name === "content-type") {
+              if (
+                rawValue
+                  .trim()
+                  .toLowerCase() !==
+                    "application/json"
+              ) {
+                return json(
+                  {
+                    error:
+                      "unsupported_http_write_v1_header",
+                    operation_id:
+                      operationId
+                  },
+                  400
+                );
+              }
+
+              normalizedHeaders[
+                "content-type"
+              ] = "application/json";
+              continue;
+            }
+
+            if (name === "x-api-version") {
+              const value = rawValue.trim();
+
+              if (!value) {
+                return json(
+                  {
+                    error:
+                      "unsupported_http_write_v1_header",
+                    operation_id:
+                      operationId
+                  },
+                  400
+                );
+              }
+
+              normalizedHeaders[
+                "x-api-version"
+              ] = value;
+              continue;
+            }
+
+            return json(
+              {
+                error:
+                  "unsupported_http_write_v1_header",
+                operation_id:
+                  operationId
+              },
+              400
+            );
+          }
+
+          actionHeaders =
+            normalizedHeaders;
         }
         let registeredHttpConfig;
         try {
@@ -4615,6 +4747,15 @@ var Q18Truth = class extends DurableObject {
         }
         parsedTargetUrl.searchParams.sort();
         const canonicalTargetUrl = parsedTargetUrl.toString();
+
+        executionAction = {
+          ...action
+        };
+
+        if (action.headers_json !== void 0) {
+          executionAction.headers_json =
+            JSON.stringify(actionHeaders);
+        }
         if (!allowedUrls.includes(
           canonicalTargetUrl
         )) {
@@ -5150,7 +5291,7 @@ WHERE operation_id = ?
         provider = await this.executeProvider(
           operationProvider,
           operationId,
-          body.action === void 0 ? {} : body.action
+          executionAction
         );
       } catch (error) {
         if (error?.once_failure_class === "FAILED_BEFORE_EFFECT") {

@@ -680,7 +680,7 @@ if (
   !String(
     unsupported.transformer_reason ?? ""
   ).includes(
-    "Only the exact static `Content-Type: application/json` header is supported."
+    "Only bounded static JSON headers are supported."
   )
 ) {
   throw new Error(

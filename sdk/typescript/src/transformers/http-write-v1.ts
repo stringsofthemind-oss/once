@@ -156,7 +156,17 @@ export function transformHttpWriteV1(
    * Content-Type: application/json header.
    *
    * Arbitrary headers still require a richer
-   * semantics-preserving transformer.
+   * semantics-preserving action/runtime contract.
+   *
+   * In particular, source Authorization headers
+   * must not be copied into the protected action:
+   * registered provider authorization is resolved
+   * separately by the Once runtime.
+   *
+   * Until http_write_v1 can carry and execute
+   * arbitrary headers with equivalent semantics,
+   * additional, dynamic, referenced, spread, and
+   * Authorization headers remain fail-closed.
    */
   const keys =
     Array.from(
@@ -171,6 +181,27 @@ export function transformHttpWriteV1(
     Array.from(
       new Set(keys)
     ).sort();
+
+  /*
+   * Fail closed on shorthand headers such as:
+   *
+   *   { method: "POST", headers, body: ... }
+   *
+   * The explicit key:value extraction above does
+   * not count shorthand object properties.
+   */
+  const shorthandHeaders =
+    /(?:^|,|\n)\s*headers\s*(?=,|\n|$)/.test(
+      options
+    );
+
+  if (shorthandHeaders) {
+    return {
+      eligible: false,
+      reason:
+        "Only the exact static `Content-Type: application/json` header is supported."
+    };
+  }
 
   const baseShape =
     uniqueKeys.length === 2 &&
@@ -194,10 +225,12 @@ export function transformHttpWriteV1(
     };
   }
 
+  let preservedHeadersJson: string | undefined;
+
   if (jsonHeaderShape) {
     const headerMatch =
       options.match(
-        /\bheaders\s*:\s*\{\s*(["'])Content-Type\1\s*:\s*(["'])application\/json\2\s*\}/
+        /\bheaders\s*:\s*\{\s*(["'])Content-Type\1\s*:\s*(["'])application\/json\2(?:\s*,\s*(["'])X-API-Version\3\s*:\s*(["'])([^"'\\\r\n]+)\4)?\s*\}/
       );
 
     const headerOccurrences =
@@ -214,11 +247,20 @@ export function transformHttpWriteV1(
       return {
         eligible: false,
         reason:
-          "Only the exact static `Content-Type: application/json` header is supported."
+          "Only bounded static JSON headers are supported."
       };
     }
-  }
 
+    if (headerMatch[5] !== undefined) {
+      preservedHeadersJson =
+        JSON.stringify({
+          "content-type":
+            "application/json",
+          "x-api-version":
+            headerMatch[5]
+        });
+    }
+  }
   const methodMatch =
     options.match(
       /\bmethod\s*:\s*(["'])POST\1/
@@ -287,6 +329,11 @@ export function transformHttpWriteV1(
     '    type: "http_write_v1",',
     '    method: "POST",',
     `    url: ${quote(url)},`,
+    ...(preservedHeadersJson !== undefined
+      ? [
+          `    headers_json: ${quote(preservedHeadersJson)},`
+        ]
+      : []),
     `    body_json: JSON.stringify(${bodyExpression})`,
     "  }",
     "});"
