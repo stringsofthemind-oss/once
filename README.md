@@ -421,7 +421,7 @@ If the answer is yes, reuse the same operation ID.
 
 The TypeScript package includes the `once` CLI.
 
-> **Current HTTP auto-transformer boundary:** the npm SDK supports TypeScript and JavaScript, but the proven HTTP automatic source transformer currently supports **TypeScript source only**. JavaScript callsites may still be discovered and reviewed by `doctor`/`protect`, but provider setup alone will not make a JavaScript callsite `PATCHABLE` through this transformer. `doctor . --protect` reports the source-shape boundary rather than guessing.
+> **Current HTTP auto-transformer boundary:** the npm SDK supports TypeScript and JavaScript. The proven HTTP automatic source transformer currently supports the existing TypeScript source boundary plus explicit ESM JavaScript `.mjs` modules that satisfy the same exact request-shape and safety checks. Plain `.js` and `.cjs` callsites may still be discovered and reviewed by `doctor`/`protect`, but remain outside this automatic-transformer slice; provider setup alone will not make them `PATCHABLE`. `doctor . --protect` reports the source-shape boundary rather than guessing.
 
 A typical workflow is:
 

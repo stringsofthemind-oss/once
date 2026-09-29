@@ -99,8 +99,8 @@ const snippets = [];
 for (const entry of await readdir(snippetDir, { withFileTypes: true })) {
   if (entry.isFile()) snippets.push(await readFile(path.join(snippetDir, entry.name), "utf8"));
 }
-const supportedSnippet = snippets.find(value => value.includes("src/supported.ts"));
-const unsupportedSnippet = snippets.find(value => value.includes("src/unsupported.ts"));
+const supportedSnippet = snippets.find(value => value.replaceAll("\\", "/").includes("src/supported.ts"));
+const unsupportedSnippet = snippets.find(value => value.replaceAll("\\", "/").includes("src/unsupported.ts"));
 if (!supportedSnippet || !unsupportedSnippet) throw new Error("Expected both guidance snippets");
 if (!supportedSnippet.includes(exactSetup)) throw new Error("Supported snippet is missing exact setup path");
 if (!unsupportedSnippet.includes("Provider setup alone will not make this callsite auto-apply eligible.")) throw new Error("Unsupported snippet is missing fail-closed explanation");
