@@ -333,10 +333,17 @@ try {
   );
 
   const discovery = await discoverToolGraph(root);
-  assert.equal(discovery.configuredSources.length, 5);
+  const fixtureSources = discovery.configuredSources.filter(
+    source =>
+      source.scope === "PROJECT" &&
+      source.host === "cursor" &&
+      source.configPath.replaceAll("\\", "/") === ".cursor/mcp.json",
+  );
+
+  assert.equal(fixtureSources.length, 5);
 
   await assert.rejects(
-    () => discoverLiveMcpTools(root, discovery.configuredSources, []),
+    () => discoverLiveMcpTools(root, fixtureSources, []),
     error =>
       error instanceof McpLiveDiscoveryError &&
       error.code === "EXPLICIT_SELECTION_REQUIRED",
@@ -344,7 +351,7 @@ try {
 
   const result = await discoverLiveMcpTools(
     root,
-    discovery.configuredSources,
+    fixtureSources,
     [
       "cursor/modern",
       "cursor/legacy",
