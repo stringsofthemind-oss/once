@@ -4590,14 +4590,7 @@ var Q18Truth = class extends DurableObject {
                 .trim()
                 .toLowerCase();
 
-            if (
-              name !== "content-type" ||
-              typeof rawValue !== "string" ||
-              rawValue
-                .trim()
-                .toLowerCase() !==
-                  "application/json"
-            ) {
+            if (typeof rawValue !== "string") {
               return json(
                 {
                   error:
@@ -4609,9 +4602,60 @@ var Q18Truth = class extends DurableObject {
               );
             }
 
-            normalizedHeaders[
-              "content-type"
-            ] = "application/json";
+            if (name === "content-type") {
+              if (
+                rawValue
+                  .trim()
+                  .toLowerCase() !==
+                    "application/json"
+              ) {
+                return json(
+                  {
+                    error:
+                      "unsupported_http_write_v1_header",
+                    operation_id:
+                      operationId
+                  },
+                  400
+                );
+              }
+
+              normalizedHeaders[
+                "content-type"
+              ] = "application/json";
+              continue;
+            }
+
+            if (name === "x-api-version") {
+              const value = rawValue.trim();
+
+              if (!value) {
+                return json(
+                  {
+                    error:
+                      "unsupported_http_write_v1_header",
+                    operation_id:
+                      operationId
+                  },
+                  400
+                );
+              }
+
+              normalizedHeaders[
+                "x-api-version"
+              ] = value;
+              continue;
+            }
+
+            return json(
+              {
+                error:
+                  "unsupported_http_write_v1_header",
+                operation_id:
+                  operationId
+              },
+              400
+            );
           }
 
           actionHeaders =

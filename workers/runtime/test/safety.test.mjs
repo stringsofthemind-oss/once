@@ -678,6 +678,146 @@ for (const headerCase of [
     }
   });
 }
+test('registered HTTP headers_json permits static x-api-version passthrough', async () => {
+  const { Runtime } = await loadRuntime();
+  const store = storage();
+
+  try {
+    const runtime = new Runtime(
+      { storage: store },
+      {}
+    );
+
+    runtime.getRegisteredHttpV1Config =
+      async () => ({
+        allowedUrls: [
+          'https://api.example.com/orders'
+        ],
+        responseReplay: true
+      });
+
+    let observedAction = null;
+
+    runtime.getProvider = async () =>
+      undefined;
+
+    runtime.executeProvider = async (
+      provider,
+      operationId,
+      action
+    ) => {
+      observedAction = action;
+
+      return {
+        side_effects: 1
+      };
+    };
+
+    const result = await execute(
+      runtime,
+      'headers-json-x-api-version',
+      {
+        provider: registered,
+        action: {
+          type: 'http_write_v1',
+          method: 'POST',
+          url:
+            'https://api.example.com/orders',
+          body_json: '{}',
+          headers_json: JSON.stringify({
+            'content-type':
+              'application/json',
+            'x-api-version':
+              '2026-09-01'
+          })
+        }
+      }
+    );
+
+    assert.equal(result.status, 200);
+    assert.ok(observedAction);
+
+    assert.equal(
+      observedAction.headers_json,
+      JSON.stringify({
+        'content-type':
+          'application/json',
+        'x-api-version':
+          '2026-09-01'
+      })
+    );
+  } finally {
+    store.db.close();
+  }
+});
+
+test('registered HTTP headers_json rejects authorization even with x-api-version present', async () => {
+  const { Runtime } = await loadRuntime();
+  const store = storage();
+
+  try {
+    const runtime = new Runtime(
+      { storage: store },
+      {}
+    );
+
+    runtime.getRegisteredHttpV1Config =
+      async () => ({
+        allowedUrls: [
+          'https://api.example.com/orders'
+        ],
+        responseReplay: true
+      });
+
+    let effects = 0;
+
+    runtime.getProvider = async () =>
+      undefined;
+
+    runtime.executeProvider = async () => {
+      ++effects;
+
+      throw new Error(
+        'authorization header may not execute provider'
+      );
+    };
+
+    const result = await execute(
+      runtime,
+      'headers-json-auth-negative-control',
+      {
+        provider: registered,
+        action: {
+          type: 'http_write_v1',
+          method: 'POST',
+          url:
+            'https://api.example.com/orders',
+          body_json: '{}',
+          headers_json: JSON.stringify({
+            'content-type':
+              'application/json',
+            'x-api-version':
+              '2026-09-01',
+            authorization:
+              'Bearer forbidden'
+          })
+        }
+      }
+    );
+
+    assert.equal(result.status, 400);
+    assert.equal(effects, 0);
+
+    const payload = await result.json();
+
+    assert.equal(
+      payload.error,
+      'unsupported_http_write_v1_header'
+    );
+  } finally {
+    store.db.close();
+  }
+});
 test('registered HTTP execution forwards preserved static action headers to adapter', async () => {
   const context = await loadRuntime();
   const store = storage();
