@@ -832,8 +832,8 @@ async function applyTransformerClassification(
     }
   };
 
-  if (!/\.(?:ts|tsx|mts|cts)$/i.test(finding.file)) {
-    markUnsupported("The proven HTTP transformer currently supports TypeScript source only.");
+  if (!/\.(?:ts|tsx|mts|cts|mjs)$/i.test(finding.file)) {
+    markUnsupported("The proven HTTP transformer currently supports TypeScript source and explicit ESM JavaScript `.mjs` modules only.");
     return;
   }
 
