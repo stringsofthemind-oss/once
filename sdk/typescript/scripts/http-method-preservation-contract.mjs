@@ -33,7 +33,7 @@ const fixtures = [
     id: "delete-literal",
     methodSource: '"DELETE"',
     targetSafe: true,
-    expectedEligibleNow: false
+    expectedEligibleNow: true
   },
 
   // Everything below is intentionally outside the future-safe literal
@@ -195,7 +195,7 @@ const currentlyEligible = results.filter((result) => result.eligible).length;
 assert.equal(targetSafe, 4);
 assert.equal(targetSafeFuture, 3);
 assert.equal(mustReject, 8);
-assert.equal(currentlyEligible, 3);
+assert.equal(currentlyEligible, 4);
 
 console.log("");
 console.log(`Contract fixtures:          ${results.length + 1}`);
@@ -205,5 +205,5 @@ console.log(`Must-remain-rejected:       ${mustReject}`);
 console.log(`Currently eligible:         ${currentlyEligible}`);
 console.log("");
 console.log(
-  "PASS - exact POST/PUT/PATCH method preservation boundary pinned; DELETE remains rejected"
+  "PASS - exact POST/PUT/PATCH/DELETE method preservation boundary pinned"
 );
