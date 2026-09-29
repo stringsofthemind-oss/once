@@ -23,4 +23,4 @@ jobs:
           ref: adoption/cold-user-http-guidance-v1
           fetch-depth: 0
       - name: Apply bounded guidance fix and targeted regressions
-        run: env -u GITHUB_REF_NAME node scripts/cold-user-http-guidance-bootstrap-v2.mjs
+        run: env -u GITHUB_REF_NAME node scripts/cold-user-http-guidance-bootstrap-v3.mjs
