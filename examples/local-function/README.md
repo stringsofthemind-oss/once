@@ -1,7 +1,8 @@
 # Protect an existing async function on one machine
 
-`protectLocal` is available in the published `@once-agent/sdk` 0.1.7 package.
-This guide covers its durable same-machine SQLite safety boundary.
+`protectLocal` was introduced in the published `@once-agent/sdk` 0.1.7 package
+and remains part of the current SDK. This guide covers its durable same-machine
+SQLite safety boundary.
 
 ```ts
 import { protectLocal } from "@once-agent/sdk";
@@ -102,8 +103,10 @@ To verify, use a test provider that counts actual external effects. Invoke
 its response: a retry must remain blocked until provider truth confirms it.
 
 The runnable [`verify.mjs`](./verify.mjs) is a controlled first proof using a
-fake provider. It does not call a real payment or order API. With Node.js
-24.15+ installed, run it in a new throwaway directory:
+fake provider. It does not call a real payment or order API. The reproduction
+commands below are intentionally frozen to the historical v0.1.9 proof; that
+version pin is reproducibility evidence, not a statement that v0.1.9 is the
+current SDK. With Node.js 24.15+ installed, run it in a new throwaway directory:
 
 ```bash
 mkdir once-local-proof && cd once-local-proof

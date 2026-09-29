@@ -499,6 +499,14 @@ Preview setup without making changes:
 npx once setup . --plan
 ```
 
+For a literal HTTPS fetch call that the read-only source-shape preflight reports as supported, configure the exact target through the existing Runtime HTTP path:
+
+```bash
+npx --yes --package=@once-agent/sdk once setup . --runtime-http=https://api.example.com/resource
+```
+
+This setup step does not make an unsupported callsite safe to rewrite. Rerun `doctor . --protect` afterward and use `--apply` only if the fresh result is `PATCHABLE`.
+
 ### 6. Apply an eligible transformation
 
 ```bash
@@ -526,7 +534,7 @@ This explicit connection check requires `ONCE_API_KEY`; the default local assess
 Protection review may report statuses such as:
 
 - `PATCHABLE` - the current narrow transformer can produce a validated automatic patch
-- `PROVIDER_MAPPING_REQUIRED` - the call needs a provider mapping before protection can be planned
+- `PROVIDER_MAPPING_REQUIRED` - the call still needs provider mapping; Once also reports a read-only source-shape preflight so a user can see whether provider setup can lead to the current proven transformer or whether the source shape is already unsupported
 - `PROVIDER_CAPABILITY_DECLARED` - provider capability is declared, but automatic transformation still requires an exact supported match
 - `ADAPTER_REQUIRED` - the operation needs provider-specific integration work
 - `MANUAL_REVIEW` - the CLI will not automatically rewrite the callsite

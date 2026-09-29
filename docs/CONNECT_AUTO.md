@@ -1,8 +1,9 @@
 # Once Connect — automatic tool protection
 
-> **Published status:** automatic Connect is available in
-> `@once-agent/sdk@0.1.13`. Its source, packed-package, ESM/CommonJS, and
-> Node.js 24.15 protected-execution release gates passed.
+> **Published history:** automatic Connect was introduced in
+> `@once-agent/sdk@0.1.13`. That release passed its source, packed-package,
+> ESM/CommonJS, and Node.js 24.15 protected-execution gates. See the repository
+> README and published-version contract for the current SDK version.
 
 Once Connect moves the integration boundary from:
 

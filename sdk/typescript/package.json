@@ -70,7 +70,7 @@
     "test:capabilities": "npm run build && node ./scripts/capability-regression.mjs",
     "test:transformer": "npm run build && node ./scripts/http-transformer-regression.mjs",
     "test:scanner-declarations": "npm run build && node ./scripts/scanner-declaration-regression.mjs",
-    "test:transformer-protect": "npm run build && node ./scripts/transformer-protect-regression.mjs",
+    "test:transformer-protect": "npm run build && node ./scripts/transformer-protect-regression.mjs && node ./scripts/cold-user-http-guidance-regression.mjs",
     "test:binding": "npm run build && node ./scripts/once-binding-regression.mjs",
     "test:patch-planner": "npm run build && node ./scripts/http-patch-planner-regression.mjs",
     "test:apply": "npm run build && node ./scripts/apply-engine-regression.mjs && node ./scripts/apply-regression.mjs && node ./scripts/doctor-safe-apply-regression.mjs",
