@@ -1,0 +1,24 @@
+name: Cold-user HTTP guidance bootstrap
+
+on:
+  push:
+    branches:
+      - adoption/cold-user-http-guidance-v1
+    paths:
+      - scripts/cold-user-http-guidance-bootstrap.mjs
+      - .github/workflows/cold-user-http-guidance-bootstrap.yml
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact branch
+        uses: actions/checkout@v4
+        with:
+          ref: adoption/cold-user-http-guidance-v1
+          fetch-depth: 0
+      - name: Apply bounded guidance fix and targeted regressions
+        run: node scripts/cold-user-http-guidance-bootstrap.mjs
