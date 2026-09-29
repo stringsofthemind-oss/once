@@ -69,6 +69,8 @@ type ProtectionCandidate = {
   auto_apply_eligible: boolean;
   transformer_id?: string;
   transformer_reason?: string;
+  source_shape?: "SUPPORTED" | "UNSUPPORTED";
+  source_shape_reason?: string;
   binding_required?: boolean;
   binding_strategy?: string;
   patch_plan_id?: string;
@@ -358,11 +360,7 @@ function buildIntegrationSnippet(
   provider: string | null
 ): string {
 
-  const providerName =
-    provider ??
-    "YOUR_PROVIDER";
-
-  return [
+  const lines = [
     `Once protection candidate`,
     `=========================`,
     ``,
@@ -371,34 +369,87 @@ function buildIntegrationSnippet(
     `Confidence: ${candidate.confidence}`,
     `Category: ${candidate.category}`,
     `Automation: ${candidate.automation_status}`,
-    `Auto-apply eligible: ${
-      candidate.auto_apply_eligible
-        ? "yes"
-        : "no"
-    }`,
+    `Auto-apply eligible: ${candidate.auto_apply_eligible ? "yes" : "no"}`,
     `Automation reason: ${candidate.automation_reason}`,
+    ...(candidate.source_shape
+      ? [
+          `Source-shape preflight: ${candidate.source_shape}`,
+          `Source-shape reason: ${candidate.source_shape_reason ?? "not available"}`
+        ]
+      : []),
     ``,
     `IMPORTANT`,
     `---------`,
     `This is integration guidance, not an automatic source rewrite.`,
     `Preserve the original operation semantics.`,
     `Use one stable operationId for each real-world action.`,
-    `Retries of that same action must reuse the same operationId.`,
-    ...(candidate.automation_status === "ADAPTER_REQUIRED"
-      ? [
-          ``,
-          `NEXT STEPS FOR ADAPTER_REQUIRED`,
-          `-------------------------------`,
-          `No automatic source rewrite is available for this callsite.`,
-          `For a controlled first proof with a fake effect on one machine, see:`,
-          `https://github.com/stringsofthemind-oss/once/tree/main/examples/local-function`,
-          `That Node 24.15+ proof needs no API key; it is not a production`,
-          `integration and does not coordinate separate hosts.`,
-          `For the real operation, first establish a supported provider adapter`,
-          `or capability that preserves the exact effect and recovery semantics.`,
-          `Do not replace the original call merely because it was detected.`,
-        ]
-      : []),
+    `Retries of that same action must reuse the same operationId.`
+  ];
+
+  if (candidate.automation_status === "PROVIDER_MAPPING_REQUIRED") {
+    lines.push(
+      ``,
+      `NEXT STEP FOR PROVIDER_MAPPING_REQUIRED`,
+      `---------------------------------------`
+    );
+
+    if (candidate.source_shape === "SUPPORTED" && candidate.target_url) {
+      lines.push(
+        `The current source shape is inside the proven HTTP transformer boundary.`,
+        `Provider mapping is still required before any rewrite can become eligible.`,
+        `Configure the exact literal target with:`,
+        `npx --yes --package=@once-agent/sdk once setup . --runtime-http=${JSON.stringify(candidate.target_url)}`,
+        `Then rerun:`,
+        `npx --yes --package=@once-agent/sdk once doctor . --protect`,
+        `Only use --apply if the fresh result is PATCHABLE.`
+      );
+    } else if (candidate.source_shape === "UNSUPPORTED") {
+      lines.push(
+        `The current source shape is outside the proven automatic HTTP transformer boundary.`,
+        `Reason: ${candidate.source_shape_reason ?? "unsupported source shape"}`,
+        `Provider setup alone will not make this callsite auto-apply eligible.`,
+        `Keep the original call unchanged until a supported integration preserves its exact effect and recovery semantics.`
+      );
+    } else {
+      lines.push(
+        `Once cannot yet prove an automatic HTTP rewrite for this callsite.`,
+        `Provider setup alone is not permission to rewrite or execute it.`
+      );
+    }
+
+    if (provider) {
+      lines.push(
+        `Configured provider: ${provider}`,
+        `Provider binding retained: provider: "${provider}"`,
+        ``
+      );
+    }
+
+    lines.push(
+      `Do not replace the original call until Once reports a supported protected path.`,
+      ``
+    );
+    return lines.join("\n");
+  }
+
+  if (candidate.automation_status === "ADAPTER_REQUIRED") {
+    lines.push(
+      ``,
+      `NEXT STEPS FOR ADAPTER_REQUIRED`,
+      `-------------------------------`,
+      `No automatic source rewrite is available for this callsite.`,
+      `For a controlled first proof with a fake effect on one machine, see:`,
+      `https://github.com/stringsofthemind-oss/once/tree/main/examples/local-function`,
+      `That Node 24.15+ proof needs no API key; it is not a production`,
+      `integration and does not coordinate separate hosts.`,
+      `For the real operation, first establish a supported provider adapter`,
+      `or capability that preserves the exact effect and recovery semantics.`,
+      `Do not replace the original call merely because it was detected.`
+    );
+  }
+
+  const providerName = provider ?? "YOUR_PROVIDER";
+  lines.push(
     ``,
     `Configured provider: ${providerName}`,
     ``,
@@ -417,7 +468,9 @@ function buildIntegrationSnippet(
     `Do not replace the original call until the configured`,
     `provider is capable of performing this exact side effect.`,
     ``
-  ].join("\n");
+  );
+
+  return lines.join("\n");
 }
 
 function buildPatchPreview(
@@ -766,219 +819,125 @@ async function applyTransformerClassification(
   manifest: CapabilityManifest | null
 ): Promise<void> {
 
-  if (
-    !provider ||
-    candidate.automation_status !==
-      "PROVIDER_CAPABILITY_DECLARED" ||
-    finding.category !==
-      "HTTP_WRITE"
-  ) {
+  if (finding.category !== "HTTP_WRITE") return;
+
+  const markUnsupported = (reason: string): void => {
+    candidate.source_shape = "UNSUPPORTED";
+    candidate.source_shape_reason = reason;
+    candidate.transformer_reason = reason;
+
+    if (candidate.automation_status === "PROVIDER_MAPPING_REQUIRED") {
+      candidate.automation_reason =
+        `Provider mapping is not the only blocker. The current proven HTTP transformer rejects this source shape: ${reason} Provider setup alone will not make this callsite auto-apply eligible.`;
+    }
+  };
+
+  if (!/\.(?:ts|tsx|mts|cts)$/i.test(finding.file)) {
+    markUnsupported("The proven HTTP transformer currently supports TypeScript source only.");
     return;
   }
 
-  const capability =
-    manifest?.capabilities.find(
-      item =>
-        item.category ===
-          "HTTP_WRITE" &&
-        item.action_type ===
-          "http_write_v1"
-    );
-
-  if (!capability) {
+  const sourcePath = path.resolve(root, finding.file);
+  const relative = path.relative(root, sourcePath);
+  if (relative.startsWith("..") || path.isAbsolute(relative)) {
+    markUnsupported("Source path escaped the project root.");
     return;
   }
 
-  if (
-    !/\.(?:ts|tsx|mts|cts)$/i.test(
-      finding.file
-    )
-  ) {
-    candidate.transformer_reason =
-      "The proven HTTP transformer currently supports TypeScript source only.";
-
-    return;
-  }
-
-  const sourcePath =
-    path.resolve(
-      root,
-      finding.file
-    );
-
-  const relative =
-    path.relative(
-      root,
-      sourcePath
-    );
-
-  if (
-    relative.startsWith(
-      ".."
-    ) ||
-    path.isAbsolute(
-      relative
-    )
-  ) {
-    candidate.transformer_reason =
-      "Source path escaped the project root.";
-
-    return;
-  }
-
-  let source:
-    string;
-
+  let source: string;
   try {
-
-    source =
-      await fs.readFile(
-        sourcePath,
-        "utf8"
-      );
-
+    source = await fs.readFile(sourcePath, "utf8");
   } catch {
-
-    candidate.transformer_reason =
-      "Source file could not be read.";
-
+    markUnsupported("Source file could not be read.");
     return;
   }
 
-  const extracted =
-    extractAwaitFetchStatement(
-      source,
-      finding.line
-    );
-
+  const extracted = extractAwaitFetchStatement(source, finding.line);
   if (!extracted) {
-
-    candidate.transformer_reason =
-      "No exact supported await fetch statement could be extracted.";
-
+    markUnsupported("No exact supported await fetch statement could be extracted.");
     return;
   }
 
-  if (
-    !finding.functionName
-  ) {
-
-    candidate.transformer_reason =
-      "The supported transformer requires a named function containing the operation.";
-
+  if (!finding.functionName) {
+    markUnsupported("The supported transformer requires a named function containing the operation.");
     return;
   }
 
-  const functionSource =
-    extractFunctionDeclarationSource(
-      source,
-      finding.functionName,
-      extracted.startOffset
-    );
-
+  const functionSource = extractFunctionDeclarationSource(source, finding.functionName, extracted.startOffset);
   if (!functionSource) {
-
-    candidate.transformer_reason =
-      "The surrounding supported function declaration could not be identified.";
-
+    markUnsupported("The surrounding supported function declaration could not be identified.");
     return;
   }
 
-  const result =
-    transformHttpWriteV1({
-      statement:
-        extracted.statement,
-
-      functionSource,
-
-      provider
-    });
+  const result = transformHttpWriteV1({
+    statement: extracted.statement,
+    functionSource,
+    provider: provider ?? "__once_source_preflight__"
+  });
 
   if (!result.eligible) {
-
-    candidate.transformer_reason =
-      result.reason;
-
+    markUnsupported(result.reason);
     return;
   }
 
-  const allowedUrls =
-    capability.allowed_urls;
+  candidate.source_shape = "SUPPORTED";
+  candidate.source_shape_reason =
+    "The exact source shape matches the current proven HTTP transformer contract.";
+  candidate.target_url = result.url;
 
-  if (
-    !Array.isArray(
-      allowedUrls
-    ) ||
-    !allowedUrls.includes(
-      result.url
-    )
-  ) {
+  if (!provider) {
+    candidate.automation_reason =
+      `Source shape matches the proven HTTP transformer, but provider mapping is still required before any rewrite can become eligible. Exact target: ${result.url}.`;
+    return;
+  }
+
+  if (candidate.automation_status !== "PROVIDER_CAPABILITY_DECLARED") {
+    candidate.automation_reason =
+      "Source shape matches the proven HTTP transformer, but the configured provider does not yet declare the required http_write_v1 capability for this callsite.";
+    return;
+  }
+
+  const capability = manifest?.capabilities.find(
+    item => item.category === "HTTP_WRITE" && item.action_type === "http_write_v1"
+  );
+  if (!capability) return;
+
+  const allowedUrls = capability.allowed_urls;
+  if (!Array.isArray(allowedUrls) || !allowedUrls.includes(result.url)) {
     candidate.transformer_reason =
       `Capability does not explicitly allow target URL ${result.url}.`;
-
     return;
   }
 
-  candidate.target_url =
-    result.url;
-
-  candidate.automation_status =
-    "TRANSFORMER_MATCHED";
-
+  candidate.automation_status = "TRANSFORMER_MATCHED";
   candidate.automation_reason =
     "The exact source pattern was accepted by the proven ts_fetch_post_void_v1 transformer. Full source-patch planning is now being validated.";
+  candidate.transformer_id = result.transformer;
+  candidate.transformer_reason = "Exact transformer contract matched.";
+  candidate.binding_required = result.requiresOnceBinding;
 
-  candidate.transformer_id =
-    result.transformer;
+  const patchPlan = buildHttpWritePatchV1({
+    source,
+    statement: extracted.statement,
+    functionSource,
+    provider
+  });
 
-  candidate.transformer_reason =
-    "Exact transformer contract matched.";
-
-  candidate.binding_required =
-    result.requiresOnceBinding;
-
-  const patchPlan =
-    buildHttpWritePatchV1({
-      source,
-      statement:
-        extracted.statement,
-      functionSource,
-      provider
-    });
-
-  if (
-    !patchPlan.eligible
-  ) {
+  if (!patchPlan.eligible) {
     candidate.transformer_reason =
       `Transformer matched, but complete patch planning failed closed: ${patchPlan.reason}`;
-
     return;
   }
 
-  candidate.automation_status =
-    "PATCHABLE";
-
+  candidate.automation_status = "PATCHABLE";
   candidate.automation_reason =
     "Scanner match, provider capability, transformer contract, call-site Once binding and deterministic full-source patch planning all succeeded.";
-
-  candidate.auto_apply_eligible =
-    true;
-
-  candidate.binding_required =
-    false;
-
-  candidate.binding_strategy =
-    patchPlan.bindingStrategy;
-
-  candidate.patch_plan_id =
-    patchPlan.patchPlan;
-
-  candidate.source_sha256 =
-    patchPlan.sourceSha256;
-
-  candidate.proposed_source_sha256 =
-    patchPlan.proposedSourceSha256;
-
+  candidate.auto_apply_eligible = true;
+  candidate.binding_required = false;
+  candidate.binding_strategy = patchPlan.bindingStrategy;
+  candidate.patch_plan_id = patchPlan.patchPlan;
+  candidate.source_sha256 = patchPlan.sourceSha256;
+  candidate.proposed_source_sha256 = patchPlan.proposedSourceSha256;
   candidate.transformer_reason =
     "Complete deterministic source patch successfully planned in memory.";
 }
@@ -1176,6 +1135,39 @@ export async function runProtect(
           : "no"
       }`
     );
+
+    console.log(
+      `  ${candidate.automation_reason}`
+    );
+
+    if (candidate.source_shape) {
+      console.log(
+        `  Source-shape preflight: ${candidate.source_shape}`
+      );
+      console.log(
+        `  Source-shape reason: ${candidate.source_shape_reason ?? "not available"}`
+      );
+    }
+
+    if (
+      candidate.automation_status === "PROVIDER_MAPPING_REQUIRED" &&
+      candidate.source_shape === "SUPPORTED" &&
+      candidate.target_url
+    ) {
+      console.log(
+        `  Next setup: npx --yes --package=@once-agent/sdk once setup . --runtime-http=${JSON.stringify(candidate.target_url)}`
+      );
+      console.log(
+        "  Then rerun doctor --protect; use --apply only if the fresh result is PATCHABLE."
+      );
+    } else if (
+      candidate.automation_status === "PROVIDER_MAPPING_REQUIRED" &&
+      candidate.source_shape === "UNSUPPORTED"
+    ) {
+      console.log(
+        "  Provider setup alone will not make this callsite auto-apply eligible."
+      );
+    }
 
     if (
       candidate.transformer_id
