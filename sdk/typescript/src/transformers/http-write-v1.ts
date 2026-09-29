@@ -13,7 +13,7 @@ export type HttpWriteTransformSuccess = {
     typeof HTTP_WRITE_TRANSFORMER_ID;
   replacement: string;
   actionType: "http_write_v1";
-  method: "POST";
+  method: "POST" | "PUT";
   url: string;
   bodyExpression: string;
   requiresOnceBinding: true;
@@ -456,16 +456,19 @@ export function transformHttpWriteV1(
 
   const methodMatch =
     options.match(
-      /\bmethod\s*:\s*(["'])POST\1/
+      /\bmethod\s*:\s*(["'])(POST|PUT)\1/
     );
 
   if (!methodMatch) {
     return {
       eligible: false,
       reason:
-        "Supports only literal POST requests."
+        "Supports only exact literal POST or PUT requests."
     };
   }
+
+  const method =
+    methodMatch[2] as "POST" | "PUT";
 
   const bodyMatch =
     options.match(
@@ -520,7 +523,7 @@ export function transformHttpWriteV1(
     `  provider: ${quote(provider)},`,
     "  action: {",
     '    type: "http_write_v1",',
-    '    method: "POST",',
+    `    method: ${quote(method)},`,
     `    url: ${quote(url)},`,
     ...(preservedHeadersJson !== undefined
       ? [
@@ -539,8 +542,7 @@ export function transformHttpWriteV1(
     replacement,
     actionType:
       "http_write_v1",
-    method:
-      "POST",
+    method,
     url,
     bodyExpression,
     requiresOnceBinding:
