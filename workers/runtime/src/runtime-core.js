@@ -4511,12 +4511,12 @@ var Q18Truth = class extends DurableObject {
         const rawTargetUrl = String(
           action.url || ""
         ).trim();
-        if (actionType !== "http_write_v1" || (actionMethod !== "POST" && actionMethod !== "PUT") || !rawTargetUrl || typeof action.body_json !== "string") {
+        if (actionType !== "http_write_v1" || (actionMethod !== "POST" && actionMethod !== "PUT" && actionMethod !== "PATCH") || !rawTargetUrl || typeof action.body_json !== "string") {
           return json(
             {
               error: "invalid_http_write_v1_action",
               operation_id: operationId,
-              message: "registered HTTP v0.1 supports exact POST or PUT + JSON body only"
+              message: "registered HTTP v0.1 supports exact POST, PUT, or PATCH + JSON body only"
             },
             400
           );

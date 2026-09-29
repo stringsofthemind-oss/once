@@ -13,7 +13,7 @@ export type HttpWriteTransformSuccess = {
     typeof HTTP_WRITE_TRANSFORMER_ID;
   replacement: string;
   actionType: "http_write_v1";
-  method: "POST" | "PUT";
+  method: "POST" | "PUT" | "PATCH";
   url: string;
   bodyExpression: string;
   requiresOnceBinding: true;
@@ -456,19 +456,19 @@ export function transformHttpWriteV1(
 
   const methodMatch =
     options.match(
-      /\bmethod\s*:\s*(["'])(POST|PUT)\1/
+      /\bmethod\s*:\s*(["'])(POST|PUT|PATCH)\1/
     );
 
   if (!methodMatch) {
     return {
       eligible: false,
       reason:
-        "Supports only exact literal POST or PUT requests."
+        "Supports only exact literal POST, PUT, or PATCH requests."
     };
   }
 
   const method =
-    methodMatch[2] as "POST" | "PUT";
+    methodMatch[2] as "POST" | "PUT" | "PATCH";
 
   const bodyMatch =
     options.match(
