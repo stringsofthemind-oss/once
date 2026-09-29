@@ -21,7 +21,7 @@ const fixtures = [
     id: "put-literal",
     methodSource: '"PUT"',
     targetSafe: true,
-    expectedEligibleNow: false
+    expectedEligibleNow: true
   },
   {
     id: "patch-literal",
@@ -117,6 +117,15 @@ for (const fixture of fixtures) {
     ].join(" | ")
   );
 
+  if (result.eligible) {
+    const expectedMethod = JSON.parse(fixture.methodSource);
+    assert.equal(result.method, expectedMethod, `${fixture.id}: transform result must preserve exact method`);
+    assert.ok(
+      result.replacement.includes(`method: ${JSON.stringify(expectedMethod)}`),
+      `${fixture.id}: generated action must preserve exact method`
+    );
+  }
+
   if (!result.eligible) {
     assert.equal(
       typeof result.reason,
@@ -186,7 +195,7 @@ const currentlyEligible = results.filter((result) => result.eligible).length;
 assert.equal(targetSafe, 4);
 assert.equal(targetSafeFuture, 3);
 assert.equal(mustReject, 8);
-assert.equal(currentlyEligible, 1);
+assert.equal(currentlyEligible, 2);
 
 console.log("");
 console.log(`Contract fixtures:          ${results.length + 1}`);
@@ -196,5 +205,5 @@ console.log(`Must-remain-rejected:       ${mustReject}`);
 console.log(`Currently eligible:         ${currentlyEligible}`);
 console.log("");
 console.log(
-  "PASS - method preservation boundary pinned; production remains POST-only"
+  "PASS - exact POST/PUT method preservation boundary pinned; PATCH/DELETE remain rejected"
 );

@@ -489,7 +489,7 @@ console.log(
   "PASS - spread headers rejected"
 );
 
-//// Wrong method
+//// Exact method boundary
 //
 
 const put =
@@ -511,11 +511,50 @@ const put =
 
 assert.equal(
   put.eligible,
-  false
+  true
+);
+
+assert.equal(
+  put.method,
+  "PUT"
+);
+
+assert.ok(
+  put.replacement.includes(
+    'method: "PUT"'
+  )
 );
 
 console.log(
-  "PASS - non-POST method rejected"
+  "PASS - exact literal PUT transformed and preserved"
+);
+
+for (const method of ["PATCH", "DELETE"]) {
+  const unsupportedMethod =
+    transformHttpWriteV1({
+      statement: `
+        await fetch(
+          "https://api.example.invalid/orders",
+          {
+            method: "${method}",
+            body: JSON.stringify(payload)
+          }
+        );
+      `,
+      functionSource:
+        goodFunction,
+      provider:
+        "customer-http"
+    });
+
+  assert.equal(
+    unsupportedMethod.eligible,
+    false
+  );
+}
+
+console.log(
+  "PASS - PATCH and DELETE remain rejected"
 );
 
 //

@@ -140,7 +140,7 @@ await fetch(
   {
     id: "put",
     category: "method",
-    expectedEligible: false,
+    expectedEligible: true,
     statement: `
 await fetch(
   "https://api.example.invalid/orders",
@@ -291,12 +291,12 @@ const observedCoverage = (observedEligible / total) * 100;
 const intendedSafeCoverage = (intendedSafe / total) * 100;
 
 assert.equal(total, 15);
-assert.equal(observedEligible, 3);
-assert.equal(observedRejected, 12);
-assert.equal(intendedSafe, 3);
+assert.equal(observedEligible, 4);
+assert.equal(observedRejected, 11);
+assert.equal(intendedSafe, 4);
 assert.equal(anomalies.length, 0);
-assert.equal(observedCoverage.toFixed(2), "20.00");
-assert.equal(intendedSafeCoverage.toFixed(2), "20.00");
+assert.equal(observedCoverage.toFixed(2), "26.67");
+assert.equal(intendedSafeCoverage.toFixed(2), "26.67");
 
 const rejectionCounts = new Map();
 const categoryCounts = new Map();
