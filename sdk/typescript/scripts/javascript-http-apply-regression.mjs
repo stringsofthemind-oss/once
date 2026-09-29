@@ -55,7 +55,7 @@ async function writeProviderFiles(directory) {
 function sourceFor(extension) {
   if (extension === "mjs" || extension === "js" || extension === "cjs") {
     return [
-      "export async function createBooking(operationId, payload) {",
+      "export async function submitPayload(operationId, payload) {",
       "  await fetch(",
       `    \"${targetUrl}\",`,
       "    {",
