@@ -529,7 +529,44 @@ console.log(
   "PASS - exact literal PUT transformed and preserved"
 );
 
-for (const method of ["PATCH", "DELETE"]) {
+const patch =
+  transformHttpWriteV1({
+    statement: `
+      await fetch(
+        "https://api.example.invalid/orders",
+        {
+          method: "PATCH",
+          body: JSON.stringify(payload)
+        }
+      );
+    `,
+    functionSource:
+      goodFunction,
+    provider:
+      "customer-http"
+  });
+
+assert.equal(
+  patch.eligible,
+  true
+);
+
+assert.equal(
+  patch.method,
+  "PATCH"
+);
+
+assert.ok(
+  patch.replacement.includes(
+    'method: "PATCH"'
+  )
+);
+
+console.log(
+  "PASS - exact literal PATCH transformed and preserved"
+);
+
+for (const method of ["DELETE"]) {
   const unsupportedMethod =
     transformHttpWriteV1({
       statement: `
@@ -554,7 +591,7 @@ for (const method of ["PATCH", "DELETE"]) {
 }
 
 console.log(
-  "PASS - PATCH and DELETE remain rejected"
+  "PASS - DELETE remains rejected"
 );
 
 //
