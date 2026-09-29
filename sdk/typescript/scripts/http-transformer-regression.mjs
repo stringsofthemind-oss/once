@@ -336,7 +336,7 @@ console.log(
 
 //
 //
-// Additional static header must remain fail-closed
+// Bounded static X-API-Version must be preserved
 //
 
 const additionalStaticHeader =
@@ -362,14 +362,33 @@ const additionalStaticHeader =
 
 assert.equal(
   additionalStaticHeader.eligible,
-  false
+  true
+);
+
+if (!additionalStaticHeader.eligible) {
+  throw new Error(
+    additionalStaticHeader.reason
+  );
+}
+
+assert.match(
+  additionalStaticHeader.replacement,
+  /headers_json:/
+);
+
+assert.match(
+  additionalStaticHeader.replacement,
+  /\\"content-type\\":\\"application\/json\\"/
+);
+
+assert.match(
+  additionalStaticHeader.replacement,
+  /\\"x-api-version\\":\\"2026-09-01\\"/
 );
 
 console.log(
-  "PASS - additional static header rejected"
+  "PASS - additional static header preserved"
 );
-
-//
 // Static Authorization must remain fail-closed
 //
 

@@ -225,10 +225,12 @@ export function transformHttpWriteV1(
     };
   }
 
+  let preservedHeadersJson: string | undefined;
+
   if (jsonHeaderShape) {
     const headerMatch =
       options.match(
-        /\bheaders\s*:\s*\{\s*(["'])Content-Type\1\s*:\s*(["'])application\/json\2\s*\}/
+        /\bheaders\s*:\s*\{\s*(["'])Content-Type\1\s*:\s*(["'])application\/json\2(?:\s*,\s*(["'])X-API-Version\3\s*:\s*(["'])([^"'\\\r\n]+)\4)?\s*\}/
       );
 
     const headerOccurrences =
@@ -245,11 +247,20 @@ export function transformHttpWriteV1(
       return {
         eligible: false,
         reason:
-          "Only the exact static `Content-Type: application/json` header is supported."
+          "Only bounded static JSON headers are supported."
       };
     }
-  }
 
+    if (headerMatch[5] !== undefined) {
+      preservedHeadersJson =
+        JSON.stringify({
+          "content-type":
+            "application/json",
+          "x-api-version":
+            headerMatch[5]
+        });
+    }
+  }
   const methodMatch =
     options.match(
       /\bmethod\s*:\s*(["'])POST\1/
@@ -318,6 +329,11 @@ export function transformHttpWriteV1(
     '    type: "http_write_v1",',
     '    method: "POST",',
     `    url: ${quote(url)},`,
+    ...(preservedHeadersJson !== undefined
+      ? [
+          `    headers_json: ${quote(preservedHeadersJson)},`
+        ]
+      : []),
     `    body_json: JSON.stringify(${bodyExpression})`,
     "  }",
     "});"
