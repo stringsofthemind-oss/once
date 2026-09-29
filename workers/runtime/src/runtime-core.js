@@ -4505,18 +4505,19 @@ var Q18Truth = class extends DurableObject {
         const actionType = String(
           action.type || ""
         ).trim();
-        const actionMethod = String(
-          action.method || ""
-        ).trim();
+        const actionMethod =
+          typeof action.method === "string"
+            ? action.method
+            : "";
         const rawTargetUrl = String(
           action.url || ""
         ).trim();
-        if (actionType !== "http_write_v1" || (actionMethod !== "POST" && actionMethod !== "PUT" && actionMethod !== "PATCH") || !rawTargetUrl || typeof action.body_json !== "string") {
+        if (actionType !== "http_write_v1" || (actionMethod !== "POST" && actionMethod !== "PUT" && actionMethod !== "PATCH" && actionMethod !== "DELETE") || !rawTargetUrl || typeof action.body_json !== "string") {
           return json(
             {
               error: "invalid_http_write_v1_action",
               operation_id: operationId,
-              message: "registered HTTP v0.1 supports exact POST, PUT, or PATCH + JSON body only"
+              message: "registered HTTP v0.1 supports exact POST, PUT, PATCH, or DELETE + JSON body only"
             },
             400
           );

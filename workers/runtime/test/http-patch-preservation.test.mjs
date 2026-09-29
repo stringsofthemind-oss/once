@@ -78,7 +78,7 @@ test('registered HTTP PATCH reaches execution unchanged and fast replay cannot c
   }
 });
 
-for (const method of ['DELETE', 'GET', 'HEAD', 'OPTIONS', 'patch', 'Patch']) {
+for (const method of ['GET', 'HEAD', 'OPTIONS', 'patch', 'Patch']) {
   test(`registered HTTP method remains fail-closed: ${method}`, async () => {
     const { Runtime } = await loadRuntime();
     const store = storage();

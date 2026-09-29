@@ -566,7 +566,44 @@ console.log(
   "PASS - exact literal PATCH transformed and preserved"
 );
 
-for (const method of ["DELETE"]) {
+const deleteMethod =
+  transformHttpWriteV1({
+    statement: `
+      await fetch(
+        "https://api.example.invalid/orders",
+        {
+          method: "DELETE",
+          body: JSON.stringify(payload)
+        }
+      );
+    `,
+    functionSource:
+      goodFunction,
+    provider:
+      "customer-http"
+  });
+
+assert.equal(
+  deleteMethod.eligible,
+  true
+);
+
+assert.equal(
+  deleteMethod.method,
+  "DELETE"
+);
+
+assert.ok(
+  deleteMethod.replacement.includes(
+    'method: "DELETE"'
+  )
+);
+
+console.log(
+  "PASS - exact literal DELETE transformed and preserved"
+);
+
+for (const method of ["delete", "Delete"]) {
   const unsupportedMethod =
     transformHttpWriteV1({
       statement: `
@@ -591,7 +628,7 @@ for (const method of ["DELETE"]) {
 }
 
 console.log(
-  "PASS - DELETE remains rejected"
+  "PASS - lowercase and mixed-case DELETE remain rejected"
 );
 
 //
