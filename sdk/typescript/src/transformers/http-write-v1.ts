@@ -77,6 +77,9 @@ export function transformHttpWriteV1(
   const provider =
     input.provider.trim();
 
+  const functionSource =
+    input.functionSource;
+
   if (!provider) {
     return {
       eligible: false,
@@ -156,7 +159,17 @@ export function transformHttpWriteV1(
    * Content-Type: application/json header.
    *
    * Arbitrary headers still require a richer
-   * semantics-preserving transformer.
+   * semantics-preserving action/runtime contract.
+   *
+   * In particular, source Authorization headers
+   * must not be copied into the protected action:
+   * registered provider authorization is resolved
+   * separately by the Once runtime.
+   *
+   * Until http_write_v1 can carry and execute
+   * arbitrary headers with equivalent semantics,
+   * additional, dynamic, referenced, spread, and
+   * Authorization headers remain fail-closed.
    */
   const keys =
     Array.from(
@@ -172,16 +185,47 @@ export function transformHttpWriteV1(
       new Set(keys)
     ).sort();
 
+  /*
+   * Fail closed on shorthand headers such as:
+   *
+   *   { method: "POST", headers, body: ... }
+   *
+   * The explicit key:value extraction above does
+   * not count shorthand object properties.
+   */
+  const shorthandHeaders =
+    /(?:^|,|\n)\s*headers\s*(?=,|\n|$)/.test(
+      options
+    );
+
+
   const baseShape =
     uniqueKeys.length === 2 &&
     uniqueKeys[0] === "body" &&
     uniqueKeys[1] === "method";
 
+  const explicitHeaderReferenceMatch =
+    options.match(
+      /\bheaders\s*:\s*([A-Za-z_$][A-Za-z0-9_$]*)\s*(?=,|\n|$)/
+    );
+
+  const headerReferenceCandidate =
+    shorthandHeaders ||
+    explicitHeaderReferenceMatch !== null;
+
   const jsonHeaderShape =
-    uniqueKeys.length === 3 &&
-    uniqueKeys[0] === "body" &&
-    uniqueKeys[1] === "headers" &&
-    uniqueKeys[2] === "method";
+    (
+      uniqueKeys.length === 3 &&
+      uniqueKeys[0] === "body" &&
+      uniqueKeys[1] === "headers" &&
+      uniqueKeys[2] === "method"
+    ) ||
+    (
+      headerReferenceCandidate &&
+      uniqueKeys.length === 2 &&
+      uniqueKeys[0] === "body" &&
+      uniqueKeys[1] === "method"
+    );
 
   if (
     !baseShape &&
@@ -194,27 +238,218 @@ export function transformHttpWriteV1(
     };
   }
 
+  const resolveStaticHeaderReference =
+    (identifier: string): string | undefined => {
+      const escapedIdentifier =
+        identifier.replace(
+          /[.*+?^${}()|[\]\\]/g,
+          "\\$&"
+        );
+
+      const declarationPattern =
+        new RegExp(
+          String.raw`\bconst\s+${escapedIdentifier}\s*=\s*\{([\s\S]*?)\}\s*;`,
+          "g"
+        );
+
+      const declarations =
+        Array.from(
+          functionSource.matchAll(
+            declarationPattern
+          )
+        );
+
+      if (declarations.length !== 1) {
+        return undefined;
+      }
+
+      const objectBody =
+        declarations[0]?.[1];
+
+      if (objectBody === undefined) {
+        return undefined;
+      }
+
+      if (
+        objectBody.includes("...") ||
+        objectBody.includes("[") ||
+        objectBody.includes("]") ||
+        objectBody.includes("`") ||
+        objectBody.includes("${")
+      ) {
+        return undefined;
+      }
+
+      const entryPattern =
+        /(["'])([^"'\\\r\n]+)\1\s*:\s*(["'])([^"'\\\r\n]*)\3\s*(?:,|$)/g;
+
+      const entries =
+        Array.from(
+          objectBody.matchAll(
+            entryPattern
+          )
+        );
+
+      const remainder =
+        objectBody
+          .replace(entryPattern, "")
+          .trim();
+
+      if (
+        entries.length === 0 ||
+        remainder !== ""
+      ) {
+        return undefined;
+      }
+
+      const headers: Record<string, string> = {};
+
+      for (const entry of entries) {
+        const rawName = entry[2];
+        const value = entry[4];
+
+        if (
+          rawName === undefined ||
+          value === undefined
+        ) {
+          return undefined;
+        }
+
+        const name =
+          rawName.toLowerCase();
+
+        if (
+          name !== "content-type" &&
+          name !== "x-api-version"
+        ) {
+          return undefined;
+        }
+
+        if (
+          Object.prototype.hasOwnProperty.call(
+            headers,
+            name
+          )
+        ) {
+          return undefined;
+        }
+
+        if (
+          name === "content-type" &&
+          value !== "application/json"
+        ) {
+          return undefined;
+        }
+
+        headers[name] = value;
+      }
+
+      const identifierOccurrences =
+        (
+          functionSource.match(
+            new RegExp(
+              String.raw`\b${escapedIdentifier}\b`,
+              "g"
+            )
+          ) ?? []
+        ).length;
+
+      if (identifierOccurrences !== 2) {
+        return undefined;
+      }
+
+      return JSON.stringify(headers);
+    };
+
+  let preservedHeadersJson: string | undefined;
+
   if (jsonHeaderShape) {
     const headerMatch =
       options.match(
-        /\bheaders\s*:\s*\{\s*(["'])Content-Type\1\s*:\s*(["'])application\/json\2\s*\}/
+        /\bheaders\s*:\s*\{\s*(["'])Content-Type\1\s*:\s*(["'])application\/json\2(?:\s*,\s*(["'])X-API-Version\3\s*:\s*(["'])([^"'\\\r\n]+)\4)?\s*\}/
       );
 
-    const headerOccurrences =
+    const shorthandHeaderReferenceMatch =
+      shorthandHeaders
+        ? options.match(
+            /(?:^|,|\n)\s*(headers)\s*(?=,|\n|$)/
+          )
+        : null;
+
+    const explicitHeaderReference =
+      explicitHeaderReferenceMatch?.[1];
+
+    const shorthandHeaderReference =
+      shorthandHeaderReferenceMatch?.[1];
+
+    const headerReference =
+      explicitHeaderReference ??
+      shorthandHeaderReference;
+
+    const explicitHeaderOccurrences =
       (
-        options.match(
-          /\bheaders\s*:/g
-        ) ?? []
+        options.match(/\bheaders\s*:/g) ?? []
       ).length;
 
-    if (
-      !headerMatch ||
-      headerOccurrences !== 1
-    ) {
+    const shorthandHeaderOccurrences =
+      shorthandHeaders ? 1 : 0;
+
+    const headerOccurrences =
+      explicitHeaderOccurrences +
+      shorthandHeaderOccurrences;
+
+    if (headerOccurrences !== 1) {
       return {
         eligible: false,
         reason:
-          "Only the exact static `Content-Type: application/json` header is supported."
+          "Only bounded static JSON headers are supported."
+      };
+    }
+
+    if (headerMatch) {
+      if (headerMatch[5] !== undefined) {
+        preservedHeadersJson =
+          JSON.stringify({
+            "content-type":
+              "application/json",
+            "x-api-version":
+              headerMatch[5]
+          });
+      }
+    }
+    else if (headerReference !== undefined) {
+      const resolvedHeaders =
+        resolveStaticHeaderReference(
+          headerReference
+        );
+
+      if (resolvedHeaders === undefined) {
+        if (
+          shorthandHeaders &&
+          headerReference === "headers"
+        ) {
+          return {
+            eligible: false,
+            reason:
+              "Only the exact static `Content-Type: application/json` header is supported."
+          };
+        }
+
+        return {
+          eligible: false,
+          reason:
+            "Static header reference could not be resolved safely."
+        };
+      }
+
+      preservedHeadersJson =
+        resolvedHeaders;
+    }
+    else {
+      return {
+        eligible: false,
+        reason:
+          "Only bounded static JSON headers are supported."
       };
     }
   }
@@ -287,6 +522,11 @@ export function transformHttpWriteV1(
     '    type: "http_write_v1",',
     '    method: "POST",',
     `    url: ${quote(url)},`,
+    ...(preservedHeadersJson !== undefined
+      ? [
+          `    headers_json: ${quote(preservedHeadersJson)},`
+        ]
+      : []),
     `    body_json: JSON.stringify(${bodyExpression})`,
     "  }",
     "});"
