@@ -11,6 +11,23 @@ async function createOrder(operationId, payload) {
   // Fixture source context for transformer eligibility checks.
 }
 `;
+function splitFixtureSource(source) {
+  const fetchIndex = source.indexOf("await fetch(");
+
+  if (fetchIndex === -1) {
+    return {
+      declarations: "",
+      statement: source
+    };
+  }
+
+  return {
+    declarations:
+      source.slice(0, fetchIndex).trim(),
+    statement:
+      source.slice(fetchIndex).trim()
+  };
+}
 
 const cases = [
   {
@@ -288,10 +305,26 @@ console.log("HTTP STATIC HEADER REFERENCE CONTRACT");
 console.log("=====================================");
 
 for (const fixture of cases) {
+  const {
+    declarations,
+    statement
+  } = splitFixtureSource(
+    fixture.statement
+  );
+
+  const fixtureFunctionSource = `
+async function createOrder(operationId, payload) {
+${declarations}
+${statement}
+}
+`;
+
   const result = transformHttpWriteV1({
-    statement: fixture.statement,
-    functionSource,
-    operationId: `reference-contract-${fixture.id}`,
+    statement,
+    functionSource:
+      fixtureFunctionSource,
+    operationId:
+      `reference-contract-${fixture.id}`,
     provider
   });
 
@@ -315,13 +348,13 @@ for (const fixture of cases) {
    * The three FUTURE-SAFE cases are expected to remain rejected until
    * production transformer behaviour is deliberately changed.
    */
-  if (!fixture.futureEligible) {
-    assert.equal(
-      result.eligible,
-      false,
-      `${fixture.id} unexpectedly became transformable`
-    );
-  }
+  assert.equal(
+    result.eligible,
+    fixture.futureEligible,
+    fixture.futureEligible
+      ? `${fixture.id} should now be safely transformable`
+      : `${fixture.id} unexpectedly crossed the fail-closed boundary`
+  );
 }
 
 assert.equal(cases.length, 15);
