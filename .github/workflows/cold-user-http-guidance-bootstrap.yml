@@ -1,18 +1,20 @@
 name: Cold-user HTTP guidance bootstrap
 
 on:
-  push:
+  pull_request:
     branches:
-      - adoption/cold-user-http-guidance-v1
-    paths:
-      - scripts/cold-user-http-guidance-bootstrap.mjs
-      - .github/workflows/cold-user-http-guidance-bootstrap.yml
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
 
 permissions:
   contents: write
 
 jobs:
   bootstrap:
+    if: github.head_ref == 'adoption/cold-user-http-guidance-v1'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout exact branch
