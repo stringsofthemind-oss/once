@@ -597,6 +597,7 @@ try {
       error.message
     );
   }
+
   throw error;
 }
 ```
