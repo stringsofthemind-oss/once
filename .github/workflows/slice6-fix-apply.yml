@@ -1,0 +1,43 @@
+name: Slice 6 Apply Fix
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]' && github.head_ref == 'http-response-native-integrated-slice6'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout exact branch
+        uses: actions/checkout@v4
+        with:
+          ref: http-response-native-integrated-slice6
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Apply guarded fix
+        run: node sdk/typescript/scripts/slice6-fix-apply.mjs
+
+      - name: Remove one-shot fix files
+        run: |
+          rm sdk/typescript/scripts/slice6-fix-apply.mjs
+          rm .github/workflows/slice6-fix-apply.yml
+
+      - name: Commit fix
+        run: |
+          git config user.name "Once"
+          git config user.email "stringsofthemind@gmail.com"
+          git add sdk/typescript/src/apply.ts sdk/typescript/scripts/slice6-fix-apply.mjs .github/workflows/slice6-fix-apply.yml
+          git diff --cached --exit-code && { echo "No fix changes"; exit 1; } || true
+          git commit -m "Fix native Response apply replan variables"
+          git push origin HEAD:http-response-native-integrated-slice6
