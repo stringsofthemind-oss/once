@@ -12,6 +12,10 @@ import {
   buildHttpWritePatchV1
 } from "./transformers/http-patch-plan-v1.js";
 
+import {
+  buildHttpNativeResponsePlanV1
+} from "./transformers/http-native-response-plan-v1.js";
+
 type PlanCandidate = {
   callsite_ref: string;
   file: string;
@@ -25,6 +29,7 @@ type PlanCandidate = {
   source_sha256?: string;
   proposed_source_sha256?: string;
   target_url?: string;
+  capability_fingerprint?: string;
 };
 
 type ProtectPlan = {
@@ -46,6 +51,9 @@ type CapabilityManifest = {
     category?: string;
     action_type?: string;
     allowed_urls?: string[];
+    version_id?: string;
+    response_replay?: string;
+    response_replay_v2?: string;
   }>;
 };
 
@@ -598,14 +606,30 @@ export async function applyProtectionPlan(
     );
   }
 
-  if (
-    candidate.category !==
-      "HTTP_WRITE" ||
-    candidate.transformer_id !==
-      "ts_fetch_post_void_v1" ||
-    candidate.patch_plan_id !==
-      "ts_fetch_post_void_patch_v1"
-  ) {
+  const supportedApplyContract =
+    candidate.category === "HTTP_WRITE" &&
+    (
+      (
+        candidate.transformer_id ===
+          "ts_fetch_post_void_v1" &&
+        candidate.patch_plan_id ===
+          "ts_fetch_post_void_patch_v1"
+      ) ||
+      (
+        candidate.transformer_id ===
+          "ts_fetch_response_assignment_v1" &&
+        candidate.patch_plan_id ===
+          "ts_fetch_response_assignment_patch_v1"
+      ) ||
+      (
+        candidate.transformer_id ===
+          "ts_fetch_response_return_v1" &&
+        candidate.patch_plan_id ===
+          "ts_fetch_response_return_patch_v1"
+      )
+    );
+
+  if (!supportedApplyContract) {
     throw new Error(
       "Candidate is outside the supported v1.0 apply contract."
     );
@@ -688,28 +712,130 @@ export async function applyProtectionPlan(
     );
   }
 
-  const patch =
-    buildHttpWritePatchV1({
-      source:
-        originalSource,
+  const capabilityEvidence = {
+    name:
+      provider,
+    version_id:
+      capability.version_id,
+    response_replay:
+      capability.response_replay,
+    response_replay_v2:
+      capability.response_replay_v2,
+    allowed_urls:
+      capability.allowed_urls
+  };
 
-      statement:
-        extracted.statement,
+  let proposedSource: string;
+  let recomputedTargetUrl: string;
+  let recomputedSourceSha256: string;
+  let recomputedProposedSourceSha256: string;
+  let recomputedPatchPlanId: string;
+  let recomputedCapabilityFingerprint: string | undefined;
 
-      functionSource,
+  if (
+    candidate.transformer_id ===
+      "ts_fetch_post_void_v1"
+  ) {
+    const patch =
+      buildHttpWritePatchV1({
+        source:
+          originalSource,
+        statement:
+          extracted.statement,
+        functionSource,
+        provider
+      });
 
-      provider
-    });
+    if (!patch.eligible) {
+      throw new Error(
+        "Patch no longer satisfies transformer contract: " +
+        patch.reason
+      );
+    }
 
-  if (!patch.eligible) {
+    proposedSource =
+      patch.proposedSource;
+    recomputedTargetUrl =
+      patch.targetUrl;
+    recomputedSourceSha256 =
+      patch.sourceSha256;
+    recomputedProposedSourceSha256 =
+      patch.proposedSourceSha256;
+    recomputedPatchPlanId =
+      patch.patchPlan;
+  } else {
+    const nativePlan =
+      buildHttpNativeResponsePlanV1({
+        source:
+          originalSource,
+        awaitFetchStatement:
+          extracted.statement,
+        awaitFetchStartOffset:
+          extracted.startOffset,
+        functionSource,
+        provider,
+        capability:
+          capabilityEvidence
+      });
+
+    if (
+      !nativePlan.matched ||
+      !nativePlan.eligible
+    ) {
+      throw new Error(
+        "Native Response patch no longer satisfies transformer contract: " +
+        (
+          nativePlan.matched
+            ? nativePlan.reason
+            : "exact assigned/returned Response statement could not be re-identified"
+        )
+      );
+    }
+
+    if (
+      nativePlan.transformerId !==
+        candidate.transformer_id
+    ) {
+      throw new Error(
+        "Recomputed native Response transformer differs from Protect plan."
+      );
+    }
+
+    proposedSource =
+      nativePlan.proposedSource;
+    recomputedTargetUrl =
+      nativePlan.targetUrl;
+    recomputedSourceSha256 =
+      nativePlan.sourceSha256;
+    recomputedProposedSourceSha256 =
+      nativePlan.proposedSourceSha256;
+    recomputedPatchPlanId =
+      nativePlan.patchPlan;
+    recomputedCapabilityFingerprint =
+      nativePlan.capabilityFingerprint;
+
+    if (
+      !candidate.capability_fingerprint ||
+      recomputedCapabilityFingerprint !==
+        candidate.capability_fingerprint
+    ) {
+      throw new Error(
+        "Provider replay-v2 capability evidence changed after Protect planning."
+      );
+    }
+  }
+
+  if (
+    recomputedPatchPlanId !==
+      candidate.patch_plan_id
+  ) {
     throw new Error(
-      "Patch no longer satisfies transformer contract: " +
-      patch.reason
+      "Recomputed patch-plan contract differs from Protect plan."
     );
   }
 
   if (
-    patch.targetUrl !==
+    recomputedTargetUrl !==
     candidate.target_url
   ) {
     throw new Error(
@@ -718,7 +844,7 @@ export async function applyProtectionPlan(
   }
 
   if (
-    patch.proposedSourceSha256 !==
+    recomputedProposedSourceSha256 !==
     candidate.proposed_source_sha256
   ) {
     throw new Error(
@@ -727,7 +853,7 @@ export async function applyProtectionPlan(
   }
 
   await verifyTypeScript(
-    patch.proposedSource,
+    proposedSource,
     sourcePath
   );
 
@@ -780,7 +906,7 @@ export async function applyProtectionPlan(
 
     await fs.writeFile(
       temporaryPath,
-      patch.proposedSource,
+      proposedSource,
       {
         encoding:
           "utf8",
@@ -808,7 +934,7 @@ export async function applyProtectionPlan(
       sha256(
         applied
       ) !==
-      patch.proposedSourceSha256
+      recomputedProposedSourceSha256
     ) {
       throw new Error(
         "Applied source fingerprint differs from planned source."
@@ -830,10 +956,10 @@ export async function applyProtectionPlan(
       backupPath,
 
       sourceSha256:
-        patch.sourceSha256,
+        recomputedSourceSha256,
 
       appliedSha256:
-        patch.proposedSourceSha256
+        recomputedProposedSourceSha256
     };
 
   } catch (error) {
