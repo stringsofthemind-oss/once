@@ -276,6 +276,11 @@ must not infer `ABSENT` from a timeout. A real provider integration should use a
 read-only authoritative reconciliation lookup where possible. Otherwise an
 uncertain operation must remain blocked rather than be blindly redispatched.
 
+For a runnable GitHub example that recovers without a retained issue number,
+see [GitHub issue recovery](../sdk/typescript/examples/GITHUB_ISSUE_RECOVERY.md).
+It covers stable intent, bounded read-only reconciliation, concurrent caller
+handling, and JSON-safe receipts. Its correlation trust assumptions are explicit.
+
 ## Local-mode boundary
 
 This automatic path currently delegates to Once local protection:

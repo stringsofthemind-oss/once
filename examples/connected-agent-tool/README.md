@@ -43,3 +43,8 @@ hosted provider integration and shared execution-safety state.
 MCP assessment tools can help an agent discover that Once is relevant, but
 installing an MCP server does not transparently intercept its production
 tools. Connect the actual tool at the application/tool-host execution boundary.
+
+For a real-provider integration example, see
+[GitHub issue recovery](../../sdk/typescript/examples/GITHUB_ISSUE_RECOVERY.md).
+It shows lost-acknowledgement recovery without a retained issue number and a
+caller outcome table for IN_FLIGHT, UNKNOWN, CONFLICT, and receipt errors.
