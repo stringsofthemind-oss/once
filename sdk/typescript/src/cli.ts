@@ -126,6 +126,20 @@ function printHelp(): void {
 
   console.log("");
   console.log(
+    "  once review-local [directory] --target=<file:function> --id-prefix=<prefix> --id-path=<path> --payload-paths=<path1,path2,...> --confirm-reviewed"
+  );
+  console.log(
+    "      Record explicit developer-reviewed identity and effect-bearing payload semantics for one existing non-auto-applicable candidate."
+  );
+  console.log(
+    "      Requires an existing .once/protect-plan.json candidate. Source is not modified and the review artifact is intentionally non-runnable."
+  );
+  console.log(
+    "      Once does not infer business identity or payload completeness. Add --confirm-reviewed only after checking every supplied semantic choice."
+  );
+
+  console.log("");
+  console.log(
     "  once setup [directory] [--runtime-http=<target-url>]"
   );
   console.log(
@@ -202,6 +216,9 @@ function printHelp(): void {
   );
   console.log(
     "  once protect . --apply"
+  );
+  console.log(
+    "  once review-local . --target=orders.mjs:createOrder --id-prefix=create-order --id-path=orderId --payload-paths=orderId,amountCents --confirm-reviewed"
   );
   console.log(
     "  once setup ."
@@ -554,6 +571,17 @@ async function main(): Promise<void> {
         );
       }
 
+      return;
+    }
+
+    case "review-local": {
+      const {
+        runReviewedLocalCli
+      } = await import(
+        "./reviewed-local-cli.js"
+      );
+
+      await runReviewedLocalCli(args);
       return;
     }
 
