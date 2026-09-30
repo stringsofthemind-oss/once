@@ -168,7 +168,7 @@ test('noncanonical bytes, headers, URLs, and unsupported response types fail clo
   expectContractError(
     () => validateHttpResponseReplayV2ForPersistence({
       ...fixture(),
-      url: 'https://api.example.invalid/orders?z=2&a=1',
+      url: 'https://api.example.invalid/orders#fragment',
     }),
     'invalid_http_response_replay_v2_url',
   );
