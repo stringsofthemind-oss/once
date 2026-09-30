@@ -1,10 +1,20 @@
 import assert from "node:assert/strict";
 import { transformHttpWriteV1 } from "../dist/transformers/http-write-v1.js";
+import { transformHttpJsonConsumptionV1 } from "../dist/transformers/http-json-consumption-v1.js";
 
 const functionSource = `
 async function consequentialWrite(operationId, payload) {
 }
 `;
+
+const responseReplayCapability = {
+  name: "customer-http",
+  version_id: "benchmark-response-replay-v1",
+  response_replay: "required",
+  allowed_urls: [
+    "https://api.example.invalid/orders"
+  ]
+};
 
 const fixtures = [
   {
@@ -225,7 +235,7 @@ const response =
   {
     id: "consumed-response",
     category: "response",
-    expectedEligible: false,
+    expectedEligible: true,
     statement: `
 const result =
   await (
@@ -242,11 +252,18 @@ const result =
 ];
 
 const results = fixtures.map((fixture) => {
-  const result = transformHttpWriteV1({
-    statement: fixture.statement,
-    functionSource,
-    provider: "customer-http"
-  });
+  const result = fixture.category === "response"
+    ? transformHttpJsonConsumptionV1({
+        statement: fixture.statement,
+        functionSource,
+        provider: "customer-http",
+        capability: responseReplayCapability
+      })
+    : transformHttpWriteV1({
+        statement: fixture.statement,
+        functionSource,
+        provider: "customer-http"
+      });
 
   assert.equal(
     result.eligible,
@@ -291,12 +308,12 @@ const observedCoverage = (observedEligible / total) * 100;
 const intendedSafeCoverage = (intendedSafe / total) * 100;
 
 assert.equal(total, 15);
-assert.equal(observedEligible, 6);
-assert.equal(observedRejected, 9);
-assert.equal(intendedSafe, 6);
+assert.equal(observedEligible, 7);
+assert.equal(observedRejected, 8);
+assert.equal(intendedSafe, 7);
 assert.equal(anomalies.length, 0);
-assert.equal(observedCoverage.toFixed(2), "40.00");
-assert.equal(intendedSafeCoverage.toFixed(2), "40.00");
+assert.equal(observedCoverage.toFixed(2), "46.67");
+assert.equal(intendedSafeCoverage.toFixed(2), "46.67");
 
 const rejectionCounts = new Map();
 const categoryCounts = new Map();

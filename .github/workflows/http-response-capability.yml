@@ -49,3 +49,7 @@ jobs:
       - name: Prove public helper binding and patch contract
         working-directory: sdk/typescript
         run: node ./scripts/http-json-binding-regression.mjs
+
+      - name: Pin HTTP autoprotection benchmark
+        working-directory: sdk/typescript
+        run: npm run benchmark:http-autoprotection
