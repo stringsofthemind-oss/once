@@ -7,6 +7,7 @@ const root = process.cwd();
 const cli = path.join(root, "dist", "once-cli.js");
 const temp = path.join(root, ".local-function-bridge-cli-temp");
 const sourcePath = path.join(temp, "orders.mjs");
+const manualSourcePath = path.join(temp, "booking.mjs");
 const localPlanPath = path.join(temp, ".once", "local-function-protect-plan.json");
 
 const source = [
@@ -18,6 +19,18 @@ const source = [
   "",
   "export const createOrder = async ({ orderId, amountCents }) =>",
   "  provider.createOrder({ orderId, amountCents });",
+  "",
+].join("\n");
+
+const manualSource = [
+  "import { appendFile } from \"node:fs/promises\";",
+  "",
+  "export async function createBooking(input) {",
+  "  const receipt = { bookingId: input.intentId, guest: input.guest, room: input.room, date: input.date };",
+  "  await appendFile(\"bookings.jsonl\", JSON.stringify(receipt) + \"\\n\");",
+  "  if (input.dropResponse) throw new Error(\"Booking committed; response lost\");",
+  "  return receipt;",
+  "}",
   "",
 ].join("\n");
 
@@ -48,6 +61,7 @@ async function exists(file) {
 await rm(temp, { recursive: true, force: true });
 await mkdir(temp, { recursive: true });
 await writeFile(sourcePath, source, "utf8");
+await writeFile(manualSourcePath, manualSource, "utf8");
 
 try {
   const help = run(["--help"]);
@@ -61,7 +75,11 @@ try {
   assert.match(doctor.stdout, /LOCAL BOOKING\/ORDER BRIDGE/);
   assert.match(doctor.stdout, /once protect-local/);
   assert.match(doctor.stdout, /does not make the candidate automatically patchable/);
+  assert.match(doctor.stdout, /MANUAL LOCAL FALLBACK/);
+  assert.match(doctor.stdout, /protectLocal/);
+  assert.match(doctor.stdout, /do not reshape code just to force bridge eligibility/);
   assert.equal(await readFile(sourcePath, "utf8"), source);
+  assert.equal(await readFile(manualSourcePath, "utf8"), manualSource);
 
   const incomplete = run([
     "protect-local",
@@ -73,6 +91,35 @@ try {
   assert.match(combined(incomplete), /Identity is never inferred/);
   assert.equal(await exists(localPlanPath), false);
   assert.equal(await readFile(sourcePath, "utf8"), source);
+
+  const rejectedManual = run([
+    "protect-local",
+    temp,
+    "--target=booking.mjs:createBooking",
+    "--id-prefix=create-booking",
+    "--id-field=intentId",
+  ]);
+  const rejectedManualOutput = combined(rejectedManual);
+  assert.notEqual(rejectedManual.status, 0);
+  assert.match(
+    rejectedManualOutput,
+    /Selected local function is not inside the pinned BOOKING\/order bridge contract/,
+  );
+  assert.match(
+    rejectedManualOutput,
+    /BOOKING\/order was not established for this target/,
+  );
+  assert.match(rejectedManualOutput, /FILE_WRITE/);
+  assert.match(
+    rejectedManualOutput,
+    /requires exactly one matching top-level exported arrow function/,
+  );
+  assert.match(rejectedManualOutput, /Safe supported fallback/);
+  assert.match(rejectedManualOutput, /protectLocal\(createBooking/);
+  assert.match(rejectedManualOutput, /every effect-bearing input/);
+  assert.match(rejectedManualOutput, /examples\/local-function/);
+  assert.equal(await exists(localPlanPath), false);
+  assert.equal(await readFile(manualSourcePath, "utf8"), manualSource);
 
   const planResult = run([
     "protect-local",
@@ -129,6 +176,7 @@ try {
     assert.notEqual(applied, source);
   }
 
+  assert.equal(await readFile(manualSourcePath, "utf8"), manualSource);
   console.log("Local-function bridge public CLI regression: PASS");
 } finally {
   await rm(temp, { recursive: true, force: true });
