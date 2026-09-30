@@ -35,6 +35,11 @@
       "types": "./dist/http-response-json.d.ts",
       "import": "./dist/http-response-json.js",
       "require": "./dist-cjs/http-response-json.js"
+    },
+    "./http-response": {
+      "types": "./dist/http-response.d.ts",
+      "import": "./dist/http-response.js",
+      "require": "./dist-cjs/http-response.js"
     }
   },
   "files": [
@@ -87,7 +92,7 @@
     "test:apply": "npm run build && node ./scripts/apply-engine-regression.mjs && node ./scripts/apply-regression.mjs && node ./scripts/doctor-safe-apply-regression.mjs",
     "test:route-proof": "npm run build && node ./scripts/protection-route-proof-regression.mjs",
     "test:package": "npm run build && node ./scripts/package-isolation-regression.mjs",
-    "test:consumer": "npm run build && node ./scripts/consumer-package-regression.mjs",
+    "test:consumer": "npm run build && node ./scripts/consumer-package-regression.mjs && node ./scripts/http-response-packed-consumer-regression.mjs",
     "test:id-conformance": "npm run build && node ./scripts/id-conformance-regression.mjs",
     "build:esm": "tsc -p tsconfig.json",
     "build:cjs": "tsc -p tsconfig.cjs.json && node ./scripts/write-cjs-package.mjs",

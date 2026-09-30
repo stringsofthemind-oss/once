@@ -8,6 +8,7 @@ import {
   HttpResponseReplayV2Store,
   validateHttpResponseReplayV2ForPersistence,
 } from "./http-response-replay-v2-persistence.mjs";
+import { attachHttpResponseReplayV2 } from "./http-response-replay-v2-envelope.mjs";
 import {
   handleHostedCredentialInternalRequest,
   handleStagingHostedCredentialAdminRequest,
@@ -132,6 +133,22 @@ export class Q18Truth extends RuntimeQ18Truth {
     } finally {
       if (key) this.pendingHttpResponseReplayV2.delete(key);
     }
+  }
+
+  getHttpResponseReplay(operationId) {
+    const replayV1 = super.getHttpResponseReplay(operationId);
+    if (!replayV1) return replayV1;
+
+    let replayV2Record;
+    try {
+      replayV2Record = this.httpResponseReplayV2Store.get(operationId);
+    } catch {
+      // Replay-v2 remains optional capability evidence. Corrupt optional v2
+      // must not break the established v1 JSON-consumption replay contract.
+      return replayV1;
+    }
+
+    return attachHttpResponseReplayV2(replayV1, replayV2Record);
   }
 
   getHttpResponseReplayV2(operationId) {

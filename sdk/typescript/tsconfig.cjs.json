@@ -13,7 +13,8 @@
     "src/connect/index.ts",
     "src/discovery/index.ts",
     "src/gateway/index.ts",
-    "src/reconciliation/index.ts"
+    "src/reconciliation/index.ts",
+    "src/http-response.ts"
   ],
   "exclude": [
     "src/**/*.before-*.ts"
