@@ -10,6 +10,9 @@ import {
   buildReviewedLocalProtectionPreview,
 } from "./reviewed-local-preview.js";
 import {
+  applyReviewedLocalRouting,
+} from "./reviewed-local-routing-apply.js";
+import {
   buildReviewedLocalRoutingPreview,
 } from "./reviewed-local-routing-preview.js";
 import {
@@ -194,7 +197,32 @@ async function printReviewedLocalRoutingReview(requestedPath: string): Promise<v
   console.log("Application integration active: no");
   console.log("");
   console.log("This write-once artifact records approval of the exact routing preview only. It does not apply any routing change.");
-  console.log("There is intentionally no routing apply command in this slice. A later apply step must revalidate this fingerprint and every bound source/replacement before any mutation.");
+  if (review.review.routes.length === 1) {
+    console.log("Apply the exact reviewed single-caller route with a fresh stale-source check using:");
+    console.log(`  npx --yes --package=@once-agent/sdk once review-local ${JSON.stringify(requestedPath)} --apply-routing --confirm-routing-apply`);
+  } else {
+    console.log("Routing apply v1 intentionally refuses multi-file reviews because cross-file crash atomicity has not been proven.");
+  }
+}
+
+async function printReviewedLocalRoutingApply(requestedPath: string): Promise<void> {
+  const result = await applyReviewedLocalRouting(requestedPath);
+  console.log("");
+  console.log("Once Reviewed Local Routing Applied");
+  console.log("===================================");
+  console.log(`Caller module: ${result.file}`);
+  console.log(`Protected target: ${result.function_name}`);
+  console.log(`Routing review fingerprint: ${result.routing_review_fingerprint}`);
+  console.log(`Original source SHA-256: ${result.source_sha256}`);
+  console.log(`Applied source SHA-256: ${result.applied_sha256}`);
+  console.log(`Exact backup: ${result.backup_path}`);
+  console.log("Application source modified: yes");
+  console.log("Generated companion modified: no");
+  console.log("Application integration active: yes");
+  console.log("");
+  console.log("The reviewed caller now imports the exact verified generated companion. The target operation and call expression were not rewritten.");
+  console.log("Transactional boundary: routing apply v1 supports exactly one caller module. Multi-file reviews are refused before mutation rather than partially applied.");
+  console.log("Runtime boundary: the generated protected companion requires Node.js 24.15+ and provides durable same-machine protection, not universal or multi-host exactly-once execution.");
 }
 
 export async function runReviewedLocalCli(args: readonly string[]): Promise<void> {
@@ -208,13 +236,15 @@ export async function runReviewedLocalCli(args: readonly string[]): Promise<void
     value === "--preview-routing" ||
     value === "--review-routing" ||
     value === "--confirm-routing-reviewed" ||
+    value === "--apply-routing" ||
+    value === "--confirm-routing-apply" ||
     value.startsWith("--target=") ||
     value.startsWith("--id-prefix=") ||
     value.startsWith("--id-path=") ||
     value.startsWith("--payload-paths="),
   );
   if (!allowed) {
-    throw new Error("review-local received an unsupported option. Supported options are --target=, --id-prefix=, --id-path=, --payload-paths=, --confirm-reviewed, --preview, --materialize, --confirm-materialize, --inventory-callers, --preview-routing, --review-routing and --confirm-routing-reviewed.");
+    throw new Error("review-local received an unsupported option. Supported options are --target=, --id-prefix=, --id-path=, --payload-paths=, --confirm-reviewed, --preview, --materialize, --confirm-materialize, --inventory-callers, --preview-routing, --review-routing, --confirm-routing-reviewed, --apply-routing and --confirm-routing-apply.");
   }
 
   const positionals = args.filter(value => !value.startsWith("--"));
@@ -228,14 +258,16 @@ export async function runReviewedLocalCli(args: readonly string[]): Promise<void
   const previewRouting = args.includes("--preview-routing");
   const reviewRouting = args.includes("--review-routing");
   const confirmRoutingReviewed = args.includes("--confirm-routing-reviewed");
-  const selectedModes = [preview, materialize, inventoryCallers, previewRouting, reviewRouting].filter(Boolean).length;
+  const applyRouting = args.includes("--apply-routing");
+  const confirmRoutingApply = args.includes("--confirm-routing-apply");
+  const selectedModes = [preview, materialize, inventoryCallers, previewRouting, reviewRouting, applyRouting].filter(Boolean).length;
 
   if (selectedModes > 1) {
-    throw new Error("review-local protection preview, materialization, caller inventory, routing preview and routing review are separate review gates. Select only one mode per invocation.");
+    throw new Error("review-local protection preview, materialization, caller inventory, routing preview, routing review and routing apply are separate gates. Select only one mode per invocation.");
   }
 
   if (preview) {
-    if (hasSemanticOption(args) || confirmMaterialize || confirmRoutingReviewed) {
+    if (hasSemanticOption(args) || confirmMaterialize || confirmRoutingReviewed || confirmRoutingApply) {
       throw new Error("review-local --preview uses only the already-reviewed .once/reviewed-local-semantics.json artifact and does not accept review confirmation options. Review first, then preview separately.");
     }
     await printReviewedLocalPreview(requestedPath);
@@ -243,7 +275,7 @@ export async function runReviewedLocalCli(args: readonly string[]): Promise<void
   }
 
   if (materialize) {
-    if (hasSemanticOption(args) || confirmRoutingReviewed) {
+    if (hasSemanticOption(args) || confirmRoutingReviewed || confirmRoutingApply) {
       throw new Error("review-local --materialize uses only the already-reviewed semantics and deterministic preview; it does not accept semantic review options or routing review options.");
     }
     if (!confirmMaterialize) {
@@ -254,7 +286,7 @@ export async function runReviewedLocalCli(args: readonly string[]): Promise<void
   }
 
   if (inventoryCallers) {
-    if (hasSemanticOption(args) || confirmMaterialize || confirmRoutingReviewed) {
+    if (hasSemanticOption(args) || confirmMaterialize || confirmRoutingReviewed || confirmRoutingApply) {
       throw new Error("review-local --inventory-callers uses only the already-reviewed semantics and exact materialized companion; it does not accept review confirmation options.");
     }
     await printReviewedLocalCallerInventory(requestedPath);
@@ -262,7 +294,7 @@ export async function runReviewedLocalCli(args: readonly string[]): Promise<void
   }
 
   if (previewRouting) {
-    if (hasSemanticOption(args) || confirmMaterialize || confirmRoutingReviewed) {
+    if (hasSemanticOption(args) || confirmMaterialize || confirmRoutingReviewed || confirmRoutingApply) {
       throw new Error("review-local --preview-routing uses only exact reviewed semantics, the verified materialized companion and current caller inventory; it does not accept review confirmation options.");
     }
     await printReviewedLocalRoutingPreview(requestedPath);
@@ -270,7 +302,7 @@ export async function runReviewedLocalCli(args: readonly string[]): Promise<void
   }
 
   if (reviewRouting) {
-    if (hasSemanticOption(args) || confirmMaterialize) {
+    if (hasSemanticOption(args) || confirmMaterialize || confirmRoutingApply) {
       throw new Error("review-local --review-routing records only the exact current routing preview and does not accept semantic or materialization options.");
     }
     if (!confirmRoutingReviewed) {
@@ -280,11 +312,25 @@ export async function runReviewedLocalCli(args: readonly string[]): Promise<void
     return;
   }
 
+  if (applyRouting) {
+    if (hasSemanticOption(args) || confirmMaterialize || confirmRoutingReviewed) {
+      throw new Error("review-local --apply-routing uses only the immutable reviewed routing artifact and fresh current evidence; it does not accept semantic, materialization or routing-review options.");
+    }
+    if (!confirmRoutingApply) {
+      throw new Error("review-local --apply-routing requires --confirm-routing-apply because this step mutates one reviewed caller module. No source was modified.");
+    }
+    await printReviewedLocalRoutingApply(requestedPath);
+    return;
+  }
+
   if (confirmMaterialize) {
     throw new Error("--confirm-materialize is valid only with --materialize after a separate preview step.");
   }
   if (confirmRoutingReviewed) {
     throw new Error("--confirm-routing-reviewed is valid only with --review-routing after a separate routing preview step.");
+  }
+  if (confirmRoutingApply) {
+    throw new Error("--confirm-routing-apply is valid only with --apply-routing after a separate routing review step.");
   }
 
   const target = optionValue(args, "target");
