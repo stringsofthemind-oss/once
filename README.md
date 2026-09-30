@@ -1,6 +1,6 @@
 # @once-agent/sdk
 
-> **Automatic Connect:** `@once-agent/sdk@0.1.16` publishes the tested
+> **Automatic Connect:** `@once-agent/sdk@0.1.18` publishes the tested
 > `@once-agent/sdk/connect` path for classifying supported agent tools as
 > `BYPASS`, `PROTECT`, or fail-closed `UNKNOWN`, then wiring whole local tool
 > registries with trusted logical identity and effect binding. It also includes
@@ -23,7 +23,7 @@ Once helps protect supported refunds, bookings, payments and other externally vi
 - Automatic Connect guide: [`docs/CONNECT_AUTO.md`](./docs/CONNECT_AUTO.md)
 - MCP idempotency guide: https://onceexec.com/mcp-idempotency/
 - AI agent retry safety: https://onceexec.com/ai-agent-retry-safety/
-- TypeScript SDK: [`@once-agent/sdk@0.1.16`](https://www.npmjs.com/package/@once-agent/sdk)
+- TypeScript SDK: [`@once-agent/sdk@0.1.18`](https://www.npmjs.com/package/@once-agent/sdk)
 - Python SDK: [`once-agent-sdk==0.1.1`](https://pypi.org/project/once-agent-sdk/)
 - MCP package: `@once-agent/mcp@0.1.5`
 - MCP Registry: `io.github.stringsofthemind-oss/once`
@@ -67,7 +67,7 @@ Once's framework-neutral safety boundary has been exercised against independent 
 | Evidence lab | Failure boundary | Without protection | With Once |
 | --- | --- | --- | --- |
 | [LangGraph hostile-retry lab](./examples/langgraph-retry-lab/) | `StateGraph` + `SqliteSaver`, hard process death, fresh-process resume | naive retry can produce **2 external effects** | **1 external effect**, reconciliation to `CONFIRMED` |
-| [CrewAI hostile-retry lab](./examples/crewai-retry-lab/) | native `BaseTool` → structured-tool execution, hard process death, fresh-process redispatch | control produces **2 external effects** | **1 external effect**, reconciliation to `CONFIRMED` |
+| [CrewAI hostile-retry lab](./examples/crewai-hostile-retry/) | native `BaseTool` → structured-tool execution, hard process death, fresh-process redispatch | control produces **2 external effects** | **1 external effect**, reconciliation to `CONFIRMED` |
 | [Agno hostile-retry lab](./examples/agno-hostile-retry/) | `Agent(retries=2)`, successful tool followed by model HTTP 500 | control produces **3 external effects** | released `@once-agent/sdk@0.1.12` receives all 3 calls and commits **1 external effect** |
 
 The LangGraph and CrewAI labs also exercise the ambiguous-outcome path:
