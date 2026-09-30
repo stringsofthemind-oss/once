@@ -1,6 +1,9 @@
 import path from "node:path";
 
 import {
+  inventoryReviewedLocalCallers,
+} from "./reviewed-local-caller-inventory.js";
+import {
   materializeReviewedLocalCompanion,
 } from "./reviewed-local-materialize.js";
 import {
@@ -93,11 +96,79 @@ async function printReviewedLocalMaterialization(
   console.log("Application integration active: no");
   console.log("");
   console.log(
-    "The reviewed protected companion module now exists, but Once did not wire your application to it. Import/use this generated export only after deliberate call-site review.",
+    "The reviewed protected companion module now exists, but Once did not wire your application to it.",
   );
   console.log(
     "Boundary: the generated wrapper uses durable same-machine protectLocal state on Node.js 24.15+. This is not a multi-host or universal exactly-once guarantee.",
   );
+  console.log("Inventory only statically provable direct callers without changing application source with:");
+  console.log(
+    `  npx --yes --package=@once-agent/sdk once review-local ${JSON.stringify(requestedPath)} --inventory-callers`,
+  );
+}
+
+async function printReviewedLocalCallerInventory(
+  requestedPath: string,
+): Promise<void> {
+  const inventory = await inventoryReviewedLocalCallers(requestedPath);
+  const callSiteCount = inventory.callers.reduce(
+    (total, caller) => total + caller.call_sites.length,
+    0,
+  );
+
+  console.log("");
+  console.log("Once Reviewed Local Caller Inventory");
+  console.log("====================================");
+  console.log(`Target: ${inventory.target.file}:${inventory.target.function_name}`);
+  console.log(`Verified companion: ${inventory.companion.file}`);
+  console.log(`Status: ${inventory.status}`);
+  console.log(`Proven caller modules: ${inventory.callers.length}`);
+  console.log(`Proven direct call sites: ${callSiteCount}`);
+  console.log(`Blocking ambiguities: ${inventory.blockers.length}`);
+  console.log("Application source modified: no");
+  console.log("Generated companion modified: no");
+  console.log("Application integration active: no");
+
+  for (const caller of inventory.callers) {
+    console.log("");
+    console.log(
+      `Caller: ${caller.file} imports ${caller.import.imported_name} as ${caller.import.local_name}`,
+    );
+    for (const callSite of caller.call_sites) {
+      console.log(
+        `  direct call at ${callSite.line}:${callSite.column} · ${callSite.call_sha256}`,
+      );
+    }
+  }
+
+  for (const blocker of inventory.blockers) {
+    console.log("");
+    const location = blocker.line === null
+      ? blocker.file
+      : `${blocker.file}:${blocker.line}:${blocker.column ?? 1}`;
+    console.log(`BLOCKED ${blocker.kind} at ${location}`);
+    console.log(`  ${blocker.reason}`);
+  }
+
+  console.log("");
+  console.log("Deterministic evidence:");
+  console.log(JSON.stringify(inventory, null, 2));
+  console.log("");
+  console.log(
+    "Inventory only: Once did not rewrite imports, call sites, the target operation, or the generated companion.",
+  );
+  console.log(
+    "Proof boundary: caller-inventory v1 recognizes only exact relative static ESM imports of the reviewed function and direct calls through that binding. Re-exports, dynamic imports, shadowing, symlinked project entries and indirect value flow block routing rather than being guessed.",
+  );
+  if (inventory.status === "BLOCKED") {
+    console.log(
+      "Routing must remain inactive while any blocking ambiguity is present.",
+    );
+  } else if (inventory.status === "READY_FOR_ROUTING_REVIEW") {
+    console.log(
+      "These call sites are evidence for a later routing preview only; no routing change has been generated or applied.",
+    );
+  }
 }
 
 export async function runReviewedLocalCli(
@@ -110,6 +181,7 @@ export async function runReviewedLocalCli(
       value === "--preview" ||
       value === "--materialize" ||
       value === "--confirm-materialize" ||
+      value === "--inventory-callers" ||
       value.startsWith("--target=") ||
       value.startsWith("--id-prefix=") ||
       value.startsWith("--id-path=") ||
@@ -118,7 +190,7 @@ export async function runReviewedLocalCli(
 
   if (!allowed) {
     throw new Error(
-      "review-local received an unsupported option. Supported options are --target=, --id-prefix=, --id-path=, --payload-paths=, --confirm-reviewed, --preview, --materialize and --confirm-materialize.",
+      "review-local received an unsupported option. Supported options are --target=, --id-prefix=, --id-path=, --payload-paths=, --confirm-reviewed, --preview, --materialize, --confirm-materialize and --inventory-callers.",
     );
   }
 
@@ -131,10 +203,12 @@ export async function runReviewedLocalCli(
   const preview = args.includes("--preview");
   const materialize = args.includes("--materialize");
   const confirmMaterialize = args.includes("--confirm-materialize");
+  const inventoryCallers = args.includes("--inventory-callers");
+  const selectedModes = [preview, materialize, inventoryCallers].filter(Boolean).length;
 
-  if (preview && materialize) {
+  if (selectedModes > 1) {
     throw new Error(
-      "review-local preview and materialization are separate review gates. Run --preview first, then --materialize --confirm-materialize.",
+      "review-local preview, materialization and caller inventory are separate review gates. Select only one mode per invocation.",
     );
   }
 
@@ -160,6 +234,16 @@ export async function runReviewedLocalCli(
       );
     }
     await printReviewedLocalMaterialization(requestedPath);
+    return;
+  }
+
+  if (inventoryCallers) {
+    if (hasSemanticOption(args) || confirmMaterialize) {
+      throw new Error(
+        "review-local --inventory-callers uses only the already-reviewed semantics and exact materialized companion; it does not accept semantic or materialization confirmation options.",
+      );
+    }
+    await printReviewedLocalCallerInventory(requestedPath);
     return;
   }
 
