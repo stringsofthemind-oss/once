@@ -70,6 +70,10 @@ jobs:
         working-directory: sdk/typescript
         run: node ./scripts/http-json-packed-binding-regression.mjs
 
+      - name: Prove native Response protect and apply integration
+        working-directory: sdk/typescript
+        run: node ./scripts/http-native-response-integration-regression.mjs
+
       - name: Pin HTTP autoprotection benchmark
         working-directory: sdk/typescript
         run: npm run benchmark:http-autoprotection
