@@ -244,7 +244,7 @@ export async function runReviewedLocalCli(args: readonly string[]): Promise<void
 
   if (materialize) {
     if (hasSemanticOption(args) || confirmRoutingReviewed) {
-      throw new Error("review-local --materialize uses only the already-reviewed semantics and deterministic preview; it does not accept semantic or routing review options.");
+      throw new Error("review-local --materialize uses only the already-reviewed semantics and deterministic preview; it does not accept semantic review options or routing review options.");
     }
     if (!confirmMaterialize) {
       throw new Error("review-local --materialize requires --confirm-materialize after you have reviewed the exact preview. No generated file was written.");
