@@ -50,6 +50,9 @@ jobs:
         working-directory: sdk/typescript
         run: node ./scripts/http-response-replay-v2-regression.mjs
 
+      - name: Prove HTTP response replay v2 storage contract
+        run: node --test workers/runtime/test/http-response-replay-v2-storage.test.mjs
+
       - name: Prove public helper binding and patch contract
         working-directory: sdk/typescript
         run: node ./scripts/http-json-binding-regression.mjs
