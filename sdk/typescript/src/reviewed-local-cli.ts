@@ -1,6 +1,9 @@
 import path from "node:path";
 
 import {
+  materializeReviewedLocalCompanion,
+} from "./reviewed-local-materialize.js";
+import {
   buildReviewedLocalProtectionPreview,
 } from "./reviewed-local-preview.js";
 import {
@@ -67,6 +70,34 @@ async function printReviewedLocalPreview(requestedPath: string): Promise<void> {
   console.log(
     "Boundary: the proposed wrapper uses same-machine protectLocal state and requires Node.js 24.15+ when eventually executed. This is not a multi-host or universal exactly-once guarantee.",
   );
+  console.log("After reviewing this exact preview, materialize it explicitly with:");
+  console.log(
+    `  npx --yes --package=@once-agent/sdk once review-local ${JSON.stringify(requestedPath)} --materialize --confirm-materialize`,
+  );
+}
+
+async function printReviewedLocalMaterialization(
+  requestedPath: string,
+): Promise<void> {
+  const result = await materializeReviewedLocalCompanion(requestedPath);
+
+  console.log("");
+  console.log("Once Reviewed Local Companion Materialized");
+  console.log("==========================================");
+  console.log(`Generated module: ${result.file}`);
+  console.log(`Module SHA-256: ${result.module_sha256}`);
+  console.log(`Target source SHA-256: ${result.source_sha256}`);
+  console.log(`Review fingerprint: ${result.review_fingerprint}`);
+  console.log("Application source modified: no");
+  console.log("Application import/call site modified: no");
+  console.log("Application integration active: no");
+  console.log("");
+  console.log(
+    "The reviewed protected companion module now exists, but Once did not wire your application to it. Import/use this generated export only after deliberate call-site review.",
+  );
+  console.log(
+    "Boundary: the generated wrapper uses durable same-machine protectLocal state on Node.js 24.15+. This is not a multi-host or universal exactly-once guarantee.",
+  );
 }
 
 export async function runReviewedLocalCli(
@@ -77,6 +108,8 @@ export async function runReviewedLocalCli(
       !value.startsWith("--") ||
       value === "--confirm-reviewed" ||
       value === "--preview" ||
+      value === "--materialize" ||
+      value === "--confirm-materialize" ||
       value.startsWith("--target=") ||
       value.startsWith("--id-prefix=") ||
       value.startsWith("--id-path=") ||
@@ -85,7 +118,7 @@ export async function runReviewedLocalCli(
 
   if (!allowed) {
     throw new Error(
-      "review-local received an unsupported option. Supported options are --target=, --id-prefix=, --id-path=, --payload-paths=, --confirm-reviewed and --preview.",
+      "review-local received an unsupported option. Supported options are --target=, --id-prefix=, --id-path=, --payload-paths=, --confirm-reviewed, --preview, --materialize and --confirm-materialize.",
     );
   }
 
@@ -96,15 +129,44 @@ export async function runReviewedLocalCli(
 
   const requestedPath = positionals[0] ?? ".";
   const preview = args.includes("--preview");
+  const materialize = args.includes("--materialize");
+  const confirmMaterialize = args.includes("--confirm-materialize");
+
+  if (preview && materialize) {
+    throw new Error(
+      "review-local preview and materialization are separate review gates. Run --preview first, then --materialize --confirm-materialize.",
+    );
+  }
 
   if (preview) {
-    if (hasSemanticOption(args)) {
+    if (hasSemanticOption(args) || confirmMaterialize) {
       throw new Error(
-        "review-local --preview uses only the already-reviewed .once/reviewed-local-semantics.json artifact and does not accept semantic review options. Review first, then preview separately.",
+        "review-local --preview uses only the already-reviewed .once/reviewed-local-semantics.json artifact and does not accept semantic or materialization confirmation options. Review first, then preview separately.",
       );
     }
     await printReviewedLocalPreview(requestedPath);
     return;
+  }
+
+  if (materialize) {
+    if (hasSemanticOption(args)) {
+      throw new Error(
+        "review-local --materialize uses only the already-reviewed semantics and deterministic preview; it does not accept semantic review options.",
+      );
+    }
+    if (!confirmMaterialize) {
+      throw new Error(
+        "review-local --materialize requires --confirm-materialize after you have reviewed the exact preview. No generated file was written.",
+      );
+    }
+    await printReviewedLocalMaterialization(requestedPath);
+    return;
+  }
+
+  if (confirmMaterialize) {
+    throw new Error(
+      "--confirm-materialize is valid only with --materialize after a separate preview step.",
+    );
   }
 
   const target = optionValue(args, "target");
