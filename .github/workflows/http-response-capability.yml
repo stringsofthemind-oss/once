@@ -45,3 +45,7 @@ jobs:
       - name: Prove immediate JSON response consumption contract
         working-directory: sdk/typescript
         run: node ./scripts/http-json-consumption-regression.mjs
+
+      - name: Prove public helper binding and patch contract
+        working-directory: sdk/typescript
+        run: node ./scripts/http-json-binding-regression.mjs
