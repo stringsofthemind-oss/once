@@ -46,6 +46,10 @@ jobs:
         working-directory: sdk/typescript
         run: node ./scripts/http-json-consumption-regression.mjs
 
+      - name: Prove HTTP response replay v2 native contract
+        working-directory: sdk/typescript
+        run: node ./scripts/http-response-replay-v2-regression.mjs
+
       - name: Prove public helper binding and patch contract
         working-directory: sdk/typescript
         run: node ./scripts/http-json-binding-regression.mjs
