@@ -58,6 +58,37 @@ async function assertRegularContainedFile(
   assertContained(realRoot, realFile, label);
 }
 
+async function ensureContainedDirectoryChain(
+  root: string,
+  segments: readonly string[],
+  label: string,
+): Promise<string> {
+  const realRoot = await fs.realpath(root);
+  let current = root;
+
+  for (const segment of segments) {
+    current = path.join(current, segment);
+    try {
+      const stat = await fs.lstat(current);
+      if (!stat.isDirectory() || stat.isSymbolicLink()) {
+        throw new Error(`${label} must use regular non-symlink directories.`);
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+      await fs.mkdir(current, { mode: 0o700 });
+      const created = await fs.lstat(current);
+      if (!created.isDirectory() || created.isSymbolicLink()) {
+        throw new Error(`${label} must use regular non-symlink directories.`);
+      }
+    }
+
+    const realCurrent = await fs.realpath(current);
+    assertContained(realRoot, realCurrent, label);
+  }
+
+  return current;
+}
+
 async function verifySourceParses(source: string, fileName: string): Promise<void> {
   const ts = await import("typescript");
   const result = ts.transpileModule(source, {
@@ -129,7 +160,7 @@ function buildAppliedSource(
 async function atomicReplace(
   sourcePath: string,
   nextSource: string,
-): Promise<string> {
+): Promise<void> {
   const temporaryPath = path.join(
     path.dirname(sourcePath),
     `.once-routing-${process.pid}-${Date.now()}-${path.basename(sourcePath)}.tmp`,
@@ -146,8 +177,6 @@ async function atomicReplace(
     await fs.rm(temporaryPath, { force: true });
     throw error;
   }
-
-  return temporaryPath;
 }
 
 async function rollbackAtomic(
@@ -225,9 +254,11 @@ export async function applyReviewedLocalRouting(
   }
   await verifySourceParses(nextSource, sourcePath);
 
-  const onceDirectory = path.join(root, ".once");
-  const backupDirectory = path.join(onceDirectory, "backups", "reviewed-routing");
-  await fs.mkdir(backupDirectory, { recursive: true });
+  const backupDirectory = await ensureContainedDirectoryChain(
+    root,
+    [".once", "backups", "reviewed-routing"],
+    "Reviewed routing backup directory",
+  );
 
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const backupPath = path.join(
