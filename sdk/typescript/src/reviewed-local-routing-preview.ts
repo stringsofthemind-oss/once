@@ -81,7 +81,9 @@ function companionSpecifier(
   const callerDirectory = path.dirname(path.resolve(root, callerFile));
   const companionPath = path.resolve(root, companionFile);
   let relative = path.relative(callerDirectory, companionPath).replaceAll("\\", "/");
-  if (!relative.startsWith(".")) relative = `./${relative}`;
+  if (!relative.startsWith("./") && !relative.startsWith("../")) {
+    relative = `./${relative}`;
+  }
   return relative;
 }
 
