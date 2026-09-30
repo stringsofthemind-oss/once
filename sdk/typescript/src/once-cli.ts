@@ -106,6 +106,184 @@ function printDoctorLocalBridgeGuidance(): void {
   console.log(`Guide: ${LOCAL_FUNCTION_GUIDE}`);
 }
 
+type ProtectPlanCandidate = Readonly<{
+  file?: unknown;
+  function_name?: unknown;
+  confidence?: unknown;
+  category?: unknown;
+  automation_status?: unknown;
+  auto_apply_eligible?: unknown;
+}>;
+
+function observedDestructuredFields(
+  source: string,
+  functionName: string,
+): string[] {
+  const escaped = functionName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const patterns = [
+    new RegExp(
+      `(?:export\\s+)?(?:async\\s+)?function\\s+${escaped}\\s*\\(\\s*\\{([^}]*)\\}\\s*\\)`,
+      "m",
+    ),
+    new RegExp(
+      `(?:export\\s+)?(?:const|let|var)\\s+${escaped}\\s*=\\s*(?:async\\s*)?\\(\\s*\\{([^}]*)\\}\\s*\\)\\s*=>`,
+      "m",
+    ),
+  ];
+
+  for (const pattern of patterns) {
+    const match = source.match(pattern);
+    const raw = match?.[1];
+    if (raw === undefined) continue;
+
+    const parts = raw
+      .split(",")
+      .map(value => value.trim())
+      .filter(Boolean);
+    if (parts.length === 0) return [];
+
+    const fields: string[] = [];
+    for (const part of parts) {
+      const simple = part.match(/^([A-Za-z_$][A-Za-z0-9_$]*)$/);
+      if (!simple?.[1]) return [];
+      fields.push(simple[1]);
+    }
+
+    return fields;
+  }
+
+  return [];
+}
+
+function doctorRequestedPath(): string {
+  const args = explicitArgs.slice(1);
+  return args.find(value => !value.startsWith("--")) ?? ".";
+}
+
+async function printCandidateSpecificManualFallback(
+  requestedPath: string,
+): Promise<void> {
+  const root = path.resolve(requestedPath);
+  const planPath = path.join(root, ".once", "protect-plan.json");
+
+  let candidates: ProtectPlanCandidate[];
+  try {
+    const parsed = JSON.parse(
+      (await fs.readFile(planPath, "utf8")).replace(/^\uFEFF/, ""),
+    ) as { candidates?: unknown };
+    if (!Array.isArray(parsed.candidates)) return;
+    candidates = parsed.candidates as ProtectPlanCandidate[];
+  } catch {
+    return;
+  }
+
+  const allowedExtensions = new Set([
+    ".js",
+    ".jsx",
+    ".mjs",
+    ".cjs",
+    ".ts",
+    ".tsx",
+    ".mts",
+    ".cts",
+  ]);
+
+  const reviewable = candidates.filter(candidate =>
+    candidate.auto_apply_eligible === false &&
+    typeof candidate.file === "string" &&
+    typeof candidate.function_name === "string" &&
+    candidate.function_name.length > 0 &&
+    allowedExtensions.has(path.extname(candidate.file).toLowerCase())
+  );
+
+  const unique = new Map<string, ProtectPlanCandidate>();
+  for (const candidate of reviewable) {
+    const key = `${candidate.file}:${candidate.function_name}`;
+    if (!unique.has(key)) unique.set(key, candidate);
+  }
+
+  const selected = [...unique.values()].slice(0, 5);
+  if (selected.length === 0) return;
+
+  console.log("");
+  console.log("REVIEW-ONLY protectLocal CANDIDATES");
+  console.log("-----------------------------------");
+  console.log(
+    "These examples do not change the automatic result above. They are manual integration sketches for human review only."
+  );
+  console.log(
+    "Once has not selected a business identity and has not declared any observed input list complete for effect binding."
+  );
+
+  for (const candidate of selected) {
+    const file = candidate.file as string;
+    const functionName = candidate.function_name as string;
+    const sourcePath = path.resolve(root, file);
+    const relative = path.relative(root, sourcePath);
+    if (
+      relative === "" ||
+      relative.startsWith("..") ||
+      path.isAbsolute(relative)
+    ) {
+      continue;
+    }
+
+    let fields: string[] = [];
+    try {
+      const stat = await fs.lstat(sourcePath);
+      if (!stat.isFile() || stat.isSymbolicLink()) continue;
+      fields = observedDestructuredFields(
+        await fs.readFile(sourcePath, "utf8"),
+        functionName,
+      );
+    } catch {
+      continue;
+    }
+
+    console.log("");
+    console.log(`Candidate: ${file}:${functionName}`);
+    console.log(
+      `Observed classification: ${String(candidate.confidence ?? "UNKNOWN")} · ${String(candidate.category ?? "UNKNOWN")} · ${String(candidate.automation_status ?? "UNKNOWN")}`
+    );
+    if (fields.length > 0) {
+      console.log(
+        `Observed top-level destructured inputs: ${fields.join(", ")} (observation only; review identity and effect binding yourself).`
+      );
+    } else {
+      console.log(
+        "Input fields were not safely extracted. Review the function parameters manually before defining identity or payload."
+      );
+    }
+    console.log("Review-only skeleton (intentionally non-runnable until TODOs are replaced):");
+    console.log(`  const protectedAction = protectLocal(${functionName}, {`);
+    console.log("    id: input => {");
+    console.log(
+      "      throw new Error(\"TODO: return one stable logical action id after human review\");"
+    );
+    console.log("    },");
+    console.log("    payload: input => {");
+    console.log(
+      "      throw new Error(\"TODO: return every effect-bearing input after human review\");"
+    );
+    console.log("    },");
+    console.log("  });");
+  }
+
+  console.log("");
+  console.log("CONTROLLED VERIFICATION RECIPE");
+  console.log("------------------------------");
+  console.log("1. In a disposable environment, perform one intentional action and count the real effect.");
+  console.log("2. Retry the same logical id with the same payload: expect replay and no second effect.");
+  console.log("3. Reuse that id with a changed effect-bearing payload: expect CONFLICT and no dispatch.");
+  console.log("4. If you can safely simulate response loss after commit, expect UNKNOWN; retries must not redispatch while truth is unavailable.");
+  console.log("5. Reconcile only from authoritative read-only provider truth; a positive confirmation may recover the original result.");
+  console.log("6. Keep the same durable local state and retry from a fresh process to verify persisted replay.");
+  console.log(
+    "Boundary: protectLocal is same-machine coordination. This recipe does not establish multi-host or universal exactly-once safety."
+  );
+  console.log(`Guide: ${LOCAL_FUNCTION_GUIDE}`);
+}
+
 type LocalBridgeDiagnosticTarget = Readonly<{
   file: string;
   functionName: string;
@@ -417,6 +595,9 @@ if (command === "protect-local") {
       (zeroFriction && !process.env.ONCE_API_KEY?.trim())
     ) {
       printDoctorLocalBridgeGuidance();
+      await printCandidateSpecificManualFallback(
+        explicitDoctorProtect ? doctorRequestedPath() : ".",
+      );
     }
   }
 
