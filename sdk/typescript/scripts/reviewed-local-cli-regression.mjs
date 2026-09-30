@@ -9,6 +9,7 @@ const temp = path.join(root, ".reviewed-local-cli-temp");
 const sourcePath = path.join(temp, "http-order.mjs");
 const onceDir = path.join(temp, ".once");
 const reviewPath = path.join(onceDir, "reviewed-local-semantics.json");
+const generatedDir = path.join(onceDir, "generated");
 
 const source = [
   "export async function createHttpOrder({ checkoutId, sku, quantity }) {",
@@ -75,6 +76,31 @@ try {
   assert.match(help.stdout, /review artifact is intentionally non-runnable/);
   assert.match(help.stdout, /does not infer business identity or payload completeness/);
 
+  const previewBeforeReview = run([
+    "review-local",
+    temp,
+    "--preview",
+  ]);
+  assert.notEqual(previewBeforeReview.status, 0);
+  assert.match(combined(previewBeforeReview), /reviewed-local-semantics\.json|ENOENT/);
+  assert.equal(await exists(generatedDir), false);
+  assert.equal(await readFile(sourcePath, "utf8"), source);
+
+  const previewWithSemantics = run([
+    "review-local",
+    temp,
+    "--preview",
+    "--target=http-order.mjs:createHttpOrder",
+    "--id-prefix=create-http-order",
+    "--id-path=checkoutId",
+    "--payload-paths=checkoutId,sku,quantity",
+  ]);
+  assert.notEqual(previewWithSemantics.status, 0);
+  assert.match(combined(previewWithSemantics), /uses only the already-reviewed/);
+  assert.equal(await exists(reviewPath), false);
+  assert.equal(await exists(generatedDir), false);
+  assert.equal(await readFile(sourcePath, "utf8"), source);
+
   const noConfirm = run([
     "review-local",
     temp,
@@ -139,6 +165,7 @@ try {
   assert.match(reviewed.stdout, /Source modified: no/);
   assert.match(reviewed.stdout, /Runnable: no/);
   assert.match(reviewed.stdout, /does not generate, apply, or execute protection/);
+  assert.match(reviewed.stdout, /once review-local .* --preview/);
   assert.equal(await readFile(sourcePath, "utf8"), source);
 
   const artifact = JSON.parse(await readFile(reviewPath, "utf8"));
@@ -161,6 +188,54 @@ try {
     "sku",
     "quantity",
   ]);
+
+  const preview = run([
+    "review-local",
+    temp,
+    "--preview",
+  ]);
+  assert.equal(preview.status, 0, combined(preview));
+  assert.match(preview.stdout, /Once Reviewed Local Protection Preview/);
+  assert.match(preview.stdout, /Target: http-order\.mjs:createHttpOrder/);
+  assert.match(preview.stdout, /Review fingerprint: [0-9a-f]{64}/);
+  assert.match(
+    preview.stdout,
+    /Proposed module: \.once\/generated\/createHttpOrder-[0-9a-f]{12}\.once\.mjs/,
+  );
+  assert.match(preview.stdout, /Module SHA-256: [0-9a-f]{64}/);
+  assert.match(preview.stdout, /Source modified: no/);
+  assert.match(preview.stdout, /Generated file written: no/);
+  assert.match(preview.stdout, /Runnable integration active: no/);
+  assert.match(
+    preview.stdout,
+    /import \{ Once as __OnceAgentId, protectLocal as __OnceProtectLocal \} from "@once-agent\/sdk";/,
+  );
+  assert.match(
+    preview.stdout,
+    /import \{ createHttpOrder as __OnceOriginal \} from "\.\.\/\.\.\/http-order\.mjs";/,
+  );
+  assert.match(
+    preview.stdout,
+    /id: input => __OnceAgentId\.id\("create-http-order", input\["checkoutId"\]\)/,
+  );
+  assert.match(preview.stdout, /"checkoutId": input\["checkoutId"\]/);
+  assert.match(preview.stdout, /"sku": input\["sku"\]/);
+  assert.match(preview.stdout, /"quantity": input\["quantity"\]/);
+  assert.match(preview.stdout, /Preview only: Once did not write this module/);
+  assert.match(preview.stdout, /requires Node\.js 24\.15\+/);
+  assert.equal(await exists(generatedDir), false);
+  assert.equal(await readFile(sourcePath, "utf8"), source);
+
+  await writeFile(sourcePath, source + "// changed after review\n", "utf8");
+  const stalePreview = run([
+    "review-local",
+    temp,
+    "--preview",
+  ]);
+  assert.notEqual(stalePreview.status, 0);
+  assert.match(combined(stalePreview), /Source changed after reviewed local semantics were recorded/);
+  assert.equal(await exists(generatedDir), false);
+  await writeFile(sourcePath, source, "utf8");
 
   const secondReview = run([
     "review-local",
