@@ -5,6 +5,10 @@ import { createRuntimeHostedAdmissionPolicy } from "./hosted-entitlement-freshne
 import { RuntimeHostedProviderCredentialStore } from "./hosted-provider-credentials.mjs";
 import { RuntimeHostedProviderKeyring } from "./hosted-provider-keyring.mjs";
 import {
+  HttpResponseReplayV2Store,
+  validateHttpResponseReplayV2ForPersistence,
+} from "./http-response-replay-v2-persistence.mjs";
+import {
   handleHostedCredentialInternalRequest,
   handleStagingHostedCredentialAdminRequest,
   INTERNAL_HOSTED_CREDENTIAL_ADMIN_HOST,
@@ -44,6 +48,7 @@ const PUBLIC_STATS_PATH = "/v1/public/stats";
 const STRIPE_CHECKOUT_PATH = "/v1/billing/checkout";
 const INTERNAL_STATS_PATH = "/__once/public/stats";
 const LEDGER_NAME = "once-q18-authoritative-ledger-v1";
+const MAX_PENDING_REPLAY_V2 = 128;
 
 function publicStatsHeaders(extra = {}) {
   return {
@@ -64,7 +69,75 @@ function publicStatsJson(data, status = 200) {
   });
 }
 
+function replayOperationKey(operationId) {
+  return String(operationId || "").trim();
+}
+
 export class Q18Truth extends RuntimeQ18Truth {
+  constructor(ctx, env) {
+    super(ctx, env);
+    this.httpResponseReplayV2Store = new HttpResponseReplayV2Store(
+      this.ctx.storage.sql,
+    );
+    this.pendingHttpResponseReplayV2 = new Map();
+  }
+
+  async executeProvider(providerName, operationId, action = {}) {
+    const key = replayOperationKey(operationId);
+    if (key) this.pendingHttpResponseReplayV2.delete(key);
+
+    const provider = await super.executeProvider(providerName, operationId, action);
+    const candidate = provider?.http_response?.replay_v2;
+
+    if (key && candidate !== undefined) {
+      try {
+        const validated = validateHttpResponseReplayV2ForPersistence(candidate);
+
+        if (
+          !this.pendingHttpResponseReplayV2.has(key) &&
+          this.pendingHttpResponseReplayV2.size >= MAX_PENDING_REPLAY_V2
+        ) {
+          const oldest = this.pendingHttpResponseReplayV2.keys().next().value;
+          if (oldest !== undefined) this.pendingHttpResponseReplayV2.delete(oldest);
+        }
+
+        this.pendingHttpResponseReplayV2.set(key, validated);
+      } catch {
+        // v2 is optional capability evidence in this slice. Invalid metadata
+        // cannot alter established v1 confirmation semantics, and no durable
+        // v2 row means later native Response capability remains unavailable.
+      }
+    }
+
+    return provider;
+  }
+
+  recordHttpResponseReplay(operationId, options = {}) {
+    const key = replayOperationKey(operationId);
+
+    try {
+      // Base v1 replay validation and conflict behavior remain authoritative.
+      // Its caller already wraps this write and CONFIRMED transition in one
+      // Durable Object SQL transaction; the v2 row joins that same transaction.
+      const replayV1 = super.recordHttpResponseReplay(operationId, options);
+      const replayV2 = key ? this.pendingHttpResponseReplayV2.get(key) : undefined;
+
+      if (replayV2) {
+        this.httpResponseReplayV2Store.record(key, replayV2, {
+          recordedAt: options.recordedAt,
+        });
+      }
+
+      return replayV1;
+    } finally {
+      if (key) this.pendingHttpResponseReplayV2.delete(key);
+    }
+  }
+
+  getHttpResponseReplayV2(operationId) {
+    return this.httpResponseReplayV2Store.get(operationId);
+  }
+
   getHostedProviderKeyring() {
     if (!this._hostedProviderKeyring) {
       this._hostedProviderKeyring = new RuntimeHostedProviderKeyring({
