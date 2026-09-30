@@ -324,14 +324,15 @@ export function materializeHttpBodyWriteRequestV1(action) {
   const url = canonicalHttpsUrl(action.url);
   const materialized = materializeHttpBodyInitV1(action.body_v1);
   const headers = new Headers();
+  const hasContentType = materialized.contentType !== null;
 
-  if (materialized.contentType !== null) {
+  if (hasContentType) {
     headers.set('content-type', materialized.contentType);
   }
 
   const init = {
     method,
-    ...(headers.size > 0 ? { headers } : {}),
+    ...(hasContentType ? { headers } : {}),
     ...(materialized.body === undefined ? {} : { body: materialized.body }),
   };
 
