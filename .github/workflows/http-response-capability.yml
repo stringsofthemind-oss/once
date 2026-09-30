@@ -54,6 +54,10 @@ jobs:
         working-directory: sdk/typescript
         run: node ./scripts/http-response-packed-consumer-regression.mjs
 
+      - name: Prove assigned native Response transform and patch contract
+        working-directory: sdk/typescript
+        run: node ./scripts/http-response-assignment-regression.mjs
+
       - name: Prove public helper binding and patch contract
         working-directory: sdk/typescript
         run: node ./scripts/http-json-binding-regression.mjs
