@@ -367,6 +367,7 @@ try {
   const v1PlanResult =
     runProtect(
       v1Only.directory,
+      "--all",
       "--write-plan"
     );
 
@@ -419,6 +420,7 @@ try {
   const driftPlanResult =
     runProtect(
       drift.directory,
+      "--all",
       "--write-plan"
     );
 
