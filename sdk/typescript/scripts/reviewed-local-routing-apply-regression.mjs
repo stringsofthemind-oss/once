@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -9,6 +10,7 @@ import { writeReviewedLocalRoutingReview } from "../dist/reviewed-local-routing-
 import { writeReviewedLocalSemanticsPlan } from "../dist/reviewed-local-semantics.js";
 
 const root = process.cwd();
+const cli = path.join(root, "dist", "once-cli.js");
 const tempRoot = path.join(root, ".reviewed-local-routing-apply-temp");
 
 const targetSource = [
@@ -25,6 +27,18 @@ const callerSource = [
   "}",
   "",
 ].join("\n");
+
+function runCli(args) {
+  return spawnSync(process.execPath, [cli, ...args], {
+    cwd: root,
+    encoding: "utf8",
+    env: { ...process.env, ONCE_API_KEY: "" },
+  });
+}
+
+function combined(result) {
+  return `${result.stdout ?? ""}\n${result.stderr ?? ""}`;
+}
 
 async function setupProject(name, callerCount = 1) {
   const project = path.join(tempRoot, name);
@@ -78,6 +92,24 @@ try {
   const primary = await setupProject("primary");
   const callerPath = path.join(primary.project, "checkout.mjs");
   const reviewedRoute = primary.routingReview.review.routes[0];
+
+  const noApplyConfirmation = runCli([
+    "review-local",
+    primary.project,
+    "--apply-routing",
+  ]);
+  assert.notEqual(noApplyConfirmation.status, 0);
+  assert.match(combined(noApplyConfirmation), /requires --confirm-routing-apply/);
+  assert.equal(await readFile(callerPath, "utf8"), callerSource);
+
+  const orphanApplyConfirmation = runCli([
+    "review-local",
+    primary.project,
+    "--confirm-routing-apply",
+  ]);
+  assert.notEqual(orphanApplyConfirmation.status, 0);
+  assert.match(combined(orphanApplyConfirmation), /valid only with --apply-routing/);
+  assert.equal(await readFile(callerPath, "utf8"), callerSource);
 
   const applied = await applyReviewedLocalRouting(primary.project);
   assert.equal(applied.kind, "reviewed_local_routing_apply_v1");
