@@ -49,3 +49,7 @@ jobs:
       - name: Prove public helper binding and patch contract
         working-directory: sdk/typescript
         run: node ./scripts/http-json-binding-regression.mjs
+
+      - name: Prove packed consumer binding path
+        working-directory: sdk/typescript
+        run: node ./scripts/http-json-packed-binding-regression.mjs
