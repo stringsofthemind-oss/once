@@ -8,6 +8,7 @@ const cli = path.join(root, "dist", "once-cli.js");
 const temp = path.join(root, ".local-function-bridge-cli-temp");
 const sourcePath = path.join(temp, "orders.mjs");
 const manualSourcePath = path.join(temp, "booking.mjs");
+const httpSourcePath = path.join(temp, "http-order.mjs");
 const localPlanPath = path.join(temp, ".once", "local-function-protect-plan.json");
 
 const source = [
@@ -30,6 +31,20 @@ const manualSource = [
   "  await appendFile(\"bookings.jsonl\", JSON.stringify(receipt) + \"\\n\");",
   "  if (input.dropResponse) throw new Error(\"Booking committed; response lost\");",
   "  return receipt;",
+  "}",
+  "",
+].join("\n");
+
+const httpSource = [
+  "// One checkoutId represents one intentional order; retries retain it.",
+  "export async function createHttpOrder({ checkoutId, sku, quantity }) {",
+  "  const response = await fetch(\"http://127.0.0.1:43187/orders\", {",
+  "    method: \"POST\",",
+  "    headers: { \"Content-Type\": \"application/json\" },",
+  "    body: JSON.stringify({ checkoutId, sku, quantity })",
+  "  });",
+  "  if (!response.ok) throw new Error(`Order service HTTP ${response.status}`);",
+  "  return response.json();",
   "}",
   "",
 ].join("\n");
@@ -62,6 +77,7 @@ await rm(temp, { recursive: true, force: true });
 await mkdir(temp, { recursive: true });
 await writeFile(sourcePath, source, "utf8");
 await writeFile(manualSourcePath, manualSource, "utf8");
+await writeFile(httpSourcePath, httpSource, "utf8");
 
 try {
   const help = run(["--help"]);
@@ -78,8 +94,30 @@ try {
   assert.match(doctor.stdout, /MANUAL LOCAL FALLBACK/);
   assert.match(doctor.stdout, /protectLocal/);
   assert.match(doctor.stdout, /do not reshape code just to force bridge eligibility/);
+
+  assert.match(doctor.stdout, /REVIEW-ONLY protectLocal CANDIDATES/);
+  assert.match(doctor.stdout, /Candidate: http-order\.mjs:createHttpOrder/);
+  assert.match(
+    doctor.stdout,
+    /Observed classification: MEDIUM · HTTP_WRITE · PROVIDER_MAPPING_REQUIRED/,
+  );
+  assert.match(
+    doctor.stdout,
+    /Observed top-level destructured inputs: checkoutId, sku, quantity \(observation only; review identity and effect binding yourself\)\./,
+  );
+  assert.match(doctor.stdout, /protectLocal\(createHttpOrder/);
+  assert.match(doctor.stdout, /TODO: return one stable logical action id after human review/);
+  assert.match(doctor.stdout, /TODO: return every effect-bearing input after human review/);
+  assert.match(doctor.stdout, /Once has not selected a business identity/);
+  assert.match(doctor.stdout, /CONTROLLED VERIFICATION RECIPE/);
+  assert.match(doctor.stdout, /expect CONFLICT and no dispatch/);
+  assert.match(doctor.stdout, /expect UNKNOWN; retries must not redispatch/);
+  assert.match(doctor.stdout, /authoritative read-only provider truth/);
+  assert.doesNotMatch(doctor.stdout, /id:\s*\(\{\s*checkoutId/);
+
   assert.equal(await readFile(sourcePath, "utf8"), source);
   assert.equal(await readFile(manualSourcePath, "utf8"), manualSource);
+  assert.equal(await readFile(httpSourcePath, "utf8"), httpSource);
 
   const incomplete = run([
     "protect-local",
@@ -177,6 +215,7 @@ try {
   }
 
   assert.equal(await readFile(manualSourcePath, "utf8"), manualSource);
+  assert.equal(await readFile(httpSourcePath, "utf8"), httpSource);
   console.log("Local-function bridge public CLI regression: PASS");
 } finally {
   await rm(temp, { recursive: true, force: true });
