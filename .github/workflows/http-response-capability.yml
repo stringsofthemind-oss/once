@@ -41,3 +41,7 @@ jobs:
       - name: Prove response replay capability contract
         working-directory: sdk/typescript
         run: node ./scripts/http-response-capability-regression.mjs
+
+      - name: Prove immediate JSON response consumption contract
+        working-directory: sdk/typescript
+        run: node ./scripts/http-json-consumption-regression.mjs
