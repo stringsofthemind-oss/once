@@ -29,12 +29,12 @@ const replacements = [
     "    recomputedProposedSourceSha256 =\n      patch.proposedSourceSha256;"
   ],
   [
-    "      proposedSourceSha256\n",
-    "      recomputedProposedSourceSha256\n"
+    "      ) !==\n      proposedSourceSha256\n    ) {",
+    "      ) !==\n      recomputedProposedSourceSha256\n    ) {"
   ],
   [
-    "        proposedSourceSha256\n",
-    "        recomputedProposedSourceSha256\n"
+    "      appliedSha256:\n        proposedSourceSha256\n",
+    "      appliedSha256:\n        recomputedProposedSourceSha256\n"
   ]
 ];
 
