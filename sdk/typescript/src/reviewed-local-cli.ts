@@ -10,6 +10,9 @@ import {
   buildReviewedLocalProtectionPreview,
 } from "./reviewed-local-preview.js";
 import {
+  buildReviewedLocalRoutingPreview,
+} from "./reviewed-local-routing-preview.js";
+import {
   REVIEWED_LOCAL_SEMANTICS_FILE,
   writeReviewedLocalSemanticsPlan,
 } from "./reviewed-local-semantics.js";
@@ -166,9 +169,65 @@ async function printReviewedLocalCallerInventory(
     );
   } else if (inventory.status === "READY_FOR_ROUTING_REVIEW") {
     console.log(
-      "These call sites are evidence for a later routing preview only; no routing change has been generated or applied.",
+      "Preview the exact caller import replacement without changing application source with:",
+    );
+    console.log(
+      `  npx --yes --package=@once-agent/sdk once review-local ${JSON.stringify(requestedPath)} --preview-routing`,
     );
   }
+}
+
+async function printReviewedLocalRoutingPreview(
+  requestedPath: string,
+): Promise<void> {
+  const preview = await buildReviewedLocalRoutingPreview(requestedPath);
+
+  console.log("");
+  console.log("Once Reviewed Local Routing Preview");
+  console.log("===================================");
+  console.log(`Target: ${preview.target.file}:${preview.target.function_name}`);
+  console.log(`Verified companion: ${preview.companion.file}`);
+  console.log(`Inventory fingerprint: ${preview.inventory_fingerprint}`);
+  console.log(`Status: ${preview.status}`);
+  console.log(`Proposed caller import changes: ${preview.routes.length}`);
+  console.log(`Blocking ambiguities: ${preview.blockers.length}`);
+  console.log("Application source modified: no");
+  console.log("Generated companion modified: no");
+  console.log("Application integration active: no");
+
+  for (const route of preview.routes) {
+    console.log("");
+    console.log(`Caller: ${route.file}:${route.import_line}`);
+    console.log(`  Imported binding: ${route.imported_name} as ${route.local_name}`);
+    console.log(`  Proven direct calls: ${route.direct_call_count}`);
+    console.log(`  Before: ${route.replacement.before}`);
+    console.log(`  After:  ${route.replacement.after}`);
+    console.log(`  Source SHA-256: ${route.source_sha256}`);
+    console.log(`  Preview result SHA-256: ${route.result_source_sha256}`);
+  }
+
+  for (const blocker of preview.blockers) {
+    console.log("");
+    const location = blocker.line === null
+      ? blocker.file
+      : `${blocker.file}:${blocker.line}:${blocker.column ?? 1}`;
+    console.log(`BLOCKED ${blocker.kind} at ${location}`);
+    console.log(`  ${blocker.reason}`);
+  }
+
+  console.log("");
+  console.log("Deterministic preview evidence:");
+  console.log(JSON.stringify(preview, null, 2));
+  console.log("");
+  console.log(
+    "Preview only: Once did not change any application import, call site, target operation, or generated companion.",
+  );
+  console.log(
+    "Routing preview v1 changes only the exact module-specifier literal of a proven single-binding static ESM import. Mixed imports and ambiguous caller forms remain blocked rather than being rewritten.",
+  );
+  console.log(
+    "There is intentionally no routing apply command in this slice. Developer routing approval and stale-source-bound transactional apply are separate later gates.",
+  );
 }
 
 export async function runReviewedLocalCli(
@@ -182,6 +241,7 @@ export async function runReviewedLocalCli(
       value === "--materialize" ||
       value === "--confirm-materialize" ||
       value === "--inventory-callers" ||
+      value === "--preview-routing" ||
       value.startsWith("--target=") ||
       value.startsWith("--id-prefix=") ||
       value.startsWith("--id-path=") ||
@@ -190,7 +250,7 @@ export async function runReviewedLocalCli(
 
   if (!allowed) {
     throw new Error(
-      "review-local received an unsupported option. Supported options are --target=, --id-prefix=, --id-path=, --payload-paths=, --confirm-reviewed, --preview, --materialize, --confirm-materialize and --inventory-callers.",
+      "review-local received an unsupported option. Supported options are --target=, --id-prefix=, --id-path=, --payload-paths=, --confirm-reviewed, --preview, --materialize, --confirm-materialize, --inventory-callers and --preview-routing.",
     );
   }
 
@@ -204,11 +264,13 @@ export async function runReviewedLocalCli(
   const materialize = args.includes("--materialize");
   const confirmMaterialize = args.includes("--confirm-materialize");
   const inventoryCallers = args.includes("--inventory-callers");
-  const selectedModes = [preview, materialize, inventoryCallers].filter(Boolean).length;
+  const previewRouting = args.includes("--preview-routing");
+  const selectedModes = [preview, materialize, inventoryCallers, previewRouting]
+    .filter(Boolean).length;
 
   if (selectedModes > 1) {
     throw new Error(
-      "review-local preview, materialization and caller inventory are separate review gates. Select only one mode per invocation.",
+      "review-local protection preview, materialization, caller inventory and routing preview are separate review gates. Select only one mode per invocation.",
     );
   }
 
@@ -244,6 +306,16 @@ export async function runReviewedLocalCli(
       );
     }
     await printReviewedLocalCallerInventory(requestedPath);
+    return;
+  }
+
+  if (previewRouting) {
+    if (hasSemanticOption(args) || confirmMaterialize) {
+      throw new Error(
+        "review-local --preview-routing uses only exact reviewed semantics, the verified materialized companion and current caller inventory; it does not accept semantic or materialization confirmation options.",
+      );
+    }
+    await printReviewedLocalRoutingPreview(requestedPath);
     return;
   }
 
