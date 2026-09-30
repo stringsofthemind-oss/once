@@ -105,6 +105,16 @@ try {
     doctor.stdout,
     /Observed top-level destructured inputs: checkoutId, sku, quantity \(observation only; review identity and effect binding yourself\)\./,
   );
+  assert.match(doctor.stdout, /Preferred review handoff \(still non-runnable and non-mutating\)/);
+  assert.match(doctor.stdout, /once review-local/);
+  assert.match(doctor.stdout, /--target="http-order\.mjs:createHttpOrder"/);
+  assert.match(doctor.stdout, /--id-prefix=REPLACE_WITH_REVIEWED_ID_PREFIX/);
+  assert.match(doctor.stdout, /--id-path=REPLACE_WITH_REVIEWED_ID_PATH/);
+  assert.match(doctor.stdout, /--payload-paths=REPLACE_WITH_COMMA_SEPARATED_EFFECT_PATHS/);
+  assert.match(doctor.stdout, /then add --confirm-reviewed/);
+  assert.match(doctor.stdout, /candidate target above is source evidence only/);
+  assert.doesNotMatch(doctor.stdout, /--id-path=checkoutId/);
+  assert.doesNotMatch(doctor.stdout, /--payload-paths=checkoutId,sku,quantity/);
   assert.match(doctor.stdout, /protectLocal\(createHttpOrder/);
   assert.match(doctor.stdout, /TODO: return one stable logical action id after human review/);
   assert.match(doctor.stdout, /TODO: return every effect-bearing input after human review/);
@@ -153,6 +163,13 @@ try {
     /requires exactly one matching top-level exported arrow function/,
   );
   assert.match(rejectedManualOutput, /Safe supported fallback/);
+  assert.match(rejectedManualOutput, /once review-local/);
+  assert.match(rejectedManualOutput, /--target="booking\.mjs:createBooking"/);
+  assert.match(rejectedManualOutput, /REPLACE_WITH_REVIEWED_ID_PREFIX/);
+  assert.match(rejectedManualOutput, /REPLACE_WITH_REVIEWED_ID_PATH/);
+  assert.match(rejectedManualOutput, /REPLACE_WITH_COMMA_SEPARATED_EFFECT_PATHS/);
+  assert.match(rejectedManualOutput, /records reviewed semantics only/);
+  assert.doesNotMatch(rejectedManualOutput, /--id-path=intentId/);
   assert.match(rejectedManualOutput, /protectLocal\(createBooking/);
   assert.match(rejectedManualOutput, /every effect-bearing input/);
   assert.match(rejectedManualOutput, /examples\/local-function/);
