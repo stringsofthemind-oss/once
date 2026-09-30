@@ -74,6 +74,24 @@ function assertProjectRoot(root: string, sourcePath: string): void {
   }
 }
 
+async function assertRegularContainedFile(
+  root: string,
+  sourcePath: string,
+): Promise<void> {
+  const stat = await fs.lstat(sourcePath);
+  if (!stat.isFile() || stat.isSymbolicLink()) {
+    throw new Error(
+      "Local-function bridge target must be a regular non-symlink source file.",
+    );
+  }
+
+  const [realRoot, realSource] = await Promise.all([
+    fs.realpath(root),
+    fs.realpath(sourcePath),
+  ]);
+  assertProjectRoot(realRoot, realSource);
+}
+
 function parseTarget(root: string, value: string): ParsedTarget {
   const separator = value.lastIndexOf(":");
   if (separator <= 0 || separator === value.length - 1) {
@@ -213,6 +231,7 @@ async function buildPlanAndPatch(
   }
 
   const parsed = parseTarget(root, selection.target);
+  await assertRegularContainedFile(root, parsed.sourcePath);
   const source = await fs.readFile(parsed.sourcePath, "utf8");
   const findingLine = await resolvePinnedBookingFinding({
     root,
@@ -309,6 +328,7 @@ function isPlan(value: unknown): value is LocalFunctionBridgePlan {
     target.patch_plan_id === LOCAL_FUNCTION_PATCH_V1 &&
     typeof target.file === "string" &&
     typeof target.function_name === "string" &&
+    typeof target.finding_line === "number" &&
     Number.isSafeInteger(target.finding_line) &&
     typeof target.id_prefix === "string" &&
     typeof target.id_field === "string" &&
@@ -344,6 +364,7 @@ export async function applyLocalFunctionBridgePlan(
 
   const sourcePath = path.resolve(root, plan.target.file);
   assertProjectRoot(root, sourcePath);
+  await assertRegularContainedFile(root, sourcePath);
 
   const originalSource = await fs.readFile(sourcePath, "utf8");
   if (sha256(originalSource) !== plan.target.source_sha256) {
