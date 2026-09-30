@@ -198,7 +198,7 @@ let executeCalls = 0;
 
 const fetchImpl = async (input, init) => {
   executeCalls++;
-  assert.match(String(input), /\\/v1\\/execute$/);
+  assert.equal(String(input).endsWith("/v1/execute"), true);
 
   const requestBody = JSON.parse(String(init?.body));
   assert.equal(requestBody.operation_id, "order:1");
