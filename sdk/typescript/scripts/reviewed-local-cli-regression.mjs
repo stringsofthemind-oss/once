@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { access, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 
@@ -223,6 +223,7 @@ try {
   assert.match(preview.stdout, /"quantity": input\["quantity"\]/);
   assert.match(preview.stdout, /Preview only: Once did not write this module/);
   assert.match(preview.stdout, /requires Node\.js 24\.15\+/);
+  assert.match(preview.stdout, /--materialize --confirm-materialize/);
   assert.equal(await exists(generatedDir), false);
   assert.equal(await readFile(sourcePath, "utf8"), source);
 
@@ -236,6 +237,84 @@ try {
   assert.match(combined(stalePreview), /Source changed after reviewed local semantics were recorded/);
   assert.equal(await exists(generatedDir), false);
   await writeFile(sourcePath, source, "utf8");
+
+  const materializeWithSemantics = run([
+    "review-local",
+    temp,
+    "--materialize",
+    "--confirm-materialize",
+    "--target=http-order.mjs:createHttpOrder",
+  ]);
+  assert.notEqual(materializeWithSemantics.status, 0);
+  assert.match(combined(materializeWithSemantics), /does not accept semantic review options/);
+  assert.equal(await exists(generatedDir), false);
+
+  const materializeWithoutConfirm = run([
+    "review-local",
+    temp,
+    "--materialize",
+  ]);
+  assert.notEqual(materializeWithoutConfirm.status, 0);
+  assert.match(combined(materializeWithoutConfirm), /requires --confirm-materialize/);
+  assert.equal(await exists(generatedDir), false);
+
+  const [major = 0, minor = 0] = process.versions.node.split(".").map(Number);
+  const localRuntimeReady = major > 24 || (major === 24 && minor >= 15);
+  const materialized = run([
+    "review-local",
+    temp,
+    "--materialize",
+    "--confirm-materialize",
+  ]);
+
+  if (!localRuntimeReady) {
+    assert.notEqual(materialized.status, 0);
+    assert.match(combined(materialized), /requires Node\.js 24\.15 or later/);
+    assert.equal(await exists(generatedDir), false);
+  } else {
+    assert.equal(materialized.status, 0, combined(materialized));
+    assert.match(materialized.stdout, /Once Reviewed Local Companion Materialized/);
+    assert.match(
+      materialized.stdout,
+      /Generated module: \.once\/generated\/createHttpOrder-[0-9a-f]{12}\.once\.mjs/,
+    );
+    assert.match(materialized.stdout, /Module SHA-256: [0-9a-f]{64}/);
+    assert.match(materialized.stdout, /Application source modified: no/);
+    assert.match(materialized.stdout, /Application import\/call site modified: no/);
+    assert.match(materialized.stdout, /Application integration active: no/);
+    assert.match(materialized.stdout, /durable same-machine protectLocal state/);
+
+    const generatedFiles = await readdir(generatedDir);
+    assert.equal(generatedFiles.length, 1);
+    assert.match(generatedFiles[0], /^createHttpOrder-[0-9a-f]{12}\.once\.mjs$/);
+    const generatedSource = await readFile(
+      path.join(generatedDir, generatedFiles[0]),
+      "utf8",
+    );
+    assert.match(
+      generatedSource,
+      /import \{ Once as __OnceAgentId, protectLocal as __OnceProtectLocal \} from "@once-agent\/sdk";/,
+    );
+    assert.match(
+      generatedSource,
+      /import \{ createHttpOrder as __OnceOriginal \} from "\.\.\/\.\.\/http-order\.mjs";/,
+    );
+    assert.match(
+      generatedSource,
+      /id: input => __OnceAgentId\.id\("create-http-order", input\["checkoutId"\]\)/,
+    );
+    assert.equal(await readFile(sourcePath, "utf8"), source);
+
+    const secondMaterialize = run([
+      "review-local",
+      temp,
+      "--materialize",
+      "--confirm-materialize",
+    ]);
+    assert.notEqual(secondMaterialize.status, 0);
+    assert.match(combined(secondMaterialize), /already exists/);
+    assert.equal((await readdir(generatedDir)).length, 1);
+  }
 
   const secondReview = run([
     "review-local",
