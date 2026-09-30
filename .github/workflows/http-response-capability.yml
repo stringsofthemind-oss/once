@@ -50,6 +50,10 @@ jobs:
         working-directory: sdk/typescript
         run: node ./scripts/http-json-binding-regression.mjs
 
+      - name: Prove packed consumer binding path
+        working-directory: sdk/typescript
+        run: node ./scripts/http-json-packed-binding-regression.mjs
+
       - name: Pin HTTP autoprotection benchmark
         working-directory: sdk/typescript
         run: npm run benchmark:http-autoprotection
