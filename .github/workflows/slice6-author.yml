@@ -25,6 +25,19 @@ jobs:
         with:
           node-version: "24"
 
+      - name: Normalize guarded authoring anchor
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('sdk/typescript/src/protect.ts')
+          source = path.read_text()
+          before = '  const result = transformHttpWriteV1({' 
+          after = '  const result =\n    transformHttpWriteV1({' 
+          if source.count(before) != 1:
+              raise SystemExit(f'expected one live protect anchor, found {source.count(before)}')
+          path.write_text(source.replace(before, after, 1))
+          PY
+
       - name: Apply guarded integration edits
         run: node sdk/typescript/scripts/slice6-author.mjs
 
