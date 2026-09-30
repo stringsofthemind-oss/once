@@ -160,6 +160,21 @@ function doctorRequestedPath(): string {
   return args.find(value => !value.startsWith("--")) ?? ".";
 }
 
+function reviewedSemanticsCommand(
+  requestedPath: string,
+  file: string,
+  functionName: string,
+): string {
+  return [
+    "npx --yes --package=@once-agent/sdk once review-local",
+    JSON.stringify(requestedPath),
+    `--target=${JSON.stringify(`${file}:${functionName}`)}`,
+    "--id-prefix=REPLACE_WITH_REVIEWED_ID_PREFIX",
+    "--id-path=REPLACE_WITH_REVIEWED_ID_PATH",
+    "--payload-paths=REPLACE_WITH_COMMA_SEPARATED_EFFECT_PATHS",
+  ].join(" ");
+}
+
 async function printCandidateSpecificManualFallback(
   requestedPath: string,
 ): Promise<void> {
@@ -254,6 +269,14 @@ async function printCandidateSpecificManualFallback(
         "Input fields were not safely extracted. Review the function parameters manually before defining identity or payload."
       );
     }
+    console.log("Preferred review handoff (still non-runnable and non-mutating):");
+    console.log(`  ${reviewedSemanticsCommand(requestedPath, file, functionName)}`);
+    console.log(
+      "Replace every REPLACE_WITH_* value after human review, then add --confirm-reviewed. Without that confirmation Once writes no review artifact."
+    );
+    console.log(
+      "The candidate target above is source evidence only; Once has not selected the identity or declared the observed inputs complete for payload binding."
+    );
     console.log("Review-only skeleton (intentionally non-runnable until TODOs are replaced):");
     console.log(`  const protectedAction = protectLocal(${functionName}, {`);
     console.log("    id: input => {");
@@ -421,6 +444,15 @@ async function localBridgeRejectionDiagnostics(
 
     lines.push("");
     lines.push("Safe supported fallback (no automatic rewrite):");
+    lines.push(
+      `  ${reviewedSemanticsCommand(requestedPath, parsed.file, parsed.functionName)}`,
+    );
+    lines.push(
+      "Replace every REPLACE_WITH_* value after human review, then add --confirm-reviewed. Without confirmation, no review artifact is written.",
+    );
+    lines.push(
+      "This records reviewed semantics only; it does not generate, apply, or execute protection.",
+    );
     lines.push(
       `  const protectedAction = protectLocal(${parsed.functionName}, { id: input => /* stable logical action id */, payload: input => ({ /* every effect-bearing input */ }) });`,
     );
