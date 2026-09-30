@@ -64,8 +64,13 @@ export function analyzeLocalFunctionV1(input: {
   fileName: string;
   functionName: string;
   findingLine: number;
+  category: string;
 }): LocalFunctionAnalysisV1 {
-  const { source, fileName, functionName, findingLine } = input;
+  const { source, fileName, functionName, findingLine, category } = input;
+
+  if (category !== "BOOKING") {
+    return fail("Local-function bridge v1 is pinned to scanner category BOOKING only.");
+  }
 
   if (!/\.mjs$/i.test(fileName)) {
     return fail("Local-function bridge v1 supports explicit ESM `.mjs` modules only.");
@@ -206,6 +211,7 @@ export function buildLocalFunctionPatchV1(input: {
   fileName: string;
   functionName: string;
   findingLine: number;
+  category: string;
   idField: string;
   idPrefix: string;
 }): LocalFunctionPatchV1 {
