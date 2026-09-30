@@ -22,6 +22,10 @@ import {
   buildHttpWritePatchV1
 } from "./transformers/http-patch-plan-v1.js";
 
+import {
+  buildHttpNativeResponsePlanV1
+} from "./transformers/http-native-response-plan-v1.js";
+
 export type ProtectOptions = {
   includeAll?: boolean;
   writePlan?: boolean;
@@ -34,6 +38,9 @@ type CapabilityDeclaration = {
   action_type: string;
   allowed_urls?: string[];
   description?: string;
+  version_id?: string;
+  response_replay?: string;
+  response_replay_v2?: string;
 };
 
 type CapabilityManifest = {
@@ -77,6 +84,7 @@ type ProtectionCandidate = {
   source_sha256?: string;
   proposed_source_sha256?: string;
   target_url?: string;
+  capability_fingerprint?: string;
   runtime_operation_id_rule: string;
 };
 
@@ -869,11 +877,12 @@ async function applyTransformerClassification(
     return;
   }
 
-  const result = transformHttpWriteV1({
-    statement: extracted.statement,
-    functionSource,
-    provider: provider ?? "__once_source_preflight__"
-  });
+  const result =
+    transformHttpWriteV1({
+      statement: extracted.statement,
+      functionSource,
+      provider: provider ?? "__once_source_preflight__"
+    });
 
   if (!result.eligible) {
     markUnsupported(result.reason);
@@ -882,7 +891,7 @@ async function applyTransformerClassification(
 
   candidate.source_shape = "SUPPORTED";
   candidate.source_shape_reason =
-    "The exact source shape matches the current proven HTTP transformer contract.";
+    "The exact request shape matches the current proven HTTP transformer contract.";
   candidate.target_url = result.url;
 
   if (!provider) {
@@ -901,6 +910,68 @@ async function applyTransformerClassification(
     item => item.category === "HTTP_WRITE" && item.action_type === "http_write_v1"
   );
   if (!capability) return;
+
+  const capabilityEvidence = {
+    name:
+      provider,
+    version_id:
+      capability.version_id,
+    response_replay:
+      capability.response_replay,
+    response_replay_v2:
+      capability.response_replay_v2,
+    allowed_urls:
+      capability.allowed_urls
+  };
+
+  const nativeResponsePlan =
+    buildHttpNativeResponsePlanV1({
+      source,
+      awaitFetchStatement:
+        extracted.statement,
+      awaitFetchStartOffset:
+        extracted.startOffset,
+      functionSource,
+      provider,
+      capability:
+        capabilityEvidence
+    });
+
+  if (nativeResponsePlan.matched) {
+    candidate.source_shape_reason =
+      `The request and ${nativeResponsePlan.kind === "assignment" ? "assigned" : "returned"} native Response shape are inside the proven replay-v2 boundary.`;
+
+    if (!nativeResponsePlan.eligible) {
+      candidate.transformer_reason =
+        nativeResponsePlan.reason;
+      candidate.automation_reason =
+        `Native Response source shape detected, but automatic protection remains fail-closed: ${nativeResponsePlan.reason}`;
+      return;
+    }
+
+    candidate.automation_status = "PATCHABLE";
+    candidate.automation_reason =
+      "Scanner match, provider replay-v2 capability, native Response transformer, deterministic helper binding and full-source patch planning all succeeded.";
+    candidate.auto_apply_eligible = true;
+    candidate.transformer_id =
+      nativeResponsePlan.transformerId;
+    candidate.transformer_reason =
+      "Complete deterministic native Response source patch successfully planned in memory.";
+    candidate.binding_required = false;
+    candidate.binding_strategy =
+      nativeResponsePlan.bindingStrategy;
+    candidate.patch_plan_id =
+      nativeResponsePlan.patchPlan;
+    candidate.source_sha256 =
+      nativeResponsePlan.sourceSha256;
+    candidate.proposed_source_sha256 =
+      nativeResponsePlan.proposedSourceSha256;
+    candidate.target_url =
+      nativeResponsePlan.targetUrl;
+    candidate.capability_fingerprint =
+      nativeResponsePlan.capabilityFingerprint;
+    return;
+  }
 
   const allowedUrls = capability.allowed_urls;
   if (!Array.isArray(allowedUrls) || !allowedUrls.includes(result.url)) {
