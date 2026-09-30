@@ -754,13 +754,13 @@ export async function applyProtectionPlan(
     }
 
     proposedSource =
-      proposedSource;
+      patch.proposedSource;
     recomputedTargetUrl =
       patch.targetUrl;
     recomputedSourceSha256 =
-      recomputedSourceSha256;
+      patch.sourceSha256;
     recomputedProposedSourceSha256 =
-      proposedSourceSha256;
+      patch.proposedSourceSha256;
     recomputedPatchPlanId =
       patch.patchPlan;
   } else {
@@ -934,7 +934,7 @@ export async function applyProtectionPlan(
       sha256(
         applied
       ) !==
-      proposedSourceSha256
+      recomputedProposedSourceSha256
     ) {
       throw new Error(
         "Applied source fingerprint differs from planned source."
@@ -959,7 +959,7 @@ export async function applyProtectionPlan(
         recomputedSourceSha256,
 
       appliedSha256:
-        proposedSourceSha256
+        recomputedProposedSourceSha256
     };
 
   } catch (error) {
