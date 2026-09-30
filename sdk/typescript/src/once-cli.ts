@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { promises as fs } from "node:fs";
 import path from "node:path";
 
 /**
@@ -22,6 +23,8 @@ const explicitArgs = process.argv.slice(2);
 const zeroFriction = explicitArgs.length === 0;
 const startedAt = performance.now();
 const command = (explicitArgs[0] ?? "").toLowerCase();
+const LOCAL_FUNCTION_GUIDE =
+  "https://github.com/stringsofthemind-oss/once/tree/main/examples/local-function";
 
 function optionValue(
   args: string[],
@@ -90,6 +93,168 @@ function printDoctorLocalBridgeGuidance(): void {
   console.log(
     "Apply/runtime requires Node.js 24.15+. Unsupported, ambiguous, stale or symlinked source fails closed with application source unchanged."
   );
+  console.log("");
+  console.log("MANUAL LOCAL FALLBACK");
+  console.log("---------------------");
+  console.log(
+    "If the scanner leaves a local write at MANUAL_REVIEW, does not establish BOOKING/order semantics, or protect-local rejects the pinned source shape, do not reshape code just to force bridge eligibility."
+  );
+  console.log(
+    "The supported fallback is to wrap the existing async function with protectLocal after you explicitly choose a stable logical action id and include every effect-bearing input in payload."
+  );
+  console.log("Once does not infer either choice for the manual route.");
+  console.log(`Guide: ${LOCAL_FUNCTION_GUIDE}`);
+}
+
+type LocalBridgeDiagnosticTarget = Readonly<{
+  file: string;
+  functionName: string;
+  sourcePath: string;
+}>;
+
+function diagnosticTarget(
+  requestedPath: string,
+  target: string,
+): LocalBridgeDiagnosticTarget | undefined {
+  const root = path.resolve(requestedPath);
+  const separator = target.lastIndexOf(":");
+  if (separator <= 0 || separator === target.length - 1) return undefined;
+
+  const fileValue = target.slice(0, separator).trim();
+  const functionName = target.slice(separator + 1).trim();
+  if (!fileValue || path.isAbsolute(fileValue)) return undefined;
+  if (!/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(functionName)) return undefined;
+
+  const sourcePath = path.resolve(root, fileValue);
+  const relative = path.relative(root, sourcePath);
+  if (
+    relative === "" ||
+    relative.startsWith("..") ||
+    path.isAbsolute(relative)
+  ) {
+    return undefined;
+  }
+
+  return {
+    file: relative.replaceAll("\\", "/"),
+    functionName,
+    sourcePath,
+  };
+}
+
+async function localBridgeRejectionDiagnostics(
+  requestedPath: string,
+  target: string,
+): Promise<string[]> {
+  const root = path.resolve(requestedPath);
+  const parsed = diagnosticTarget(requestedPath, target);
+  if (!parsed) return [];
+
+  try {
+    const stat = await fs.lstat(parsed.sourcePath);
+    if (!stat.isFile() || stat.isSymbolicLink()) return [];
+
+    const [realRoot, realSource] = await Promise.all([
+      fs.realpath(root),
+      fs.realpath(parsed.sourcePath),
+    ]);
+    const realRelative = path.relative(realRoot, realSource);
+    if (
+      realRelative === "" ||
+      realRelative.startsWith("..") ||
+      path.isAbsolute(realRelative)
+    ) {
+      return [];
+    }
+
+    const source = await fs.readFile(parsed.sourcePath, "utf8");
+    const [scanModule, transformerModule] = await Promise.all([
+      import("./scan.js"),
+      import("./transformers/local-function-v1.js"),
+    ]);
+    const findings = await scanModule.scanFile(root, parsed.sourcePath);
+    const categories = [
+      ...new Set(findings.map(finding => finding.category)),
+    ].sort();
+    const bookingFindings = findings.filter(
+      finding => finding.category === "BOOKING",
+    );
+
+    const lines: string[] = [];
+    if (bookingFindings.length === 0) {
+      if (categories.length > 0) {
+        lines.push(
+          `Scanner semantics: BOOKING/order was not established for this target. Observed consequential categories: ${categories.join(", ")}.`,
+        );
+      } else {
+        lines.push(
+          "Scanner semantics: no consequential BOOKING/order finding was established for this target.",
+        );
+      }
+    }
+
+    const namedLine =
+      source
+        .split(/\r?\n/)
+        .findIndex(line => line.includes(parsed.functionName)) + 1;
+    const diagnosticLines = [
+      ...new Set([
+        ...findings.map(finding => finding.line),
+        ...(namedLine > 0 ? [namedLine] : []),
+      ]),
+    ].filter(line => Number.isSafeInteger(line) && line > 0);
+
+    const shapeReasons = new Set<string>();
+    let shapeCompatible = false;
+
+    for (const findingLine of diagnosticLines) {
+      const analysis = transformerModule.analyzeLocalFunctionV1({
+        source,
+        fileName: parsed.file,
+        functionName: parsed.functionName,
+        findingLine,
+        // Diagnostic-only structural check. This never changes scanner category
+        // or bridge eligibility; the real planner still requires BOOKING.
+        category: "BOOKING",
+      });
+
+      if (analysis.eligible) {
+        shapeCompatible = true;
+        break;
+      }
+
+      if (
+        analysis.reason !==
+        "Scanner line does not resolve to the selected exported local function."
+      ) {
+        shapeReasons.add(analysis.reason);
+      }
+    }
+
+    if (!shapeCompatible && shapeReasons.size > 0) {
+      lines.push(`Source shape: ${[...shapeReasons][0]}`);
+    } else if (shapeCompatible && bookingFindings.length === 0) {
+      lines.push(
+        "Source shape: compatible with local-function bridge v1, but scanner semantics are still outside BOOKING/order.",
+      );
+    }
+
+    if (lines.length === 0) return [];
+
+    lines.push("");
+    lines.push("Safe supported fallback (no automatic rewrite):");
+    lines.push(
+      `  const protectedAction = protectLocal(${parsed.functionName}, { id: input => /* stable logical action id */, payload: input => ({ /* every effect-bearing input */ }) });`,
+    );
+    lines.push(
+      "Review the logical identity and payload fields yourself. Once will not infer them for this rejected bridge attempt.",
+    );
+    lines.push(`Guide: ${LOCAL_FUNCTION_GUIDE}`);
+
+    return lines;
+  } catch {
+    return [];
+  }
 }
 
 async function runProtectLocal(): Promise<void> {
@@ -154,14 +319,29 @@ async function runProtectLocal(): Promise<void> {
     );
   }
 
-  const plan = await writeLocalFunctionBridgePlan(
-    requestedPath,
-    {
+  let plan;
+  try {
+    plan = await writeLocalFunctionBridgePlan(
+      requestedPath,
+      {
+        target,
+        idPrefix,
+        idField,
+      }
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const diagnostics = await localBridgeRejectionDiagnostics(
+      requestedPath,
       target,
-      idPrefix,
-      idField,
+    );
+
+    if (diagnostics.length === 0) {
+      throw error;
     }
-  );
+
+    throw new Error([message, ...diagnostics].join("\n"));
+  }
 
   const planPath = path.join(
     path.resolve(requestedPath),
