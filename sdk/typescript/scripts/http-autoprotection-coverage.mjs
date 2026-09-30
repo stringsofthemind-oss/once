@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { transformHttpWriteV1 } from "../dist/transformers/http-write-v1.js";
 import { transformHttpJsonConsumptionV1 } from "../dist/transformers/http-json-consumption-v1.js";
+import { transformHttpResponseAssignmentV1 } from "../dist/transformers/http-response-assignment-v1.js";
+import { transformHttpResponseReturnV1 } from "../dist/transformers/http-response-return-v1.js";
 
 const functionSource = `
 async function consequentialWrite(operationId, payload) {
@@ -14,6 +16,12 @@ const responseReplayCapability = {
   allowed_urls: [
     "https://api.example.invalid/orders"
   ]
+};
+
+const responseReplayCapabilityV2 = {
+  ...responseReplayCapability,
+  version_id: "benchmark-response-replay-v2",
+  response_replay_v2: "required"
 };
 
 const fixtures = [
@@ -206,7 +214,7 @@ await fetch(
   {
     id: "returned-response",
     category: "response",
-    expectedEligible: false,
+    expectedEligible: true,
     statement: `
 return await fetch(
   "https://api.example.invalid/orders",
@@ -220,7 +228,7 @@ return await fetch(
   {
     id: "assigned-response",
     category: "response",
-    expectedEligible: false,
+    expectedEligible: true,
     statement: `
 const response =
   await fetch(
@@ -252,18 +260,36 @@ const result =
 ];
 
 const results = fixtures.map((fixture) => {
-  const result = fixture.category === "response"
-    ? transformHttpJsonConsumptionV1({
-        statement: fixture.statement,
-        functionSource,
-        provider: "customer-http",
-        capability: responseReplayCapability
-      })
-    : transformHttpWriteV1({
-        statement: fixture.statement,
-        functionSource,
-        provider: "customer-http"
-      });
+  let result;
+
+  if (fixture.id === "assigned-response") {
+    result = transformHttpResponseAssignmentV1({
+      statement: fixture.statement,
+      functionSource,
+      provider: "customer-http",
+      capability: responseReplayCapabilityV2
+    });
+  } else if (fixture.id === "returned-response") {
+    result = transformHttpResponseReturnV1({
+      statement: fixture.statement,
+      functionSource,
+      provider: "customer-http",
+      capability: responseReplayCapabilityV2
+    });
+  } else if (fixture.category === "response") {
+    result = transformHttpJsonConsumptionV1({
+      statement: fixture.statement,
+      functionSource,
+      provider: "customer-http",
+      capability: responseReplayCapability
+    });
+  } else {
+    result = transformHttpWriteV1({
+      statement: fixture.statement,
+      functionSource,
+      provider: "customer-http"
+    });
+  }
 
   assert.equal(
     result.eligible,
@@ -308,12 +334,12 @@ const observedCoverage = (observedEligible / total) * 100;
 const intendedSafeCoverage = (intendedSafe / total) * 100;
 
 assert.equal(total, 15);
-assert.equal(observedEligible, 7);
-assert.equal(observedRejected, 8);
-assert.equal(intendedSafe, 7);
+assert.equal(observedEligible, 9);
+assert.equal(observedRejected, 6);
+assert.equal(intendedSafe, 9);
 assert.equal(anomalies.length, 0);
-assert.equal(observedCoverage.toFixed(2), "46.67");
-assert.equal(intendedSafeCoverage.toFixed(2), "46.67");
+assert.equal(observedCoverage.toFixed(2), "60.00");
+assert.equal(intendedSafeCoverage.toFixed(2), "60.00");
 
 const rejectionCounts = new Map();
 const categoryCounts = new Map();
