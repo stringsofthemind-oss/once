@@ -1,16 +1,16 @@
 name: Slice 6 Integration Authoring
 
 on:
-  push:
+  pull_request:
     branches:
-      - http-response-native-integrated-slice6
+      - main
 
 permissions:
   contents: write
 
 jobs:
   author:
-    if: github.actor != 'github-actions[bot]'
+    if: github.actor != 'github-actions[bot]' && github.head_ref == 'http-response-native-integrated-slice6'
     runs-on: ubuntu-latest
 
     steps:
