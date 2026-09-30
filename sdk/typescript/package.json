@@ -30,6 +30,11 @@
       "types": "./dist/reconciliation/index.d.ts",
       "import": "./dist/reconciliation/index.js",
       "require": "./dist-cjs/reconciliation/index.js"
+    },
+    "./http-response-json": {
+      "types": "./dist/http-response-json.d.ts",
+      "import": "./dist/http-response-json.js",
+      "require": "./dist-cjs/http-response-json.js"
     }
   },
   "files": [
