@@ -1,6 +1,9 @@
 import path from "node:path";
 
 import {
+  buildReviewedLocalProtectionPreview,
+} from "./reviewed-local-preview.js";
+import {
   REVIEWED_LOCAL_SEMANTICS_FILE,
   writeReviewedLocalSemanticsPlan,
 } from "./reviewed-local-semantics.js";
@@ -28,6 +31,44 @@ function optionValue(
   return value;
 }
 
+function hasSemanticOption(args: readonly string[]): boolean {
+  return args.some(
+    value =>
+      value === "--confirm-reviewed" ||
+      value.startsWith("--target=") ||
+      value.startsWith("--id-prefix=") ||
+      value.startsWith("--id-path=") ||
+      value.startsWith("--payload-paths="),
+  );
+}
+
+async function printReviewedLocalPreview(requestedPath: string): Promise<void> {
+  const preview = await buildReviewedLocalProtectionPreview(requestedPath);
+
+  console.log("");
+  console.log("Once Reviewed Local Protection Preview");
+  console.log("======================================");
+  console.log(`Target: ${preview.target.file}:${preview.target.function_name}`);
+  console.log(`Source SHA-256: ${preview.target.source_sha256}`);
+  console.log(`Review fingerprint: ${preview.target.review_fingerprint}`);
+  console.log(`Proposed module: ${preview.output.file}`);
+  console.log(`Module SHA-256: ${preview.output.module_sha256}`);
+  console.log("Source modified: no");
+  console.log("Generated file written: no");
+  console.log("Runnable integration active: no");
+  console.log("");
+  console.log("Preview module source:");
+  console.log("----------------------");
+  process.stdout.write(preview.output.module_source);
+  console.log("");
+  console.log(
+    "Preview only: Once did not write this module, alter the target source, or change any application import/call site.",
+  );
+  console.log(
+    "Boundary: the proposed wrapper uses same-machine protectLocal state and requires Node.js 24.15+ when eventually executed. This is not a multi-host or universal exactly-once guarantee.",
+  );
+}
+
 export async function runReviewedLocalCli(
   args: readonly string[],
 ): Promise<void> {
@@ -35,6 +76,7 @@ export async function runReviewedLocalCli(
     value =>
       !value.startsWith("--") ||
       value === "--confirm-reviewed" ||
+      value === "--preview" ||
       value.startsWith("--target=") ||
       value.startsWith("--id-prefix=") ||
       value.startsWith("--id-path=") ||
@@ -43,7 +85,7 @@ export async function runReviewedLocalCli(
 
   if (!allowed) {
     throw new Error(
-      "review-local received an unsupported option. Supported options are --target=, --id-prefix=, --id-path=, --payload-paths= and --confirm-reviewed.",
+      "review-local received an unsupported option. Supported options are --target=, --id-prefix=, --id-path=, --payload-paths=, --confirm-reviewed and --preview.",
     );
   }
 
@@ -53,6 +95,18 @@ export async function runReviewedLocalCli(
   }
 
   const requestedPath = positionals[0] ?? ".";
+  const preview = args.includes("--preview");
+
+  if (preview) {
+    if (hasSemanticOption(args)) {
+      throw new Error(
+        "review-local --preview uses only the already-reviewed .once/reviewed-local-semantics.json artifact and does not accept semantic review options. Review first, then preview separately.",
+      );
+    }
+    await printReviewedLocalPreview(requestedPath);
+    return;
+  }
+
   const target = optionValue(args, "target");
   const idPrefix = optionValue(args, "id-prefix");
   const idPath = optionValue(args, "id-path");
@@ -126,5 +180,9 @@ export async function runReviewedLocalCli(
   );
   console.log(
     "Once has not inferred business identity or payload completeness; those choices are the explicit review recorded above.",
+  );
+  console.log("Preview the deterministic companion wrapper without writing source or generated files with:");
+  console.log(
+    `  npx --yes --package=@once-agent/sdk once review-local ${JSON.stringify(requestedPath)} --preview`,
   );
 }
