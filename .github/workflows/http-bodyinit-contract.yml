@@ -42,6 +42,10 @@ jobs:
         working-directory: sdk/typescript
         run: node ./scripts/http-bodyinit-contract-regression.mjs
 
+      - name: Prove BodyInit execution action contract
+        working-directory: sdk/typescript
+        run: node ./scripts/http-body-write-contract-regression.mjs
+
       - name: Pin HTTP autoprotection benchmark
         working-directory: sdk/typescript
         run: npm run benchmark:http-autoprotection
