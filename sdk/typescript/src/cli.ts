@@ -53,6 +53,10 @@ import {
 } from "./mcp-tool-refresh-report.js";
 
 function printHelp(): void {
+  console.log("Start with one action: once prove (isolated simulation, Node.js 24.15+).");
+  console.log("Then assess -> protect -> verify the actual provider boundary.");
+  console.log("Identity belongs to your application; UNKNOWN never permits blind retry.");
+  console.log("Guide: https://github.com/stringsofthemind-oss/once/blob/main/docs/START_HERE.md");
   console.log("");
   console.log("Once");
   console.log("----");

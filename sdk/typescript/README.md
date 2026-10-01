@@ -1,6 +1,30 @@
 # @once-agent/sdk
 
-> **Automatic Connect in 0.1.12:** this SDK version includes the
+This checkout prepares **0.1.23 (unpublished)**. Current public SDK:
+**0.1.22**. Public install pins below remain deliberate. The included
+first-action example is a candidate improvement; it is not in public 0.1.22.
+
+## Start with one protected action
+
+Current public TypeScript SDK: **@once-agent/sdk@0.1.22**.
+For a credential-free controlled proof on Node.js 24.15+:
+
+```sh
+npm install @once-agent/sdk@0.1.22
+npx once prove
+```
+
+This simulates a lost acknowledgement, blocked retry, recovery and replay.
+It does not protect your project's tools merely by being run.
+Your application owns persisted intent and complete effect binding.
+
+[Start here](https://github.com/stringsofthemind-oss/once/blob/main/docs/START_HERE.md)
+· [Identity and effect](https://github.com/stringsofthemind-oss/once/blob/main/docs/IDENTITY_AND_EFFECT.md)
+· [UNKNOWN playbook](https://github.com/stringsofthemind-oss/once/blob/main/docs/UNKNOWN_PLAYBOOK.md)
+· [Guarantees](https://github.com/stringsofthemind-oss/once/blob/main/docs/GUARANTEES.md)
+
+
+> **Current Connect surface in 0.1.22:** this SDK version includes the
 > `@once-agent/sdk/connect` public surface for automatic tool classification,
 > whole-toolset wiring, trusted intent identity, conservative effect binding,
 > and OpenAI Agents FunctionTool wrapping. It has passed source, packed-package,
@@ -141,7 +165,7 @@ ONCE_API_KEY=your_api_key
 
 Do not commit API keys to source control.
 
-## 60-second quick start
+## Hosted quick start (provider setup required)
 
 ### Runtime HTTP protection
 

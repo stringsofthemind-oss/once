@@ -75,6 +75,8 @@ try {
   assert.equal(explicit.status, 0);
   assert.match(explicit.stdout, /^\s*Once\s*$/m);
   assert.match(explicit.stdout, /once doctor/);
+  assert.match(explicit.stdout, /Start with one action: once prove/);
+  assert.match(explicit.stdout, /Identity belongs to your application/);
   assert.doesNotMatch(explicit.stdout, /AUTOPROTECTION METRICS/);
 
   console.log("zero-friction CLI regression: PASS");

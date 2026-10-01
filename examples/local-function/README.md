@@ -102,32 +102,32 @@ To verify, use a test provider that counts actual external effects. Invoke
 **2**, with the last call raising `CONFLICT`. Also commit an effect then drop
 its response: a retry must remain blocked until provider truth confirms it.
 
-The runnable [`verify.mjs`](./verify.mjs) is a controlled first proof using a
-fake provider. It does not call a real payment or order API. The reproduction
-commands below are intentionally frozen to the historical v0.1.9 proof; that
-version pin is reproducibility evidence, not a statement that v0.1.9 is the
-current SDK. With Node.js 24.15+ installed, run it in a new throwaway directory:
+## Run the canonical source proof
 
-```bash
-mkdir once-local-proof && cd once-local-proof
-npm init -y
-npm install @once-agent/sdk@0.1.9
-curl -fsSL https://raw.githubusercontent.com/stringsofthemind-oss/once/v0.1.9/examples/local-function/verify.mjs -o verify.mjs
-node verify.mjs
+From a source checkout with Node.js 24.15+:
+
+```sh
+cd sdk/typescript
+npm ci
+npm run build
+cd ../..
+node examples/local-function/verify.mjs
 ```
 
-For PowerShell:
+The entry point delegates to one canonical SDK example. It persists simulated
+intent before dispatch, counts first execution/replay and conflict, permits a
+separate intent with identical effect, blocks UNKNOWN when truth is unavailable,
+recovers by exact provider evidence, then replays from a fresh process.
+Expected final count: **3 simulated effects** for three distinct intents.
+The proof uses a new isolated temporary directory and removes only that fixture.
+It calls no real provider and modifies no application project files.
 
-```powershell
-New-Item -ItemType Directory -Path once-local-proof | Out-Null
-Set-Location once-local-proof
-npm init -y
-npm install @once-agent/sdk@0.1.9
-Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/stringsofthemind-oss/once/v0.1.9/examples/local-function/verify.mjs' -OutFile verify.mjs
-node verify.mjs
-```
+For the **currently published 0.1.22 package**, use the existing
+`npx once prove` command after installation. The expanded source example is a
+review-branch addition; its inclusion in a future package requires release approval.
+Historical v0.1.9 proofs remain reproducible from the v0.1.9 tag.
 
-The expected result is `2 effects`: the retry
-reuses the first result, a separate order executes, and a changed payload
-with the first order ID raises `CONFLICT`. The proof writes a local effect log
-and `.once/operations.sqlite` inside this throwaway directory.
+See [Start here](../../docs/START_HERE.md),
+[identity/effect](../../docs/IDENTITY_AND_EFFECT.md),
+[UNKNOWN](../../docs/UNKNOWN_PLAYBOOK.md) and
+[guarantees](../../docs/GUARANTEES.md).

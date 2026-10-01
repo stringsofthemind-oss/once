@@ -42,15 +42,15 @@ Never make an operation ID unique by adding a timestamp, random retry token, age
 
 1. **Assess after the gate passes** — once a qualifying external-write candidate has already been identified, call `once_assess_project` with the absolute project path. If MCP is unavailable, run the pinned CLI fallback:
 
-   `npx --yes --package=@once-agent/sdk@0.1.18 once scan <project>`
+   `npx --yes --package=@once-agent/sdk@0.1.22 once scan <project>`
 
 2. **Explain applicability** — for each high-signal candidate, verify the four routing conditions. Use `once_explain_risk` when helpful. Do not equate every POST, write, retry loop, or MCP action with a Once requirement.
 
 3. **Plan before mutation** — call `once_plan_setup` and/or `once_plan_protection`. If using the CLI, prefer read-only planning commands such as:
 
-   - `npx --yes --package=@once-agent/sdk@0.1.18 once setup <project> --plan`
-   - `npx --yes --package=@once-agent/sdk@0.1.18 once protect <project>`
-   - `npx --yes --package=@once-agent/sdk@0.1.18 once protect <project> --all --patch`
+   - `npx --yes --package=@once-agent/sdk@0.1.22 once setup <project> --plan`
+   - `npx --yes --package=@once-agent/sdk@0.1.22 once protect <project>`
+   - `npx --yes --package=@once-agent/sdk@0.1.22 once protect <project> --all --patch`
 
 4. **Show the plan** — identify the exact operation, why it qualifies, the stable identity inputs, the provider/reconciliation assumption, and the files or callsites that would change.
 
@@ -60,7 +60,7 @@ Never make an operation ID unique by adding a timestamp, random retry token, age
 
 7. **Verify** — run `once_verify_connection` when Cloud verification is relevant, or use:
 
-   `npx --yes --package=@once-agent/sdk@0.1.18 once doctor`
+   `npx --yes --package=@once-agent/sdk@0.1.22 once doctor`
 
    Do not expose `ONCE_API_KEY` in output, source code, patches, logs, or committed configuration.
 

@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.1.23 — release candidate, NOT PUBLISHED
+
+- Put the existing credential-free synthetic proof first in documentation and CLI help.
+- Add one package-included simulated example covering identity, effect conflict,
+  UNKNOWN, exact-evidence recovery and fresh-process replay.
+- Clarify identity ownership, UNKNOWN operations and local/hosted guarantee boundaries.
+- Fix Windows session fixture cleanup and verify open-file locking explicitly.
+- Align current public SDK references with independently verified 0.1.22; retain historical pins.
+- Add cross-platform local CI and current-surface release checks.
+- Update the MCP source dependency to SDK 0.1.22, subject to integration regressions.
+
+These are review-branch changes. No release, merge or deployment is implied.
+
+- Add a disposable cross-process authority-continuity regression and document
+  measured redispatch after complete state loss or stale backup restoration.
+- Prepare SDK package metadata for 0.1.23. Current public registry remains 0.1.22.
+- Scope SQLite tests to Node 24.15+ and add a pre-dispatch rejection regression
+  for unsupported local runtimes; add Node 18/20 compatibility CI.
+
 All notable changes to the Once SDK are documented here.
 
 ## 0.1.12 - 2026-09-25
