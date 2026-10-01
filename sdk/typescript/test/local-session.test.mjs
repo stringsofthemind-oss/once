@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import test from "node:test";
+import nodeTest from "node:test";
+const [major, minor] = process.versions.node.split('.').map(Number);
+const localReady = major > 24 || (major === 24 && minor >= 15);
+const test = (name, fn) => nodeTest(name, { skip: localReady ? false : 'Local SQLite requires Node 24.15+' }, fn);
 import {
   createLocalProtectionSession,
   withLocalProtectionSession,
@@ -17,8 +20,21 @@ function fixture(t) {
   const statePath = path.join(dir, "state.sqlite");
   const effectsPath = path.join(dir, "effects.json");
   writeFileSync(effectsPath, "[]");
-  t.after(() => rmSync(dir, { recursive: true, force: true }));
-  return { dir, statePath, effectsPath };
+  const sessions = [];
+  // Node after hooks run in registration order. Close handles before removing
+  // the fixture: Windows cannot remove an open SQLite database.
+  t.after(() => {
+    for (const session of sessions) session.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+  return {
+    dir, statePath, effectsPath,
+    session(pathname = statePath) {
+      const session = createLocalProtectionSession(pathname);
+      sessions.push(session);
+      return session;
+    },
+  };
 }
 
 function count(pathname) {
@@ -48,8 +64,7 @@ async function settle(callback) {
 
 test("scoped persistent state preserves replay and conflict semantics", async t => {
   const f = fixture(t);
-  const session = createLocalProtectionSession(f.statePath);
-  t.after(() => session.close());
+  const session = f.session();
   const run = createRun(f);
 
   const first = await withLocalProtectionSession(session,
@@ -65,16 +80,24 @@ test("scoped persistent state preserves replay and conflict semantics", async t 
   assert.equal(count(f.effectsPath), 1);
 });
 
-test("scoped session fails closed when its durable state path disappears", async t => {
+test("live path disappearance or Windows open-file locking cannot permit another effect", async t => {
   const f = fixture(t);
-  const session = createLocalProtectionSession(f.statePath);
-  t.after(() => session.close());
+  const session = f.session();
   const run = createRun(f);
 
   await withLocalProtectionSession(session,
     () => run({ id: "A", amount: 100 }));
   assert.equal(count(f.effectsPath), 1);
 
+  if (process.platform === "win32") {
+    // Windows prevents live deletion itself; replay must remain protected.
+    assert.throws(() => unlinkSync(f.statePath), error =>
+      error.code === "EBUSY" || error.code === "EPERM");
+    assert.deepEqual(await withLocalProtectionSession(session,
+      () => run({ id: "A", amount: 100 })), { receipt: "r-1" });
+    assert.equal(count(f.effectsPath), 1);
+    session.close();
+  }
   unlinkSync(f.statePath);
   await assert.rejects(
     withLocalProtectionSession(session,
@@ -96,7 +119,7 @@ test("scoped session fails closed when its durable state path disappears", async
 
 test("same-inode main-file damage cannot lose a confirmed effect across restart", async t => {
   const f = fixture(t);
-  const session = createLocalProtectionSession(f.statePath);
+  const session = f.session();
   const run = createRun(f);
 
   await withLocalProtectionSession(session,
@@ -109,8 +132,7 @@ test("same-inode main-file damage cannot lose a confirmed effect across restart"
   writeFileSync(f.statePath, "not-a-sqlite-database");
   session.close();
 
-  const restarted = createLocalProtectionSession(f.statePath);
-  t.after(() => restarted.close());
+  const restarted = f.session();
   await settle(() => withLocalProtectionSession(restarted,
     () => run({ id: "A", amount: 100 })));
   assert.equal(count(f.effectsPath), 1);
@@ -118,7 +140,7 @@ test("same-inode main-file damage cannot lose a confirmed effect across restart"
 
 test("damage after an external effect cannot cause a blind redispatch after restart", async t => {
   const f = fixture(t);
-  const session = createLocalProtectionSession(f.statePath);
+  const session = f.session();
   const run = protectLocal(async input => {
     addEffect(f.effectsPath, input.amount);
     // Damage the same live main database file after the effect but before Once
@@ -137,8 +159,7 @@ test("damage after an external effect cannot cause a blind redispatch after rest
   assert.equal(count(f.effectsPath), 1);
   session.close();
 
-  const restarted = createLocalProtectionSession(f.statePath);
-  t.after(() => restarted.close());
+  const restarted = f.session();
   await settle(() => withLocalProtectionSession(restarted,
     () => run({ id: "A", amount: 100 })));
   assert.equal(count(f.effectsPath), 1);
@@ -147,11 +168,23 @@ test("damage after an external effect cannot cause a blind redispatch after rest
 test("an unrelated scoped session cannot change a protectLocal state path", async t => {
   const f = fixture(t);
   const other = path.join(f.dir, "other.sqlite");
-  const session = createLocalProtectionSession(other);
-  t.after(() => session.close());
+  const session = f.session(other);
   const run = createRun(f);
 
   assert.deepEqual(await withLocalProtectionSession(session,
     () => run({ id: "A", amount: 100 })), { receipt: "r-1" });
+  assert.equal(count(f.effectsPath), 1);
+});
+
+test("a closed session never silently creates replacement authority", async t => {
+  const f = fixture(t);
+  const session = f.session();
+  const run = createRun(f);
+  await withLocalProtectionSession(session, () => run({ id: "A", amount: 100 }));
+  session.close();
+  await assert.rejects(
+    withLocalProtectionSession(session, () => run({ id: "B", amount: 200 })),
+    error => error instanceof LocalProtectionError && error.code === "STATE_UNAVAILABLE",
+  );
   assert.equal(count(f.effectsPath), 1);
 });

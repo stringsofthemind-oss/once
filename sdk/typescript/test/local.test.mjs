@@ -3,7 +3,10 @@ import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import test from "node:test";
+import nodeTest from "node:test";
+const [major, minor] = process.versions.node.split('.').map(Number);
+const localReady = major > 24 || (major === 24 && minor >= 15);
+const test = (name, fn) => nodeTest(name, { skip: localReady ? false : 'Local SQLite requires Node 24.15+' }, fn);
 import { protectLocal, LocalProtectionError } from "../dist/index.js";
 
 const root = path.dirname(fileURLToPath(import.meta.url));

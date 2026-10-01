@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { currentOnboardingSurfaces, validateCurrentOnboarding } from "./check-current-onboarding.mjs";
+
+validateCurrentOnboarding(currentOnboardingSurfaces());
 
 function read(path) {
   return readFileSync(new URL(`../${path}`, import.meta.url), "utf8");

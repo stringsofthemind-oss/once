@@ -8,6 +8,16 @@ on:
       - "sdk/python/**"
       - "mcp/**"
       - "conformance/**"
+      - "README.md"
+      - "docs/START_HERE.md"
+      - "docs/GUARANTEES.md"
+      - "docs/IDENTITY_AND_EFFECT.md"
+      - "docs/UNKNOWN_PLAYBOOK.md"
+      - "docs/PRODUCTION_OPERATION.md"
+      - "docs/published-versions.json"
+      - "scripts/check-current-onboarding.mjs"
+      - "scripts/test-current-onboarding.mjs"
+      - "scripts/test-openai-plugin-line-endings.mjs"
       - ".github/workflows/sdk-ci.yml"
   push:
     branches:
@@ -18,12 +28,84 @@ on:
       - "sdk/python/**"
       - "mcp/**"
       - "conformance/**"
+      - "README.md"
+      - "docs/START_HERE.md"
+      - "docs/GUARANTEES.md"
+      - "docs/IDENTITY_AND_EFFECT.md"
+      - "docs/UNKNOWN_PLAYBOOK.md"
+      - "docs/PRODUCTION_OPERATION.md"
+      - "docs/published-versions.json"
+      - "scripts/check-current-onboarding.mjs"
+      - "scripts/test-current-onboarding.mjs"
+      - "scripts/test-openai-plugin-line-endings.mjs"
       - ".github/workflows/sdk-ci.yml"
 
 permissions:
   contents: read
 
 jobs:
+  legacy-runtime-boundary:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: ['18', '20']
+    defaults:
+      run:
+        working-directory: sdk/typescript
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: sdk/typescript/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - name: Hosted compatibility and unsupported local admission
+        run: node --test ./test/connect/*.test.mjs ./test/unsupported-runtime.test.mjs
+
+  onboarding-portability:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node: ['24.15.0']
+        include:
+          - os: ubuntu-latest
+            node: '24.x'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: sdk/typescript
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: sdk/typescript/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - name: Local and connected execution contracts
+        run: node --test ./test/local.test.mjs ./test/local-session.test.mjs ./test/connect/*.test.mjs ./test/first-action.test.mjs
+      - name: Isolated packed first-action proof
+        run: npm run test:first-action-package
+      - name: Retained authority and explicit loss boundary
+        run: npm run test:authority-continuity
+      - name: Exact authority state and independent provider forensic evidence
+        run: npm run test:authority-forensics
+      - name: Current onboarding release references
+        run: node ../../scripts/check-site-surface.mjs
+      - name: Onboarding drift regressions
+        run: node ../../scripts/test-current-onboarding.mjs
+      - name: Plugin frontmatter portability
+        run: node ../../scripts/test-openai-plugin-line-endings.mjs
+
   test-release:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -99,8 +181,8 @@ jobs:
       - name: Run materialized reviewed companion execution proof
         run: node ./scripts/materialized-companion-proof-regression.mjs
 
-      - name: Run persistent local state regressions
-        run: node --test ./test/local-session.test.mjs
+      - name: Run packed first-action proof
+        run: npm run test:first-action-package
 
       - name: Run MCP boundary mutation regressions
         run: node --test ./test/connect/mcp-execution-boundary-mutation.test.mjs

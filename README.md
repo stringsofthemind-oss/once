@@ -1,6 +1,26 @@
 # @once-agent/sdk
 
-> **Automatic Connect:** `@once-agent/sdk@0.1.18` publishes the tested
+## Start with one protected action
+
+Current public TypeScript SDK: **@once-agent/sdk@0.1.22**.
+For a credential-free controlled proof on Node.js 24.15+:
+
+```sh
+npm install @once-agent/sdk@0.1.22
+npx once prove
+```
+
+This simulates a lost acknowledgement, blocked retry, recovery and replay.
+It does not protect your project's tools merely by being run.
+Your application owns persisted intent and complete effect binding.
+
+[Start here](https://github.com/stringsofthemind-oss/once/blob/main/docs/START_HERE.md)
+· [Identity and effect](https://github.com/stringsofthemind-oss/once/blob/main/docs/IDENTITY_AND_EFFECT.md)
+· [UNKNOWN playbook](https://github.com/stringsofthemind-oss/once/blob/main/docs/UNKNOWN_PLAYBOOK.md)
+· [Guarantees](https://github.com/stringsofthemind-oss/once/blob/main/docs/GUARANTEES.md)
+
+
+> **Automatic Connect:** `@once-agent/sdk@0.1.22` publishes the tested
 > `@once-agent/sdk/connect` path for classifying supported agent tools as
 > `BYPASS`, `PROTECT`, or fail-closed `UNKNOWN`, then wiring whole local tool
 > registries with trusted logical identity and effect binding. It also includes
@@ -23,7 +43,7 @@ Once helps protect supported refunds, bookings, payments and other externally vi
 - Automatic Connect guide: [`docs/CONNECT_AUTO.md`](./docs/CONNECT_AUTO.md)
 - MCP idempotency guide: https://onceexec.com/mcp-idempotency/
 - AI agent retry safety: https://onceexec.com/ai-agent-retry-safety/
-- TypeScript SDK: [`@once-agent/sdk@0.1.18`](https://www.npmjs.com/package/@once-agent/sdk)
+- TypeScript SDK: [`@once-agent/sdk@0.1.22`](https://www.npmjs.com/package/@once-agent/sdk)
 - Python SDK: [`once-agent-sdk==0.1.1`](https://pypi.org/project/once-agent-sdk/)
 - MCP package: `@once-agent/mcp@0.1.5`
 - MCP Registry: `io.github.stringsofthemind-oss/once`
@@ -212,7 +232,7 @@ ONCE_API_KEY=your_api_key
 
 Do not commit API keys to source control.
 
-## 60-second quick start
+## Hosted quick start (provider setup required)
 
 First configure a provider with `once setup .`, or use a provider alias already registered with your Once account.
 

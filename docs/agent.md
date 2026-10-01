@@ -1,6 +1,12 @@
 # Once — Agent-Readable Product Guide
 
-> **Automatic Connect:** `@once-agent/sdk@0.1.14` publishes the tested
+Start: https://github.com/stringsofthemind-oss/once/blob/main/docs/START_HERE.md
+
+Recovery: https://github.com/stringsofthemind-oss/once/blob/main/docs/UNKNOWN_PLAYBOOK.md
+
+Guarantees: https://github.com/stringsofthemind-oss/once/blob/main/docs/GUARANTEES.md
+
+> **Automatic Connect:** `@once-agent/sdk@0.1.22` publishes the tested
 > `@once-agent/sdk/connect` toolset integration path. It can classify supported
 > agent tools as `BYPASS`, `PROTECT`, or fail-closed `UNKNOWN`, bind trusted
 > logical intent identity and effect payload, and return a connected local tool
@@ -24,7 +30,7 @@ Canonical site: https://onceexec.com/
 
 Repository: https://github.com/stringsofthemind-oss/once
 
-TypeScript SDK: `@once-agent/sdk@0.1.14`
+TypeScript SDK: `@once-agent/sdk@0.1.22`
 
 npm: https://www.npmjs.com/package/@once-agent/sdk
 

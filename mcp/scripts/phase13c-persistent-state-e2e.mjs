@@ -83,13 +83,15 @@ async function sample(fn, n = 25) {
   return summarize(values);
 }
 
+let proxy;
+let client;
 try {
   // The SDK CI lane installs the freshly packed branch SDK into this MCP workspace,
   // so this test uses the same package import path that customers will use.
   const primary = configFor("primary");
-  let proxy = await connectStdioProxy(primary.config);
+  proxy = await connectStdioProxy(primary.config);
   assert.equal(proxy.persistentLocalState, true);
-  let client = await attach(proxy, "persistent-primary");
+  client = await attach(proxy, "persistent-primary");
   const firstCall = {
     name: "create_order",
     arguments: { operation_id: "p-1", sku: "one", quantity: 1 },
@@ -177,8 +179,26 @@ try {
     arguments: { operation_id: "p-loss-1", sku: "safe", quantity: 1 },
   });
   assert.equal(count(lost.effectsPath), 1);
+  if (process.platform === "win32") {
+    // Windows refuses live deletion. Keep the replay assertion, then test
+    // corrupted replacement authority on reconnect after closing the handle.
+    assert.throws(() => unlinkSync(lost.statePath), error =>
+      error.code === "EBUSY" || error.code === "EPERM");
+    await client.callTool({
+      name: "create_order",
+      arguments: { operation_id: "p-loss-1", sku: "safe", quantity: 1 },
+    });
+    assert.equal(count(lost.effectsPath), 1);
+    await closePair(client, proxy);
+    client = undefined;
+    proxy = undefined;
+  }
   unlinkSync(lost.statePath);
   writeFileSync(lost.statePath, "replacement-state-file");
+  if (process.platform === "win32") {
+    proxy = await connectStdioProxy(lost.config);
+    client = await attach(proxy, "persistent-corrupt-restart");
+  }
   await assert.rejects(client.callTool({
     name: "create_order",
     arguments: { operation_id: "p-loss-2", sku: "must-not-run", quantity: 1 },
@@ -226,5 +246,9 @@ try {
   rmSync(primary.dir, { recursive: true, force: true });
   console.log("ONCE PHASE 13C PERSISTENT STATE: PASS");
 } finally {
-  rmSync(root, { recursive: true, force: true });
+  try {
+    await closePair(client, proxy);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 }

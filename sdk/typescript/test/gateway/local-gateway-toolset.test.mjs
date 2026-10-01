@@ -3,12 +3,14 @@ import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+const [major, minor] = process.versions.node.split('.').map(Number);
+const localReady = major > 24 || (major === 24 && minor >= 15);
 
 import {
   connectLocalGatewayToolsetAuto,
 } from "../../dist/gateway/index.js";
 
-test("gateway keeps direct tools direct and protected retries single-effect", async () => {
+test("gateway keeps direct tools direct and protected retries single-effect", { skip: localReady ? false : 'Local SQLite requires Node 24.15+' }, async () => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "once-gateway-local-"));
   const statePath = path.join(directory, "operations.sqlite");
 
