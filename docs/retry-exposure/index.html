@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width,initial-scale=1" />
+		<meta name="color-scheme" content="dark" />
+		<title>Once — estimate retry exposure</title>
+		<meta
+			name="description"
+			content="A transparent arithmetic model of retry events and action value. Not a load test, savings forecast or proof of throughput."
+		/>
+		<meta name="google-site-verification" content="jBMY3qIvmf9hJoVVcvpgoEOW_gfZqUxNwHmtmUpErWk" />
+		<link rel="canonical" href="https://onceexec.com/retry-exposure/" />
+		<meta property="og:type" content="website" />
+		<meta property="og:title" content="Once — estimate retry exposure" />
+		<meta
+			property="og:description"
+			content="A transparent arithmetic model of retry events and action value. Not a load test, savings forecast or proof of throughput."
+		/>
+		<meta property="og:url" content="https://onceexec.com/retry-exposure/" />
+		<meta name="twitter:card" content="summary" />
+		<link rel="alternate" type="text/markdown" href="/agent.md" title="Once agent guide" />
+		<link rel="stylesheet" href="/funnel.css" />
+		<script src="/page-analytics.js" defer></script>
+		<script src="/funnel.js" defer></script>
+	</head>
+	<body>
+		<a class="skip" href="#main">Skip to content</a>
+		<header class="top">
+			<nav class="nav wrap" aria-label="Main">
+				<a class="brand" href="/"><span class="mark">1×</span> Once</a>
+				<div class="links">
+					<a href="/#mechanism">How it works</a><a href="/quickstart/">Quickstart</a><a href="/evidence/">Evidence</a
+					><a href="/support/" data-event="docs_click">Docs</a
+					><a href="https://github.com/stringsofthemind-oss/once" data-event="github_click">GitHub</a
+					><a class="btn primary" href="/#demo" data-event="hero_demo_click">Run the retry demo</a>
+				</div>
+			</nav>
+		</header>
+		<main tabindex="-1" id="main" class="wrap prose">
+			<p class="eyebrow">Optional analysis</p>
+			<h1>Estimate retry exposure.</h1>
+			<p class="lead">
+				This calculator performs browser arithmetic. It does not send requests or measure Once throughput. A retry is not automatically a
+				duplicate.
+			</p>
+			<form data-exposure-form>
+				<div class="form-grid">
+					<label
+						>Consequential calls per month<input
+							name="calls"
+							type="number"
+							value="10000"
+							min="0"
+							max="10000000000"
+							step="1"
+							required /></label
+					><label
+						>Retry events per 100 calls (%)<input name="rate" type="number" value="0.1" min="0" max="100" step="0.01" required /></label
+					><label
+						>Average action value (£)<input name="value" type="number" value="75" min="0" max="1000000000" step="0.01" required
+					/></label>
+				</div>
+				<div class="actions"><button class="primary" type="submit">Estimate exposure</button></div>
+			</form>
+			<p class="note" data-exposure-result role="status">Enter conservative assumptions and estimate. No traffic is generated.</p>
+			<noscript
+				><p>
+					JavaScript is needed to calculate. Formula: monthly calls × retry rate / 100 = retry events; retry events × average action value =
+					value exposed to retry ambiguity.
+				</p></noscript
+			>
+			<p>
+				Formula: calls × retry rate / 100 = estimated retry events. Events × average action value = exposure context. This is neither
+				expected loss nor prevented loss. Provider-native idempotency may already protect some retries.
+			</p>
+			<div class="actions">
+				<a class="btn primary" href="/demo/">Run the retry simulation</a><a href="/quickstart/">Verify the actual SDK</a>
+			</div>
+		</main>
+		<footer class="footer wrap">
+			<span
+				>Once · Open source · MIT<br />TypeScript <span data-version="ts">0.1.22</span> · Python <span data-version="python">0.1.1</span> ·
+				MCP <span data-version="mcp">0.1.5</span></span
+			>
+			<nav aria-label="Footer">
+				<a href="/quickstart/">Quickstart</a><a href="/evidence/">Evidence</a><a href="/agent.md">Agent guide</a
+				><a href="/retry-exposure/">Estimate retry exposure</a
+				><a href="https://playground.onceexec.com/hosted" data-event="hosted_sandbox_click">Hosted sandbox activation</a>
+			</nav>
+		</footer>
+		<p class="sr-only" data-copy-status role="status"></p>
+	</body>
+</html>

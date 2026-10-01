@@ -13,7 +13,7 @@ on:
       - "workers/playground/**"
       - "workers/demo-provider/**"
       - "workers/evaluation/**"
-      - "docs/index.html"
+      - "docs/**"
       - "docs/app.js"
       - "docs/page-analytics.js"
       - "docs/styles.css"
@@ -21,6 +21,8 @@ on:
       - "sdk/python/pyproject.toml"
       - "mcp/package.json"
       - "scripts/check-site-surface.mjs"
+      - "scripts/generate-site-surface.mjs"
+      - "scripts/website-funnel.test.mjs"
       - "scripts/deploy-worker.cjs"
       - ".github/workflows/workers-ci.yml"
 
@@ -48,8 +50,13 @@ jobs:
       - name: Validate homepage helper syntax
         run: node --check docs/page-analytics.js
 
-      - name: Validate public site versions, counter route and heartbeat
-        run: node scripts/check-site-surface.mjs
+      - name: Validate public versions and funnel safety boundaries
+        run: |
+          node scripts/generate-site-surface.mjs --check
+          node scripts/check-site-surface.mjs
+          node --check docs/funnel.js
+          node --check docs/retry-demo.js
+          node --test scripts/website-funnel.test.mjs
 
   worker-dry-run:
     runs-on: ubuntu-latest

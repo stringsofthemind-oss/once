@@ -10,6 +10,7 @@ const mcpPackage = JSON.parse(read("mcp/package.json"));
 const published = JSON.parse(read("docs/published-versions.json"));
 const pythonProject = read("sdk/python/pyproject.toml");
 const pageAnalytics = read("docs/page-analytics.js");
+const homepage = read("docs/index.html");
 const app = read("docs/app.js");
 const styles = read("docs/styles.css");
 const wrangler = read("workers/runtime/wrangler.jsonc");
@@ -25,9 +26,9 @@ const claudeReadme = read("plugins/claude-code/once/README.md");
 const pythonVersion = pythonProject.match(/^version\s*=\s*"([^"]+)"/m)?.[1];
 assert.ok(pythonVersion, "could not read Python SDK version");
 
-const siteTs = pageAnalytics.match(/ts:\s*"([^"]+)"/)?.[1];
-const sitePython = pageAnalytics.match(/python:\s*"([^"]+)"/)?.[1];
-const siteMcp = pageAnalytics.match(/mcp:\s*"([^"]+)"/)?.[1];
+const siteTs = homepage.match(/data-version="ts">([^<]+)/)?.[1];
+const sitePython = homepage.match(/data-version="python">([^<]+)/)?.[1];
+const siteMcp = homepage.match(/data-version="mcp">([^<]+)/)?.[1];
 
 function patchVersion(value) {
   assert.match(value, /^\d+\.\d+\.\d+$/, "expected a stable published version");
@@ -79,29 +80,14 @@ assert.ok(
   "Claude Code plugin README must match the current published MCP version",
 );
 
-assert.match(
-  pageAnalytics,
-  /document\.querySelector\("\.status"\)/,
-  "homepage version badge updater is missing",
-);
-
-assert.match(
-  pageAnalytics,
-  /footer > span:last-child/,
-  "homepage footer version updater is missing",
-);
-
-assert.match(
-  pageAnalytics,
-  /data\.softwareVersion\s*=\s*SITE_VERSIONS\.ts/,
-  "homepage JSON-LD version updater is missing",
-);
-
-assert.ok(
-  app.includes("https://once-q18-cloud.pennywatch.workers.dev/v1/public/stats"),
-  "homepage counter must target the public runtime stats route",
-);
-
+assert.match(homepage, /Run the retry demo/, "homepage must lead to the ungated demo");
+assert.doesNotMatch(homepage, /once-network|Open live proof|Test Once at your scale/, "obsolete proof/funnel claims must stay removed");
+const schema = JSON.parse(homepage.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
+assert.equal(schema.softwareVersion, published.ts, "static structured metadata must match published SDK");
+assert.match(read("docs/quickstart/index.html"), /@once-agent\/sdk@/);
+assert.ok(read("workers/playground/src/index.js").includes("return html(RETRY_DEMO_PAGE)"), "playground root must remain ungated");
+assert.match(read("docs/quickstart/index.html"), /Local mode does not automatically redispatch/, "local ambiguity boundary must be explicit");
+assert.ok(read("docs/demo/index.html").includes("does not run the SDK"));
 assert.match(
   wrangler,
   /"main"\s*:\s*"src\/index\.js"/,
@@ -132,70 +118,4 @@ assert.match(
   "preserved runtime core is missing the Durable Object engine",
 );
 
-const heartbeatRule = styles.match(/\.once-network::before\s*\{([\s\S]*?)\n\}/)?.[1] ?? "";
-assert.match(
-  heartbeatRule,
-  /animation:\s*once-network-heartbeat\s*1s\s*ease-in-out\s*infinite/s,
-  "live network ambient heartbeat must remain a 1-second infinite pulse",
-);
-
-assert.match(
-  pageAnalytics,
-  /heartbeatStyle\.dataset\.onceHeartbeat\s*=\s*"pulse-only-v5"/,
-  "red pulse-only heartbeat override is missing",
-);
-
-assert.match(
-  pageAnalytics,
-  /class\", \"once-heartbeat-monitor\"/,
-  "heartbeat pulse SVG is missing",
-);
-
-assert.match(
-  pageAnalytics,
-  /M20 38 L32 29 L43 51 L55 8 L67 61 L80 24 L92 38/,
-  "compact heartbeat pulse shape is missing",
-);
-
-assert.doesNotMatch(
-  pageAnalytics,
-  /once-heartbeat-monitor \.baseline|M0 38 H78/,
-  "heartbeat pulse must not restore the removed long ECG baseline",
-);
-
-assert.match(
-  pageAnalytics,
-  /stroke:#ff3040/,
-  "heartbeat pulse must retain a bright red trace",
-);
-
-assert.match(
-  pageAnalytics,
-  /once-heartbeat-pulse\s*1s\s*ease-in-out\s*infinite/s,
-  "heartbeat pulse must remain exactly one second",
-);
-
-assert.match(
-  app,
-  /normalized > previousValue[\s\S]*?classList\.add\([\s\S]*?"operation-confirmed"/,
-  "usage pulse must remain tied to a real protected-operation count increase",
-);
-
-assert.match(
-  pageAnalytics,
-  /\.once-network\.operation-confirmed::after\{[\s\S]*?border:2px solid #43d7ff !important;/,
-  "usage-trigger pulse must remain cyan and visually distinct from the red heartbeat",
-);
-
-assert.match(
-  pageAnalytics,
-  /0 0 12px rgba\(67,215,255,\.96\)[\s\S]*?0 0 54px rgba\(67,215,255,\.28\)/,
-  "usage-trigger pulse must retain its contrasting cyan halo",
-);
-
-const visibleVersionLine =
-  `TS SDK ${siteTs} · PY SDK ${sitePython} · MCP ${siteMcp}`;
-
-console.log(
-  `PASS site surface: ${visibleVersionLine}; launchers/docs aligned; live counter route present; heartbeat=1s red-pulse; usage-pulse=cyan`,
-);
+console.log(`PASS site surface: TS ${siteTs}, Python ${sitePython}, MCP ${siteMcp}; source and safety boundaries aligned`);

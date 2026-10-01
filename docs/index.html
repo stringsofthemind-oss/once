@@ -1,2997 +1,440 @@
 <!doctype html>
 <html lang="en">
-
-<head>
-
-<meta charset="utf-8">
-
-<meta name="google-site-verification" content="jBMY3qIvmf9hJoVVcvpgoEOW_gfZqUxNwHmtmUpErWk" />
-
-<meta
-  name="viewport"
-  content="width=device-width,initial-scale=1"
->
-
-<meta
-  name="color-scheme"
-  content="dark"
->
-
-<meta
-  name="description"
-  content="Prevent duplicate AI agent side effects after timeouts and retries. Once adds durable operation identity, replay, reconciliation, and fail-closed safety."
->
-
-<link
-  rel="canonical"
-  href="https://onceexec.com/"
->
-
-<link
-  rel="describedby"
-  type="text/plain"
-  href="./llms.txt"
->
-
-<link
-  rel="alternate"
-  type="text/markdown"
-  href="./agent.md"
-  title="Once agent-readable product guide"
->
-
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  "name": "Once",
-  "applicationCategory": "DeveloperApplication",
-  "softwareVersion": "0.1.10",
-  "url": "https://onceexec.com/",
-  "downloadUrl": "https://www.npmjs.com/package/@once-agent/sdk",
-  "codeRepository": "https://github.com/stringsofthemind-oss/once",
-  "description": "Execution-safety infrastructure for supported consequential AI-agent and application side effects."
-}
-</script>
-
-<title>Once — MCP Idempotency & AI Agent Retry Safety</title>
-
-<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1">
-<meta property="og:type" content="website">
-<meta property="og:title" content="Once — AI Agent Execution Safety">
-<meta property="og:description" content="MCP idempotency, safe retries and duplicate side-effect protection for consequential AI agent writes.">
-<meta property="og:url" content="https://onceexec.com/">
-<meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Once — AI Agent Execution Safety">
-<meta name="twitter:description" content="MCP idempotency and retry safety for consequential AI agent writes.">
-
-<link
-  rel="stylesheet"
-  href="./styles.css"
->
-
-<style>
-.cross-proof{
-  max-width:var(--max);
-  margin:28px auto;
-  padding:58px 44px 44px;
-  border:1px solid var(--line);
-  border-radius:31px;
-  background:
-    radial-gradient(700px 340px at 15% 0%,rgba(57,240,160,.07),transparent 60%),
-    radial-gradient(700px 340px at 90% 15%,rgba(67,215,255,.055),transparent 62%),
-    rgba(6,11,17,.86);
-  box-shadow:0 30px 90px rgba(0,0,0,.22);
-}
-
-.cross-proof-head{
-  display:grid;
-  grid-template-columns:190px 1fr;
-  gap:30px;
-  align-items:start;
-}
-
-.cross-proof-kicker{
-  color:var(--green);
-  font:750 10px ui-monospace,SFMono-Regular,Menlo,monospace;
-  letter-spacing:.16em;
-}
-
-.cross-proof-head h2{
-  max-width:980px;
-  margin:0;
-  font-size:clamp(37px,4.8vw,64px);
-  line-height:.98;
-  letter-spacing:-.052em;
-}
-
-.cross-proof-head h2 em{
-  color:var(--green);
-  font-style:normal;
-}
-
-.cross-proof-head p{
-  max-width:850px;
-  margin:18px 0 0;
-  color:#8fa2b1;
-  line-height:1.65;
-  font-size:14px;
-}
-
-.cross-proof-grid{
-  margin-top:42px;
-  display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:12px;
-}
-
-.cross-proof-card{
-  min-height:150px;
-  padding:19px 20px;
-  border:1px solid var(--line);
-  border-radius:17px;
-  background:rgba(8,14,22,.78);
-  display:flex;
-  flex-direction:column;
-  transition:.2s ease;
-}
-
-a.cross-proof-card:hover{
-  transform:translateY(-2px);
-  border-color:rgba(67,215,255,.32);
-}
-
-.cross-proof-card-top{
-  display:flex;
-  justify-content:space-between;
-  gap:16px;
-  align-items:flex-start;
-  color:#8195a4;
-  font:750 9px ui-monospace,SFMono-Regular,Menlo,monospace;
-  letter-spacing:.1em;
-}
-
-.cross-proof-state{
-  color:var(--green);
-  text-align:right;
-}
-
-.cross-proof-state.bad{
-  color:var(--red);
-}
-
-.cross-proof-state.warn{
-  color:var(--amber);
-}
-
-.cross-proof-card strong{
-  margin-top:auto;
-  padding-top:26px;
-  color:#edf5f8;
-  font-size:20px;
-  letter-spacing:-.025em;
-}
-
-.cross-proof-card small{
-  margin-top:6px;
-  color:#708392;
-  line-height:1.45;
-}
-
-.cross-proof-cta{
-  margin-top:14px;
-  padding:17px;
-  border:1px solid var(--line);
-  border-radius:17px;
-  background:rgba(10,17,26,.76);
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:24px;
-}
-
-.cross-proof-cta strong{
-  display:block;
-  font-size:14px;
-}
-
-.cross-proof-cta p{
-  margin:4px 0 0;
-  color:#7f93a2;
-  font-size:12px;
-}
-
-.cross-proof-actions{
-  display:flex;
-  flex-wrap:wrap;
-  gap:9px;
-  justify-content:flex-end;
-}
-
-.cross-proof-scope{
-  margin:16px 0 0;
-  color:#627684;
-  font-size:10px;
-  line-height:1.55;
-}
-
-@media(max-width:780px){
-  .cross-proof{
-    margin:20px 14px;
-    padding:42px 20px 24px;
-    border-radius:24px;
-  }
-
-  .cross-proof-head{
-    grid-template-columns:1fr;
-    gap:14px;
-  }
-
-  .cross-proof-grid{
-    grid-template-columns:1fr;
-  }
-
-  .cross-proof-cta{
-    align-items:flex-start;
-    flex-direction:column;
-  }
-
-  .cross-proof-actions{
-    justify-content:flex-start;
-  }
-}
-</style>
-
-<script src="./page-analytics.js" defer data-once-page-analytics></script>
-</head>
-
-
-<body>
-
-<div class="background-grid"></div>
-<div class="cursor-glow"></div>
-
-
-<!-- ============================================
-NAVIGATION
-============================================= -->
-
-<nav class="nav">
-
-  <div class="nav-inner">
-
-    <a
-      class="brand"
-      href="#top"
-    >
-
-      <span class="brand-icon">
-        1×
-      </span>
-
-      <span class="brand-name">
-        Once
-      </span>
-
-    </a>
-
-
-    <div class="nav-links">
-
-      <a href="#mechanism">
-        How it works
-      </a>
-
-      <a href="#proof">
-        Proof
-      </a>
-
-      <a href="#tester">
-        Tester
-      </a>
-
-      <a href="#playground">
-        Playground
-      </a>
-
-      <a href="#developers">
-        Developers
-      </a>
-
-      <a href="./mcp-idempotency/">
-        MCP
-      </a>
-
-    </div>
-
-
-    <div class="status">
-
-      <i></i>
-
-      TS SDK 0.1.10 · PY SDK 0.1.0 · MCP 0.1.2
-
-    </div>
-
-  </div>
-
-</nav>
-
-
-<main>
-<!-- ONCE / QUICK JUMP RAIL -->
-<nav class="once-jump-rail" aria-label="Quick page navigation">
-  <div class="once-jump-line" aria-hidden="true"></div>
-
-  <a class="once-jump-link is-active" href="#top" data-once-jump="top">
-    <span class="once-jump-dot" aria-hidden="true"></span>
-    <span class="once-jump-label">TOP</span>
-  </a>
-
-  <a class="once-jump-link" href="#mechanism" data-once-jump="mechanism">
-    <span class="once-jump-dot" aria-hidden="true"></span>
-    <span class="once-jump-label">HOW IT WORKS</span>
-  </a>
-
-  <a class="once-jump-link" href="#proof" data-once-jump="proof">
-    <span class="once-jump-dot" aria-hidden="true"></span>
-    <span class="once-jump-label">PROOF</span>
-  </a>
-
-  <a class="once-jump-link" href="#tester" data-once-jump="tester">
-    <span class="once-jump-dot" aria-hidden="true"></span>
-    <span class="once-jump-label">TESTER</span>
-  </a>
-
-  <a class="once-jump-link" href="#playground" data-once-jump="playground">
-    <span class="once-jump-dot" aria-hidden="true"></span>
-    <span class="once-jump-label">PLAYGROUND</span>
-  </a>
-
-  <a class="once-jump-link" href="#developers" data-once-jump="developers">
-    <span class="once-jump-dot" aria-hidden="true"></span>
-    <span class="once-jump-label">DEVELOPERS</span>
-  </a>
-
-  <a class="once-jump-link" href="#updates" data-once-jump="updates">
-    <span class="once-jump-dot" aria-hidden="true"></span>
-    <span class="once-jump-label">UPDATES</span>
-  </a>
-
-  <a class="once-jump-link" href="#get-once" data-once-jump="get-once">
-    <span class="once-jump-dot" aria-hidden="true"></span>
-    <span class="once-jump-label">GET ONCE</span>
-  </a>
-</nav>
-
-
-
-<!-- ============================================
-HERO
-============================================= -->
-
-<section
-  class="hero"
-  id="top"
->
-
-  <div class="hero-copy reveal">
-
-    <div class="eyebrow">
-
-      <span class="live-dot"></span>
-
-      AI AGENT EXECUTION SAFETY / MCP IDEMPOTENCY
-
-    </div>
-
-
-    <h1>
-
-      THE SAME ACTION
-
-      <br>
-
-      SHOULD HAPPEN
-
-      <br>
-
-      <em>ONCE.</em>
-
-    </h1>
-
-
-    <p class="lede">
-
-      Once is AI agent execution-safety infrastructure for MCP tools
-      and applications that need safe retries after ambiguous outcomes.
-
-      <strong>
-        Stable identity. Durable state. Provider reconciliation.
-      </strong>
-
-      Protect supported refunds, bookings, payments and other consequential
-      writes from unsafe duplicate execution after timeouts, lost responses
-      and retries.
-
-    </p>
-
-
-    <div class="hero-buttons">
-
-      <a
-        class="button button-primary"
-        href="#tester"
-      >
-        Test Once at your scale
-      </a>
-
-      <a
-        class="button"
-        href="https://playground.onceexec.com/"
-        target="_blank"
-        rel="noopener"
-      >
-        Open live proof
-      </a>
-
-    </div>
-
-
-    <div class="install-card">
-
-      <div>
-
-        <span>
-          MCP / AGENT INSTALL
-        </span>
-
-        <code>
-          npx -y @once-agent/mcp
-        </code>
-
-      </div>
-
-      <button
-        data-copy="npx -y @once-agent/mcp"
-      >
-        COPY
-      </button>
-
-    </div>
-
-  </div>
-
-
-  <div class="hero-image reveal">
-
-    <div class="scan"></div>
-
-
-    <div class="image-label">
-
-      <span>
-        ONCE / EXECUTION CORE
-      </span>
-
-      <b>
-        LIVE
-      </b>
-
-    </div>
-
-
-    <div class="hero-telemetry">
-
-      <div class="telemetry-card">
-
-        <small>
-          OPERATION
-        </small>
-
-        <strong>
-          op_8F21
-        </strong>
-
-      </div>
-
-
-      <div class="telemetry-card">
-
-        <small>
-          ATTEMPTS
-        </small>
-
-        <strong>
-          02
-        </strong>
-
-      </div>
-
-
-      <div class="telemetry-card">
-
-        <small>
-          SIDE EFFECTS
-        </small>
-
-        <strong class="green">
-          01
-        </strong>
-
-      </div>
-
-
-      <div class="telemetry-card telemetry-wide">
-
-        <small>
-          LEDGER STATE
-        </small>
-
-        <strong class="green">
-          CONFIRMED
-        </strong>
-
-      </div>
-
-    </div>
-
-    <div
-      class="once-network"
-      id="once-network"
-      aria-live="polite"
-    >
-      <div class="once-network-head">
-        <span class="once-network-dot"></span>
-        <span>LIVE ONCE NETWORK</span>
-      </div>
-
-      <div class="once-network-value-wrap">
-        <span
-          class="once-network-value"
-          id="once-network-value"
-        >—</span>
-      </div>
-
-      <div
-        class="once-network-label"
-        id="once-network-label"
-      >
-        protected operations
-      </div>
-
-      <div
-        class="once-network-status"
-        id="once-network-status"
-      >
-        CONNECTING TO PRODUCTION
-      </div>
-    </div>
-
-  </div>
-
-</section>
-
-
-<!-- ============================================
-CROSS-FRAMEWORK EVIDENCE
-============================================= -->
-
-<section class="cross-proof" id="cross-framework-proof">
-
-  <div class="cross-proof-head reveal">
-
-    <span class="cross-proof-kicker">
-      REPRODUCIBLE EVIDENCE
-    </span>
-
-    <div>
-      <h2>
-        Different framework. Different retry machinery.
-        <br>
-        <em>Same recovery protocol.</em>
-      </h2>
-
-      <p>
-        The same frozen Once V4 recovery core has been exercised under hard process termination
-        across independent execution models. The control duplicates the external effect; the protected
-        paths reconcile or fail closed instead of blindly executing again.
-      </p>
-    </div>
-
-  </div>
-
-  <div class="cross-proof-grid reveal">
-
-    <article class="cross-proof-card">
-      <div class="cross-proof-card-top">
-        <span>CONTROL / NAIVE RETRY</span>
-        <span class="cross-proof-state bad">DUPLICATED</span>
-      </div>
-      <strong>2 external effects</strong>
-      <small>Fresh-process replay without an execution-safety boundary.</small>
-    </article>
-
-    <a
-      class="cross-proof-card"
-      href="https://github.com/stringsofthemind-oss/once/tree/main/examples/langgraph-retry-lab"
-      target="_blank"
-      rel="noopener"
-    >
-      <div class="cross-proof-card-top">
-        <span>LANGGRAPH LAB</span>
-        <span class="cross-proof-state">CONFIRMED</span>
-      </div>
-      <strong>1 external effect</strong>
-      <small>Real StateGraph + SqliteSaver crash/resume path with reconciliation.</small>
-    </a>
-
-    <a
-      class="cross-proof-card"
-      href="https://github.com/stringsofthemind-oss/once/tree/main/examples/crewai-retry-lab"
-      target="_blank"
-      rel="noopener"
-    >
-      <div class="cross-proof-card-top">
-        <span>CREWAI LAB</span>
-        <span class="cross-proof-state">CONFIRMED</span>
-      </div>
-      <strong>1 external effect</strong>
-      <small>Native BaseTool boundary + explicit fresh-process redispatch.</small>
-    </a>
-
-    <article class="cross-proof-card">
-      <div class="cross-proof-card-top">
-        <span>UNKNOWN OUTCOME</span>
-        <span class="cross-proof-state warn">BLOCKED → CONFIRMED</span>
-      </div>
-      <strong>1 effect, zero blind replay</strong>
-      <small>Provider truth unavailable → fail closed → reconcile when truth returns.</small>
-    </article>
-
-  </div>
-
-  <div class="cross-proof-cta reveal">
-    <div>
-      <strong>Audit the architecture yourself.</strong>
-      <p>Install Once in a project or inspect the hard-crash labs line by line.</p>
-    </div>
-
-    <div class="cross-proof-actions">
-      <a class="button button-primary" href="#developers">
-        Run 60s quickstart
-      </a>
-
-      <a
-        class="button"
-        href="https://github.com/stringsofthemind-oss/once#reproduced-across-frameworks"
-        target="_blank"
-        rel="noopener"
-      >
-        View evidence labs ↗
-      </a>
-    </div>
-  </div>
-
-  <p class="cross-proof-scope reveal">
-    Scope: reproducible framework-level evidence using simulated provider ledgers and the SQLite
-    reference backend. This is not a claim of universal exactly-once execution.
-  </p>
-
-</section>
-
-
-<!-- ============================================
-AGENT ROUTING EVIDENCE
-============================================= -->
-
-<section class="cross-proof" id="agent-routing-evidence">
-
-  <div class="cross-proof-head reveal">
-
-    <span class="cross-proof-kicker">
-      AGENT ROUTING EVIDENCE
-    </span>
-
-    <div>
-      <h2>
-        171 decisions.
-        <br>
-        <em>171 correct.</em>
-      </h2>
-
-      <p>
-        Gemini, Claude and Grok were evaluated across six blind runs using two
-        fixed Once routing-conformance suites, including a 40-case adversarial
-        suite designed to test harder execution-safety boundaries.
-      </p>
-    </div>
-
-  </div>
-
-  <div class="cross-proof-grid reveal">
-
-    <article class="cross-proof-card">
-      <div class="cross-proof-card-top">
-        <span>MODEL FAMILIES</span>
-        <span class="cross-proof-state">3</span>
-      </div>
-      <strong>Gemini / Claude / Grok</strong>
-      <small>Three model families, each tested in separate fresh sessions.</small>
-    </article>
-
-    <article class="cross-proof-card">
-      <div class="cross-proof-card-top">
-        <span>BLIND RUNS</span>
-        <span class="cross-proof-state">6 / 6 PASS</span>
-      </div>
-      <strong>Two fixed suites</strong>
-      <small>17-case baseline plus 40-case adversarial routing conformance.</small>
-    </article>
-
-    <article class="cross-proof-card">
-      <div class="cross-proof-card-top">
-        <span>ROUTING DECISIONS</span>
-        <span class="cross-proof-state">171 / 171</span>
-      </div>
-      <strong>100% on the fixed suites</strong>
-      <small>All evaluated scenario decisions matched the hidden expected routes and actions.</small>
-    </article>
-
-    <article class="cross-proof-card">
-      <div class="cross-proof-card-top">
-        <span>OBSERVED ERRORS</span>
-        <span class="cross-proof-state">0</span>
-      </div>
-      <strong>No recorded routing errors</strong>
-      <small>Zero over-routes, under-routes, action mismatches or runtime-state mismatches.</small>
-    </article>
-
-  </div>
-
-  <div class="cross-proof-cta reveal">
-
-    <div>
-      <strong>Inspect the evidence trail.</strong>
-      <p>Read the methodology, integrity hashes and aggregate results behind the six blind runs.</p>
-    </div>
-
-    <div class="cross-proof-actions">
-
-      <a
-        class="button button-primary"
-        href="./evidence/routing/README.md"
-      >
-        Read evidence
-      </a>
-
-      <a
-        class="button"
-        href="./evidence/routing/once-routing-evidence-summary-v1.json"
-      >
-        Aggregate JSON
-      </a>
-
-    </div>
-
-  </div>
-
-  <p class="cross-proof-scope reveal">
-    Scope: these results demonstrate conformance on the two fixed test suites in these six
-    blind runs. They do not establish universal model correctness, guarantee routing for
-    every real-world operation, or claim universal exactly-once execution.
-  </p>
-
-</section>
-
-<!-- ============================================
-01 FAILURE
-============================================= -->
-
-<section
-  class="scene"
-  style='--scene:url("./assets/failure.jpg")'
->
-
-  <div class="scene-overlay"></div>
-
-
-  <div class="scene-content">
-
-    <div class="chapter-head reveal">
-
-      <span class="chapter-number">
-        01 · FAILURE
-      </span>
-
-      <div>
-
-        <h2>
-          The provider succeeded.
-          <br>
-          The agent doesn't know.
-        </h2>
-
-        <p>
-
-          The dangerous case is not an obvious failure.
-
-          The external action happens, but the response disappears.
-
-          From the agent's point of view,
-          success and failure can now look identical.
-
-        </p>
-
-      </div>
-
-    </div>
-
-
-    <div class="request-trace reveal">
-
-
-      <div class="trace-node">
-
-        <span>
-          01
-        </span>
-
-        <b>
-          AGENT
-        </b>
-
-        <small>
-          Send action
-        </small>
-
-      </div>
-
-
-      <div class="trace-link">
-        →
-      </div>
-
-
-      <div class="trace-node">
-
-        <span>
-          02
-        </span>
-
-        <b>
-          PROVIDER
-        </b>
-
-        <small class="green">
-          Effect executed
-        </small>
-
-      </div>
-
-
-      <div class="trace-link trace-failed">
-        ×
-      </div>
-
-
-      <div class="trace-node danger">
-
-        <span>
-          03
-        </span>
-
-        <b>
-          RESPONSE
-        </b>
-
-        <small>
-          Lost / timeout
-        </small>
-
-      </div>
-
-
-      <div class="trace-link">
-        →
-      </div>
-
-
-      <div class="trace-node danger">
-
-        <span>
-          04
-        </span>
-
-        <b>
-          RETRY
-        </b>
-
-        <small>
-          Duplicate risk
-        </small>
-
-      </div>
-
-
-    </div>
-
-
-    <div class="major-statement reveal">
-
-      <small>
-        FAILURE MODE
-      </small>
-
-      <strong>
-        A timeout does not prove the action failed.
-      </strong>
-
-    </div>
-
-  </div>
-
-</section>
-
-
-
-<!-- ============================================
-02 IDENTITY
-============================================= -->
-
-<section
-  class="scene"
-  style='--scene:url("./assets/identity.jpg")'
->
-
-  <div class="scene-overlay"></div>
-
-
-  <div class="scene-content">
-
-    <div class="chapter-head reveal">
-
-      <span class="chapter-number">
-        02 · IDENTITY
-      </span>
-
-      <div>
-
-        <h2>
-          Attempts change.
-          <br>
-          The operation does not.
-        </h2>
-
-        <p>
-
-          Once identifies the real-world operation,
-          not the individual request.
-
-          Every retry of the same logical action carries
-          the same stable operation ID.
-
-        </p>
-
-      </div>
-
-    </div>
-
-
-    <div class="identity-diagram reveal">
-
-
-      <div class="attempts">
-
-        <div>
-          ATTEMPT 01
-        </div>
-
-        <div>
-          ATTEMPT 02
-        </div>
-
-        <div>
-          ATTEMPT 03
-        </div>
-
-      </div>
-
-
-      <div class="merge">
-
-        <span></span>
-        <span></span>
-        <span></span>
-
-      </div>
-
-
-      <div class="operation">
-
-        <small>
-          STABLE OPERATION
-        </small>
-
-        <strong>
-          refund:order_123
-        </strong>
-
-        <code>
-          op_8F21
-        </code>
-
-      </div>
-
-
-      <div class="diagram-arrow">
-        →
-      </div>
-
-
-      <div class="external-effect">
-
-        <small>
-          EXTERNAL EFFECT
-        </small>
-
-        <strong>
-          01
-        </strong>
-
-        <span>
-          NOT 03
-        </span>
-
-      </div>
-
-
-    </div>
-
-  </div>
-
-</section>
-
-
-
-<!-- ============================================
-03 MECHANISM
-============================================= -->
-
-<!-- ========================================================
-     ONCE EVIDENCE / 01 / RFC 9110
-     ======================================================== -->
-
-<section
-  class="once-evidence once-evidence-rfc"
-  id="evidence-rfc"
->
-
-  <div class="once-evidence-photo"></div>
-  <div class="once-evidence-overlay"></div>
-
-  <div class="once-evidence-wrap reveal">
-
-    <div class="once-evidence-meta">
-
-      <span class="once-evidence-led"></span>
-
-      EXTERNAL EVIDENCE / 01
-
-    </div>
-
-
-    <div class="once-evidence-two">
-
-      <div>
-
-        <span class="once-evidence-source">
-          IETF / RFC 9110 / §9.2.2
-        </span>
-
-        <h2>
-          RETRY
-          <em>≠</em>
-          SAFE
-        </h2>
-
-      </div>
-
-
-      <div class="once-evidence-text">
-
-        <p>
-          HTTP distinguishes idempotent operations because a
-          communication failure can leave the client needing
-          to retry without knowing whether the first request
-          already took effect.
-        </p>
-
-        <p>
-          RFC 9110 says a client should not automatically
-          retry a non-idempotent request unless it can know
-          the retry is safe or determine that the original
-          request was never applied.
-        </p>
-
-        <a
-          class="evidence-link"
-          data-once-sound="evidence"
-          href="https://www.rfc-editor.org/rfc/rfc9110.html#section-9.2.2"
-          target="_blank"
-          rel="noopener"
-        >
-          READ THE STANDARD
-          <span>↗</span>
-        </a>
-
-      </div>
-
-    </div>
-
-  </div>
-
-</section>
-
-<section
-  class="scene"
-  id="mechanism"
-  style='--scene:url("./assets/mechanism.jpg")'
->
-
-  <div class="scene-overlay"></div>
-
-
-  <div class="scene-content">
-
-    <div class="chapter-head reveal">
-
-      <span class="chapter-number">
-        03 · ONCE
-      </span>
-
-      <div>
-
-        <h2>
-          The retry gets a decision.
-          <br>
-          Not another blind execution.
-        </h2>
-
-        <p>
-
-          Once places durable execution state between
-          the retrying agent and the provider performing
-          the consequential operation.
-
-        </p>
-
-      </div>
-
-    </div>
-
-
-    <div class="mechanism-flow reveal">
-
-
-      <article>
-
-        <small>
-          01
-        </small>
-
-        <div class="mechanism-symbol">
-          ID
-        </div>
-
-        <h3>
-          Stable identity
-        </h3>
-
-        <p>
-          One deterministic identity for the logical operation.
-        </p>
-
-      </article>
-
-
-      <span class="mechanism-arrow">
-        →
-      </span>
-
-
-      <article>
-
-        <small>
-          02
-        </small>
-
-        <div class="mechanism-symbol">
-          DB
-        </div>
-
-        <h3>
-          Durable state
-        </h3>
-
-        <p>
-          Execution history survives requests, processes and retries.
-        </p>
-
-      </article>
-
-
-      <span class="mechanism-arrow">
-        →
-      </span>
-
-
-      <article>
-
-        <small>
-          03
-        </small>
-
-        <div class="mechanism-symbol">
-          ?
-        </div>
-
-        <h3>
-          Provider truth
-        </h3>
-
-        <p>
-          Reconcile what can actually be established.
-        </p>
-
-      </article>
-
-
-      <span class="mechanism-arrow">
-        →
-      </span>
-
-
-      <article class="safe">
-
-        <small>
-          04
-        </small>
-
-        <div class="mechanism-symbol">
-          1×
-        </div>
-
-        <h3>
-          Safe decision
-        </h3>
-
-        <p>
-          Suppress the duplicate or fail closed.
-        </p>
-
-      </article>
-
-
-    </div>
-
-  </div>
-
-</section>
-
-
-
-<!-- ============================================
-ONCE DECISION MODEL
-============================================= -->
-
-<section class="cross-proof" id="once-decision-model">
-
-  <div class="cross-proof-head reveal">
-
-    <span class="cross-proof-kicker">
-      THE ONCE DECISION MODEL
-    </span>
-
-    <div>
-      <h2>
-        The retry gets a decision.
-        <br>
-        <em>Not another blind execution.</em>
-      </h2>
-
-      <p>
-        Once does not treat a missing response as proof that nothing happened.
-        It carries the same logical operation identity across retries, checks
-        durable state and provider truth on supported paths, then chooses one
-        of three outcomes.
-      </p>
-    </div>
-
-  </div>
-
-  <div class="cross-proof-grid reveal">
-
-    <article class="cross-proof-card">
-      <div class="cross-proof-card-top">
-        <span>CONFIRMED</span>
-        <span class="cross-proof-state">REPLAY / SUPPRESS</span>
-      </div>
-      <strong>Reality already changed.</strong>
-      <small>Return the durable result or suppress the duplicate instead of executing the consequential action again.</small>
-    </article>
-
-    <article class="cross-proof-card">
-      <div class="cross-proof-card-top">
-        <span>ABSENT</span>
-        <span class="cross-proof-state">EXECUTE</span>
-      </div>
-      <strong>No prior effect is established.</strong>
-      <small>When durable state and supported reconciliation establish absence, the operation may proceed.</small>
-    </article>
-
-    <article class="cross-proof-card">
-      <div class="cross-proof-card-top">
-        <span>UNKNOWN</span>
-        <span class="cross-proof-state warn">BLOCK + RECONCILE</span>
-      </div>
-      <strong>Truth cannot be established yet.</strong>
-      <small>Fail closed rather than guess. Reconcile provider truth before another consequential execution is allowed.</small>
-    </article>
-
-    <article class="cross-proof-card">
-      <div class="cross-proof-card-top">
-        <span>CORE RULE</span>
-        <span class="cross-proof-state">SAME OPERATION ID</span>
-      </div>
-      <strong>A timeout is not a result.</strong>
-      <small>Retries reuse one stable logical identity so Once can reason about the operation rather than treating every attempt as new work.</small>
-    </article>
-
-  </div>
-
-  <p class="cross-proof-scope reveal">
-    Scope: Once does not infer provider truth from a lost response. Safe recovery on supported
-    paths depends on durable operation identity, durable state and authoritative reconciliation
-    or equivalent downstream guarantees.
-  </p>
-
-</section>
-
-
-<!-- ============================================
-MCP VS RUNTIME
-============================================= -->
-
-<section class="cross-proof" id="mcp-runtime-boundary">
-
-  <div class="cross-proof-head reveal">
-
-    <span class="cross-proof-kicker">
-      WHERE ONCE SITS
-    </span>
-
-    <div>
-      <h2>
-        MCP helps the agent choose the protection.
-        <br>
-        <em>The runtime enforces the decision.</em>
-      </h2>
-
-      <p>
-        Once separates agent-facing discovery and setup from the execution-safety boundary.
-        The MCP server helps an agent assess a project, plan protection, apply supported setup
-        and verify the connection. The runtime is what executes, replays or blocks a protected
-        consequential operation.
-      </p>
-    </div>
-
-  </div>
-
-  <div class="cross-proof-grid reveal">
-
-    <article class="cross-proof-card">
-      <div class="cross-proof-card-top">
-        <span>MCP / AGENT LAYER</span>
-        <span class="cross-proof-state">ASSESS + CONFIGURE</span>
-      </div>
-      <strong>Discovery, planning and verification.</strong>
-      <small>Agents can inspect the project, explain retry risk, plan setup, apply supported protection and verify Once is connected.</small>
-    </article>
-
-    <article class="cross-proof-card">
-      <div class="cross-proof-card-top">
-        <span>RUNTIME LAYER</span>
-        <span class="cross-proof-state">EXECUTE + REPLAY + BLOCK</span>
-      </div>
-      <strong>The execution-safety boundary.</strong>
-      <small>Protected operations use stable identity, durable state and supported reconciliation to decide whether to execute, replay or fail closed.</small>
-    </article>
-
-    <article class="cross-proof-card">
-      <div class="cross-proof-card-top">
-        <span>DATA PATH</span>
-        <span class="cross-proof-state">APPLICATION -> ONCE -> PROVIDER</span>
-      </div>
-      <strong>Protection sits on the consequential path.</strong>
-      <small>The runtime must be on the path of the side effect being protected. Installing the MCP server alone does not automatically guard every tool call.</small>
-    </article>
-
-    <article class="cross-proof-card">
-      <div class="cross-proof-card-top">
-        <span>BOUNDARY</span>
-        <span class="cross-proof-state">NO MAGIC INTERCEPTION</span>
-      </div>
-      <strong>Explicit integration, explicit guarantees.</strong>
-      <small>Once protects supported operations that are wired through its execution boundary; it does not claim to intercept arbitrary external actions automatically.</small>
-    </article>
-
-  </div>
-
-  <p class="cross-proof-scope reveal">
-    In short: MCP makes Once legible and usable to agents. The runtime is the safety boundary that protects the consequential operation.
-  </p>
-
-</section>
-
-
-<!-- ============================================
-ONCE TRUST BOUNDARY
-============================================= -->
-
-<section class="cross-proof" id="once-trust-boundary">
-
-  <div class="cross-proof-head reveal">
-
-    <span class="cross-proof-kicker">
-      CURRENT TRUST BOUNDARY
-    </span>
-
-    <div>
-      <h2>
-        Know what Once sees.
-        <br>
-        <em>Know how failure behaves.</em>
-      </h2>
-
-      <p>
-        The current hosted SDK path is intentionally explicit about its boundary.
-        Protected execution is authenticated to the Once service, operation data crosses
-        that boundary, and the SDK fails with an error rather than silently bypassing
-        Once when the service cannot be reached.
-      </p>
-    </div>
-
-  </div>
-
-  <div class="cross-proof-grid reveal">
-
-    <article class="cross-proof-card">
-      <div class="cross-proof-card-top">
-        <span>HOSTED EXECUTION PATH</span>
-        <span class="cross-proof-state">AUTHENTICATED</span>
-      </div>
-      <strong>The SDK talks to the Once service.</strong>
-      <small>On the hosted execute path, the operation ID, provider alias and action payload are sent to the configured Once API using the Once API key.</small>
-    </article>
-
-    <article class="cross-proof-card">
-      <div class="cross-proof-card-top">
-        <span>PROVIDER REGISTRATION</span>
-        <span class="cross-proof-state">EXPLICIT SETUP</span>
-      </div>
-      <strong>Provider access is configured, not inferred.</strong>
-      <small>For the current hosted HTTP provider setup, the provider base URL and provider token are registered with Once so the runtime can execute and reconcile supported protected operations.</small>
-    </article>
-
-    <article class="cross-proof-card">
-      <div class="cross-proof-card-top">
-        <span>ONCE UNREACHABLE</span>
-        <span class="cross-proof-state warn">ERROR / NO SILENT BYPASS</span>
-      </div>
-      <strong>Protection does not disappear quietly.</strong>
-      <small>The SDK performs bounded network retries. If Once still cannot be reached, it raises a timeout or network error instead of silently sending the protected action directly to the provider.</small>
-    </article>
-
-    <article class="cross-proof-card">
-      <div class="cross-proof-card-top">
-        <span>REFERENCE EVIDENCE</span>
-        <span class="cross-proof-state">LOCAL SQLITE LABS</span>
-      </div>
-      <strong>The crash labs are reference implementations.</strong>
-      <small>LangGraph and CrewAI evidence uses the SQLite reference backend and simulated provider ledgers. That proof is deliberately scoped separately from the hosted Once service.</small>
-    </article>
-
-  </div>
-
-  <p class="cross-proof-scope reveal">
-    Scope: this describes the current hosted SDK execution path and the published reference labs.
-    It is not a claim about undocumented storage location, retention, encryption, compliance or
-    deployment guarantees. Those should be documented separately before they are promised.
-  </p>
-
-</section>
-
-
-<!-- ============================================
-WHY ONCE VS NATIVE IDEMPOTENCY
-============================================= -->
-
-<section class="cross-proof" id="why-once-idempotency">
-
-  <div class="cross-proof-head reveal">
-
-    <span class="cross-proof-kicker">
-      WHY ONCE
-    </span>
-
-    <div>
-      <h2>
-        Keep provider idempotency.
-        <br>
-        <em>Add recovery when the caller no longer knows.</em>
-      </h2>
-
-      <p>
-        Once is not a replacement for provider-native idempotency, database constraints or durable workflows.
-        Those controls remain valuable. Once focuses on the retry boundary around a consequential external
-        operation: one stable logical identity, durable execution state and a safe decision after an ambiguous outcome.
-      </p>
-    </div>
-
-  </div>
-
-  <div class="cross-proof-grid reveal">
-
-    <article class="cross-proof-card">
-      <div class="cross-proof-card-top">
-        <span>PROVIDER IDEMPOTENCY</span>
-        <span class="cross-proof-state">KEEP IT</span>
-      </div>
-      <strong>Deduplicate at the provider boundary.</strong>
-      <small>When a provider supports an idempotency key or equivalent control, use it. Once complements that downstream protection rather than asking you to remove it.</small>
-    </article>
-
-    <article class="cross-proof-card">
-      <div class="cross-proof-card-top">
-        <span>ONCE</span>
-        <span class="cross-proof-state">IDENTITY + STATE + RECONCILIATION</span>
-      </div>
-      <strong>Reason about the logical operation across attempts.</strong>
-      <small>Once carries stable operation identity across retries, records durable state and uses supported reconciliation to choose execute, replay or block instead of treating a lost response as a fresh action.</small>
-    </article>
-
-    <article class="cross-proof-card">
-      <div class="cross-proof-card-top">
-        <span>DATABASE / OUTBOX</span>
-        <span class="cross-proof-state">DIFFERENT BOUNDARY</span>
-      </div>
-      <strong>Protect local state and message handoff.</strong>
-      <small>Unique constraints, transactions and outbox patterns can protect application or messaging boundaries. They do not by themselves establish whether an external provider already performed an operation after the response was lost.</small>
-    </article>
-
-    <article class="cross-proof-card">
-      <div class="cross-proof-card-top">
-        <span>DURABLE WORKFLOW</span>
-        <span class="cross-proof-state">STILL NEEDS SAFE EFFECTS</span>
-      </div>
-      <strong>Durable orchestration and safe side effects solve different layers.</strong>
-      <small>A workflow engine can persist and retry a step. The external side effect still needs stable identity, downstream idempotency or reconciliation when execution crosses a failure boundary.</small>
-    </article>
-
-  </div>
-
-  <p class="cross-proof-scope reveal">
-    Rule of thumb: keep every useful downstream guarantee. Add Once when the same consequential operation may be retried,
-    the first outcome can be ambiguous, and blindly executing it again would be unsafe or costly.
-  </p>
-
-</section>
-
-
-<!-- ============================================
-CURRENT SUPPORT MATRIX
-============================================= -->
-
-<section class="cross-proof" id="once-support-matrix">
-
-  <div class="cross-proof-head reveal">
-
-    <span class="cross-proof-kicker">
-      CURRENT SUPPORT
-    </span>
-
-    <div>
-      <h2>
-        Know what is proven today.
-        <br>
-        <em>Know what still requires manual integration.</em>
-      </h2>
-
-      <p>
-        Once deliberately separates detection from protection. The scanner can identify a wider set
-        of consequential operations than the current Runtime HTTP execution contract protects automatically.
-        Unsupported shapes fail closed or require an adapter instead of being presented as covered.
-      </p>
-    </div>
-
-  </div>
-
-  <div class="cross-proof-grid reveal">
-
-    <article class="cross-proof-card">
-      <div class="cross-proof-card-top">
-        <span>RUNTIME HTTP V0.1</span>
-        <span class="cross-proof-state">PROVEN PROTECTED SHAPE</span>
-      </div>
-      <strong>POST + application/json + stable identity.</strong>
-      <small>The current proven Runtime HTTP path protects an explicitly configured target, requires a non-empty valid JSON body and supports stable identity through an idempotency key or an application resolver.</small>
-    </article>
-
-    <article class="cross-proof-card">
-      <div class="cross-proof-card-top">
-        <span>HTTP RESPONSE REPLAY</span>
-        <span class="cross-proof-state">REQUIRED ON RUNTIME SETUP</span>
-      </div>
-      <strong>Confirmed retries return durable application-visible results.</strong>
-      <small>Runtime HTTP setup pins the exact target URL and requires durable sanitized response replay for the registered provider version before the protected operation can use the confirmed replay path.</small>
-    </article>
-
-    <article class="cross-proof-card">
-      <div class="cross-proof-card-top">
-        <span>OTHER WRITE SHAPES</span>
-        <span class="cross-proof-state warn">ADAPTER / MANUAL REVIEW</span>
-      </div>
-      <strong>Classification is broader than automatic execution support.</strong>
-      <small>PUT, PATCH and DELETE may be recognized as consequential, but Runtime HTTP v0.1 does not claim a proven protected execution contract for those methods. Unsupported request shapes are rejected rather than silently treated as protected.</small>
-    </article>
-
-    <article class="cross-proof-card">
-      <div class="cross-proof-card-top">
-        <span>SCAN + AUTO-APPLY</span>
-        <span class="cross-proof-state">CONSERVATIVE</span>
-      </div>
-      <strong>Finding a candidate is not the same as protecting it.</strong>
-      <small>The scanner runs locally and can surface likely side effects. Automatic application is intentionally narrow: only a fully revalidated eligible callsite is patched; ambiguous or unsupported cases stay manual.</small>
-    </article>
-
-  </div>
-
-  <p class="cross-proof-scope reveal">
-    Current boundary: Once does not claim that every provider, HTTP method, request shape or detected side effect is automatically protected.
-    Provider-specific guarantees and automatic transformation support should be evaluated separately from detection.
-  </p>
-
-</section>
-
-
-<!-- ============================================
-04 PROOF
-============================================= -->
-
-<!-- ========================================================
-     ONCE EVIDENCE / 02 / STRIPE
-     ======================================================== -->
-
-<section
-  class="once-evidence once-evidence-stripe"
-  id="evidence-stripe"
->
-
-  <div class="once-evidence-photo"></div>
-  <div class="once-evidence-overlay"></div>
-
-  <div class="once-evidence-wrap reveal">
-
-    <div class="once-evidence-meta once-evidence-meta-right">
-
-      EXTERNAL EVIDENCE / 02
-
-      <span class="once-evidence-led"></span>
-
-    </div>
-
-
-    <div class="once-evidence-stripe-layout">
-
-      <div class="once-evidence-stat">
-
-        <span class="once-evidence-source">
-          STRIPE / IDEMPOTENT REQUESTS
-        </span>
-
-        <div class="once-evidence-statline">
-
-          <strong>
-            24+
-          </strong>
-
-          <span>
-            HOURS
-          </span>
-
-        </div>
-
-      </div>
-
-
-      <div class="once-evidence-text">
-
-        <p>
-          Stripe supports idempotency so a request can be
-          safely repeated after a connection error without
-          accidentally performing the same operation twice.
-        </p>
-
-        <p>
-          Stripe also documents that idempotency keys may
-          be removed automatically once they are at least
-          24 hours old.
-        </p>
-
-        <a
-          class="evidence-link"
-          data-once-sound="evidence"
-          href="https://docs.stripe.com/api/idempotent_requests"
-          target="_blank"
-          rel="noopener"
-        >
-          STRIPE API REFERENCE
-          <span>↗</span>
-        </a>
-
-      </div>
-
-    </div>
-
-  </div>
-
-</section>
-
-<section
-  class="scene"
-  id="proof"
-  style='--scene:url("./assets/proof.jpg")'
->
-
-  <div class="scene-overlay"></div>
-
-
-  <div class="scene-content">
-
-    <div class="chapter-head reveal">
-
-      <span class="chapter-number">
-        04 · PROOF
-      </span>
-
-      <div>
-
-        <h2>
-          Two attempts.
-          <br>
-          One external effect.
-        </h2>
-
-        <p>
-
-          A Customer Zero regression sends the same supported
-          consequential operation twice using one stable operation ID,
-          then checks authenticated provider truth.
-
-        </p>
-
-      </div>
-
-    </div>
-
-
-    <div class="proof-terminal reveal">
-
-      <div class="terminal-bar">
-
-        <span>
-          CUSTOMER ZERO / PROVIDER TRUTH
-        </span>
-
-        <b>
-          VERIFIED
-        </b>
-
-      </div>
-
-
-      <div class="truth-row">
-
-        <span>
-          attempts
-        </span>
-
-        <strong>
-          2
-        </strong>
-
-      </div>
-
-
-      <div class="truth-row">
-
-        <span>
-          ledger_state
-        </span>
-
-        <strong class="green">
-          CONFIRMED
-        </strong>
-
-      </div>
-
-
-      <div class="truth-row">
-
-        <span>
-          side_effects
-        </span>
-
-        <strong class="green">
-          1
-        </strong>
-
-      </div>
-
-
-      <div class="truth-row">
-
-        <span>
-          provider_executed
-        </span>
-
-        <strong>
-          true
-        </strong>
-
-      </div>
-
-    </div>
-
-
-    <div class="proof-banner reveal">
-
-      <span>
-        02
-        <small>ATTEMPTS</small>
-      </span>
-
-      <div></div>
-
-      <strong>
-        01
-        <small>EXTERNAL EFFECT</small>
-      </strong>
-
-    </div>
-
-  </div>
-
-</section>
-
-
-
-<!-- ============================================
-05 TESTER
-============================================= -->
-
-<!-- ========================================================
-     ONCE EVIDENCE / 03 / AWS
-     ======================================================== -->
-
-<section
-  class="once-evidence once-evidence-aws"
-  id="evidence-aws"
->
-
-  <div class="once-evidence-photo"></div>
-  <div class="once-evidence-overlay"></div>
-
-  <div class="once-evidence-wrap reveal">
-
-    <div class="once-evidence-meta">
-
-      <span class="once-evidence-led"></span>
-
-      EXTERNAL EVIDENCE / 03
-
-    </div>
-
-
-    <div class="once-evidence-three">
-
-      <div>
-
-        <span class="once-evidence-source">
-          AWS CLI V2 / STANDARD RETRY MODE
-        </span>
-
-        <h2>
-          3 TOTAL
-          <br>
-          ATTEMPTS
-        </h2>
-
-      </div>
-
-
-      <div class="once-retry-trace">
-
-        <div>
-          <span>01</span>
-          <strong>INITIAL REQUEST</strong>
-        </div>
-
-        <i>↓</i>
-
-        <div>
-          <span>02</span>
-          <strong>RETRY</strong>
-        </div>
-
-        <i>↓</i>
-
-        <div>
-          <span>03</span>
-          <strong>RETRY</strong>
-        </div>
-
-      </div>
-
-
-      <div class="once-evidence-text">
-
-        <p>
-          AWS CLI v2 Standard retry mode has a default
-          maximum of two retry attempts.
-        </p>
-
-        <p>
-          Including the original call, that produces
-          three total call attempts by default.
-        </p>
-
-        <a
-          class="evidence-link"
-          data-once-sound="evidence"
-          href="https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-retries.html"
-          target="_blank"
-          rel="noopener"
-        >
-          AWS DOCUMENTATION
-          <span>↗</span>
-        </a>
-
-      </div>
-
-    </div>
-
-  </div>
-
-</section>
-
-<section
-  class="scene"
-  id="tester"
-  data-once-live-wired="1"
-  style='--scene:url("./assets/hero.jpg")'
->
-
-  <div class="scene-overlay"></div>
-
-  <div class="scene-content">
-
-    <div class="once-scale-tester">
-
-      <div class="once-scale-intro reveal visible">
-        <div>
-          <span class="once-scale-kicker">05 · TESTER / SCALE COMPARISON</span>
-          <h2>
-            Put your own traffic through the model.<br>
-            See the retry problem at your scale.
-          </h2>
-          <p>
-            Feed the same consequential traffic into both sides. The left models blind retry execution.
-            The right models Once on the confirmed replay path. Use your own call volume — from one action to ten billion.
-          </p>
-        </div>
-
-        <div class="once-scale-promise">
-          <small>THE POINT</small>
-          <strong>Once doesn't stop your agents retrying. It makes retries safe.</strong>
-        </div>
-      </div>
-
-      <div class="once-scale-shell reveal visible">
-
-        <div class="once-scale-toolbar">
-          <div>
-            <small>ONCE / CUSTOMER SCALE TESTER</small>
-            <strong>Without Once vs With Once</strong>
-          </div>
-          <span class="once-scale-badge">IMPACT MODEL / NOT PROOF</span>
-        </div>
-
-        <div class="once-scale-controls">
-
-          <label class="once-scale-field">
-            <span>CONSEQUENTIAL CALLS</span>
-            <input
-              class="once-scale-input"
-              id="onceOps"
-              type="number"
-              min="1"
-              max="10000000000"
-              step="1000"
-              value="10000000"
-              inputmode="numeric"
-            >
-          </label>
-
-          <label class="once-scale-field">
-            <span>PERIOD</span>
-            <select class="once-scale-select" id="oncePeriod">
-              <option value="month" selected>PER MONTH</option>
-              <option value="day">PER DAY</option>
-            </select>
-          </label>
-
-          <label class="once-scale-field">
-            <span>RETRY RATE</span>
-            <div class="once-scale-input-wrap">
-              <input
-                class="once-scale-input"
-                id="onceRetry"
-                type="number"
-                min="0"
-                max="100"
-                step="0.01"
-                value="0.10"
-                inputmode="decimal"
-              >
-              <b class="once-scale-suffix">%</b>
-            </div>
-            <small class="once-scale-helper" id="onceRetryTranslation">
-              = 10,000 retry events / month
-            </small>
-          </label>
-
-          <label class="once-scale-field">
-            <span>AVG VALUE / ACTION</span>
-            <div class="once-scale-input-wrap">
-              <input
-                class="once-scale-input"
-                id="onceValue"
-                type="number"
-                min="0"
-                max="1000000000"
-                step="1"
-                value="75"
-                inputmode="decimal"
-              >
-              <b class="once-scale-suffix">£</b>
-            </div>
-          </label>
-
-          <label class="once-scale-field">
-            <span>ACTION TYPE</span>
-            <select class="once-scale-select" id="onceScenario">
-              <option value="payment" selected>PAYMENT</option>
-              <option value="booking">BOOKING</option>
-              <option value="order">ORDER</option>
-              <option value="email">EMAIL</option>
-              <option value="provision">PROVISION ACCOUNT</option>
-              <option value="deploy">PRODUCTION DEPLOYMENT</option>
-            </select>
-          </label>
-
-        </div>
-
-        <div class="once-scale-presets" aria-label="Traffic presets">
-          <span>TRAFFIC PRESETS</span>
-          <button class="once-scale-preset" type="button" data-once-scale="10000">10K</button>
-          <button class="once-scale-preset" type="button" data-once-scale="100000">100K</button>
-          <button class="once-scale-preset" type="button" data-once-scale="1000000">1M</button>
-          <button class="once-scale-preset active" type="button" data-once-scale="10000000">10M</button>
-          <button class="once-scale-preset" type="button" data-once-scale="100000000">100M</button>
-          <button class="once-scale-preset" type="button" data-once-scale="1000000000">1B</button>
-          <button class="once-scale-preset" type="button" data-once-scale="10000000000">10B</button>
-        </div>
-
-        <div class="once-scale-presets" aria-label="Retry rate presets">
-          <span>RETRY RATE</span>
-          <button class="once-scale-preset" type="button" data-once-retry="0.01">0.01%</button>
-          <button class="once-scale-preset active" type="button" data-once-retry="0.10">0.10%</button>
-          <button class="once-scale-preset" type="button" data-once-retry="0.50">0.50%</button>
-          <button class="once-scale-preset" type="button" data-once-retry="1">1.00%</button>
-          <button class="once-scale-preset" type="button" data-once-retry="5">5.00%</button>
-        </div>
-
-        <div class="once-scale-runbar">
-          <p>
-            This is a client-side impact model, not proof. Enter 10B and the browser performs arithmetic — it does not send 10B requests.
-            The live proof environment is linked below.
-          </p>
-          <button class="once-scale-run button-primary" id="onceScaleRun" type="button">RUN COMPARISON</button>
-        </div>
-
-        <div class="once-scale-comparison" id="onceScaleComparison">
-
-          <section class="once-scale-side without">
-            <div class="once-scale-side-head">
-              <div>
-                <small>WITHOUT ONCE</small>
-                <strong>Blind retry</strong>
-              </div>
-              <span class="once-scale-state">RE-EXECUTE</span>
-            </div>
-
-            <div class="once-scale-metrics">
-              <div class="once-scale-metric">
-                <small>INCOMING ATTEMPTS / <span data-once-period-label>MONTH</span></small>
-                <strong id="onceWithoutAttempts">10,010,000</strong>
-                <span>original calls + retries</span>
-              </div>
-
-              <div class="once-scale-metric">
-                <small>PROVIDER EXECUTIONS / <span data-once-period-label>MONTH</span></small>
-                <strong id="onceWithoutExec">10,010,000</strong>
-                <span>modeled · if every retry is executed again</span>
-              </div>
-
-              <div class="once-scale-metric">
-                <small>RETRY EXECUTION OPPORTUNITIES</small>
-                <strong class="once-scale-danger" id="onceWithoutDupes">10,000</strong>
-                <span>same logical work arrives again</span>
-              </div>
-
-              <div class="once-scale-metric">
-                <small>VALUE THROUGH RETRY AMBIGUITY</small>
-                <strong class="once-scale-danger" id="onceWithoutValue">£750,000</strong>
-                <span>not a savings claim</span>
-              </div>
-            </div>
-
-            <div class="once-scale-verdict">
-              <small>DECISION</small>
-              <strong>Retry the call and hope the first attempt did not already take effect.</strong>
-            </div>
-          </section>
-
-          <section class="once-scale-side with">
-            <div class="once-scale-side-head">
-              <div>
-                <small>WITH ONCE</small>
-                <strong>Safe retry path</strong>
-              </div>
-              <span class="once-scale-state">REPLAY / BLOCK</span>
-            </div>
-
-            <div class="once-scale-metrics">
-              <div class="once-scale-metric">
-                <small>INCOMING ATTEMPTS / <span data-once-period-label>MONTH</span></small>
-                <strong id="onceWithAttempts">10,010,000</strong>
-                <span>same traffic, same retry pressure</span>
-              </div>
-
-              <div class="once-scale-metric">
-                <small>PROVIDER EXECUTIONS / <span data-once-period-label>MONTH</span></small>
-                <strong class="once-scale-safe" id="onceWithExec">10,000,000</strong>
-                <span>modeled · confirmed replay path</span>
-              </div>
-
-              <div class="once-scale-metric">
-                <small>RETRIES INTERCEPTED</small>
-                <strong class="once-scale-safe" id="onceWithReplays">10,000</strong>
-                <span>replay instead of execute again</span>
-              </div>
-
-              <div class="once-scale-metric">
-                <small>BLIND RE-EXECUTIONS</small>
-                <strong class="once-scale-safe" id="onceWithBlind">0</strong>
-                <span>on confirmed replay path</span>
-              </div>
-            </div>
-
-            <div class="once-scale-verdict">
-              <small>DECISION</small>
-              <strong>CONFIRMED → replay. ABSENT → execute. UNKNOWN → block rather than guess.</strong>
-            </div>
-          </section>
-
-        </div>
-
-        <div class="once-scale-impact" id="onceScaleImpact">
-          <div>
-            <small>AT YOUR SCALE</small>
-            <strong id="onceImpactHeadline">10,000 modeled retries handled without blind re-execution on the confirmed replay path.</strong>
-            <span id="onceImpactDetail">
-              £750,000 of payment value passes through those retry events. This is exposure context, not a claim that every retry becomes a duplicate charge.
-            </span>
-            <span class="once-scale-annual" id="onceAnnualized">
-              Annualized exposure context: 120,000 retry events; £9,000,000 of payment value passes through retry-exposed operations.
-            </span>
-          </div>
-
-          <a
-            class="once-scale-proof-link"
-            href="https://playground.onceexec.com/"
-            target="_blank"
-            rel="noopener"
-          >
-            OPEN LIVE PROOF ↗
-          </a>
-        </div>
-
-      </div>
-
-      <div class="once-scale-footnotes">
-        <div class="once-scale-note">
-          <b>What the left side means:</b> it deliberately models the dangerous baseline where a retry is blindly sent to a non-idempotent provider and executes again. Real providers may have their own protections.
-        </div>
-        <div class="once-scale-note">
-          <b>What the right side means:</b> the execution count reflects Once's confirmed/replay path. Once does not claim generic exactly-once execution; uncertain outcomes are designed to fail closed rather than be blindly retried.
-        </div>
-      </div>
-
-    </div>
-
-  </div>
-
-</section>
-
-
-<!-- ============================================
-06 PLAYGROUND
-============================================= -->
-
-<!-- ========================================================
-     ONCE EVIDENCE / 04 / GOOGLE CLOUD
-     ======================================================== -->
-
-<section
-  class="once-evidence once-evidence-google"
-  id="evidence-google"
->
-
-  <div class="once-evidence-photo"></div>
-  <div class="once-evidence-overlay"></div>
-
-  <div class="once-evidence-wrap reveal">
-
-    <div class="once-evidence-meta once-evidence-meta-right">
-
-      EXTERNAL EVIDENCE / 04
-
-      <span class="once-evidence-led"></span>
-
-    </div>
-
-
-    <div class="once-evidence-three">
-
-      <div>
-
-        <span class="once-evidence-source">
-          GOOGLE CLOUD / PUB/SUB
-        </span>
-
-        <h2>
-          AT-LEAST-
-          <br>
-          ONCE
-        </h2>
-
-      </div>
-
-
-      <div class="once-message-trace">
-
-        <div>
-          <span>MESSAGE</span>
-          <strong>8472</strong>
-          <i></i>
-          <b>DELIVERED</b>
-        </div>
-
-        <div>
-          <span>MESSAGE</span>
-          <strong>8472</strong>
-          <i></i>
-          <b>DELIVERED AGAIN</b>
-        </div>
-
-      </div>
-
-
-      <div class="once-evidence-text">
-
-        <p>
-          Pub/Sub provides at-least-once delivery by
-          default.
-        </p>
-
-        <p>
-          Google documents that this means a message
-          can be delivered multiple times, including
-          some cases where it was already acknowledged.
-        </p>
-
-        <a
-          class="evidence-link"
-          data-once-sound="evidence"
-          href="https://docs.cloud.google.com/pubsub/docs/subscribe-best-practices#handle_duplicate_deliveries"
-          target="_blank"
-          rel="noopener"
-        >
-          GOOGLE CLOUD DOCUMENTATION
-          <span>↗</span>
-        </a>
-
-      </div>
-
-    </div>
-
-  </div>
-
-</section>
-
-<section
-  class="scene"
-  id="playground"
-  style='--scene:url("./assets/playground.jpg")'
->
-
-  <div class="scene-overlay"></div>
-
-  <div class="scene-content">
-
-    <div class="chapter-head reveal">
-
-      <span class="chapter-number">
-        06 · PLAYGROUND
-      </span>
-
-      <div>
-
-        <h2>
-          Don't take the claim on faith.
-          <br>
-          Break it yourself.
-        </h2>
-
-        <p>
-          The live Once Playground deliberately creates the ambiguous
-          retry path: the provider performs the action, the response
-          becomes uncertain, and the same stable operation is retried.
-        </p>
-
-      </div>
-
-    </div>
-
-
-    <div class="playground-ui reveal">
-
-      <div class="playground-title">
-
-        <div>
-
-          <small>
-            LIVE ONCE PLAYGROUND
-          </small>
-
-          <strong>
-            Verified retry environment
-          </strong>
-
-        </div>
-
-        <span class="ready">
-          LIVE
-        </span>
-
-      </div>
-
-
-      <div class="playground-grid">
-
-        <div>
-
-          <span>
-            ONCE STATE
-          </span>
-
-          <strong class="green">
-            CONFIRMED
-          </strong>
-
-        </div>
-
-
-        <div>
-
-          <span>
-            EXECUTION ATTEMPTS
-          </span>
-
-          <strong>
-            2
-          </strong>
-
-        </div>
-
-
-        <div>
-
-          <span>
-            ACTUAL SIDE EFFECTS
-          </span>
-
-          <strong class="green">
-            1
-          </strong>
-
-        </div>
-
-
-        <div>
-
-          <span>
-            FAILURE MODEL
-          </span>
-
-          <strong>
-            AMBIGUOUS RETRY
-          </strong>
-
-        </div>
-
-      </div>
-
-
-      <div class="playground-actions">
-
-        <a
-          class="button button-primary"
-          href="https://playground.onceexec.com/"
-          target="_blank"
-          rel="noopener"
-        >
-          Open Live Playground
-        </a>
-
-        <span>
-          Stripe test mode · no real charge
-        </span>
-
-      </div>
-
-    </div>
-
-  </div>
-
-</section>
-
-
-
-<!-- ============================================
-07 DEVELOPERS
-============================================= -->
-
-<section
-  class="scene developer-scene"
-  id="developers"
-  style='--scene:url("./assets/developers.jpg")'
->
-
-  <div class="scene-overlay"></div>
-
-
-  <div class="scene-content">
-
-    <div class="chapter-head reveal">
-
-      <span class="chapter-number">
-        07 · DEVELOPERS
-      </span>
-
-      <div>
-
-        <h2>
-          Go from project
-          <br>
-          to protected operation.
-        </h2>
-
-        <p>
-
-          Using Once through an MCP client or AI agent?
-          Use the MCP install below.
-
-          Embedding Once directly in an application?
-          Choose the TypeScript or Python SDK below.
-          The terminal workflow beneath is the TypeScript / CLI path for inspecting consequential operations locally,
-          reviewing proposed protection, then applying supported transformations. Install the TypeScript SDK above before using the shorter CLI commands after Doctor.
-
-        </p>
-
-        <div class="install-card">
-
-          <div>
-
-            <span>
-              MCP / AGENT INSTALL
-            </span>
-
-            <code>
-              npx -y @once-agent/mcp
-            </code>
-
-          </div>
-
-          <button
-            data-copy="npx -y @once-agent/mcp"
-          >
-            COPY
-          </button>
-
-        </div>
-
-      </div>
-
-    </div>
-
-
-    <div class="install-card">
-
-      <div>
-
-        <span>
-          APPLICATION SDK / TYPESCRIPT
-        </span>
-
-        <code>
-          npm install @once-agent/sdk
-        </code>
-
-      </div>
-
-      <button
-        data-copy="npm install @once-agent/sdk"
-      >
-        COPY
-      </button>
-
-    </div>
-
-
-    <div class="install-card">
-
-      <div>
-
-        <span>
-          APPLICATION SDK / PYTHON
-        </span>
-
-        <code>
-          pip install once-agent-sdk
-        </code>
-
-      </div>
-
-      <button
-        data-copy="pip install once-agent-sdk"
-      >
-        COPY
-      </button>
-
-    </div>
-
-
-    <div class="developer-terminal reveal">
-
-
-      <div class="terminal-head">
-
-        <span>
-          TypeScript / CLI
-        </span>
-
-        <span>
-          @once-agent/sdk 0.1.10
-        </span>
-
-      </div>
-
-
-      <div class="commands">
-
-        <div>
-          <i>$</i>
-          npx --yes --package=@once-agent/sdk once doctor .
-        </div>
-
-        <div>
-          <i>$</i>
-          npx --yes --package=@once-agent/sdk once doctor . --protect
-        </div>
-
-        <div>
-          <i>$</i>
-          npx --yes --package=@once-agent/sdk once protect .
-        </div>
-
-        <div>
-          <i>$</i>
-          npx --yes --package=@once-agent/sdk once setup . --plan
-        </div>
-
-        <div>
-          <i>$</i>
-          npx --yes --package=@once-agent/sdk once protect . --apply
-        </div>
-
-      </div>
-
-    </div>
-
-  </div>
-
-</section>
-
-
-
-
-<!-- ============================================
-ONCE UPDATES
-============================================= -->
-
-<section
-  class="once-updates"
-  id="updates"
->
-
-  <div class="once-updates-shell reveal">
-
-    <div class="once-updates-copy">
-
-      <span class="chapter-number">
-        ONCE / UPDATES
-      </span>
-
-      <h2>
-        Stay ahead with
-        <em>Once.</em>
-      </h2>
-
-      <p>
-        Product updates, new integrations, research and occasional offers —
-        straight from the team building safer AI execution.
-      </p>
-
-      <div class="once-updates-trust">
-        DOUBLE OPT-IN · UNSUBSCRIBE ANYTIME
-      </div>
-
-    </div>
-
-
-    <div class="once-updates-form-card">
-
-      <div
-        id="sib-form-container"
-        class="sib-form-container"
-      >
-
-        <div
-          id="error-message"
-          class="sib-form-message-panel once-updates-message once-updates-message-error"
-          role="alert"
-          aria-live="polite"
-        >
-          <div class="sib-form-message-panel__text sib-form-message-panel__text--center">
-            <span class="sib-form-message-panel__inner-text">
-              Your subscription could not be saved. Please try again.
-            </span>
-          </div>
-        </div>
-
-        <div></div>
-
-        <div
-          id="success-message"
-          class="sib-form-message-panel once-updates-message once-updates-message-success"
-          role="status"
-          aria-live="polite"
-        >
-          <div class="sib-form-message-panel__text sib-form-message-panel__text--center">
-            <span class="sib-form-message-panel__inner-text">
-              Almost there — check your inbox and confirm your email to join Once updates.
-            </span>
-          </div>
-        </div>
-
-        <div></div>
-
-        <div
-          id="sib-container"
-          class="sib-container--large sib-container--vertical"
-        >
-
-          <form
-            id="sib-form"
-            class="once-updates-form"
-            method="POST"
-            action="https://150d3c53.sibforms.com/serve/MUIFAPDK9wJjjFlOGB0zr41EX2hXyNsizwTUKkz2L_VkffR1M5J-Q0yTjihjiw5aTImk27gTkcoScTq4Tm18OYl5w3EfE9_x6Q_xP1KBXOrg3UwEUoeBxTkMOaMNYla6vCVXbmb6OnvdIWweZGB8ElTQe3OoSFFtvWrsFLEZU8QZBOd1uSfP2MV0gwgz8PFMHn7cyuxsbndXW4kXzw=="
-            data-type="subscription"
-          >
-
-            <label
-              class="once-updates-label"
-              for="EMAIL"
-            >
-              EMAIL ADDRESS
-            </label>
-
-            <div class="form__entry entry_block">
-
-              <div class="form__label-row">
-
-                <div class="entry__field once-updates-field">
-
-                  <input
-                    class="input once-updates-input"
-                    type="email"
-                    id="EMAIL"
-                    name="EMAIL"
-                    autocomplete="email"
-                    placeholder="you@company.com"
-                    data-required="true"
-                    required
-                  >
-
-                </div>
-
-              </div>
-
-              <label
-                class="entry__error entry__error--primary once-updates-field-error"
-              ></label>
-
-            </div>
-
-
-            <button
-              class="button button-primary sib-form-block__button sib-form-block__button-with-loader once-updates-submit"
-              form="sib-form"
-              type="submit"
-            >
-
-              <svg
-                class="icon clickable__icon progress-indicator__icon sib-hide-loader-icon"
-                viewBox="0 0 512 512"
-                aria-hidden="true"
-              >
-                <path d="M460.116 373.846l-20.823-12.022c-5.541-3.199-7.54-10.159-4.663-15.874 30.137-59.886 28.343-131.652-5.386-189.946-33.641-58.394-94.896-95.833-161.827-99.676C261.028 55.961 256 50.751 256 44.352V20.309c0-6.904 5.808-12.337 12.703-11.982 83.556 4.306 160.163 50.864 202.11 123.677 42.063 72.696 44.079 162.316 6.031 236.832-3.14 6.148-10.75 8.461-16.728 5.01z"></path>
-              </svg>
-
-              <span>
-                Join Once updates
-              </span>
-
-            </button>
-
-
-            <p class="once-updates-note">
-              By joining, you agree to receive Once product updates,
-              integration news, research and occasional offers.
-              Double opt-in. Unsubscribe anytime.
-            </p>
-
-
-            <input
-              type="text"
-              name="email_address_check"
-              value=""
-              class="input--hidden"
-              tabindex="-1"
-              aria-hidden="true"
-            >
-
-            <input
-              type="hidden"
-              name="locale"
-              value="en"
-            >
-
-          </form>
-
-        </div>
-
-      </div>
-
-    </div>
-
-  </div>
-
-</section>
-<!-- ============================================
-FINAL CTA
-============================================= -->
-
-<section class="final-cta" id="get-once">
-
-  <div class="reveal">
-
-    <span class="chapter-number">
-      ONCE / 1×
-    </span>
-
-    <h2>
-      Your agents will retry.
-      <br>
-      Their side effects don't have to.
-    </h2>
-
-    <p>
-      Execution safety for consequential AI-agent operations.
-    </p>
-
-
-    <div class="hero-buttons">
-
-      <button
-        class="button button-primary"
-        data-copy="npx -y @once-agent/mcp"
-      >
-        Copy MCP install
-      </button>
-
-      <a
-        class="button"
-        href="https://www.npmjs.com/package/@once-agent/sdk"
-        target="_blank"
-        rel="noopener"
-      >
-        Install SDK
-      </a>
-
-      <a
-        class="button"
-        href="https://github.com/stringsofthemind-oss/once"
-        target="_blank"
-        rel="noopener"
-      >
-        View GitHub
-      </a>
-
-      <a
-        class="button"
-        href="./agent.md"
-        type="text/markdown"
-      >
-        AI / Agent Guide
-      </a>
-
-    </div>
-
-  </div>
-
-</section>
-
-
-</main>
-
-
-
-<footer>
-
-  <div class="brand">
-
-    <span class="brand-icon">
-      1×
-    </span>
-
-    <span>
-      Once
-    </span>
-
-  </div>
-
-
-  <span>
-    Execution safety for side-effecting AI agent tools.
-  </span>
-
-
-  <span>
-    TS SDK 0.1.10 · PY SDK 0.1.0 · MCP 0.1.2
-  </span>
-
-</footer>
-
-
-<!-- ONCE INTERACTION AUDIO CONTROL -->
-
-<button
-  class="once-sound-control"
-  id="onceSoundToggle"
-  type="button"
-  aria-label="Toggle interaction sound"
-  aria-pressed="true"
-  title="Interaction sound"
->
-  <span
-    class="once-sound-dot"
-    aria-hidden="true"
-  ></span>
-
-  <span class="once-sound-label">
-    SOUND
-  </span>
-
-  <span
-    class="once-sound-state"
-    aria-hidden="true"
-  >
-    ON
-  </span>
-</button>
-
-
-
-<!-- ONCE / BREVO SIGNUP -->
-
-<script>
-  window.REQUIRED_CODE_ERROR_MESSAGE = 'Please choose a country code';
-  window.LOCALE = 'en';
-
-  window.EMAIL_INVALID_MESSAGE =
-  window.SMS_INVALID_MESSAGE =
-    'The information provided is invalid. Please review the field format and try again.';
-
-  window.REQUIRED_ERROR_MESSAGE =
-    'This field cannot be left blank. ';
-
-  window.GENERIC_INVALID_MESSAGE =
-    'The information provided is invalid. Please review the field format and try again.';
-
-  window.INVALID_NUMBER =
-    'The information provided is invalid. Please review the field format and try again.';
-
-  window.INVALID_DATE =
-    'Please enter a valid date';
-
-  window.REQUIRED_MULTISELECT_MESSAGE =
-    'Please select at least 1 option';
-
-  window.translation = {
-    common: {
-      selectedList: '{quantity} list selected',
-      selectedLists: '{quantity} lists selected',
-      selectedOption: '{quantity} selected',
-      selectedOptions: '{quantity} selected'
-    }
-  };
-
-  var AUTOHIDE = Boolean(0);
-</script>
-
-<script
-  defer
-  src="https://sibforms.com/forms/end-form/build/main.js"
-></script>
-
-<script src="./app.js"></script>
-
-<!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token":"e2805f5b27094f0a88ca03e426feb6e9"}'></script><!-- End Cloudflare Web Analytics -->
-</body>
-
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width,initial-scale=1" />
+		<meta name="color-scheme" content="dark" />
+		<title>Once — safe retry decisions for agent and application actions</title>
+		<meta
+			name="description"
+			content="An API action can succeed even when its response is lost. Explore confirmed replay, changed-input conflict and uncertain retry blocking with Once."
+		/>
+		<meta name="google-site-verification" content="jBMY3qIvmf9hJoVVcvpgoEOW_gfZqUxNwHmtmUpErWk" />
+		<link rel="canonical" href="https://onceexec.com/" />
+		<meta property="og:type" content="website" />
+		<meta property="og:title" content="Once — safe retry decisions for agent and application actions" />
+		<meta
+			property="og:description"
+			content="An API action can succeed even when its response is lost. Explore confirmed replay, changed-input conflict and uncertain retry blocking with Once."
+		/>
+		<meta property="og:url" content="https://onceexec.com/" />
+		<meta name="twitter:card" content="summary" />
+		<link rel="alternate" type="text/markdown" href="/agent.md" title="Once agent guide" />
+		<link rel="stylesheet" href="/funnel.css" />
+		<script src="/page-analytics.js" defer></script>
+		<script src="/funnel.js" defer></script>
+		<script src="/retry-demo.js" defer></script>
+		<script type="application/ld+json">
+			{
+				"@context": "https://schema.org",
+				"@type": "SoftwareApplication",
+				"name": "Once",
+				"applicationCategory": "DeveloperApplication",
+				"softwareVersion": "0.1.22",
+				"url": "https://onceexec.com/",
+				"codeRepository": "https://github.com/stringsofthemind-oss/once",
+				"license": "https://opensource.org/license/mit",
+				"description": "Execution safety for supported consequential agent and application actions."
+			}
+		</script>
+	</head>
+	<body>
+		<a class="skip" href="#main">Skip to content</a>
+		<header class="top">
+			<nav class="nav wrap" aria-label="Main">
+				<a class="brand" href="/"><span class="mark">1×</span> Once</a>
+				<div class="links">
+					<a href="/#mechanism">How it works</a><a href="/quickstart/">Quickstart</a><a href="/evidence/">Evidence</a
+					><a href="/support/" data-event="docs_click">Docs</a
+					><a href="https://github.com/stringsofthemind-oss/once" data-event="github_click">GitHub</a
+					><a class="btn primary" href="/#demo" data-event="hero_demo_click">Run the retry demo</a>
+				</div>
+			</nav>
+		</header>
+		<main tabindex="-1" id="main" class="wrap">
+			<section class="hero" id="top">
+				<div>
+					<p class="eyebrow">Retry safety for agent tools and applications</p>
+					<h1>The same action should only happen <em>once.</em></h1>
+					<p class="lead">
+						A payment, booking or ticket can succeed even when the response is lost. Once helps supported integrations reuse confirmed
+						results and block uncertain retries instead of blindly repeating the action.
+					</p>
+					<div class="actions">
+						<a class="btn primary" href="#demo" data-event="hero_demo_click">Run the retry demo</a
+						><a class="btn" href="#get-once" data-event="protect_first_action_click">Protect your first action</a>
+					</div>
+					<p class="small">Try the simulation without an account or checkout.<br />Then verify the SDK locally without a Once API key.</p>
+					<a href="/evidence/">Inspect the code and failure tests →</a>
+				</div>
+				<aside class="scenario" aria-label="Lost acknowledgement example">
+					<span class="tag">A TIMEOUT IS NOT PROOF OF FAILURE</span>
+					<ol>
+						<li><strong>Agent: create a ticket</strong>One intentional action.</li>
+						<li><strong>Provider: ticket #101 created</strong>The external action succeeded.</li>
+						<li><strong>Network: response lost</strong>The caller cannot tell what happened.</li>
+						<li><strong>Blind retry: another ticket?</strong>Once can block redispatch until the original outcome is established.</li>
+					</ol>
+					<div class="receipt">Known success → reuse the result<br />Unknown outcome → block another dispatch</div>
+					<p class="small" style="margin: 12px 0 0">Illustrative scenario; supported integration required.</p>
+				</aside>
+			</section>
+			<section class="section" id="mechanism">
+				<div class="intro">
+					<p class="eyebrow">What Once changes</p>
+					<h2>Your caller can retry.<br />The write needs a safe decision.</h2>
+					<p>
+						A retry library schedules another attempt. Once controls whether a protected consequential action is dispatched, replayed or
+						blocked.
+					</p>
+				</div>
+				<div class="grid">
+					<article class="card">
+						<span class="tag">CONFIRMED</span>
+						<h3>Reuse the original result.</h3>
+						<p>The same logical identity and input can return a durably confirmed result without another protected dispatch.</p>
+					</article>
+					<article class="card">
+						<span class="tag">CONFLICT</span>
+						<h3>Stop changed input.</h3>
+						<p>A changed amount, recipient or title under the same identity is rejected instead of silently becoming a different action.</p>
+					</article>
+					<article class="card">
+						<span class="tag">UNKNOWN</span>
+						<h3>Keep uncertainty safe.</h3>
+						<p>
+							If the outcome cannot be established, another dispatch stays blocked. Provider-specific truth can confirm the original result.
+						</p>
+					</article>
+				</div>
+			</section>
+			<section class="section" id="demo">
+				<div class="intro">
+					<p class="eyebrow">See the decisions</p>
+					<h2>Retry it. Change it. Lose the response.</h2>
+					<p>
+						Explore the confirmed path first, then the harder case: a provider commits the action but its acknowledgement never arrives.
+					</p>
+				</div>
+				<div class="demo" data-retry-demo>
+					<div class="demo-header">
+						<div>
+							<span class="tag">INTERACTIVE SIMULATION</span>
+							<h3 data-demo-title>Ready</h3>
+						</div>
+						<p class="small">No account. No checkout. No external writes.</p>
+					</div>
+					<div class="demo-grid">
+						<div class="demo-side">
+							<h3>Without protection · blind retry</h3>
+							<ol data-events-naive>
+								<li>The action commits; acknowledgement is lost.</li>
+								<li>A blind retry can create a second ticket.</li>
+							</ol>
+							<strong class="metric bad" data-effects-naive>—</strong><span class="small">Simulated effects for this intent</span>
+						</div>
+						<div class="demo-side">
+							<h3>With Once · protected boundary</h3>
+							<ol data-events-safe>
+								<li>Known success can be replayed.</li>
+								<li>Unknown outcome blocks another dispatch.</li>
+							</ol>
+							<strong class="metric good" data-effects-safe>—</strong><span class="small">Simulated effects for this intent</span>
+						</div>
+					</div>
+					<div class="demo-message" role="status" aria-live="polite" aria-atomic="true">
+						<span class="state" data-demo-state>NOT STARTED</span>
+						<p data-demo-message>Use the controls to explore confirmed replay, changed-input conflict and uncertain outcomes.</p>
+					</div>
+					<div class="demo-controls" data-demo-controls hidden>
+						<button type="button" class="primary" data-demo-next>1. Run first action</button
+						><button type="button" data-demo-unavailable hidden>Provider truth unavailable</button
+						><button type="button" data-demo-reset>Reset demo</button>
+					</div>
+					<noscript
+						><p>
+							Interactive controls need JavaScript. The explanation above remains available.
+							<a href="/quickstart/">Run the actual SDK locally</a>.
+						</p></noscript
+					>
+					<div class="demo-result" data-demo-result hidden>
+						<strong>You have seen the decision. Now verify it with the SDK.</strong>
+						<div class="actions">
+							<a class="btn primary" href="/quickstart/" data-event="protect_first_action_click">Protect your first action</a>
+						</div>
+					</div>
+					<p class="small" style="margin: 20px 0 0">
+						This browser simulation illustrates Once’s documented behavior. It does not run the SDK, persist execution state or prove
+						external-provider durability. <a href="/evidence/">Inspect reproducible evidence</a> or
+						<a href="/quickstart/">verify the installed SDK</a>.
+					</p>
+				</div>
+			</section>
+			<section class="section" id="fit">
+				<div class="intro">
+					<p class="eyebrow">Does Once fit this action?</p>
+					<h2>Start where doing it twice would matter.</h2>
+					<p>Evaluate Once when all four conditions apply. Search, reads and generation-only work generally do not need this protection.</p>
+				</div>
+				<ul class="checklist">
+					<li><span>01</span>It changes external state.</li>
+					<li><span>02</span>The same intentional action may be retried.</li>
+					<li><span>03</span>Its acknowledgement can be lost or uncertain.</li>
+					<li><span>04</span>An unintended duplicate would matter.</li>
+				</ul>
+				<p class="small">
+					Payments, bookings, messages and tickets are use cases, not a promise that every provider is automatically supported.
+					<a href="/providers/">Check provider boundaries</a>.
+				</p>
+			</section>
+			<section class="section" id="get-once">
+				<span id="developers"></span>
+				<div class="intro">
+					<p class="eyebrow">Choose your integration</p>
+					<h2>What do you want to protect?</h2>
+					<p>Start with one action. Choose the route that matches your application and deployment.</p>
+				</div>
+				<div class="modes">
+					<a class="card mode" href="/quickstart/" data-event="mode_selected"
+						><span class="tag">One existing function</span>
+						<h3>Local function quickstart</h3>
+						<p>No Once API key. Node.js 24.15+. Durable SQLite on one machine. Only calls through the wrapper are protected.</p>
+						<span class="route">See the steps →</span></a
+					><a class="card mode" href="/quickstart/#connect" data-event="mode_selected"
+						><span class="tag">An agent’s existing tools</span>
+						<h3>Connect your tool registry</h3>
+						<p>
+							No Once API key for the local path. Node.js 24.15+, trusted intent and effect bindings. Give the agent only the connected
+							tools.
+						</p>
+						<span class="route">See the steps →</span></a
+					><a class="card mode" href="/quickstart/#hosts" data-event="mode_selected"
+						><span class="tag">Claude Code, Codex or Cursor</span>
+						<h3>Set up your host</h3>
+						<p>
+							Install the plugin or configure MCP, then assess and wire supported operations. MCP installation alone does not guard
+							arbitrary tools.
+						</p>
+						<span class="route">See the steps →</span></a
+					><a class="card mode" href="/quickstart/#hosted" data-event="mode_selected"
+						><span class="tag">A supported hosted operation</span>
+						<h3>Review hosted integration</h3>
+						<p>
+							Once API key and explicit provider setup required. State is managed by the hosted service; operation data crosses that
+							boundary. Evaluate your provider’s guarantees.
+						</p>
+						<span class="route">See the steps →</span></a
+					><a class="card mode" href="/quickstart/#assess" data-event="mode_selected"
+						><span class="tag">An existing codebase</span>
+						<h3>Assess without changing source</h3>
+						<p>
+							Doctor’s default local assessment needs no Once API key and uploads no source. It identifies candidates; it does not activate
+							protection.
+						</p>
+						<span class="route">See the steps →</span></a
+					>
+				</div>
+			</section>
+			<section class="section" id="quickstart">
+				<div class="intro">
+					<p class="eyebrow">First value, locally</p>
+					<h2>Install is the beginning.<br />Verification is the goal.</h2>
+					<p>
+						The local quickstart uses the actual SDK with a controlled fake ticket provider. Verify one effect, replay, changed-input
+						conflict, a fresh-process restart and lost-acknowledgement blocking.
+					</p>
+				</div>
+				<div class="codebox">
+					<button type="button" data-copy-target="home-install" data-copy-label="Copy install command" data-copy-event="install_copied">
+						Copy install command
+					</button>
+					<pre><code id="home-install">npm install @once-agent/sdk@0.1.22</code></pre>
+				</div>
+				<p class="small">Node.js 24.15+ · Durable state on one machine · No Once API key</p>
+				<div class="actions">
+					<a class="btn primary" href="/quickstart/" data-event="quickstart_started">Start the complete quickstart</a
+					><a href="/quickstart/#real-action">Then wire a real action →</a>
+				</div>
+			</section>
+			<section class="section" id="proof">
+				<div class="intro">
+					<p class="eyebrow">Trust through evidence</p>
+					<h2>Inspect the boundary. Reproduce the result.</h2>
+					<p>
+						Open source under MIT. Evidence is scoped to its provider, state backend and failure model. A simulated lab is not a production
+						adoption claim.
+					</p>
+				</div>
+				<div class="grid">
+					<article class="card">
+						<h3>Installed SDK verification</h3>
+						<p>Run the quickstart and inspect a separate effect journal, including across fresh processes.</p>
+						<a href="/quickstart/">Run it yourself →</a>
+					</article>
+					<article class="card">
+						<h3>Crash and retry labs</h3>
+						<p>Framework-level reproductions use controlled provider ledgers and the SQLite reference backend.</p>
+						<a href="/evidence/">Inspect failure tests →</a>
+					</article>
+					<article class="card">
+						<h3>Published source</h3>
+						<p>Current TypeScript SDK: <span data-version="ts">0.1.22</span>. Historical evidence stays labelled and pinned.</p>
+						<a href="https://github.com/stringsofthemind-oss/once/releases" data-event="github_click">View releases →</a>
+					</article>
+				</div>
+			</section>
+			<section class="section" id="boundaries">
+				<div class="intro">
+					<p class="eyebrow">Safety boundaries</p>
+					<h2>Simple to use. Explicit about what is protected.</h2>
+				</div>
+				<div class="grid">
+					<article class="card">
+						<h3>Identity is your intent.</h3>
+						<p>
+							Keep one identity across retries. Use a different identity for a genuinely new action and bind every effect-bearing field.
+						</p>
+					</article>
+					<article class="card">
+						<h3>Durability has a scope.</h3>
+						<p>
+							Local protection needs a persistent shared SQLite file on one machine. Separate hosts, ephemeral storage and network
+							filesystems are outside that boundary.
+						</p>
+					</article>
+					<article class="card">
+						<h3>Unknown can block progress.</h3>
+						<p>
+							Local mode does not redispatch an ambiguous write even after an absence observation. Recovery needs a supported provider
+							contract; confirmed truth can be reconciled.
+						</p>
+					</article>
+				</div>
+				<div class="note">
+					Keep provider-native idempotency. Route every consequential call through the protected boundary. Installing MCP or finding a
+					candidate does not activate protection. Once does not promise universal exactly-once execution.
+				</div>
+				<a href="/quickstart/#hosted">Understand hosted data and credential handling →</a>
+			</section>
+			<section class="section faq" id="faq">
+				<h2>Questions before you integrate?</h2>
+				<details>
+					<summary>Why not just use an idempotency key?</summary>
+					<p>
+						Keep provider-native idempotency wherever available. Once adds a caller-side logical action boundary, durable result handling
+						and explicit uncertainty decisions. Recovery still depends on the integration and downstream guarantees.
+					</p>
+				</details>
+				<details>
+					<summary>Why not store the result in my database?</summary>
+					<p>
+						A stored result helps replay known success. The hard case is the gap between the external effect committing and the result
+						reaching your database. A local database transaction cannot atomically cover an arbitrary external provider. Once preserves that
+						uncertainty instead of guessing.
+					</p>
+				</details>
+				<details>
+					<summary>What happens after a process restart or a Once crash?</summary>
+					<p>
+						Local protection recognises confirmed actions if every cooperating caller uses the same durable SQLite file on one machine. An
+						interrupted claim can report IN_FLIGHT until its lease expires, then UNKNOWN; it is not blindly redispatched. Separate hosts and
+						network filesystems are outside this local boundary.
+					</p>
+				</details>
+				<details>
+					<summary>What if the provider succeeded but the response was lost?</summary>
+					<p>
+						Once can leave the action UNKNOWN and block another dispatch. An authoritative, read-only provider lookup can confirm the
+						original result where supported. If truth is unavailable, progress can stay blocked. In conservative local mode, reporting
+						absence does not automatically permit redispatch after ambiguity.
+					</p>
+				</details>
+				<details>
+					<summary>What if the amount, recipient or other input changes?</summary>
+					<p>
+						Bind every effect-bearing field to the logical identity. Reusing that identity with a different supported payload raises
+						CONFLICT rather than silently replaying an old result or sending a changed write.
+					</p>
+				</details>
+				<details>
+					<summary>Can Once suppress a genuinely new action?</summary>
+					<p>
+						Yes, if your identity collapses two different intentions into one. Use a stable ID for the same intentional action across
+						retries, and a distinct ID for each genuinely new action. Scope it by tenant and action type. Do not mint a new ID merely to
+						bypass UNKNOWN.
+					</p>
+				</details>
+				<details>
+					<summary>Where is state stored, and is an API key required?</summary>
+					<p>
+						Local TypeScript protection uses a durable same-machine SQLite file and needs no Once API key. Hosted execution sends the
+						operation ID, provider alias and action payload to the Once service and requires authentication and provider setup. Choose the
+						path explicitly.
+					</p>
+				</details>
+				<details>
+					<summary>Does Once add latency?</summary>
+					<p>
+						Local paths add state access; reconciliation adds a provider lookup when needed. Hosted paths also add network work. There is no
+						universal latency promise. Measure the actual deployed integration; documented lab measurements are not production SLAs.
+					</p>
+				</details>
+				<details>
+					<summary>Can it automatically protect any function?</summary>
+					<p>
+						Automatic discovery and classification have explicit boundaries. Stable business identity and complete effect semantics still
+						need trustworthy bindings. Unsupported call shapes fail closed or need reviewed integration.
+					</p>
+				</details>
+				<details>
+					<summary>What does ADAPTER_REQUIRED mean?</summary>
+					<p>
+						The detected operation needs provider-specific integration beyond the automatic transformer. Use the documented local-function
+						or connected-tool route when suitable, or implement and validate an authoritative provider adapter. Detection alone is not
+						protection.
+					</p>
+				</details>
+				<details>
+					<summary>Does installing MCP protect all my tools?</summary>
+					<p>
+						No. The MCP/plugin helps assess and configure a project. The runtime must be wired into the consequential call path. Exposing
+						the original unprotected tool alongside its wrapper bypasses that boundary.
+					</p>
+				</details>
+				<details>
+					<summary>What happens if the hosted Once service is unreachable?</summary>
+					<p>
+						The SDK uses bounded retries, then raises a network or timeout error instead of silently dispatching the protected write
+						directly. Do not handle that error by bypassing Once.
+					</p>
+				</details>
+			</section>
+			<section class="section">
+				<p class="eyebrow">From understanding to a protected action</p>
+				<h2>Protect one action.<br />Prove it survives a retry.</h2>
+				<div class="actions">
+					<a class="btn primary" href="/quickstart/" data-event="protect_first_action_click">Protect your first action</a
+					><a href="https://github.com/stringsofthemind-oss/once" data-event="github_click">View GitHub</a>
+				</div>
+				<div class="updates">
+					<p class="small">
+						Want updates after you try it?
+						<a href="https://github.com/stringsofthemind-oss/once/releases">Follow the public release notes</a>.
+					</p>
+				</div>
+			</section>
+		</main>
+		<footer class="footer wrap">
+			<span
+				>Once · Open source · MIT<br />TypeScript <span data-version="ts">0.1.22</span> · Python <span data-version="python">0.1.1</span> ·
+				MCP <span data-version="mcp">0.1.5</span></span
+			>
+			<nav aria-label="Footer">
+				<a href="/quickstart/">Quickstart</a><a href="/evidence/">Evidence</a><a href="/agent.md">Agent guide</a
+				><a href="/retry-exposure/">Estimate retry exposure</a
+				><a href="https://playground.onceexec.com/hosted" data-event="hosted_sandbox_click">Hosted sandbox activation</a>
+			</nav>
+		</footer>
+		<p class="sr-only" data-copy-status role="status"></p>
+	</body>
 </html>

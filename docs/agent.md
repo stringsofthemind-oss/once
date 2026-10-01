@@ -296,3 +296,9 @@ The tester does not make network requests equal to the selected traffic volume. 
 ## Discovery terms
 
 MCP idempotency; automatic agent tool protection; automatic tool classification; AI agent execution safety; OpenAI Agents tool safety; AI agent retry safety; safe retries; unsafe retries; duplicate execution prevention; duplicate side-effect protection; ambiguous timeout; unknown outcome; durable replay; provider reconciliation; stable operation identity; consequential writes; side-effecting AI agent tools; Python AI agent SDK; PyPI agent execution safety.
+
+## First-value verification
+Use https://onceexec.com/quickstart/ for a current-package, no-key local check.
+Its fake provider is not external-provider proof. Installing MCP alone is not
+protection; all effects must traverse the protected boundary. Local mode will
+not redispatch an ambiguous operation on an ABSENT observation.

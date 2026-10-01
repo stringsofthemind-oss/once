@@ -1,3 +1,4 @@
+import RETRY_DEMO_PAGE from "./retry-demo-page.js";
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
@@ -1938,16 +1939,15 @@ footer{
     </div>
 
     <h1>
-      BREAK THE NETWORK.
+      ACTIVATE A HOSTED
       <br>
-      NOT THE
-      <em>TRANSACTION.</em>
+      <em>SANDBOX.</em>
     </h1>
 
     <p>
-      Run the failure mode that makes consequential AI-agent actions
-      dangerous. Let the provider execute, lose the response, retry the
-      same operation \u2014 then inspect what actually happened.
+      Optional hosted activation uses Stripe test checkout. This is separate
+      from learning the retry decisions. <a href="https://onceexec.com/demo/">
+      Run the ungated simulation first</a>. Do not enter real card data.
     </p>
 
   </div>
@@ -6407,7 +6407,11 @@ var index_default = {
         "npm_clicked",
         "mcp_npm_clicked",
         "github_clicked",
-        "agent_guide_clicked"
+        "agent_guide_clicked",
+        "homepage_view", "hero_demo_click", "demo_started", "demo_completed",
+        "unknown_state_viewed", "protect_first_action_click", "mode_selected",
+        "quickstart_started", "install_copied", "first_action_step_reached",
+        "github_click", "docs_click", "hosted_sandbox_click"
       ]);
       const allowedSources = /* @__PURE__ */ new Set([
         "website",
@@ -7255,8 +7259,11 @@ var index_default = {
         SUCCESS_PAGE
       );
     }
-    if (request.method === "GET" && url.pathname === "/") {
+    if (request.method === "GET" && url.pathname === "/hosted") {
       return html(PAGE);
+    }
+    if (request.method === "GET" && url.pathname === "/") {
+      return html(RETRY_DEMO_PAGE);
     }
     return json3(
       {

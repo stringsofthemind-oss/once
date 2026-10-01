@@ -1,6 +1,8 @@
 # Changelog
 
-All notable changes to the Once SDK are documented here.
+Historical SDK change notes are recorded here. For current published versions and
+changes after the entries below, see the [public release history](https://github.com/stringsofthemind-oss/once/releases).
+Website-only changes do not alter SDK execution semantics.
 
 ## 0.1.12 - 2026-09-25
 
