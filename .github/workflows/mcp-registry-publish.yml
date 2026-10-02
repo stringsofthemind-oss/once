@@ -92,5 +92,23 @@ jobs:
       - name: Authenticate to MCP Registry with GitHub OIDC
         run: ./mcp-publisher login github-oidc
 
-      - name: Publish current MCP manifest
-        run: ./mcp-publisher publish ./mcp/server.json
+      - name: Publish current MCP manifest idempotently
+        shell: bash
+        run: |
+          set +e
+          output="$(./mcp-publisher publish ./mcp/server.json 2>&1)"
+          status=$?
+          set -e
+
+          printf '%s\n' "$output"
+
+          if [ "$status" -eq 0 ]; then
+            exit 0
+          fi
+
+          if printf '%s\n' "$output" | grep -Fq 'invalid version: cannot publish duplicate version'; then
+            echo "MCP Registry already contains this exact manifest version; sync is satisfied."
+            exit 0
+          fi
+
+          exit "$status"
