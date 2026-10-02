@@ -1,5 +1,9 @@
 # Protect an existing async function on one machine
 
+For the maintained current-package first-action guide, including fresh-process
+replay and UNKNOWN checks, see [the website quickstart](https://onceexec.com/quickstart/).
+The v0.1.9 fixture below remains historical reproducibility evidence.
+
 `protectLocal` was introduced in the published `@once-agent/sdk` 0.1.7 package
 and remains part of the current SDK. This guide covers its durable same-machine
 SQLite safety boundary.

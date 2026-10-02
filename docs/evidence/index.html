@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width,initial-scale=1" />
+		<meta name="color-scheme" content="dark" />
+		<title>Once evidence — reproducible retry and failure tests</title>
+		<meta
+			name="description"
+			content="Inspect Once SDK tests, scoped framework labs, historical fixtures and provider reconciliation boundaries."
+		/>
+		<meta name="google-site-verification" content="jBMY3qIvmf9hJoVVcvpgoEOW_gfZqUxNwHmtmUpErWk" />
+		<link rel="canonical" href="https://onceexec.com/evidence/" />
+		<meta property="og:type" content="website" />
+		<meta property="og:title" content="Once evidence — reproducible retry and failure tests" />
+		<meta
+			property="og:description"
+			content="Inspect Once SDK tests, scoped framework labs, historical fixtures and provider reconciliation boundaries."
+		/>
+		<meta property="og:url" content="https://onceexec.com/evidence/" />
+		<meta name="twitter:card" content="summary" />
+		<link rel="alternate" type="text/markdown" href="/agent.md" title="Once agent guide" />
+		<link rel="stylesheet" href="/funnel.css" />
+		<script src="/page-analytics.js" defer></script>
+		<script src="/funnel.js" defer></script>
+	</head>
+	<body>
+		<a class="skip" href="#main">Skip to content</a>
+		<header class="top">
+			<nav class="nav wrap" aria-label="Main">
+				<a class="brand" href="/"><span class="mark">1×</span> Once</a>
+				<div class="links">
+					<a href="/#mechanism">How it works</a><a href="/quickstart/">Quickstart</a><a href="/evidence/">Evidence</a
+					><a href="/support/" data-event="docs_click">Docs</a
+					><a href="https://github.com/stringsofthemind-oss/once" data-event="github_click">GitHub</a
+					><a class="btn primary" href="/#demo" data-event="hero_demo_click">Run the retry demo</a>
+				</div>
+			</nav>
+		</header>
+		<main tabindex="-1" id="main" class="wrap prose">
+			<p class="eyebrow">Inspect, reproduce, evaluate</p>
+			<h1>Proof with a stated boundary.</h1>
+			<p class="lead">
+				Different evidence answers different questions. No browser simulation establishes production durability, throughput or universal
+				exactly-once execution.
+			</p>
+			<div class="grid">
+				<article class="card">
+					<h3>Browser simulation</h3>
+					<p>Illustrates the decisions. No SDK, provider writes or persistent state.</p>
+					<a href="/demo/">Explore decisions</a>
+				</article>
+				<article class="card">
+					<h3>Installed SDK</h3>
+					<p>Local fake provider and separate journal. Verify first effect, replay, conflict, fresh process and UNKNOWN blocking.</p>
+					<a href="/quickstart/">Run current quickstart</a>
+				</article>
+				<article class="card">
+					<h3>Real provider example</h3>
+					<p>GitHub issue recovery with bounded authoritative lookup and explicit correlation assumptions.</p>
+					<a href="https://github.com/stringsofthemind-oss/once/blob/main/sdk/typescript/examples/GITHUB_ISSUE_RECOVERY.md"
+						>Inspect integration</a
+					>
+				</article>
+			</div>
+			<h2>Framework crash/retry labs</h2>
+			<p>
+				LangGraph and CrewAI examples use controlled simulated provider ledgers and the SQLite reference backend. They test hard process
+				termination and fresh-process resume/redispatch. Inspect each lab’s methodology before generalising its result.
+			</p>
+			<ul>
+				<li>
+					<a href="https://github.com/stringsofthemind-oss/once/tree/main/examples/langgraph-retry-lab">LangGraph hostile-retry lab</a>
+				</li>
+				<li><a href="https://github.com/stringsofthemind-oss/once/tree/main/examples/crewai-retry-lab">CrewAI hostile-retry lab</a></li>
+				<li>
+					<a href="https://github.com/stringsofthemind-oss/once/tree/main/examples/agno-hostile-retry">Agno hostile-retry evidence</a>
+				</li>
+			</ul>
+			<h2>Routing conformance</h2>
+			<p>
+				Published fixed-suite results describe the evaluated model sessions and cases, not universal model reliability or production routing
+				correctness.
+			</p>
+			<p><a href="/evidence/routing/README.md">Routing methodology and integrity trail</a></p>
+			<h2>Hosted and historical evidence</h2>
+			<p>
+				<a href="/evidence/playground/README.md">Hosted playground evidence and its scope</a>.
+				<a href="/evidence/gateway/phase12c-hosted-stripe-staging-proof-2026-09-26.md">Stripe staging proof</a> is a specifically scoped
+				staging experiment, not a blanket live payment/refund adapter guarantee.
+			</p>
+			<p>
+				<a href="https://github.com/stringsofthemind-oss/once/tree/v0.1.9/examples/local-function"
+					>Historical reproducibility fixture — v0.1.9</a
+				>. Frozen versions remain pinned intentionally. For a current-package consumer, use the maintained quickstart.
+			</p>
+			<h2>Review the source and safety tests</h2>
+			<ul>
+				<li>
+					<a href="https://github.com/stringsofthemind-oss/once/blob/main/sdk/typescript/src/local.ts">Local execution implementation</a>
+				</li>
+				<li>
+					<a href="https://github.com/stringsofthemind-oss/once/blob/main/sdk/typescript/test/local.test.mjs"
+						>Local failure, payload and concurrency tests</a
+					>
+				</li>
+				<li>
+					<a href="https://github.com/stringsofthemind-oss/once/blob/main/sdk/typescript/scripts/connect-packed-protection-regression.mjs"
+						>Packed-consumer Connect verification</a
+					>
+				</li>
+				<li><a href="https://github.com/stringsofthemind-oss/once/releases">Release history</a></li>
+				<li><a href="/providers/">Provider support matrix</a> and <a href="/support/">current capability boundary</a></li>
+			</ul>
+			<div class="note">
+				Local safety depends on one stable logical intent, complete effect binding, durable same-machine state and every consequential call
+				traversing the protected boundary. Authoritative confirmation may resolve UNKNOWN; local absence does not cause automatic ambiguous
+				redispatch.
+			</div>
+			<a class="btn primary" href="/quickstart/" data-event="protect_first_action_click">Verify your first action</a>
+		</main>
+		<footer class="footer wrap">
+			<span
+				>Once · Open source · MIT<br />TypeScript <span data-version="ts">0.1.22</span> · Python <span data-version="python">0.1.1</span> ·
+				MCP <span data-version="mcp">0.1.5</span></span
+			>
+			<nav aria-label="Footer">
+				<a href="/quickstart/">Quickstart</a><a href="/evidence/">Evidence</a><a href="/agent.md">Agent guide</a
+				><a href="/retry-exposure/">Estimate retry exposure</a
+				><a href="https://playground.onceexec.com/hosted" data-event="hosted_sandbox_click">Hosted sandbox activation</a>
+			</nav>
+		</footer>
+		<p class="sr-only" data-copy-status role="status"></p>
+	</body>
+</html>

@@ -1,6 +1,6 @@
 # @once-agent/sdk
 
-> **Automatic Connect:** `@once-agent/sdk@0.1.18` publishes the tested
+> **Automatic Connect:** `@once-agent/sdk@0.1.22` publishes the tested
 > `@once-agent/sdk/connect` path for classifying supported agent tools as
 > `BYPASS`, `PROTECT`, or fail-closed `UNKNOWN`, then wiring whole local tool
 > registries with trusted logical identity and effect binding. It also includes
@@ -13,6 +13,11 @@
 > [local function guide](./examples/local-function/README.md) for its exact
 > safety boundary and a first effect-count check.
 
+> **Start here:** [Run the ungated retry simulation](https://onceexec.com/demo/) or
+> [verify your first protected action locally](https://onceexec.com/quickstart/).
+> The simulation does not execute the SDK; the local guide uses the installed SDK
+> and a controlled fake provider, including fresh-process and UNKNOWN checks.
+
 ## Once — AI Agent Execution Safety
 
 **MCP idempotency and safe retries for consequential AI agent writes.**
@@ -23,7 +28,7 @@ Once helps protect supported refunds, bookings, payments and other externally vi
 - Automatic Connect guide: [`docs/CONNECT_AUTO.md`](./docs/CONNECT_AUTO.md)
 - MCP idempotency guide: https://onceexec.com/mcp-idempotency/
 - AI agent retry safety: https://onceexec.com/ai-agent-retry-safety/
-- TypeScript SDK: [`@once-agent/sdk@0.1.18`](https://www.npmjs.com/package/@once-agent/sdk)
+- TypeScript SDK: [`@once-agent/sdk@0.1.22`](https://www.npmjs.com/package/@once-agent/sdk)
 - Python SDK: [`once-agent-sdk==0.1.1`](https://pypi.org/project/once-agent-sdk/)
 - MCP package: `@once-agent/mcp@0.1.5`
 - MCP Registry: `io.github.stringsofthemind-oss/once`

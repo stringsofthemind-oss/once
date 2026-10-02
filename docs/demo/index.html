@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width,initial-scale=1" />
+		<meta name="color-scheme" content="dark" />
+		<title>Once retry demo — interactive simulation</title>
+		<meta
+			name="description"
+			content="Explore confirmed replay, conflicts and lost acknowledgements without an account, checkout or external writes."
+		/>
+		<meta name="google-site-verification" content="jBMY3qIvmf9hJoVVcvpgoEOW_gfZqUxNwHmtmUpErWk" />
+		<link rel="canonical" href="https://onceexec.com/demo/" />
+		<meta property="og:type" content="website" />
+		<meta property="og:title" content="Once retry demo — interactive simulation" />
+		<meta
+			property="og:description"
+			content="Explore confirmed replay, conflicts and lost acknowledgements without an account, checkout or external writes."
+		/>
+		<meta property="og:url" content="https://onceexec.com/demo/" />
+		<meta name="twitter:card" content="summary" />
+		<link rel="alternate" type="text/markdown" href="/agent.md" title="Once agent guide" />
+		<link rel="stylesheet" href="/funnel.css" />
+		<script src="/page-analytics.js" defer></script>
+		<script src="/funnel.js" defer></script>
+		<script src="/retry-demo.js" defer></script>
+	</head>
+	<body>
+		<a class="skip" href="#main">Skip to content</a>
+		<header class="top">
+			<nav class="nav wrap" aria-label="Main">
+				<a class="brand" href="/"><span class="mark">1×</span> Once</a>
+				<div class="links">
+					<a href="/#mechanism">How it works</a><a href="/quickstart/">Quickstart</a><a href="/evidence/">Evidence</a
+					><a href="/support/" data-event="docs_click">Docs</a
+					><a href="https://github.com/stringsofthemind-oss/once" data-event="github_click">GitHub</a
+					><a class="btn primary" href="/#demo" data-event="hero_demo_click">Run the retry demo</a>
+				</div>
+			</nav>
+		</header>
+		<main tabindex="-1" id="main" class="wrap prose">
+			<p class="eyebrow">Ungated demonstration</p>
+			<h1>See what a retry should decide.</h1>
+			<p class="lead">Interactive simulation of Once’s documented state decisions. No account or checkout required.</p>
+			<div class="demo" data-retry-demo>
+				<div class="demo-header">
+					<div>
+						<span class="tag">INTERACTIVE SIMULATION</span>
+						<h3 data-demo-title>Ready</h3>
+					</div>
+					<p class="small">No account. No checkout. No external writes.</p>
+				</div>
+				<div class="demo-grid">
+					<div class="demo-side">
+						<h3>Without protection · blind retry</h3>
+						<ol data-events-naive>
+							<li>The action commits; acknowledgement is lost.</li>
+							<li>A blind retry can create a second ticket.</li>
+						</ol>
+						<strong class="metric bad" data-effects-naive>—</strong><span class="small">Simulated effects for this intent</span>
+					</div>
+					<div class="demo-side">
+						<h3>With Once · protected boundary</h3>
+						<ol data-events-safe>
+							<li>Known success can be replayed.</li>
+							<li>Unknown outcome blocks another dispatch.</li>
+						</ol>
+						<strong class="metric good" data-effects-safe>—</strong><span class="small">Simulated effects for this intent</span>
+					</div>
+				</div>
+				<div class="demo-message" role="status" aria-live="polite" aria-atomic="true">
+					<span class="state" data-demo-state>NOT STARTED</span>
+					<p data-demo-message>Use the controls to explore confirmed replay, changed-input conflict and uncertain outcomes.</p>
+				</div>
+				<div class="demo-controls" data-demo-controls hidden>
+					<button type="button" class="primary" data-demo-next>1. Run first action</button
+					><button type="button" data-demo-unavailable hidden>Provider truth unavailable</button
+					><button type="button" data-demo-reset>Reset demo</button>
+				</div>
+				<noscript
+					><p>
+						Interactive controls need JavaScript. The explanation above remains available.
+						<a href="/quickstart/">Run the actual SDK locally</a>.
+					</p></noscript
+				>
+				<div class="demo-result" data-demo-result hidden>
+					<strong>You have seen the decision. Now verify it with the SDK.</strong>
+					<div class="actions">
+						<a class="btn primary" href="/quickstart/" data-event="protect_first_action_click">Protect your first action</a>
+					</div>
+				</div>
+				<p class="small" style="margin: 20px 0 0">
+					This browser simulation illustrates Once’s documented behavior. It does not run the SDK, persist execution state or prove
+					external-provider durability. <a href="/evidence/">Inspect reproducible evidence</a> or
+					<a href="/quickstart/">verify the installed SDK</a>.
+				</p>
+			</div>
+			<div class="actions">
+				<a class="btn primary" href="/quickstart/" data-event="protect_first_action_click">Protect your first action</a>
+			</div>
+		</main>
+		<footer class="footer wrap">
+			<span
+				>Once · Open source · MIT<br />TypeScript <span data-version="ts">0.1.22</span> · Python <span data-version="python">0.1.1</span> ·
+				MCP <span data-version="mcp">0.1.5</span></span
+			>
+			<nav aria-label="Footer">
+				<a href="/quickstart/">Quickstart</a><a href="/evidence/">Evidence</a><a href="/agent.md">Agent guide</a
+				><a href="/retry-exposure/">Estimate retry exposure</a
+				><a href="https://playground.onceexec.com/hosted" data-event="hosted_sandbox_click">Hosted sandbox activation</a>
+			</nav>
+		</footer>
+		<p class="sr-only" data-copy-status role="status"></p>
+	</body>
+</html>

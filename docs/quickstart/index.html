@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width,initial-scale=1" />
+		<meta name="color-scheme" content="dark" />
+		<title>Once quickstart — protect and verify your first action</title>
+		<meta
+			name="description"
+			content="Install Once locally without an API key. Verify replay, changed-input conflict, process restart and unknown-outcome blocking with a complete runnable example."
+		/>
+		<meta name="google-site-verification" content="jBMY3qIvmf9hJoVVcvpgoEOW_gfZqUxNwHmtmUpErWk" />
+		<link rel="canonical" href="https://onceexec.com/quickstart/" />
+		<meta property="og:type" content="website" />
+		<meta property="og:title" content="Once quickstart — protect and verify your first action" />
+		<meta
+			property="og:description"
+			content="Install Once locally without an API key. Verify replay, changed-input conflict, process restart and unknown-outcome blocking with a complete runnable example."
+		/>
+		<meta property="og:url" content="https://onceexec.com/quickstart/" />
+		<meta name="twitter:card" content="summary" />
+		<link rel="alternate" type="text/markdown" href="/agent.md" title="Once agent guide" />
+		<link rel="stylesheet" href="/funnel.css" />
+		<script src="/page-analytics.js" defer></script>
+		<script src="/funnel.js" defer></script>
+	</head>
+	<body>
+		<a class="skip" href="#main">Skip to content</a>
+		<header class="top">
+			<nav class="nav wrap" aria-label="Main">
+				<a class="brand" href="/"><span class="mark">1×</span> Once</a>
+				<div class="links">
+					<a href="/#mechanism">How it works</a><a href="/quickstart/">Quickstart</a><a href="/evidence/">Evidence</a
+					><a href="/support/" data-event="docs_click">Docs</a
+					><a href="https://github.com/stringsofthemind-oss/once" data-event="github_click">GitHub</a
+					><a class="btn primary" href="/#demo" data-event="hero_demo_click">Run the retry demo</a>
+				</div>
+			</nav>
+		</header>
+		<main tabindex="-1" id="main" class="wrap prose">
+			<p class="eyebrow">Local first-action quickstart</p>
+			<h1>One action. Retry it. Verify one effect.</h1>
+			<p class="lead">
+				Use the actual Once SDK without a Once API key. This controlled example writes a fake ticket provider’s receipt to a separate local
+				journal.
+			</p>
+			<div class="note">
+				<strong>This is an SDK verification, not an external-provider proof.</strong> Node.js 24.15+ is required. Keep the same working
+				directory and durable SQLite file for every run. No network provider, payment or hosted subscription is used.
+			</div>
+			<h2>1. Check Node and install</h2>
+			<p>Use a fresh disposable directory. These commands work in a terminal or PowerShell.</p>
+			<div class="codebox">
+				<button type="button" data-copy-target="install" data-copy-label="Copy setup commands" data-copy-event="install_copied">
+					Copy setup commands
+				</button>
+				<pre><code id="install">node --version
+mkdir once-first-action
+cd once-first-action
+npm init -y
+npm install @once-agent/sdk@0.1.22</code></pre>
+			</div>
+			<p>
+				If Node is older than 24.15, update it before running local protection. The general hosted SDK has a different requirement; this
+				guide uses local SQLite.
+			</p>
+			<h2>2. Save the complete example</h2>
+			<p>
+				<a href="first-action.mjs" download>Download first-action.mjs</a> into that directory, or copy the full code below into a file named
+				<code>first-action.mjs</code>.
+			</p>
+			<details>
+				<summary>Complete copyable example</summary>
+				<div class="codebox">
+					<button type="button" data-copy-target="example" data-copy-label="Copy example" data-copy-event="first_action_step_reached">
+						Copy example
+					</button>
+					<pre><code id="example">import assert from &quot;node:assert/strict&quot;;
+import { appendFileSync, existsSync, mkdirSync, readFileSync } from &quot;node:fs&quot;;
+import path from &quot;node:path&quot;;
+import { protectLocal } from &quot;@once-agent/sdk&quot;;
+
+// Controlled fake provider: its effect journal is separate from Once state.
+// This verifies the installed SDK, not a real payment or ticket integration.
+const directory = path.resolve(&quot;.once-first-action&quot;);
+mkdirSync(directory, { recursive: true });
+const statePath = path.join(directory, &quot;operations.sqlite&quot;);
+const mode = process.argv[2] || &quot;verify&quot;;
+assert.ok([&quot;verify&quot;, &quot;restart&quot;, &quot;unknown&quot;, &quot;reconcile&quot;].includes(mode));
+const journal = name =&gt; path.join(directory, `${name}.jsonl`);
+const rows = name =&gt; existsSync(journal(name))
+  ? readFileSync(journal(name), &quot;utf8&quot;).trim().split(&quot;\n&quot;).filter(Boolean).map(JSON.parse)
+  : [];
+
+// In your integration use a durable intentional action ID, scoped by tenant
+// and action type, and bind EVERY input that can change the external effect.
+const identity = input =&gt; `demo-tenant:create-ticket:${input.intentId}`;
+const payload = input =&gt; ({ intentId: input.intentId, title: input.title });
+const createTicket = protectLocal(async input =&gt; {
+  const result = { number: &quot;TICKET-1&quot;, title: input.title };
+  appendFileSync(journal(&quot;confirmed&quot;), JSON.stringify(result) + &quot;\n&quot;);
+  return result;
+}, { id: identity, payload, statePath });
+
+const original = { intentId: &quot;ticket-001&quot;, title: &quot;Investigate timeout&quot; };
+if (mode === &quot;verify&quot;) {
+  const result = await createTicket(original);
+  assert.deepEqual(await createTicket(original), result);
+  await assert.rejects(createTicket({ ...original, title: &quot;Changed title&quot; }), { code: &quot;CONFLICT&quot; });
+  assert.equal(rows(&quot;confirmed&quot;).length, 1);
+  console.log(&quot;CONFIRMED: TICKET-1\nREPLAY: original result\nCONFLICT: no write dispatched\nProvider effects: 1&quot;);
+} else if (mode === &quot;restart&quot;) {
+  assert.equal(rows(&quot;confirmed&quot;).length, 1, &quot;Run verify first; keep the state directory.&quot;);
+  assert.deepEqual(await createTicket(original), rows(&quot;confirmed&quot;)[0]);
+  assert.equal(rows(&quot;confirmed&quot;).length, 1);
+  console.log(&quot;RESTART REPLAY: TICKET-1\nProvider effects: 1&quot;);
+} else {
+  // The fake provider commits, THEN its acknowledgement is lost.
+  const lostInput = { intentId: &quot;ticket-lost-ack&quot;, title: &quot;Lost acknowledgement&quot; };
+  const lost = protectLocal(async input =&gt; {
+    const result = { number: &quot;TICKET-LOST&quot;, title: input.title };
+    appendFileSync(journal(&quot;ambiguous&quot;), JSON.stringify(result) + &quot;\n&quot;);
+    throw new Error(&quot;Simulated acknowledgement loss after commit&quot;);
+  }, {
+    id: identity, payload, statePath,
+    ...(mode === &quot;reconcile&quot; ? {
+      // Authoritative ONLY for this controlled fake provider. A real provider
+      // needs its own trustworthy, read-only lookup and concurrency contract.
+      reconcile: () =&gt; rows(&quot;ambiguous&quot;).length === 1
+        ? { state: &quot;CONFIRMED&quot;, result: rows(&quot;ambiguous&quot;)[0] }
+        : { state: &quot;UNKNOWN&quot; },
+    } : {}),
+  });
+  if (mode === &quot;unknown&quot;) {
+    await assert.rejects(lost(lostInput));
+    await assert.rejects(lost(lostInput), { code: &quot;UNKNOWN&quot; });
+    assert.equal(rows(&quot;ambiguous&quot;).length, 1);
+    console.log(&quot;UNKNOWN: retry blocked\nAmbiguous provider effects: 1&quot;);
+  } else {
+    assert.equal(rows(&quot;ambiguous&quot;).length, 1, &quot;Run unknown first.&quot;);
+    assert.equal((await lost(lostInput)).number, &quot;TICKET-LOST&quot;);
+    assert.equal(rows(&quot;ambiguous&quot;).length, 1);
+    console.log(&quot;RECONCILED: TICKET-LOST\nAmbiguous provider effects: 1&quot;);
+  }
+}
+</code></pre>
+				</div>
+			</details>
+			<p>
+				The <code>id</code> binds a stable intentional action, scoped by tenant and action type. The <code>payload</code> binds both intent
+				and title. The wrapped caller is the only route to the fake provider. A successful receipt is plain, replayable data.
+			</p>
+			<h2>3. Verify confirmed replay and conflict</h2>
+			<div class="codebox">
+				<button type="button" data-copy-target="verify" data-copy-label="Copy verify command" data-copy-event="first_action_step_reached">
+					Copy verify command
+				</button>
+				<pre><code id="verify">node first-action.mjs</code></pre>
+			</div>
+			<p>Expected output:</p>
+			<pre>
+CONFIRMED: TICKET-1
+REPLAY: original result
+CONFLICT: no write dispatched
+Provider effects: 1</pre
+			>
+			<p>
+				Inspect <code>.once-first-action/confirmed.jsonl</code>: there is one provider receipt. This journal is separate from
+				<code>operations.sqlite</code>, the Once state file.
+			</p>
+			<h2>4. Restart the process</h2>
+			<div class="codebox">
+				<button type="button" data-copy-target="restart" data-copy-label="Copy restart command" data-copy-event="first_action_step_reached">
+					Copy restart command
+				</button>
+				<pre><code id="restart">node first-action.mjs restart</code></pre>
+			</div>
+			<pre>
+RESTART REPLAY: TICKET-1
+Provider effects: 1</pre
+			>
+			<p>
+				This second command runs in a fresh process. Do not delete state or change its path. A persisted confirmed receipt is returned
+				without a second provider dispatch.
+			</p>
+			<h2>5. Commit, lose the acknowledgement, then retry</h2>
+			<div class="codebox">
+				<button type="button" data-copy-target="unknown" data-copy-label="Copy UNKNOWN command" data-copy-event="first_action_step_reached">
+					Copy UNKNOWN command
+				</button>
+				<pre><code id="unknown">node first-action.mjs unknown</code></pre>
+			</div>
+			<pre>
+UNKNOWN: retry blocked
+Ambiguous provider effects: 1</pre
+			>
+			<p>
+				This separate fake-provider action commits before throwing. The next attempt must remain blocked. Keep the same identity; do not
+				call the provider directly or create a fresh identity to evade the block.
+			</p>
+			<h2>6. Confirm provider truth</h2>
+			<div class="codebox">
+				<button
+					type="button"
+					data-copy-target="reconcile"
+					data-copy-label="Copy reconciliation command"
+					data-copy-event="first_action_step_reached"
+				>
+					Copy reconciliation command
+				</button>
+				<pre><code id="reconcile">node first-action.mjs reconcile</code></pre>
+			</div>
+			<pre>
+RECONCILED: TICKET-LOST
+Ambiguous provider effects: 1</pre
+			>
+			<p>
+				A read-only lookup of this controlled provider’s journal authoritatively confirms its receipt. This assumption belongs to the fake
+				provider, not arbitrary APIs. Without confirmation, the action stays UNKNOWN. Local mode does not automatically redispatch an
+				ambiguous write on ABSENT.
+			</p>
+			<h2 id="real-action">7. Protect a real action</h2>
+			<ol class="steps">
+				<li>
+					Replace the fake provider with one existing consequential provider operation that returns a confirmed, JSON-safe receipt. Keep its
+					native idempotency safeguards.
+				</li>
+				<li>
+					Choose a durable ID for one intentional action, scoped by tenant and operation. A separate legitimate intent must have a different
+					ID; retries must keep the same ID.
+				</li>
+				<li>
+					Bind every input that changes the effect, including recipient, amount, resource and account where applicable. Do not infer
+					identity from a per-attempt tool-call ID.
+				</li>
+				<li>
+					Use an explicit persistent <code>statePath</code>, shared by cooperating callers on one machine. Network filesystems and separate
+					host state are unsupported.
+				</li>
+				<li>
+					Route all callers through the wrapper. Remove the original unprotected tool from the agent’s exposed capabilities. Internal
+					provider retries and multiple effects inside one wrapper need their own safety analysis.
+				</li>
+				<li>
+					Supply authoritative read-only reconciliation when available. A timeout, stale lookup or unsupported 404 does not prove absence.
+					Unknown outcomes must not silently bypass protection.
+				</li>
+				<li>
+					In the provider’s disposable sandbox, verify first action, same-intent retry, changed-input conflict and fresh-process replay
+					using provider evidence. Test acknowledgement loss only when safe.
+				</li>
+			</ol>
+			<div class="note">
+				Success means your actual caller reaches the protected boundary and provider evidence confirms the expected effects. Installing the
+				SDK, finding a candidate or generating a companion file does not prove active protection.
+			</div>
+			<p>
+				<a href="https://github.com/stringsofthemind-oss/once/blob/main/examples/local-function/README.md">Full local-function contract</a>
+				·
+				<a href="https://github.com/stringsofthemind-oss/once/blob/main/sdk/typescript/examples/GITHUB_ISSUE_RECOVERY.md"
+					>GitHub recovery example</a
+				>
+			</p>
+			<h2 id="connect">Protect an agent’s existing tools</h2>
+			<p>
+				The local Connect path requires Node.js 24.15+, durable same-machine SQLite and trusted identity/effect metadata. It classifies
+				supported tools as BYPASS, PROTECT or UNKNOWN. Unresolved toolsets fail closed rather than returning a partially protected registry.
+				No Once API key is needed for this local route.
+			</p>
+			<p>
+				Use only the returned connected tools in the agent. Automatic classification does not invent business identity or prove
+				authoritative provider truth.
+			</p>
+			<a class="btn" href="https://github.com/stringsofthemind-oss/once/blob/main/docs/CONNECT_AUTO.md" data-event="docs_click"
+				>Open the complete Connect guide</a
+			>
+			<h2 id="hosts">Set up Codex, Claude Code or Cursor</h2>
+			<p>
+				The plugin/MCP layer assesses and plans supported integration. Local assessment needs no key; hosted setup needs a Once API key. The
+				server’s presence does not automatically protect other tools or replace the execution boundary.
+			</p>
+			<h3>Codex</h3>
+			<div class="codebox">
+				<button type="button" data-copy-target="codex" data-copy-label="Copy Codex setup" data-copy-event="install_copied">
+					Copy Codex setup
+				</button>
+				<pre><code id="codex">codex plugin marketplace add stringsofthemind-oss/once --ref main
+codex plugin add once@once-agent</code></pre>
+			</div>
+			<h3>Claude Code</h3>
+			<div class="codebox">
+				<button type="button" data-copy-target="claude" data-copy-label="Copy Claude setup" data-copy-event="install_copied">
+					Copy Claude setup
+				</button>
+				<pre><code id="claude">claude plugin marketplace add stringsofthemind-oss/once
+claude plugin install once@once-agent</code></pre>
+			</div>
+			<p>
+				<a href="/claude-code-mcp-safe-retries/">Claude setup details</a> ·
+				<a href="/cursor-mcp-safe-retries/">Cursor project MCP configuration</a> ·
+				<a href="https://github.com/stringsofthemind-oss/once/tree/main/plugins/openai/once">Codex plugin instructions</a>
+			</p>
+			<p>
+				After setup, ask for a read-only project assessment, review identity/effect semantics, wire supported operations, then verify a real
+				protected action. The selected local or hosted runtime determines where state lives.
+			</p>
+			<h2 id="hosted">Evaluate a supported hosted operation</h2>
+			<p>
+				Hosted execution requires a Once API key and explicit supported provider setup. The SDK sends operation identity, provider alias and
+				action payload to the configured Once API. Current hosted HTTP provider registration includes its base URL and provider token.
+			</p>
+			<p>
+				The hosted service manages execution state; the homepage does not promise a storage jurisdiction, retention period, encryption
+				design, audit or SLA. Evaluate those requirements before sending sensitive production data. If the service cannot be reached after
+				bounded retries, the SDK raises an error; it does not silently dispatch directly.
+			</p>
+			<p>
+				Recovery and any permission to execute after an absence observation depend on the specific downstream contract. Do not apply a
+				generic ABSENT → EXECUTE rule to local protection.
+			</p>
+			<div class="actions">
+				<a class="btn" href="/providers/">Check provider support</a
+				><a class="btn" href="https://playground.onceexec.com/hosted" data-event="hosted_sandbox_click">Activate hosted sandbox</a>
+			</div>
+			<p class="small">
+				Hosted activation is a separate Stripe test checkout flow. It is optional for learning and local verification. Use test details
+				only; do not enter real card data.
+			</p>
+			<h2 id="assess">Assess your codebase first</h2>
+			<div class="codebox">
+				<button type="button" data-copy-target="doctor" data-copy-label="Copy read-only assessment" data-copy-event="install_copied">
+					Copy read-only assessment
+				</button>
+				<pre><code id="doctor">npx --yes --package=@once-agent/sdk once doctor .</code></pre>
+			</div>
+			<p>
+				Default Doctor assessment is local, requires no Once API key, does not upload source and does not modify application source. It
+				reports likely consequential candidates and supported next steps. Discovery is not protection. Follow the candidate-specific guide;
+				unsupported shapes may require reviewed local integration or an adapter.
+			</p>
+			<h2>Keep protection active</h2>
+			<p>
+				Preserve the state path, logical IDs and complete effect payload across deploys. Monitor unresolved UNKNOWN outcomes and conflicts.
+				Verify provider truth before recovery; never treat any error as permission to bypass the wrapper.
+			</p>
+			<p>
+				<a href="/evidence/">Inspect evidence and limitations</a> ·
+				<a href="https://github.com/stringsofthemind-oss/once/issues">Report an integration problem</a>
+			</p>
+		</main>
+		<footer class="footer wrap">
+			<span
+				>Once · Open source · MIT<br />TypeScript <span data-version="ts">0.1.22</span> · Python <span data-version="python">0.1.1</span> ·
+				MCP <span data-version="mcp">0.1.5</span></span
+			>
+			<nav aria-label="Footer">
+				<a href="/quickstart/">Quickstart</a><a href="/evidence/">Evidence</a><a href="/agent.md">Agent guide</a
+				><a href="/retry-exposure/">Estimate retry exposure</a
+				><a href="https://playground.onceexec.com/hosted" data-event="hosted_sandbox_click">Hosted sandbox activation</a>
+			</nav>
+		</footer>
+		<p class="sr-only" data-copy-status role="status"></p>
+	</body>
+</html>
