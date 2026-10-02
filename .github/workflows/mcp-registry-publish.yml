@@ -1,0 +1,96 @@
+name: MCP Registry publish
+
+on:
+  pull_request:
+    paths:
+      - "mcp/server.json"
+      - "mcp/package.json"
+      - ".github/workflows/mcp-registry-publish.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "mcp/server.json"
+      - "mcp/package.json"
+      - ".github/workflows/mcp-registry-publish.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: mcp-registry-publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Verify MCP package and registry metadata agree
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+          const pkg = JSON.parse(fs.readFileSync('mcp/package.json', 'utf8'));
+          const server = JSON.parse(fs.readFileSync('mcp/server.json', 'utf8'));
+
+          if (server.name !== pkg.mcpName) {
+            throw new Error(`server.name (${server.name}) does not match package mcpName (${pkg.mcpName})`);
+          }
+          if (server.version !== pkg.version) {
+            throw new Error(`server.version (${server.version}) does not match package version (${pkg.version})`);
+          }
+          if (!Array.isArray(server.packages) || server.packages.length !== 1) {
+            throw new Error('mcp/server.json must describe exactly one published package');
+          }
+
+          const published = server.packages[0];
+          if (published.registryType !== 'npm') {
+            throw new Error(`Expected npm registryType, got ${published.registryType}`);
+          }
+          if (published.identifier !== pkg.name) {
+            throw new Error(`Published identifier (${published.identifier}) does not match package name (${pkg.name})`);
+          }
+          if (published.version !== pkg.version) {
+            throw new Error(`Published package version (${published.version}) does not match package version (${pkg.version})`);
+          }
+
+          console.log(`MCP metadata aligned at ${pkg.mcpName} v${pkg.version}`);
+          NODE
+
+      - name: Install latest MCP publisher
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" \
+            | tar xz mcp-publisher
+
+      - name: Validate MCP Registry manifest
+        run: ./mcp-publisher validate ./mcp/server.json
+
+  publish:
+    if: github.event_name != 'pull_request'
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install latest MCP publisher
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" \
+            | tar xz mcp-publisher
+
+      - name: Authenticate to MCP Registry with GitHub OIDC
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish current MCP manifest
+        run: ./mcp-publisher publish ./mcp/server.json
