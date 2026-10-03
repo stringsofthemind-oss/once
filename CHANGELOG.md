@@ -4,6 +4,12 @@ Historical SDK change notes are recorded here. For current published versions an
 changes after the entries below, see the [public release history](https://github.com/stringsofthemind-oss/once/releases).
 Website-only changes do not alter SDK execution semantics.
 
+## 0.1.23 - Unreleased
+
+- Add explicit host-supplied `protectToolCall` using the existing local SQLite safety engine, stable identity/effect binding, UNKNOWN blocking and authoritative reconciliation.
+- Harden malformed CONFIRMED observations; require Node.js 24.15+ for this local path.
+- See [release preparation](docs/RELEASE_0_1_23.md) for live issue #280 evidence, prior-candidate reconciliation and retained-authority/host limitations. No universal exactly-once, automatic MCP proxy or model interception claim.
+
 ## 0.1.12 - 2026-09-25
 
 ### Added
