@@ -36,10 +36,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Use Node.js 20
+      - name: Use Node.js 24.15
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '24.15.0'
           cache: npm
           cache-dependency-path: sdk/typescript/package-lock.json
 
