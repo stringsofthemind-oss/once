@@ -1,5 +1,25 @@
 # @once-agent/sdk
 
+## Natural placement (unreleased)
+
+For a host-owned unary tool callback, `wrapTool(callback, semantics)` delegates to `protectToolCall`:
+
+```ts
+import { wrapTool } from "@once-agent/sdk";
+
+const protectedSend = wrapTool(sendMessage, {
+  statePath: "./durable/once.sqlite",
+  operationId: ({ orderId }) => `order:${orderId}:send`,
+  effect: ({ orderId, message }) => ({
+    tool: "messaging.account-A.send",
+    args: { orderId, message },
+  }),
+  reconcile: ({ effect }) => readExactMessage(effect),
+});
+```
+
+The callback receives frozen `effect.args`; bind fixed account authority and every consequential argument. Identity and complete semantics remain application-owned. `UNKNOWN` never triggers another execution. Internal callback retries and model-side connectors without host execution control are outside this boundary. Requires Node 24.15+ and one durable local state file. See [two execution surfaces](../../examples/natural-placement/README.md) and [design](../../docs/OPERATION_NATURAL_PLACEMENT.md). This is a branch API, not yet a published release.
+
 ## Explicit connected-tool calls
 
 `protectToolCall` protects a host-supplied async tool function without provider
