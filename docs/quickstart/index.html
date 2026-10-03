@@ -49,7 +49,7 @@
 				directory and durable SQLite file for every run. No network provider, payment or hosted subscription is used.
 			</div>
 			<h2>1. Check Node and install</h2>
-			<p>Use a fresh disposable directory. These commands work in a terminal or PowerShell.</p>
+			<p>Use a fresh disposable directory. These commands work in a terminal or PowerShell. Run steps 1–6 in order, from the same directory.</p>
 			<div class="codebox">
 				<button type="button" data-copy-target="install" data-copy-label="Copy setup commands" data-copy-event="install_copied">
 					Copy setup commands
@@ -67,7 +67,8 @@ npm install @once-agent/sdk@0.1.22</code></pre>
 			<h2>2. Save the complete example</h2>
 			<p>
 				<a href="first-action.mjs" download>Download first-action.mjs</a> into that directory, or copy the full code below into a file named
-				<code>first-action.mjs</code>.
+				<code>first-action.mjs</code>. Save it beside <code>package.json</code>. On Windows, check that your editor has not added
+				<code>.txt</code> to the filename.
 			</p>
 			<details>
 				<summary>Complete copyable example</summary>
@@ -218,6 +219,11 @@ Ambiguous provider effects: 1</pre
 				A read-only lookup of this controlled provider’s journal authoritatively confirms its receipt. This assumption belongs to the fake
 				provider, not arbitrary APIs. Without confirmation, the action stays UNKNOWN. Local mode does not automatically redispatch an
 				ambiguous write on ABSENT.
+			</p>
+			<p>
+				You can repeat steps 3 and 4 with the same state to verify replay. Step 5 shows UNKNOWN before step 6 reconciles that action;
+				after reconciliation, its result is confirmed, so step 5 no longer produces the expected UNKNOWN output. To repeat the whole
+				experiment, start in another fresh disposable directory and keep the original state and journals together.
 			</p>
 			<h2 id="real-action">7. Protect a real action</h2>
 			<ol class="steps">
