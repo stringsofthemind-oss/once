@@ -12,6 +12,10 @@ Immutable npm 0.1.24 tarball already includes Natural Placement but carries the 
 
 Validation: site generator check and surface guard pass; website funnel 4/4; SDK typecheck and ESM/CommonJS build pass; wrapTool/MCP 17/17; browser acceptance passes at 360/390/768/1440 including clipboard, replay/conflict/UNKNOWN/reconciliation, accessibility and no-JS. Browser harness now uses platform path separator and normalizes CRLF for browser code parity. Full SDK release gate and PR CI are required before merge.
 
+## Production follow-up
+
+PR #286 merged as 927c5bfd7fa6f0e1500cd57cdea5767e1c44dc3d after 23/23 green checks. Main Cloudflare Pages deployment succeeded. Playground guarded deployment succeeded with Worker version 78a3af5f-0ecc-47f6-b886-3d7555bb5aba. Direct reads of all 26 sitemap/onboarding/machine pages were HTTP 200 and exposed current metadata; 24 matched source exactly. Homepage and quickstart differed only because Cloudflare mistook sdk@0.1.24 for an email address, inserting email-protection markup. The follow-up wraps those two pinned code blocks in Cloudflare documented email_off comments and guards their presence; commands and clipboard text remain unchanged.
+
 ## Every tracked version hit at base
 
 | Location | Classification | Baseline excerpt | Disposition |
