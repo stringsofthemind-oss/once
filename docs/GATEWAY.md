@@ -1,6 +1,6 @@
 # Once Gateway
 
-Status: available in the published `@once-agent/sdk@0.1.13` package.
+Status: available in the current published `@once-agent/sdk@0.1.24` package (introduced in 0.1.13).
 
 The Once Gateway selectively routes an agent/runtime's **already-selected tool subset** without copying the global Tool Graph into model context.
 

@@ -26,6 +26,14 @@ const claudeReadme = read("plugins/claude-code/once/README.md");
 const pythonVersion = pythonProject.match(/^version\s*=\s*"([^"]+)"/m)?.[1];
 assert.ok(pythonVersion, "could not read Python SDK version");
 
+for (const file of ["docs/agent.md", "docs/llms.txt", "docs/GATEWAY.md"]) {
+  const current = read(file);
+  assert.ok(current.includes(`@once-agent/sdk@${published.ts}`), `${file}: current SDK must match published metadata`);
+  assert.doesNotMatch(current, /@once-agent\/sdk@0\.1\.(14|22)\b/, `${file}: obsolete current SDK reference`);
+}
+assert.match(rootReadme, /Natural Placement[\s\S]*wrapTool/, "root README must expose Natural Placement");
+assert.match(homepage, /Natural Placement[\s\S]*wrapTool/, "homepage must expose Natural Placement");
+
 const siteTs = homepage.match(/data-version="ts">([^<]+)/)?.[1];
 const sitePython = homepage.match(/data-version="python">([^<]+)/)?.[1];
 const siteMcp = homepage.match(/data-version="mcp">([^<]+)/)?.[1];

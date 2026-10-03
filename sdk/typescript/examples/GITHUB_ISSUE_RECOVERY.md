@@ -24,7 +24,7 @@ export ONCE_STATE_PATH="$PWD/.once/github-issues.sqlite"
 ```
 
 For an installed-package consumer, copy `github-issue-recovery.mjs` into your
-own project and install `@once-agent/sdk@0.1.21`. It imports the public package
+own project and run `npm install @once-agent/sdk` (current SDK 0.1.24). It imports the public package
 by name; no private source imports or extra runtime dependencies are needed.
 
 Persist this input as `intent.json` **before** the first call:

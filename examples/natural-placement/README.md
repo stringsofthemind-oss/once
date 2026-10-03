@@ -1,8 +1,14 @@
-# Natural placement (unreleased branch API)
+# Natural placement (SDK 0.1.24)
 
-Node 24.15+; build the branch SDK, then install its packed tarball in your application. This API is not in the published 0.1.23 package.
+Requires Node.js 24.15+. Install the published SDK in your application:
 
-`host-callback.mjs` and `mcp-client.mjs` are reusable integration examples. Copy them into an application that has installed the branch tarball and supply its fixed host/client and authoritative lookup.
+```bash
+npm install @once-agent/sdk
+```
+
+`wrapTool` is available in SDK 0.1.24.
+
+`host-callback.mjs` and `mcp-client.mjs` are reusable integration examples. Copy them into an application that has installed SDK 0.1.24 or later and supply its fixed host/client and authoritative lookup.
 
 ## Ordinary host callback
 
