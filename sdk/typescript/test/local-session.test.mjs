@@ -17,8 +17,17 @@ function fixture(t) {
   const statePath = path.join(dir, "state.sqlite");
   const effectsPath = path.join(dir, "effects.json");
   writeFileSync(effectsPath, "[]");
-  t.after(() => rmSync(dir, { recursive: true, force: true }));
-  return { dir, statePath, effectsPath };
+  const sessions = [];
+  // Hooks run in registration order: release SQLite handles before deletion.
+  t.after(() => {
+    for (const session of sessions) session.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+  return { dir, statePath, effectsPath, session(location = statePath) {
+    const session = createLocalProtectionSession(location);
+    sessions.push(session);
+    return session;
+  } };
 }
 
 function count(pathname) {
@@ -48,7 +57,7 @@ async function settle(callback) {
 
 test("scoped persistent state preserves replay and conflict semantics", async t => {
   const f = fixture(t);
-  const session = createLocalProtectionSession(f.statePath);
+  const session = f.session();
   t.after(() => session.close());
   const run = createRun(f);
 
@@ -67,7 +76,7 @@ test("scoped persistent state preserves replay and conflict semantics", async t 
 
 test("scoped session fails closed when its durable state path disappears", async t => {
   const f = fixture(t);
-  const session = createLocalProtectionSession(f.statePath);
+  const session = f.session();
   t.after(() => session.close());
   const run = createRun(f);
 
@@ -75,6 +84,13 @@ test("scoped session fails closed when its durable state path disappears", async
     () => run({ id: "A", amount: 100 }));
   assert.equal(count(f.effectsPath), 1);
 
+  if (process.platform === "win32") {
+    assert.throws(() => unlinkSync(f.statePath), e => e.code === "EBUSY" || e.code === "EPERM");
+    assert.deepEqual(await withLocalProtectionSession(session,
+      () => run({ id: "A", amount: 100 })), { receipt: "r-1" });
+    assert.equal(count(f.effectsPath), 1);
+    return;
+  }
   unlinkSync(f.statePath);
   await assert.rejects(
     withLocalProtectionSession(session,
@@ -96,7 +112,7 @@ test("scoped session fails closed when its durable state path disappears", async
 
 test("same-inode main-file damage cannot lose a confirmed effect across restart", async t => {
   const f = fixture(t);
-  const session = createLocalProtectionSession(f.statePath);
+  const session = f.session();
   const run = createRun(f);
 
   await withLocalProtectionSession(session,
@@ -109,7 +125,7 @@ test("same-inode main-file damage cannot lose a confirmed effect across restart"
   writeFileSync(f.statePath, "not-a-sqlite-database");
   session.close();
 
-  const restarted = createLocalProtectionSession(f.statePath);
+  const restarted = f.session();
   t.after(() => restarted.close());
   await settle(() => withLocalProtectionSession(restarted,
     () => run({ id: "A", amount: 100 })));
@@ -118,7 +134,7 @@ test("same-inode main-file damage cannot lose a confirmed effect across restart"
 
 test("damage after an external effect cannot cause a blind redispatch after restart", async t => {
   const f = fixture(t);
-  const session = createLocalProtectionSession(f.statePath);
+  const session = f.session();
   const run = protectLocal(async input => {
     addEffect(f.effectsPath, input.amount);
     // Damage the same live main database file after the effect but before Once
@@ -137,7 +153,7 @@ test("damage after an external effect cannot cause a blind redispatch after rest
   assert.equal(count(f.effectsPath), 1);
   session.close();
 
-  const restarted = createLocalProtectionSession(f.statePath);
+  const restarted = f.session();
   t.after(() => restarted.close());
   await settle(() => withLocalProtectionSession(restarted,
     () => run({ id: "A", amount: 100 })));
@@ -147,7 +163,7 @@ test("damage after an external effect cannot cause a blind redispatch after rest
 test("an unrelated scoped session cannot change a protectLocal state path", async t => {
   const f = fixture(t);
   const other = path.join(f.dir, "other.sqlite");
-  const session = createLocalProtectionSession(other);
+  const session = f.session(other);
   t.after(() => session.close());
   const run = createRun(f);
 

@@ -48,6 +48,7 @@
     "dist-cjs"
   ],
   "scripts": {
+    "test:tool-call": "npm run build && node --test ./test/tool-call.test.mjs",
     "benchmark:http-autoprotection": "node ./scripts/http-autoprotection-coverage.mjs",
     "benchmark:local-function-bridge": "node ./scripts/local-function-bridge-coverage.mjs",
     "test:local-function-transformer": "npm run build && node ./scripts/local-function-transformer-regression.mjs",
