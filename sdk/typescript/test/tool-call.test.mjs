@@ -82,6 +82,24 @@ test("exception before any effect is conservatively UNKNOWN and blocks retry", a
   assert.equal(f.effects().length, 0);
 });
 
+test("contradictory confirmation envelopes cannot persist a false replay", async t => {
+  const f = fixture(t);
+  await assert.rejects(protectToolCall({ ...f.base, execute: async effect => {
+    await f.base.execute(effect);
+    throw Error("lost acknowledgement");
+  } }), { code: "UNKNOWN" });
+  await assert.rejects(protectToolCall({ ...f.base, reconcile: () => ({
+    status: "CONFIRMED", result: { id: 999 }, error: "lookup failed",
+  }) }), { code: "UNKNOWN" });
+  await assert.rejects(protectToolCall(f.base), { code: "UNKNOWN" });
+  const recovered = await protectToolCall({ ...f.base, reconcile: () => ({
+    status: "CONFIRMED", result: f.effects()[0],
+  }) });
+  assert.deepEqual(await protectToolCall(f.base), recovered);
+  assert.equal(recovered.id, 1);
+  assert.equal(f.effects().length, 1);
+});
+
 test("missing identity and invalid effects fail before dispatch", async t => {
   const f = fixture(t);
   for (const operationId of [undefined, "", "  ", 42]) await assert.rejects(protectToolCall({ ...f.base, operationId }), { code: "IDENTITY_REQUIRED" });

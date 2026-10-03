@@ -54,7 +54,10 @@ export async function protectToolCall<I extends Record<string, unknown>, T>(
     leaseMs,
     reconcile: reconcile ? async () => {
       const observation = snapshotLocalData(await reconcile({ operationId, effect }));
-      if (observation?.status === "CONFIRMED" &&
+      if (observation && typeof observation === "object" && !Array.isArray(observation) &&
+          Object.keys(observation).length === 2 &&
+          Object.prototype.hasOwnProperty.call(observation, "status") &&
+          observation.status === "CONFIRMED" &&
           Object.prototype.hasOwnProperty.call(observation, "result")) {
         return { state: "CONFIRMED" as const, result: observation.result };
       }
