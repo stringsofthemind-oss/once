@@ -4,6 +4,13 @@ Historical SDK change notes are recorded here. For current published versions an
 changes after the entries below, see the [public release history](https://github.com/stringsofthemind-oss/once/releases).
 Website-only changes do not alter SDK execution semantics.
 
+## 0.1.24 - 2026-10-03
+
+- Add public `wrapTool(callback, semantics)` over `protectToolCall` and `protectLocal`; no new safety engine.
+- Require explicit stable operation identity and complete effect/authority binding; execute frozen declared args. UNKNOWN and reconciliation semantics remain unchanged.
+- Demonstrate plain callbacks and real MCP client/server transport; merged packed SDK live proof on disposable GitHub issue #284 observed two operations and exactly two comments, including lost-ack recovery.
+- See [release notes](docs/RELEASE_0_1_24.md) for exact evidence and limits. No universal exactly-once or multi-host claim; opaque internal retries and connector-only model access remain outside the boundary.
+
 ## 0.1.23 - Unreleased
 
 - Add explicit host-supplied `protectToolCall` using the existing local SQLite safety engine, stable identity/effect binding, UNKNOWN blocking and authoritative reconciliation.

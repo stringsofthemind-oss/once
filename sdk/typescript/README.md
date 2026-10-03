@@ -1,6 +1,6 @@
 # @once-agent/sdk
 
-## Natural placement (unreleased)
+## Natural placement (0.1.24)
 
 For a host-owned unary tool callback, `wrapTool(callback, semantics)` delegates to `protectToolCall`:
 
@@ -18,7 +18,7 @@ const protectedSend = wrapTool(sendMessage, {
 });
 ```
 
-The callback receives frozen `effect.args`; bind fixed account authority and every consequential argument. Identity and complete semantics remain application-owned. `UNKNOWN` never triggers another execution. Internal callback retries and model-side connectors without host execution control are outside this boundary. Requires Node 24.15+ and one durable local state file. See [two execution surfaces](../../examples/natural-placement/README.md) and [design](../../docs/OPERATION_NATURAL_PLACEMENT.md). This is a branch API, not yet a published release.
+The callback receives frozen `effect.args`; bind fixed account authority and every consequential argument. Identity and complete semantics remain application-owned. `UNKNOWN` never triggers another execution. Internal callback retries and model-side connectors without host execution control are outside this boundary. Requires Node 24.15+ and one durable local state file. See [two execution surfaces](../../examples/natural-placement/README.md) and [design](../../docs/OPERATION_NATURAL_PLACEMENT.md). Introduced in SDK 0.1.24.
 
 ## Explicit connected-tool calls
 
