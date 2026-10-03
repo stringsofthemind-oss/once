@@ -84,7 +84,13 @@ assert.match(homepage, /Run the retry demo/, "homepage must lead to the ungated 
 assert.doesNotMatch(homepage, /once-network|Open live proof|Test Once at your scale/, "obsolete proof/funnel claims must stay removed");
 const schema = JSON.parse(homepage.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
 assert.equal(schema.softwareVersion, published.ts, "static structured metadata must match published SDK");
-assert.match(read("docs/quickstart/index.html"), /@once-agent\/sdk@/);
+for (const file of ["docs/index.html", "docs/quickstart/index.html"]) {
+  const pins = [...read(file).matchAll(/npm install @once-agent\/sdk@(\d+\.\d+\.\d+)/g)];
+  assert.ok(pins.length, `${file}: first-action install must pin a published SDK version`);
+  for (const [, version] of pins) {
+    assert.equal(version, published.ts, `${file}: first-action install must match the published SDK version`);
+  }
+}
 assert.ok(read("workers/playground/src/index.js").includes("return html(RETRY_DEMO_PAGE)"), "playground root must remain ungated");
 assert.match(read("docs/quickstart/index.html"), /Local mode does not automatically redispatch/, "local ambiguity boundary must be explicit");
 assert.ok(read("docs/demo/index.html").includes("does not run the SDK"));
