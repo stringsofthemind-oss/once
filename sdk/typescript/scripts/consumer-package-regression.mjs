@@ -263,8 +263,31 @@ try {
   const consumer = `
 import {
   Once,
-  OnceError
+  OnceError,
+  protectToolCall,
+  type ToolCallEffect,
+  type ToolCallObservation,
+  type ToolCallProtectionOptions
 } from "@once-agent/sdk";
+
+type CommentArgs = { repo: string; issue: number; body: string };
+type CommentReceipt = { id: number };
+const toolEffect: ToolCallEffect<CommentArgs> = {
+  tool: "github.contract-account.add_comment",
+  args: { repo: "owner/disposable", issue: 1, body: "Contract only" },
+};
+const toolOptions: ToolCallProtectionOptions<CommentArgs, CommentReceipt> = {
+  operationId: "contract-tool-call",
+  effect: toolEffect,
+  execute: async ({ args }) => ({ id: args.issue }),
+  reconcile: ({ effect }): ToolCallObservation<CommentReceipt> => ({
+    status: "CONFIRMED", result: { id: effect.args.issue },
+  }),
+};
+function verifyToolCall(): Promise<CommentReceipt> {
+  return protectToolCall(toolOptions);
+}
+void verifyToolCall;
 
 const once =
   new Once({
@@ -514,6 +537,7 @@ void errorClass;
   console.log(
     "PASS - OnceError export typechecks"
   );
+  console.log("PASS - protectToolCall and all public tool-call types typecheck");
 
   // ================================================
   // RUNTIME IMPORT
@@ -530,7 +554,8 @@ import("@once-agent/sdk")
   .then((m) => {
     if (
       typeof m.Once !== "function" ||
-      typeof m.OnceError !== "function"
+      typeof m.OnceError !== "function" ||
+      typeof m.protectToolCall !== "function"
     ) {
       process.exit(2);
     }
@@ -578,6 +603,17 @@ import("@once-agent/sdk")
   console.log(
     "PASS - package runtime import works"
   );
+
+  const cjsRuntime = run(process.execPath, ["-e", `
+    const sdk = require('@once-agent/sdk');
+    if (typeof sdk.protectToolCall !== 'function') process.exit(2);
+    console.log('CJS TOOL CALL IMPORT PASS');
+  `], { cwd: sandbox });
+  if (cjsRuntime.status !== 0 || !cjsRuntime.stdout.includes("CJS TOOL CALL IMPORT PASS")) {
+    console.error(cjsRuntime.stdout, cjsRuntime.stderr);
+    throw new Error("Installed CommonJS tool-call export failed");
+  }
+  console.log("PASS - installed protectToolCall ESM and CommonJS exports work");
 
   console.log("");
   console.log(
