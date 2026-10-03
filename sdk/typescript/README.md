@@ -1,5 +1,36 @@
 # @once-agent/sdk
 
+## Explicit connected-tool calls
+
+`protectToolCall` protects a host-supplied async tool function without provider
+credentials in the agent process. Supply a stable logical ID, complete effect,
+and a persistent local state file (Node.js 24.15+):
+
+```ts
+import { protectToolCall } from "@once-agent/sdk";
+
+await protectToolCall({
+  operationId: "account-A:comment:request-001",
+  statePath: "./persistent/once.sqlite",
+  effect: {
+    tool: "github.account-A.add_comment",
+    args: { repo: "owner/lab", issue: 217, body: "Exact comment text" },
+  },
+  execute: ({ args }) => connectedTools.addComment(args),
+  reconcile: ({ effect }) => connectedTools.findMatchingComment(effect.args),
+});
+```
+
+Exact retries replay confirmed receipts; changed effects return `CONFLICT`.
+Errors after entering `execute` remain `UNKNOWN`. Reconciliation returns
+`CONFIRMED` with a JSON-safe result, `NOT_FOUND`, or `UNKNOWN`; only positive
+confirmation enables recovery. Neither `NOT_FOUND` nor missing reconciliation
+permits redispatch. The host must bind account identity, use the supplied frozen
+effect snapshot, normalize tool errors, and prevent duplicate internal retries.
+Keep all effect-bearing inputs in `effect.args`; transport metadata may be supplied
+separately as `metadata`. This requires one preserved local authority across retries.
+Full source contract: [PROTECT_TOOL_CALL.md](../../docs/PROTECT_TOOL_CALL.md).
+
 > **Automatic Connect in 0.1.12:** this SDK version includes the
 > `@once-agent/sdk/connect` public surface for automatic tool classification,
 > whole-toolset wiring, trusted intent identity, conservative effect binding,

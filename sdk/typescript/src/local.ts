@@ -285,6 +285,11 @@ function copyData(value: unknown, allowHandles = false, seen = new Set<object>()
   }
 }
 
+/** Internal strict snapshot shared by explicit tool-call protection. */
+export function snapshotLocalData<T>(value: T): T {
+  return copyData(value, false, new Set<object>(), "$", true) as T;
+}
+
 function encodeResult(value: unknown): string {
   const envelope = value === undefined
     ? { hasValue: false }

@@ -1022,6 +1022,8 @@ export {
 export default Once;
 
 export { protectLocal, LocalProtectionError } from "./local.js";
+export { protectToolCall } from "./tool-call.js";
+export type { ToolCallEffect, ToolCallObservation, ToolCallProtectionOptions } from "./tool-call.js";
 export type { LocalProtectionOptions, LocalObservation } from "./local.js";
 
 /*
