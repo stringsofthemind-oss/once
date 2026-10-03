@@ -92,7 +92,7 @@ Validation: site generator check and surface guard pass; website funnel 4/4; SDK
 | docs/product-adoption-hardening-v1.md:91 | INTENTIONAL HISTORICAL EVIDENCE | published 0.1.6. The repository CI is test-focused and has no npm/PyPI | Frozen release, introduction, baseline or measured proof; preserved |
 | docs/product-adoption-hardening-v1.md:95 | INTENTIONAL HISTORICAL EVIDENCE | the registry identity and 0.1.3, but its installed registry state was not | Frozen release, introduction, baseline or measured proof; preserved |
 | docs/published-versions.json:2 | CURRENT PUBLIC REFERENCE |   "ts": "0.1.22", | Updated SDK references to 0.1.24 or versionless install; historical Agno/introduced wording preserved |
-| docs/published-versions.json:3 | CURRENT PUBLIC REFERENCE |   "mcp": "0.1.5" | Updated SDK references to 0.1.24 or versionless install; historical Agno/introduced wording preserved |
+| docs/published-versions.json:3 | INDEPENDENT PACKAGE VERSION | mcp: 0.1.5 | Preserved independent MCP publication |
 | docs/quickstart/index.html:61 | CURRENT PUBLIC REFERENCE | npm install @once-agent/sdk@0.1.22</code></pre> | Updated SDK references to 0.1.24 or versionless install; historical Agno/introduced wording preserved |
 | docs/quickstart/index.html:359 | CURRENT PUBLIC REFERENCE | 				>Once · Open source · MIT<br />TypeScript <span data-version="ts">0.1.22</span> · Python <span data-version="python">0.1.1</span> · | Updated SDK references to 0.1.24 or versionless install; historical Agno/introduced wording preserved |
 | docs/quickstart/index.html:360 | INDEPENDENT PACKAGE VERSION | 				MCP <span data-version="mcp">0.1.5</span></span | Python/MCP independent publication; preserved (MCP proxy install aligned to existing 0.1.5) |
@@ -145,9 +145,9 @@ Validation: site generator check and surface guard pass; website funnel 4/4; SDK
 | examples/vercel-ai-sdk/package-lock.json:66 | GENERATED/LOCKFILE/TEST CONTRACT |       "resolved": "https://registry.npmjs.org/@once-agent/sdk/-/sdk-0.1.5.tgz", | Independent manifest, compatibility range, bundled dependency or frozen resolution; preserved |
 | examples/vercel-ai-sdk/package.json:3 | GENERATED/LOCKFILE/TEST CONTRACT |   "version": "0.1.0", | Independent manifest, compatibility range, bundled dependency or frozen resolution; preserved |
 | examples/vercel-ai-sdk/package.json:11 | GENERATED/LOCKFILE/TEST CONTRACT |     "@once-agent/sdk": "^0.1.5", | Independent manifest, compatibility range, bundled dependency or frozen resolution; preserved |
-| mcp/README.md:35 | CURRENT PUBLIC REFERENCE | - the helper server shells out to the pinned @once-agent/sdk@0.1.13 CLI rather than reimplementing Once protection logic. | Updated SDK references to 0.1.24 or versionless install; historical Agno/introduced wording preserved |
+| mcp/README.md:35 | CURRENT PUBLIC REFERENCE | SDK CLI 0.1.13 | Corrected to actual independent MCP bundled SDK 0.1.14; dependency unchanged |
 | mcp/README.md:91 | INDEPENDENT PACKAGE VERSION | npx -y @once-agent/mcp@0.1.4 proxy --config .once/mcp.json | Python/MCP independent publication; preserved (MCP proxy install aligned to existing 0.1.5) |
-| mcp/README.md:96 | CURRENT PUBLIC REFERENCE | Source builds after MCP 0.1.4 also support optional bounded upstream waits: | Updated SDK references to 0.1.24 or versionless install; historical Agno/introduced wording preserved |
+| mcp/README.md:96 | INTENTIONAL HISTORICAL EVIDENCE | Source builds after MCP 0.1.4 | Preserved source-only timeout feature boundary |
 | mcp/package-lock.json:3 | GENERATED/LOCKFILE/TEST CONTRACT |   "version": "0.1.5", | Independent manifest, compatibility range, bundled dependency or frozen resolution; preserved |
 | mcp/package-lock.json:9 | GENERATED/LOCKFILE/TEST CONTRACT |       "version": "0.1.5", | Independent manifest, compatibility range, bundled dependency or frozen resolution; preserved |
 | mcp/package-lock.json:14 | GENERATED/LOCKFILE/TEST CONTRACT |         "@once-agent/sdk": "0.1.14", | Independent manifest, compatibility range, bundled dependency or frozen resolution; preserved |
