@@ -51,7 +51,7 @@ Keep all effect-bearing inputs in `effect.args`; transport metadata may be suppl
 separately as `metadata`. This requires one preserved local authority across retries.
 Full source contract: [PROTECT_TOOL_CALL.md](../../docs/PROTECT_TOOL_CALL.md).
 
-> **Automatic Connect in 0.1.12:** this SDK version includes the
+> **Automatic Connect (introduced in 0.1.12):** the current SDK includes the
 > `@once-agent/sdk/connect` public surface for automatic tool classification,
 > whole-toolset wiring, trusted intent identity, conservative effect binding,
 > and OpenAI Agents FunctionTool wrapping. It has passed source, packed-package,

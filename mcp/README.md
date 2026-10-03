@@ -32,7 +32,7 @@ The tool descriptions are intentionally explicit about mutation:
 - assessment and planning tools are marked read-only;
 - setup/protection tools are marked destructive and require explicit confirmation tokens;
 - the API key is inherited from `ONCE_API_KEY` and is never intentionally returned by the MCP server;
-- the helper server shells out to the pinned `@once-agent/sdk@0.1.13` CLI rather than reimplementing Once protection logic.
+- the helper server shells out to the package-pinned `@once-agent/sdk@0.1.14` CLI (the independent MCP 0.1.5 dependency, not the current standalone SDK version) rather than reimplementing Once protection logic.
 
 ## Current claim boundary
 
@@ -88,7 +88,7 @@ Do not commit API keys to configuration files that will be published.
 The default command starts the Once helper server. To protect calls to a reviewed local MCP stdio server, start the proxy explicitly:
 
 ```bash
-npx -y @once-agent/mcp@0.1.4 proxy --config .once/mcp.json
+npx -y @once-agent/mcp@0.1.5 proxy --config .once/mcp.json
 ```
 
 The config must name the upstream command, pin the SHA-256 digest of its reviewed complete `tools/list` catalog, and specify protection decisions and identity/effect fields for consequential tools. It requires `serverId`, `command`, `args`, `statePath`, `expectedCatalogSha256`, and `tools`; each tool policy sets `decision` to `PROTECT` or `BYPASS`. The proxy refuses a changed catalog and preserves an unknown outcome after an ambiguous upstream error. Keep its SQLite state path durable and private. The [source regression](https://github.com/stringsofthemind-oss/once/blob/main/mcp/scripts/phase13b-stdio-e2e.mjs) includes a disposable example config.

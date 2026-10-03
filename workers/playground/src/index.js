@@ -4226,7 +4226,7 @@ footer{
     </div>
 
     <span class="state-pill">
-      SDK 0.1.4
+      TypeScript SDK
     </span>
 
   </div>

@@ -4,16 +4,17 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { readFileSync, existsSync, statSync, mkdirSync } from 'node:fs';
-import { resolve, extname } from 'node:path';
+import { resolve, extname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const docs = resolve(root, 'docs');
+const published = JSON.parse(readFileSync(resolve(docs, 'published-versions.json'), 'utf8'));
 const artifacts = process.env.ONCE_WEBSITE_ARTIFACTS || resolve(root, '.website-check');
 mkdirSync(artifacts, { recursive: true });
 const { chromium } = await import(process.env.ONCE_PLAYWRIGHT_MODULE || 'playwright');
 const server = createServer((req, res) => {
 	let file = resolve(docs, '.' + new URL(req.url, 'http://localhost').pathname);
-	if (!file.startsWith(docs + '/') && file !== docs) {
+	if (!file.startsWith(docs + sep) && file !== docs) {
 		res.writeHead(403).end();
 		return;
 	}
@@ -89,11 +90,11 @@ try {
 		});
 	});
 	await page.getByRole('button', { name: 'Copy setup commands', exact: true }).click();
-	assert.match(await page.evaluate(() => window.testCopied), /npm install @once-agent\/sdk@0.1.22/);
+	assert.ok((await page.evaluate(() => window.testCopied)).includes(`npm install @once-agent/sdk@${published.ts}`));
 	assert.equal(await page.locator('[data-copy-status]').innerText(), 'Copied to clipboard.');
 	await page.locator('summary').first().click();
 	const sample = await page.locator('#example').innerText();
-	assert.equal(sample, readFileSync(resolve(docs, 'quickstart/first-action.mjs'), 'utf8'));
+	assert.equal(sample, readFileSync(resolve(docs, 'quickstart/first-action.mjs'), 'utf8').replaceAll('\r\n', '\n'));
 	await page.screenshot({ path: resolve(artifacts, 'quickstart.png') });
 	await page.goto(base + '/retry-exposure/');
 	await page.getByRole('button', { name: 'Estimate exposure' }).click();

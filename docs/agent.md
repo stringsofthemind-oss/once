@@ -1,6 +1,8 @@
 # Once — Agent-Readable Product Guide
 
-> **Automatic Connect:** `@once-agent/sdk@0.1.14` publishes the tested
+> **Natural Placement (SDK 0.1.24):** `wrapTool(callback, semantics)` protects a host-owned unary callback. Supply stable logical identity, complete effect/account binding and authoritative reconciliation. Requires Node.js 24.15+ and one durable same-machine SQLite authority. `UNKNOWN` blocks redispatch; opaque internal retries and connector-only model access are outside the boundary. See https://github.com/stringsofthemind-oss/once/tree/main/examples/natural-placement.
+
+> **Automatic Connect:** `@once-agent/sdk@0.1.24` publishes the tested
 > `@once-agent/sdk/connect` toolset integration path. It can classify supported
 > agent tools as `BYPASS`, `PROTECT`, or fail-closed `UNKNOWN`, bind trusted
 > logical intent identity and effect payload, and return a connected local tool
@@ -24,7 +26,7 @@ Canonical site: https://onceexec.com/
 
 Repository: https://github.com/stringsofthemind-oss/once
 
-TypeScript SDK: `@once-agent/sdk@0.1.14`
+TypeScript SDK: `@once-agent/sdk@0.1.24`
 
 npm: https://www.npmjs.com/package/@once-agent/sdk
 
