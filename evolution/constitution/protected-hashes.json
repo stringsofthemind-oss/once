@@ -7,7 +7,7 @@
     "evolution/constitution/v1.json": "57a638e2c0599078b5c7c6ae7399398fcbef586fb7d308e40e4bb81a4c464428",
     "evolution/kernel/campaign.mjs": "a2ca022d79b272865d9976427ef9364462b2510dd3c18136a308435831eb51a0",
     "evolution/kernel/candidate-worker.mjs": "a08fd61f6f15d210452a2ed4927032739cb7224db6bd014669cff02a611856bc",
-    "evolution/kernel/common.mjs": "7d4e7ec14926acdb5a7132f4d989b18aa976e9f1f6df9a3cd8d819c50ef68775",
+    "evolution/kernel/common.mjs": "72b3289c718cc6d9ccf3cd143833a505d9b14f10f0fb993c26c07e11d4cc66d3",
     "evolution/kernel/docs-evaluator.mjs": "82f46351882278862a7c05385445be8fb256e1b52d7a23ad2452710a3f28557b",
     "evolution/kernel/evaluate.mjs": "1f7ac29111acf1b86e0bf36b38bf0f8f523e8f3baabb649dfef68ed1f93b01b2",
     "evolution/kernel/hash-manifest.mjs": "babddbdf899a70e533e4bc7c816f6aea83a867ba7c09f263193a5d060845e87c",

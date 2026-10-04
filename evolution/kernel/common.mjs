@@ -49,7 +49,8 @@ export class Budget {
   git(args,cwd=root) {
     const allowed=['rev-parse','show','diff','status','ls-files','worktree','add','commit','branch'];
     if(!allowed.includes(args[0]))throw new Error('COMMAND_NOT_ALLOWED');
-    const result=this.run('git',['-c','core.hooksPath='+resolve(this.out,'empty-hooks'),'-c','credential.helper=',...args],{cwd});
+    const result=this.run('git',['-c','core.hooksPath='+resolve(this.out,'empty-hooks'),'-c','credential.helper=',
+      '-c','core.autocrlf='+(process.platform==='win32'?'true':'false'),...args],{cwd});
     if(result.status!==0)throw new Error('GIT_FAILURE: '+result.stderr);
     return result.stdout.trim();
   }
