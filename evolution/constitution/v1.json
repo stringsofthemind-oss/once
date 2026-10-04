@@ -22,7 +22,7 @@
     "3": "ELIGIBLE_FOR_HUMAN_PROMOTION",
     "4": "ELIGIBLE_FOR_HUMAN_PROMOTION"
   },
-  "limits": {"candidatesPerGeneration":4,"generations":2,"wallMs":600000,"subprocesses":160,"diskBytes":134217728,"diffBytes":16384,"outputBytes":1048576,"retries":0},
+  "limits": {"candidatesPerGeneration":4,"generations":2,"wallMs":600000,"subprocesses":200,"diskBytes":134217728,"diffBytes":16384,"outputBytes":1048576,"retries":0},
   "candidatePaths": ["docs/first10/index.html","examples/first10/README.md","evolution/zone/strategy.json"],
   "candidateLanguage": "bounded-data-only/1",
   "productionPromotion": "EXPLICIT_HUMAN_REVIEW_REQUIRED"

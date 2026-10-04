@@ -81,7 +81,9 @@ export function runCampaign(value) {
   if(budget.git(['status','--porcelain']))throw new Error('BASELINE_MUST_BE_COMMITTED_AND_CLEAN');
   const environment={os:platform(),release:release(),arch:arch(),node:process.version,dependencies:hash(readFileSync(resolve(root,'sdk/typescript/package-lock.json'))),network:'none in candidate/evaluation',permissions:'bounded-data + Node permission for generation'};
   const versions=json(resolve(root,'docs/published-versions.json'));versions.python=readFileSync(resolve(root,'sdk/python/pyproject.toml'),'utf8').match(/^version\s*=\s*"([^"]+)"/m)[1];
-  return startCampaign(budget,out,baseline,integrity,environment,versions);
+  atomic(resolve(out,'progress.json'),{status:'RUNNING',baseline,startedAt:new Date().toISOString(),legitimate:false});
+  try {const state=startCampaign(budget,out,baseline,integrity,environment,versions);atomic(resolve(out,'progress.json'),{status:state.status,legitimate:false});return state;}
+  catch(error){atomic(resolve(out,'failure.json'),{status:'FAILED',reason:error.message,baseline,resourceUsage:{subprocesses:budget.processes,wallMs:Date.now()-budget.started},legitimate:false});throw error;}
 }
 function startCampaign(budget,out,baseline,integrity,environment,versions) {
   const startedAt=new Date().toISOString(),baseMetrics=coldMetrics(root),campaignId='first10-'+baseline.slice(0,12)+'-'+randomBytes(4).toString('hex');
@@ -143,6 +145,8 @@ export function approveTrial(outValue,id,expectedHash) {
   if(inspected.sha256!==receipt.diffStatistics.sha256)throw new Error('TRIAL_CANDIDATE_CHANGED');
   const strategy=validateStrategy(json(resolve(candidate.path,'evolution/zone/strategy.json')));
   atomic(resolve(out,'trial-approval.json'),{candidateId:id,receiptHash:expectedHash,authority:'explicit maintainer command',scope:'isolated next generation only; no production merge',timestamp:new Date().toISOString()});
+  state.status='TRIAL_RUNNING';sealState(out,state);
+  try {
   const generated=proposalOutput(budget,out,1,strategy,state.knowledge);
   const later=safety(budget,resolve(root,'sdk/typescript/dist'),resolve(out,'generation1-actual'),generated.cases);
   if(!later.passed)throw new Error('LATER_GENERATION_SAFETY_FAILURE');
@@ -165,4 +169,9 @@ export function approveTrial(outValue,id,expectedHash) {
     scope:'bounded declarative adversarial generator; synthetic metrics, no general self-programming or adoption claim'};
   state.resourceUsage={subprocesses:state.resourceUsage.subprocesses+budget.processes,diskBytes:budget.disk(),wallMs:state.resourceUsage.wallMs+Date.now()-budget.started};
   atomic(resolve(out,'lineage.json'),state.lineage);sealState(out,state);verifyKernel();verifyArtifacts(state.integrity.artifacts);return state;
+  } catch(error) {
+    state.status='TRIAL_FAILED';state.failure={reason:error.message,legitimate:false,timestamp:new Date().toISOString()};
+    state.resourceUsage={...state.resourceUsage,subprocesses:state.resourceUsage.subprocesses+budget.processes,wallMs:state.resourceUsage.wallMs+Date.now()-budget.started};
+    sealState(out,state);throw error;
+  }
 }

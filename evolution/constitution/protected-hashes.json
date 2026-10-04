@@ -3,9 +3,9 @@
   "files": {
     "evolution/README.md": "b3d15159244c4fc0176b06b109f81bc53d1d0dedef9208381471409261c76418",
     "evolution/THREAT-MODEL.md": "d9e9132a397b76b40395a8b157da80c0736c5ffcb4bc500769f391b455e6c94d",
-    "evolution/cli.mjs": "dc2f537a00e28489dfc5b2a8e615d06206670690054c942d4e99b83bca5f3749",
-    "evolution/constitution/v1.json": "16c29cc189ddf3cf3f12746e84584e6d7aa3d2fa6d21787c963d5b63f9c83a47",
-    "evolution/kernel/campaign.mjs": "de8380887bd6671ffdae7d77b298f439be62f33c9320fc08b00b14f937a63f36",
+    "evolution/cli.mjs": "8802a33755df5ae2026b6c728cc6dadcbd0a48c5dbeae98b89b7ae13d3d93337",
+    "evolution/constitution/v1.json": "57a638e2c0599078b5c7c6ae7399398fcbef586fb7d308e40e4bb81a4c464428",
+    "evolution/kernel/campaign.mjs": "a2ca022d79b272865d9976427ef9364462b2510dd3c18136a308435831eb51a0",
     "evolution/kernel/candidate-worker.mjs": "a08fd61f6f15d210452a2ed4927032739cb7224db6bd014669cff02a611856bc",
     "evolution/kernel/common.mjs": "7d4e7ec14926acdb5a7132f4d989b18aa976e9f1f6df9a3cd8d819c50ef68775",
     "evolution/kernel/docs-evaluator.mjs": "82f46351882278862a7c05385445be8fb256e1b52d7a23ad2452710a3f28557b",
