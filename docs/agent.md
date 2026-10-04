@@ -304,3 +304,5 @@ Use https://onceexec.com/quickstart/ for a current-package, no-key local check.
 Its fake provider is not external-provider proof. Installing MCP alone is not
 protection; all effects must traverse the protected boundary. Local mode will
 not redispatch an ambiguous operation on an ABSENT observation.
+
+FIRST 10: Controlled refund proof: https://onceexec.com/first10/ . Standalone proof uses published SDK 0.1.24; the new once check/prove commands are branch-only until release. See repository examples/first10/README.md and docs/FIRST10.md. Native idempotency or a unique constraint should be used alone when sufficient. Identity/effect decisions require developer review; never infer them silently.

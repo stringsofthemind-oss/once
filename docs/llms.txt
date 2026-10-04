@@ -162,3 +162,5 @@ MCP idempotency; MCP retry safety; MCP safe retries; MCP duplicate tool calls; s
 - [Interactive simulation](https://onceexec.com/demo/): no account or checkout; not an SDK execution proof.
 - [Local quickstart](https://onceexec.com/quickstart/): actual SDK with controlled fake provider, restart and UNKNOWN checks; Node 24.15+, same-machine durability.
 - [Evidence](https://onceexec.com/evidence/): scoped reproductions and current release history.
+
+FIRST 10: Controlled refund proof: https://onceexec.com/first10/ . Standalone proof uses published SDK 0.1.24; the new once check/prove commands are branch-only until release. See repository examples/first10/README.md and docs/FIRST10.md. Native idempotency or a unique constraint should be used alone when sufficient. Identity/effect decisions require developer review; never infer them silently.

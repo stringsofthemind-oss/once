@@ -380,7 +380,7 @@ export function protectLocal<A extends unknown[], T>(
         }
         db.prepare("UPDATE local_operations SET state='UNKNOWN',owner=NULL,lease_until=NULL WHERE id=? AND state='CLAIMED'").run(id);
         if (!options.reconcile) {
-          throw new LocalProtectionError("UNKNOWN", `Outcome of ${id} is unknown. Supply an authoritative reconcile callback or investigate provider truth; no second write was dispatched.`);
+          throw new LocalProtectionError("UNKNOWN", `RETRY BLOCKED — ORIGINAL OUTCOME UNKNOWN. Operation ${id} may already have succeeded. Repeating it could create another external effect; no second write was dispatched. Next action: supply an authoritative read-only reconcile callback or investigate provider truth; retain the same identity and durable state.`);
         }
         let observation: LocalObservation<T>;
         try {
@@ -446,7 +446,7 @@ export function protectLocal<A extends unknown[], T>(
         try {
           db.prepare("UPDATE local_operations SET state='UNKNOWN',owner=NULL,lease_until=NULL WHERE id=? AND state='CLAIMED' AND owner=?").run(id, owner);
         } catch { sharedSession?.invalidate(); }
-        throw new LocalProtectionError("UNKNOWN", `Operation ${id} threw after dispatch; its external outcome may be unknown. Reconcile provider truth before retrying.`, { cause });
+        throw new LocalProtectionError("UNKNOWN", `ORIGINAL OUTCOME UNKNOWN. Operation ${id} threw after dispatch; its external outcome may be unknown. It may already have succeeded. Future unsafe redispatch is blocked. Next action: reconcile authoritative provider truth before retrying with the same identity and durable state.`, { cause });
       }
       let resultJson: string;
       try {

@@ -1,5 +1,16 @@
 # @once-agent/sdk
 
+Your action succeeded. Its response disappeared. Should the caller retry? Once replays confirmed results and blocks another consequential write while the original outcome is unknown.
+
+Start with the [account-free local refund proof](https://onceexec.com/first10/) or [existing installed-SDK quickstart](https://onceexec.com/quickstart/). The standalone refund proof runs with SDK 0.1.24 or later; SDK 0.1.25 also includes it as `once prove`. No cloud account or financial transaction is required.
+
+If provider-native idempotency or a database constraint fully solves your operation, use it. Harmless repetition does not need Once. Keep native idempotency where available. Once does not promise universal exactly-once execution.
+
+Local protection requires Node 24.15+, one durable shared same-machine SQLite authority, developer-owned logical identity, and complete effect/account binding. UNKNOWN is protection: retain state and identity, reconcile authoritative read-only truth, and never bypass the wrapper to force progress.
+
+SDK 0.1.25 adds `once prove` (controlled fixture only) and `once check [directory]` (read-only candidates). Existing `once doctor` remains available.
+
+
 ## Natural placement (0.1.24)
 
 For a host-owned unary tool callback, `wrapTool(callback, semantics)` delegates to `protectToolCall`:

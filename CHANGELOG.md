@@ -4,6 +4,13 @@ Historical SDK change notes are recorded here. For current published versions an
 changes after the entries below, see the [public release history](https://github.com/stringsofthemind-oss/once/releases).
 Website-only changes do not alter SDK execution semantics.
 
+## 0.1.25 - 2026-10-04
+
+- Add `once prove`: account-free local HTTP refund fixture with separate provider journal, acknowledgement loss, fresh processes, replay, CONFLICT and authoritative recovery. It never invokes arbitrary application code.
+- Add read-only `once check [directory]` using the existing heuristic scanner; no identity/effect inference or activation. Existing doctor and APIs remain available.
+- Clarify UNKNOWN error wording without changing the safety engine, state schema, bindings or reconciliation authority.
+- Add symptom-first onboarding and FIRST 10 evidence/retention guidance. See [release notes](docs/RELEASE_0_1_25.md).
+
 ## 0.1.24 - 2026-10-03
 
 - Add public `wrapTool(callback, semantics)` over `protectToolCall` and `protectLocal`; no new safety engine.

@@ -4,7 +4,7 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width,initial-scale=1" />
 		<meta name="color-scheme" content="dark" />
-		<title>Once — safe retry decisions for agent and application actions</title>
+		<title>Once — prevent duplicate actions after a lost response</title>
 		<meta
 			name="description"
 			content="An API action can succeed even when its response is lost. Explore confirmed replay, changed-input conflict and uncertain retry blocking with Once."
@@ -12,7 +12,7 @@
 		<meta name="google-site-verification" content="jBMY3qIvmf9hJoVVcvpgoEOW_gfZqUxNwHmtmUpErWk" />
 		<link rel="canonical" href="https://onceexec.com/" />
 		<meta property="og:type" content="website" />
-		<meta property="og:title" content="Once — safe retry decisions for agent and application actions" />
+		<meta property="og:title" content="Once — prevent duplicate actions after a lost response" />
 		<meta
 			property="og:description"
 			content="An API action can succeed even when its response is lost. Explore confirmed replay, changed-input conflict and uncertain retry blocking with Once."
@@ -47,7 +47,7 @@
 					<a href="/#mechanism">How it works</a><a href="/quickstart/">Quickstart</a><a href="/evidence/">Evidence</a
 					><a href="/support/" data-event="docs_click">Docs</a
 					><a href="https://github.com/stringsofthemind-oss/once" data-event="github_click">GitHub</a
-					><a class="btn primary" href="/#demo" data-event="hero_demo_click">Run the retry demo</a>
+					><a class="btn primary" href="/first10/" data-event="hero_demo_click">Run the refund proof</a>
 				</div>
 			</nav>
 		</header>
@@ -55,31 +55,29 @@
 			<section class="hero" id="top">
 				<div>
 					<p class="eyebrow">Retry safety for agent tools and applications</p>
-					<h1>The same action should only happen <em>once.</em></h1>
-					<p class="lead">
-						A payment, booking or ticket can succeed even when the response is lost. Once helps supported integrations reuse confirmed
-						results and block uncertain retries instead of blindly repeating the action.
-					</p>
+					<h1>Your agent sent the refund.<br />The response disappeared.<br /><em>Should it try again?</em></h1>
+					<p class="lead">Once remembers the logical operation, reuses confirmed results, and blocks unsafe repetition when the original outcome is uncertain. Reconciliation needs authoritative provider truth.</p>
 					<div class="actions">
-						<a class="btn primary" href="#demo" data-event="hero_demo_click">Run the retry demo</a
+						<a class="btn primary" href="/first10/" data-event="hero_demo_click">Run the refund proof</a
 						><a class="btn" href="#get-once" data-event="protect_first_action_click">Protect your first action</a>
 					</div>
-					<p class="small">Try the simulation without an account or checkout.<br />Then verify the SDK locally without a Once API key.</p>
+					<p class="small">Run the local refund proof without an account or API key.<br /><a href="#demo">Run the retry demo in your browser</a>.</p>
 					<a href="/evidence/">Inspect the code and failure tests →</a>
 				</div>
 				<aside class="scenario" aria-label="Lost acknowledgement example">
 					<span class="tag">A TIMEOUT IS NOT PROOF OF FAILURE</span>
 					<ol>
-						<li><strong>Agent: create a ticket</strong>One intentional action.</li>
-						<li><strong>Provider: ticket #101 created</strong>The external action succeeded.</li>
+						<li><strong>Agent: send a refund</strong>One intentional action.</li>
+						<li><strong>Provider: refund accepted</strong>The external action succeeded.</li>
 						<li><strong>Network: response lost</strong>The caller cannot tell what happened.</li>
-						<li><strong>Blind retry: another ticket?</strong>Once can block redispatch until the original outcome is established.</li>
+						<li><strong>Blind retry: refund twice?</strong>Once can block redispatch until the original outcome is established.</li>
 					</ol>
 					<div class="receipt">Known success → reuse the result<br />Unknown outcome → block another dispatch</div>
 					<p class="small" style="margin: 12px 0 0">Illustrative scenario; supported integration required.</p>
 				</aside>
 			</section>
-			<section class="section" id="mechanism">
+			<section class="section" id="when-not-needed"><div class="intro"><h2>When you do not need Once</h2><p>If a provider idempotency key completely solves your operation, use it. If a database unique constraint solves it, use it. Harmless repeated actions do not need Once.</p><p>Use Once when a consequential operation may already have happened, you cannot safely establish its outcome, and repeating it could create another effect. Keep native idempotency wherever available.</p><a href="/first10/">See two unprotected refunds versus one protected refund →</a></div></section>
+<section class="section" id="mechanism">
 				<div class="intro">
 					<p class="eyebrow">What Once changes</p>
 					<h2>Your caller can retry.<br />The write needs a safe decision.</h2>

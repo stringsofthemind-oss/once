@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prevent a duplicate refund after process restart — Once</title>
+<meta name="description" content="A refund committed, its response disappeared, and a retry refunded twice. Run a local HTTP provider proof: UNKNOWN blocks another write, reconciliation recovers the receipt.">
+<link rel="canonical" href="https://onceexec.com/first10/"><link rel="stylesheet" href="/funnel.css"></head>
+<body><a class="skip" href="#main">Skip to content</a><header class="top"><nav class="nav wrap" aria-label="Main"><a class="brand" href="/">1× Once</a><a href="/quickstart/">Protect your operation</a></nav></header>
+<main class="wrap" id="main" tabindex="-1">
+<section class="section"><p class="eyebrow">Local refund proof · no account · no money movement</p><h1>Your agent sent the refund. The response disappeared. Should it try again?</h1>
+<p class="lead">The provider can succeed before its response reaches you. Blind retry can send a second refund. Once keeps that uncertainty and blocks another write until authoritative truth confirms the original result.</p>
+<p><a class="btn primary" href="#run">Run locally now</a></p><div class="grid"><article class="card"><h2>Without Once: 2 effects</h2><p>Refund commits → acknowledgement lost → caller restarts → blind retry → another refund.</p></article><article class="card"><h2>With Once: 1 effect</h2><p>Refund commits → UNKNOWN → restarted retry blocked → read-only reconciliation → original receipt recovered.</p></article></div></section>
+<section class="section"><h2 id="run">Run the actual SDK</h2><p>Node.js 24.15+. An independent local HTTP provider keeps a separate effect journal. No cloud account, keys or payment account.</p>
+<!--email_off--><pre><code>npm install @once-agent/sdk@0.1.24
+curl -fsSLo prove.mjs https://onceexec.com/first10/prove.mjs
+node prove.mjs</code></pre><!--/email_off-->
+<p>PowerShell download: <code>Invoke-WebRequest https://onceexec.com/first10/prove.mjs -OutFile prove.mjs</code>.</p>
+<p>Prefer a checkout? See the <a href="https://github.com/stringsofthemind-oss/once/tree/main/examples/first10">complete source and instructions</a>. The <a href="/quickstart/">ticket quickstart</a> provides another installed-SDK example.</p>
+<pre><code>WITHOUT ONCE: 2 provider writes
+CONFIRMED: first execution, restart replay, 1 provider write
+RETRY BLOCKED — ORIGINAL OUTCOME UNKNOWN
+Changed £50 → £80: CONFLICT, 0 additional writes
+UNKNOWN → CONFIRMED: recovered refund_1
+PASS</code></pre>
+<p>Actual output also prints the evidence directory and measured runtime. Each stage independently reads provider truth and compares its journal; a failing assertion exits nonzero. The proof includes unavailable truth and NOT_FOUND remaining blocked.</p>
+<p>Fixture PASS proves this controlled provider only. It does not certify your operation, a real financial provider, or power-loss durability. Every caller stage starts a fresh process. <a href="./prove.mjs">Inspect the runnable source</a>.</p></section>
+<section class="section"><h2>Why an idempotency key may be enough</h2><p>If the provider's key covers the complete operation, retry horizon and effect inputs, use it. If a database unique constraint completely solves the operation, use it. If repetition is harmless, you probably do not need Once.</p><p>Once is relevant when the caller cannot safely establish whether another dispatch creates another consequence. Keep native idempotency; Once does not make arbitrary external effects atomic or replace your framework, queue or database.</p></section>
+<section class="section"><h2>Protect your own refund function</h2><p>Choose a durable, tenant-scoped refund-intent ID. Multiple legitimate partial refunds need distinct intent IDs; a transport request ID is not the business operation. Review all effect inputs and provider/account authority explicitly.</p>
+<!--email_off--><pre><code>import { wrapTool } from "@once-agent/sdk";
+const safeRefund = wrapTool(refundCustomer, {
+  operationId: x =&gt; `${x.tenantId}:refund:${x.refundIntentId}`,
+  effect: x =&gt; ({ tool: "payments:reviewed-account:refund", args: x }),
+  statePath: "./durable/operations.sqlite",
+  reconcile: lookupAuthoritativeRefund,
+});</code></pre><!--/email_off-->
+<p>Your callback and lookup need reviewed provider semantics. Bind every effect field; exclude Authorization credentials. Route every write through the wrapper. Internal callback retries remain outside the boundary. Persistent shared SQLite covers one machine only.</p>
+<p><strong>UNKNOWN is protection.</strong> Retain the same identity and state. Reconcile authoritative read-only truth; unavailable truth stays blocked. Do not invent a new ID or bypass protection to force progress. Absence alone does not permit local redispatch.</p>
+<a class="btn primary" href="https://github.com/stringsofthemind-oss/once/tree/main/examples/natural-placement">Apply the complete wrapper pattern</a><p><a href="/quickstart/">Existing installed-SDK quickstart</a> · <a href="/evidence/">Evidence and limits</a></p></section>
+</main></body></html>
