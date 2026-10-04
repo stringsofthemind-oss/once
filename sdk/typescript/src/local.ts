@@ -446,7 +446,7 @@ export function protectLocal<A extends unknown[], T>(
         try {
           db.prepare("UPDATE local_operations SET state='UNKNOWN',owner=NULL,lease_until=NULL WHERE id=? AND state='CLAIMED' AND owner=?").run(id, owner);
         } catch { sharedSession?.invalidate(); }
-        throw new LocalProtectionError("UNKNOWN", `ORIGINAL OUTCOME UNKNOWN. Operation ${id} threw after dispatch and may already have succeeded. Future unsafe redispatch is blocked. Next action: reconcile authoritative provider truth before retrying with the same identity and durable state.`, { cause });
+        throw new LocalProtectionError("UNKNOWN", `ORIGINAL OUTCOME UNKNOWN. Operation ${id} threw after dispatch; its external outcome may be unknown. It may already have succeeded. Future unsafe redispatch is blocked. Next action: reconcile authoritative provider truth before retrying with the same identity and durable state.`, { cause });
       }
       let resultJson: string;
       try {
