@@ -1,0 +1,30 @@
+// Trusted interpreter. Candidate data is never eval'd, imported or passed to a shell.
+import { readFileSync, writeFileSync } from 'node:fs';
+const [input,output]=process.argv.slice(2);
+const data=JSON.parse(readFileSync(input,'utf8'));
+if(Object.keys(data).sort().join(',')!=='generation,knowledge,strategy')throw new Error('INVALID_INPUT');
+const vocabulary=['replay','conflict','unknown','absent','unavailable','missing-result','corrupt-receipt','concurrency','restart','attempt','omit-field'];
+const strategy=data.strategy;
+if(!strategy || Object.keys(strategy).sort().join(',')!=='casesPerOperator,operators,version' || !['M0','M1'].includes(strategy.version) ||
+  !Array.isArray(strategy.operators)||strategy.operators.some(x=>!vocabulary.includes(x))||strategy.operators.length>11 ||
+  !Number.isInteger(strategy.casesPerOperator)||strategy.casesPerOperator<1||strategy.casesPerOperator>3)throw new Error('INVALID_STRATEGY');
+const learnedOrdering=data.knowledge.some(x=>x.rule==='Moving the existing prerequisite removes the observed ordering violation');
+const learnedEvidence=data.knowledge.some(x=>x.rule==='A read-only report command removes the observed evidence handoff gap');
+const proposals=data.generation===0 ? [
+  {id:'prerequisite-first',ring:3,operation:'move-prerequisite',hypothesis:'Prerequisite order violation becomes zero without adding proof commands.'},
+  {id:'evidence-handoff',ring:3,operation:'add-evidence-guide',hypothesis:'Concrete report inspection removes one undocumented evidence handoff.'},
+  {id:'tamper-evaluator',ring:0,operation:'tamper',hypothesis:'Controlled malicious candidate tries to rewrite its judge.'},
+  {id:'strategy-M1',ring:4,operation:'improve-strategy',hypothesis:'More distinct fault dimensions expose dangerous mutants missed by replay-only M0.'}
+] : [
+  learnedOrdering && learnedEvidence
+    ? {id:'prerequisite-evidence',ring:3,operation:'combined-docs',hypothesis:'Combine two independently demonstrated previous-generation document mechanisms.'}
+    : {id:'prerequisite-g1',ring:3,operation:'move-prerequisite',hypothesis:'Without demonstrated combined lessons, retain the bounded ordering alternative.'},
+  {id:'evidence-handoff-g1',ring:3,operation:'add-evidence-guide',hypothesis:'Retain the evidence-only alternative rather than collapse lineage.'}
+];
+// Bounded executable behavior controlled by strategy data: actual fault schedules.
+const cases=strategy.operators.flatMap((scenario,index)=>Array.from({length:strategy.casesPerOperator},(_,i)=>({id:`generated-${index}-${i}`,amount:5000+i,currency:i?'USD':'GBP',scenario})));
+const detailed=proposals.map(p=>({...p,parent:data.generation?'g0-strategy-M1':null,generation:data.generation,
+  filesLikelyAffected:p.ring===4?['evolution/zone/strategy.json']:p.operation==='tamper'?['evolution/kernel/docs-evaluator.mjs']:['docs/first10/index.html','examples/first10/README.md'],
+  expectedAdvantages:p.hypothesis,likelyFailureModes:['misleading safety wording','no measured improvement','protected boundary violation'],
+  validationPlan:['protected diff admission','ordinary regression','property/state/mutation/holdout','independent structural metric','clean checkout']}));
+writeFileSync(output,JSON.stringify({strategyVersion:strategy.version,knowledgeUsed:data.knowledge.map(x=>x.rule),proposals:detailed,cases})+'\n',{flag:'wx'});

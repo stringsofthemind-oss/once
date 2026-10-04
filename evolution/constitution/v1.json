@@ -1,0 +1,29 @@
+{
+  "version": "once-evolution-constitution/1",
+  "laws": [
+    {"id":"UNKNOWN_NO_REDISPATCH","rule":"UNKNOWN never permits consequential redispatch"},
+    {"id":"NO_RECEIPT_IS_NOT_ABSENCE","rule":"Missing receipts do not establish no effect"},
+    {"id":"NO_INVENTED_SUCCESS","rule":"Success requires actual authoritative evidence"},
+    {"id":"EFFECT_CONFLICT","rule":"Same logical identity with changed effect conflicts"},
+    {"id":"DEVELOPER_IDENTITY","rule":"Developer owns business identity; attempts are not intents"},
+    {"id":"MARKER_IS_NOT_COMMIT","rule":"Predispatch markers do not establish provider commit"},
+    {"id":"ABSENCE_IS_NOT_PERMISSION","rule":"Temporary absence and unavailable truth do not authorize execution"},
+    {"id":"FAIL_CLOSED","rule":"Unsupported or ambiguous shapes fail closed"},
+    {"id":"NO_SECRETS","rule":"Credentials are excluded from identities, effects, receipts and logs"},
+    {"id":"NO_CANDIDATE_AUTHORITY","rule":"Candidates cannot alter laws, evaluation or promotion"},
+    {"id":"NATIVE_IDEMPOTENCY","rule":"Preserve provider-native idempotency compatibility"},
+    {"id":"DURABLE_AUTHORITY","rule":"Restart preserves shared durable state; local authority is one machine"},
+    {"id":"READ_ONLY_TRUTH","rule":"Only reviewed authoritative read-only reconciliation resolves uncertainty"}
+  ],
+  "rings": {
+    "0": "HUMAN_ONLY",
+    "1": "INELIGIBLE_FOR_AUTONOMOUS_PROMOTION",
+    "2": "ELIGIBLE_FOR_HUMAN_PROMOTION",
+    "3": "ELIGIBLE_FOR_HUMAN_PROMOTION",
+    "4": "ELIGIBLE_FOR_HUMAN_PROMOTION"
+  },
+  "limits": {"candidatesPerGeneration":4,"generations":2,"wallMs":600000,"subprocesses":200,"diskBytes":134217728,"diffBytes":16384,"outputBytes":1048576,"retries":0},
+  "candidatePaths": ["docs/first10/index.html","examples/first10/README.md","evolution/zone/strategy.json"],
+  "candidateLanguage": "bounded-data-only/1",
+  "productionPromotion": "EXPLICIT_HUMAN_REVIEW_REQUIRED"
+}

@@ -1,0 +1,140 @@
+{
+  "seed": "143f1197f2f2d9fb96fd6250d86a3e97723fc14f4cdd8668449d49ac3402d9c8",
+  "seedSha256": "194e02b62ea3720ba84ce5c0c2ae4c8c412e6ac2652dbb3004b1d44b7afae4da",
+  "cases": [
+    {
+      "id": "intent-6ab8ebf7318fb9f2",
+      "amount": 24532,
+      "currency": "USD",
+      "scenario": "replay"
+    },
+    {
+      "id": "intent-7e7f47c3b7f0d186",
+      "amount": 77770,
+      "currency": "EUR",
+      "scenario": "replay"
+    },
+    {
+      "id": "intent-81b8c337af7ce346",
+      "amount": 85006,
+      "currency": "EUR",
+      "scenario": "conflict"
+    },
+    {
+      "id": "intent-090013774629c58c",
+      "amount": 28288,
+      "currency": "USD",
+      "scenario": "conflict"
+    },
+    {
+      "id": "intent-95f172f0fb2fe486",
+      "amount": 35231,
+      "currency": "GBP",
+      "scenario": "unknown"
+    },
+    {
+      "id": "intent-f7002dae9056ccd9",
+      "amount": 56240,
+      "currency": "USD",
+      "scenario": "unknown"
+    },
+    {
+      "id": "intent-871ae9b0fed45ff6",
+      "amount": 77864,
+      "currency": "USD",
+      "scenario": "absent"
+    },
+    {
+      "id": "intent-e4fab3c5fb3fdafe",
+      "amount": 83291,
+      "currency": "GBP",
+      "scenario": "absent"
+    },
+    {
+      "id": "intent-37ef13ec9bf15264",
+      "amount": 37567,
+      "currency": "EUR",
+      "scenario": "unavailable"
+    },
+    {
+      "id": "intent-c6a529d70ca4d49e",
+      "amount": 67456,
+      "currency": "USD",
+      "scenario": "unavailable"
+    },
+    {
+      "id": "intent-1b8baae3101f3a19",
+      "amount": 23473,
+      "currency": "GBP",
+      "scenario": "missing-result"
+    },
+    {
+      "id": "intent-05009894a0d44220",
+      "amount": 50672,
+      "currency": "GBP",
+      "scenario": "missing-result"
+    },
+    {
+      "id": "intent-058c5aba6101556d",
+      "amount": 74105,
+      "currency": "USD",
+      "scenario": "corrupt-receipt"
+    },
+    {
+      "id": "intent-0bc6343533ed9f4f",
+      "amount": 60776,
+      "currency": "USD",
+      "scenario": "corrupt-receipt"
+    },
+    {
+      "id": "intent-a924e841abf9ed09",
+      "amount": 52577,
+      "currency": "EUR",
+      "scenario": "concurrency"
+    },
+    {
+      "id": "intent-ea8b1f3f38da51b4",
+      "amount": 10536,
+      "currency": "GBP",
+      "scenario": "concurrency"
+    },
+    {
+      "id": "intent-04f0b107318c9ff8",
+      "amount": 39168,
+      "currency": "EUR",
+      "scenario": "restart"
+    },
+    {
+      "id": "intent-b1c5d0881e6a26e6",
+      "amount": 17904,
+      "currency": "GBP",
+      "scenario": "restart"
+    },
+    {
+      "id": "intent-dd2fcc1428516e9a",
+      "amount": 78329,
+      "currency": "EUR",
+      "scenario": "attempt"
+    },
+    {
+      "id": "intent-cf73feadb3b193f2",
+      "amount": 46540,
+      "currency": "EUR",
+      "scenario": "attempt"
+    },
+    {
+      "id": "intent-062f623c7ed1abbc",
+      "amount": 33803,
+      "currency": "GBP",
+      "scenario": "omit-field"
+    },
+    {
+      "id": "intent-458d4a6a2d8fdc85",
+      "amount": 22161,
+      "currency": "GBP",
+      "scenario": "omit-field"
+    }
+  ],
+  "reproducibleWith": "seededCases(seed,operators,2)",
+  "completedAt": "2026-10-04T10:36:48.565Z"
+}

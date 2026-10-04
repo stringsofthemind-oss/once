@@ -1,0 +1,30 @@
+[
+  {
+    "kind": "derived-lesson",
+    "observedFailure": null,
+    "rule": "Document metrics are synthetic, not adoption evidence",
+    "confidence": "machine-demonstrated",
+    "evidence": "g0-prerequisite-first"
+  },
+  {
+    "kind": "derived-lesson",
+    "observedFailure": null,
+    "rule": "Document metrics are synthetic, not adoption evidence",
+    "confidence": "machine-demonstrated",
+    "evidence": "g0-evidence-handoff"
+  },
+  {
+    "kind": "derived-lesson",
+    "observedFailure": "PROTECTED_PATH: evolution/kernel/docs-evaluator.mjs",
+    "rule": "Judge edits are rejected before candidate execution",
+    "confidence": "machine-demonstrated",
+    "evidence": "g0-tamper-evaluator"
+  },
+  {
+    "kind": "derived-lesson",
+    "observedFailure": null,
+    "rule": "Fault breadth must be measured against seeded defects, not self-report",
+    "confidence": "machine-demonstrated",
+    "evidence": "g0-strategy-M1"
+  }
+]

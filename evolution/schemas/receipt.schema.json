@@ -1,0 +1,292 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://onceexec.com/schemas/evolution/receipt-v1.json",
+  "title": "Once Evolution evaluation receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "campaignId",
+    "candidateId",
+    "parentCandidate",
+    "generation",
+    "baselineCommit",
+    "candidateCommit",
+    "riskRing",
+    "constitution",
+    "evaluator",
+    "roles",
+    "target",
+    "hypothesis",
+    "filesChanged",
+    "diffStatistics",
+    "results",
+    "hardGates",
+    "softMetrics",
+    "decision",
+    "decisionReason",
+    "promotionEligibility",
+    "rollback",
+    "timestamps",
+    "environment",
+    "cleanReproduction",
+    "provenance",
+    "receiptHash"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "const": 1
+    },
+    "campaignId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "candidateId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "parentCandidate": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "generation": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "baselineCommit": {
+      "$ref": "#/$defs/commit"
+    },
+    "candidateCommit": {
+      "$ref": "#/$defs/commit"
+    },
+    "riskRing": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4
+    },
+    "constitution": {
+      "$ref": "#/$defs/evidence"
+    },
+    "evaluator": {
+      "$ref": "#/$defs/evidence"
+    },
+    "roles": {
+      "$ref": "#/$defs/evidence"
+    },
+    "target": {
+      "type": [
+        "string",
+        "object"
+      ],
+      "minLength": 1
+    },
+    "hypothesis": {
+      "type": "string",
+      "minLength": 1
+    },
+    "filesChanged": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "diffStatistics": {
+      "$ref": "#/$defs/evidence"
+    },
+    "results": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ordinary",
+        "property",
+        "stateMachine",
+        "mutation",
+        "holdout",
+        "adversarial",
+        "coldUser",
+        "performance",
+        "security",
+        "evaluatorTampering"
+      ],
+      "properties": {
+        "ordinary": {
+          "$ref": "#/$defs/evidence"
+        },
+        "property": {
+          "$ref": "#/$defs/evidence"
+        },
+        "stateMachine": {
+          "$ref": "#/$defs/evidence"
+        },
+        "mutation": {
+          "$ref": "#/$defs/evidence"
+        },
+        "holdout": {
+          "$ref": "#/$defs/evidence"
+        },
+        "adversarial": {
+          "$ref": "#/$defs/evidence"
+        },
+        "coldUser": {
+          "$ref": "#/$defs/evidence"
+        },
+        "performance": {
+          "$ref": "#/$defs/evidence"
+        },
+        "security": {
+          "$ref": "#/$defs/evidence"
+        },
+        "evaluatorTampering": {
+          "$ref": "#/$defs/evidence"
+        }
+      }
+    },
+    "hardGates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kernelIntegrity",
+        "protectedPaths",
+        "ordinary",
+        "properties",
+        "stateMachine",
+        "holdout",
+        "adversarial",
+        "mutation",
+        "documentation",
+        "noCandidateExecution",
+        "noCredentials",
+        "noSelfApproval",
+        "cleanReproduction",
+        "resourceLimits"
+      ],
+      "properties": {
+        "kernelIntegrity": {
+          "type": "boolean"
+        },
+        "protectedPaths": {
+          "type": "boolean"
+        },
+        "ordinary": {
+          "type": "boolean"
+        },
+        "properties": {
+          "type": "boolean"
+        },
+        "stateMachine": {
+          "type": "boolean"
+        },
+        "holdout": {
+          "type": "boolean"
+        },
+        "adversarial": {
+          "type": "boolean"
+        },
+        "mutation": {
+          "type": "boolean"
+        },
+        "documentation": {
+          "type": "boolean"
+        },
+        "noCandidateExecution": {
+          "type": "boolean"
+        },
+        "noCredentials": {
+          "type": "boolean"
+        },
+        "noSelfApproval": {
+          "type": "boolean"
+        },
+        "cleanReproduction": {
+          "type": "boolean"
+        },
+        "resourceLimits": {
+          "type": "boolean"
+        }
+      }
+    },
+    "softMetrics": {
+      "$ref": "#/$defs/evidence"
+    },
+    "decision": {
+      "enum": [
+        "REJECTED",
+        "INELIGIBLE",
+        "ELIGIBLE_FOR_HUMAN_PROMOTION"
+      ]
+    },
+    "decisionReason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "promotionEligibility": {
+      "type": "boolean"
+    },
+    "rollback": {
+      "$ref": "#/$defs/evidence"
+    },
+    "timestamps": {
+      "$ref": "#/$defs/evidence"
+    },
+    "environment": {
+      "$ref": "#/$defs/evidence"
+    },
+    "cleanReproduction": {
+      "type": [
+        "object",
+        "boolean"
+      ]
+    },
+    "provenance": {
+      "$ref": "#/$defs/evidence"
+    },
+    "receiptHash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "$defs": {
+    "commit": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/json"
+      }
+    },
+    "json": {
+      "anyOf": [
+        {
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ]
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/json"
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/json"
+          }
+        }
+      ]
+    }
+  }
+}

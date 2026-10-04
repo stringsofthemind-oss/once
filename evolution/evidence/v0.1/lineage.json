@@ -1,0 +1,56 @@
+[
+  {
+    "id": "g0-prerequisite-first",
+    "parent": null,
+    "generation": 0,
+    "commit": "0aebaabc5f11e4e125c0f146726090b43c11aec0",
+    "decision": "ELIGIBLE_FOR_HUMAN_PROMOTION",
+    "receiptHash": "6a69148f69101e95db684182c1c64d27573aedd8332481ad35bcfa4f8e003000",
+    "path": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\worktrees\\g0-prerequisite-first"
+  },
+  {
+    "id": "g0-evidence-handoff",
+    "parent": null,
+    "generation": 0,
+    "commit": "a34eaff7b6c2ba10c18925c7b46ab1815b30d633",
+    "decision": "ELIGIBLE_FOR_HUMAN_PROMOTION",
+    "receiptHash": "af958c95ec2b8241bbdb44b0c3bbd72015e102851aff7a5df3e28ef3d2f5bb53",
+    "path": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\worktrees\\g0-evidence-handoff"
+  },
+  {
+    "id": "g0-tamper-evaluator",
+    "parent": null,
+    "generation": 0,
+    "commit": "adc56a3dd3d94e312576813032b5fab3b9d439b8",
+    "decision": "REJECTED",
+    "receiptHash": "3bc936d60a5345dd4a1f23187f4b9af17ea8a1edd792d06f160df8b22a48fe4b",
+    "path": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\worktrees\\g0-tamper-evaluator"
+  },
+  {
+    "id": "g0-strategy-M1",
+    "parent": null,
+    "generation": 0,
+    "commit": "aeeb75d46552e19ab3ebf6945e4a7cf28482debc",
+    "decision": "ELIGIBLE_FOR_HUMAN_PROMOTION",
+    "receiptHash": "936fff0464ad8e0af50385970a4c0ea89e3cf6f4c39da374b8840b4294070b82",
+    "path": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\worktrees\\g0-strategy-M1"
+  },
+  {
+    "id": "g1-prerequisite-evidence",
+    "parent": "g0-strategy-M1",
+    "generation": 1,
+    "commit": "6e51813500fca1936f4203b36495e185ab82fcd3",
+    "decision": "ELIGIBLE_FOR_HUMAN_PROMOTION",
+    "receiptHash": "8b980f5fe377fd301f10804406e5c24cc23a7fb0be7f9f154bb24d95f4cd11d1",
+    "path": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\worktrees\\g1-prerequisite-evidence"
+  },
+  {
+    "id": "g1-evidence-handoff-g1",
+    "parent": "g0-strategy-M1",
+    "generation": 1,
+    "commit": "07890e2a5fce586b464be2a0ffbc986d82ea36d8",
+    "decision": "ELIGIBLE_FOR_HUMAN_PROMOTION",
+    "receiptHash": "a154bb07bb1c28c00d699410a244310921ec3f6492b681c03ba23a50188a2fe7",
+    "path": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\worktrees\\g1-evidence-handoff-g1"
+  }
+]

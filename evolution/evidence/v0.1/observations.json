@@ -1,0 +1,27 @@
+[
+  {
+    "kind": "FACT",
+    "source": "docs/first10/index.html",
+    "observation": "First npx command precedes Node.js 24.15+ prerequisite",
+    "metric": 1
+  },
+  {
+    "kind": "FACT",
+    "source": "examples/first10/README.md",
+    "observation": "No concrete report-reading command",
+    "metric": 0
+  },
+  {
+    "kind": "INFERENCE",
+    "observation": "Ordering and evidence handoff may cause cold-reader uncertainty; no human failure established"
+  },
+  {
+    "kind": "HYPOTHESIS",
+    "target": "FIRST10 docs",
+    "mechanism": "Reorder existing prerequisite or add read-only evidence instructions",
+    "metric": "zero ordering violations or one reproducible report instruction",
+    "risks": "Misleading success/identity or fixture claims",
+    "ring": 3,
+    "falsification": "Regression or no structural improvement"
+  }
+]
