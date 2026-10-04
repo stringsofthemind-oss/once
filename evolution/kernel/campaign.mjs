@@ -129,7 +129,7 @@ function startCampaign(budget,out,baseline,integrity,environment,versions) {
   atomic(resolve(out,'knowledge.json'),state.knowledge);atomic(resolve(out,'lineage.json'),state.lineage);sealState(out,state);verifyKernel();return state;
 }
 export function approveTrial(outValue,id,expectedHash) {
-  if(!/^g[01]-[a-z0-9-]+$/.test(id??''))throw new Error('INVALID_CANDIDATE_ID');
+  if(!/^g[01]-[a-zA-Z0-9-]+$/.test(id??''))throw new Error('INVALID_CANDIDATE_ID');
   const out=safeOutput(outValue),state=loadState(out),integrity={...verifyKernel(),artifacts:artifactManifest()};
   const receipt=validateReceipt(json(resolve(out,'receipts',id+'.json')));
   if(receipt.receiptHash!==expectedHash||receipt.decision!=='ELIGIBLE_FOR_HUMAN_PROMOTION'||receipt.riskRing!==4||receipt.candidateId!=='g0-strategy-M1')throw new Error('TRIAL_APPROVAL_REJECTED');

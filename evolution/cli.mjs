@@ -17,7 +17,7 @@ try {
       else if(command==='inspect')console.log(JSON.stringify(state,null,2));
       else if(['candidates','lineage'].includes(command))console.log(JSON.stringify(state.lineage,null,2));
       else if(['receipt','rollback-info'].includes(command)) {
-        if(!/^g[01]-[a-z0-9-]+$/.test(args[0]??''))throw new Error('INVALID_CANDIDATE_ID');
+        if(!/^g[01]-[a-zA-Z0-9-]+$/.test(args[0]??''))throw new Error('INVALID_CANDIDATE_ID');
         const receipt=validateReceipt(json(resolve(directory,'receipts',args[0]+'.json')));console.log(JSON.stringify(command==='receipt'?receipt:receipt.rollback,null,2));
       } else throw new Error('UNKNOWN_COMMAND');
     }

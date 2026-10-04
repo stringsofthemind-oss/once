@@ -1,7 +1,7 @@
 import { cpSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { randomBytes, createHash } from 'node:crypto';
-import { root, operators, atomic, digest, json, verifyKernel } from './common.mjs';
+import { root, operators, atomic, digest, json, verifyKernel, artifactManifest, verifyArtifacts } from './common.mjs';
 import { mutations } from './mutations.mjs';
 
 export function seededCases(seed, scenarios=operators, per=1) {
@@ -23,7 +23,7 @@ export function safety(budget,dist,dir,cases) {
   return {...report,exitCode:process.status,completed:true,outputHash:digest(report)};
 }
 export function evaluateStrength(budget,out,dist,generatedM0,generatedM1) {
-  verifyKernel();
+  verifyKernel();const trustedArtifacts=artifactManifest();
   const seed=randomBytes(32).toString('hex');
   atomic(resolve(out,'holdout-commitment.json'),{seedSha256:digest(seed),createdAt:new Date().toISOString(),disclosure:'only after evaluations complete'});
   const full=seededCases(seed,operators,2);
@@ -45,14 +45,14 @@ export function evaluateStrength(budget,out,dist,generatedM0,generatedM1) {
     // Installed, syntactically executable mutants must reach assertions: infrastructure failures are not kills.
     const killed=r=>r.exitCode===1 && r.tests.some(x=>!x.passed&&x.entered) && r.violations.some(x=>x.kind==='SAFETY_ASSERTION');
     records.push({id:mutation.id,installed:true,sourceHash:digest(readFileSync(file,'utf8')),protectedKilled:killed(protectedResult),m0Killed:killed(m0),m1Killed:killed(m1),results:{protected:protectedResult,M0:m0,M1:m1}});
-    budget.disk();verifyKernel();
+    budget.disk();verifyKernel();verifyArtifacts(trustedArtifacts);
   }
   const strength={total:records.length,killed:records.filter(x=>x.protectedKilled).length,dangerousSurvivors:records.filter(x=>!x.protectedKilled).map(x=>x.id),
     M0:{cases:generatedM0.length,operators:new Set(generatedM0.map(x=>x.scenario)).size,killed:records.filter(x=>x.m0Killed).length},
     M1:{cases:generatedM1.length,operators:new Set(generatedM1.map(x=>x.scenario)).size,killed:records.filter(x=>x.m1Killed).length},records};
   atomic(resolve(out,'holdout-disclosure.json'),{seed,seedSha256:digest(seed),cases:full,reproducibleWith:'seededCases(seed,operators,2)',completedAt:new Date().toISOString()});
   atomic(resolve(out,'evaluation.json'),{baseline,holdout,adversarial,strength});
-  verifyKernel();return {baseline,holdout,adversarial,strength};
+  verifyKernel();verifyArtifacts(trustedArtifacts);return {baseline,holdout,adversarial,strength};
 }
 export function ordinary(budget,out) {
   const args=['--test','sdk/typescript/test/first10.test.mjs','sdk/typescript/test/local.test.mjs','sdk/typescript/test/wrap-tool.test.mjs','sdk/typescript/test/local-session.test.mjs','scripts/website-funnel.test.mjs'];
