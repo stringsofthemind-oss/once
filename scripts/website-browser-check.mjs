@@ -115,11 +115,11 @@ try {
 	await page.screenshot({ path: resolve(artifacts, 'zoom-reflow.png') });
 	const noJs = await browser.newPage({ javaScriptEnabled: false });
 	await noJs.goto(base + '/first10/');
-	assert.match(await noJs.locator('main').innerText(), /npm install @once-agent\/sdk@0\.1\.24/);
+	assert.match(await noJs.locator('main').innerText(), new RegExp(`npm install @once-agent/sdk@${published.ts.replaceAll(".", "\\.")}`));
 	assert.match(await noJs.locator('main').innerText(), /UNKNOWN is protection/);
 	const proofAsset = await noJs.request.get(base + '/first10/prove.mjs');
 	assert.equal(proofAsset.status(), 200);
-	assert.equal(await proofAsset.text(), readFileSync(resolve(docs, 'first10/prove.mjs'), 'utf8'));
+	assert.equal((await proofAsset.text()).replaceAll('\r\n', '\n'), readFileSync(resolve(docs, 'first10/prove.mjs'), 'utf8').replaceAll('\r\n', '\n'));
 	await noJs.goto(base + '/demo/');
 	assert.ok(await noJs.locator('noscript p').isVisible());
 	assert.equal(await noJs.locator('[data-demo-controls]').isVisible(), false);

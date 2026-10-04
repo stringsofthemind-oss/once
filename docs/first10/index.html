@@ -8,8 +8,8 @@
 <section class="section"><p class="eyebrow">Local refund proof · no account · no money movement</p><h1>Your agent sent the refund. The response disappeared. Should it try again?</h1>
 <p class="lead">The provider can succeed before its response reaches you. Blind retry can send a second refund. Once keeps that uncertainty and blocks another write until authoritative truth confirms the original result.</p>
 <p><a class="btn primary" href="#run">Run locally now</a></p><div class="grid"><article class="card"><h2>Without Once: 2 effects</h2><p>Refund commits → acknowledgement lost → caller restarts → blind retry → another refund.</p></article><article class="card"><h2>With Once: 1 effect</h2><p>Refund commits → UNKNOWN → restarted retry blocked → read-only reconciliation → original receipt recovered.</p></article></div></section>
-<section class="section"><h2 id="run">Run the actual SDK</h2><p>Node.js 24.15+. An independent local HTTP provider keeps a separate effect journal. No cloud account, keys or payment account.</p>
-<!--email_off--><pre><code>npm install @once-agent/sdk@0.1.24
+<section class="section"><h2 id="run">Run the actual SDK</h2><p>One command runs the same controlled fixture:</p><!--email_off--><pre><code>npx --yes --package=@once-agent/sdk@0.1.25 once prove</code></pre><!--/email_off--><p>Or download the inspectable standalone source into your own directory:</p><p>Node.js 24.15+. An independent local HTTP provider keeps a separate effect journal. No cloud account, keys or payment account.</p>
+<!--email_off--><pre><code>npm install @once-agent/sdk@0.1.25
 curl -fsSLo prove.mjs https://onceexec.com/first10/prove.mjs
 node prove.mjs</code></pre><!--/email_off-->
 <p>PowerShell download: <code>Invoke-WebRequest https://onceexec.com/first10/prove.mjs -OutFile prove.mjs</code>.</p>

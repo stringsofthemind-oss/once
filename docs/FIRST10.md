@@ -23,7 +23,7 @@ Base commit: d818f1eb346618dd9916dd666acc1d09fd2545e1. TypeScript 0.1.24 and MCP
 
 Symptom page/homepage → refund proof using published SDK → understand UNKNOWN → review own identity and complete effect/account binding → wrap one callback → validate against disposable provider truth → record friction and consensual 7/30-day follow-up.
 
-`once prove` runs a fixture, not a certification of scanned operations. New branch commands remain unreleased; the standalone download works with SDK 0.1.24 after site publication. No telemetry is added. Do not claim an external user story before it exists.
+`once prove` runs a fixture, not a certification of scanned operations. SDK 0.1.25 publishes the new CLI commands; the standalone download uses the installed SDK. No telemetry is added. Do not claim an external user story before it exists.
 
 ## Manual FIRST 10 ledger
 

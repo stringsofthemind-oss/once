@@ -24,7 +24,7 @@ https://onceexec.com/
 Repository:
 https://github.com/stringsofthemind-oss/once
 
-TYPESCRIPT SDK: @once-agent/sdk@0.1.24
+TYPESCRIPT SDK: @once-agent/sdk@0.1.25
 Install: npm install @once-agent/sdk
 npm: https://www.npmjs.com/package/@once-agent/sdk
 
@@ -32,9 +32,9 @@ PYTHON SDK: once-agent-sdk==0.1.1
 Install: pip install once-agent-sdk
 PyPI: https://pypi.org/project/once-agent-sdk/
 
-NATURAL PLACEMENT: SDK 0.1.24 provides wrapTool(callback, semantics) for a host-owned unary callback. Supply stable logical identity, complete effect/account binding and authoritative reconciliation. Requires Node 24.15+ and one durable same-machine SQLite authority. UNKNOWN blocks redispatch. Opaque internal retries and connector-only model access remain outside this boundary.
+NATURAL PLACEMENT: the current SDK provides wrapTool(callback, semantics) for a host-owned unary callback. Supply stable logical identity, complete effect/account binding and authoritative reconciliation. Requires Node 24.15+ and one durable same-machine SQLite authority. UNKNOWN blocks redispatch. Opaque internal retries and connector-only model access remain outside this boundary.
 
-AUTOMATIC CONNECT: published in @once-agent/sdk@0.1.24. It can classify supported agent-tool descriptors as BYPASS, PROTECT, or fail-closed UNKNOWN; plan and connect whole local tool registries; resolve trusted intent/idempotency identity; bind effect payload; and structurally wrap OpenAI Agents FunctionTools. Automatic protected local execution requires Node 24.15+ and shared same-machine SQLite state. It is not a multi-host or universal exactly-once guarantee.
+AUTOMATIC CONNECT: published in @once-agent/sdk@0.1.25. It can classify supported agent-tool descriptors as BYPASS, PROTECT, or fail-closed UNKNOWN; plan and connect whole local tool registries; resolve trusted intent/idempotency identity; bind effect payload; and structurally wrap OpenAI Agents FunctionTools. Automatic protected local execution requires Node 24.15+ and shared same-machine SQLite state. It is not a multi-host or universal exactly-once guarantee.
 LOCAL PROTECTION: protectLocal(existingAsyncFunction, {id, payload}) keeps the call shape and receiver, snapshots ordinary data arguments, and uses durable same-machine SQLite on Node 24.15+. It validates a narrow plain-data domain. UNKNOWN and CONFLICT block; do not infer ABSENT from a timeout. See examples/local-function/README.md in the repository. For separate hosts use a supported distributed Once integration.
 MCP package: @once-agent/mcp@0.1.5
 MCP Registry: io.github.stringsofthemind-oss/once
@@ -163,4 +163,4 @@ MCP idempotency; MCP retry safety; MCP safe retries; MCP duplicate tool calls; s
 - [Local quickstart](https://onceexec.com/quickstart/): actual SDK with controlled fake provider, restart and UNKNOWN checks; Node 24.15+, same-machine durability.
 - [Evidence](https://onceexec.com/evidence/): scoped reproductions and current release history.
 
-FIRST 10: Controlled refund proof: https://onceexec.com/first10/ . Standalone proof uses published SDK 0.1.24; the new once check/prove commands are branch-only until release. See repository examples/first10/README.md and docs/FIRST10.md. Native idempotency or a unique constraint should be used alone when sufficient. Identity/effect decisions require developer review; never infer them silently.
+FIRST 10: Controlled refund proof: https://onceexec.com/first10/ . SDK 0.1.25 publishes once prove and read-only once check; the standalone proof also works with SDK 0.1.24 or later. See repository examples/first10/README.md and docs/FIRST10.md. Native idempotency or a unique constraint should be used alone when sufficient. Identity/effect decisions require developer review; never infer them silently.
