@@ -150,6 +150,10 @@ CONFLICT semantic drift -> no second effect
 LOST_ACK -> UNKNOWN -> restart/reconcile -> one effect total
 ```
 
+This proves compatibility with the pinned middleware execution contract. It does
+not claim that a full installed Hermes gateway, Group Chat authority lifecycle,
+or a real external provider has been exercised yet.
+
 ## Run
 
 From the repository root:
