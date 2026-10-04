@@ -18,8 +18,8 @@
     "evolution/evidence/v0.1/receipts/g1-evidence-handoff-g1.json": "e2e391de4dab9af9d456d690c3d65b316d1dd13f79b7872a07fd5c5083364115",
     "evolution/evidence/v0.1/receipts/g1-prerequisite-evidence.json": "458e77942464d8dea5b101f8722f371ef3551ef4830154156530b008d51d23ee",
     "evolution/evidence/v0.1/summary.json": "4b474f4c4a01ec047bd76aec975a253eb27be570a6d9b2145cba60ef9d04e91e",
-    "evolution/kernel/campaign.mjs": "143a4344081a80be90f28dc9f3c65ae2b63147d2584f021a19755b852fb1b40a",
-    "evolution/kernel/candidate-worker.mjs": "362a4a15fada1117dce804d48bc7c275be7768338cc92b34cf3ba0ded484cbd5",
+    "evolution/kernel/campaign.mjs": "2e1831b5ba71b605000f4a26ed2d210ce9aa8bd746cbc33c6b25553daa9550e6",
+    "evolution/kernel/candidate-worker.mjs": "1044bc9f9c26a5d8f091ec5f60a81069315c22598f9614f7ea567874b3d21cf2",
     "evolution/kernel/common.mjs": "72b3289c718cc6d9ccf3cd143833a505d9b14f10f0fb993c26c07e11d4cc66d3",
     "evolution/kernel/docs-evaluator.mjs": "82f46351882278862a7c05385445be8fb256e1b52d7a23ad2452710a3f28557b",
     "evolution/kernel/evaluate.mjs": "8123001819bba5388d02704371f5bbf165be7fb721fdd2b9a7d6cb1ebf469e37",
@@ -31,7 +31,7 @@
     "evolution/schemas/types.d.ts": "43896c3f34255dfcc60a03da497f19f4f39ea61e73f9bba42c13ec4a52620965",
     "evolution/tests/breaker.test.mjs": "84bfb70353cd5dfb86115579c14795118ddf600ef6996d03e4f38dcf4c230a08",
     "evolution/tests/ci-trial.mjs": "0e965a2f152d01ca3e0a3fdc70389ee74433a3ab607fa914b760d414b188af6e",
-    "evolution/tests/kernel.test.mjs": "aee1376f0e8d1c9117e6b8281176489e4d047583c6996652333689330a992b9a",
+    "evolution/tests/kernel.test.mjs": "a71de8c879f77bbcf98a3aab33ed712e3d5e2fefd8479b96a38ec382a488ada6",
     ".github/workflows/evolution-ci.yml": "4f4594005b49e13f9e61d5b79bee699bb6adebf547b7cda1dadc85c79d50dd03"
   }
 }

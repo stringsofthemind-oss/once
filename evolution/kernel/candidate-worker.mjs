@@ -8,13 +8,17 @@ const strategy=data.strategy;
 if(!strategy || Object.keys(strategy).sort().join(',')!=='casesPerOperator,operators,version' || !['M0','M1'].includes(strategy.version) ||
   !Array.isArray(strategy.operators)||strategy.operators.some(x=>!vocabulary.includes(x))||strategy.operators.length>11 ||
   !Number.isInteger(strategy.casesPerOperator)||strategy.casesPerOperator<1||strategy.casesPerOperator>3)throw new Error('INVALID_STRATEGY');
+const learnedOrdering=data.knowledge.some(x=>x.rule==='Moving the existing prerequisite removes the observed ordering violation');
+const learnedEvidence=data.knowledge.some(x=>x.rule==='A read-only report command removes the observed evidence handoff gap');
 const proposals=data.generation===0 ? [
   {id:'prerequisite-first',ring:3,operation:'move-prerequisite',hypothesis:'Prerequisite order violation becomes zero without adding proof commands.'},
   {id:'evidence-handoff',ring:3,operation:'add-evidence-guide',hypothesis:'Concrete report inspection removes one undocumented evidence handoff.'},
   {id:'tamper-evaluator',ring:0,operation:'tamper',hypothesis:'Controlled malicious candidate tries to rewrite its judge.'},
   {id:'strategy-M1',ring:4,operation:'improve-strategy',hypothesis:'More distinct fault dimensions expose dangerous mutants missed by replay-only M0.'}
 ] : [
-  {id:'prerequisite-evidence',ring:3,operation:'combined-docs',hypothesis:'Use the previous generation lesson to address ordering and report handoff together.'},
+  learnedOrdering && learnedEvidence
+    ? {id:'prerequisite-evidence',ring:3,operation:'combined-docs',hypothesis:'Combine two independently demonstrated previous-generation document mechanisms.'}
+    : {id:'prerequisite-g1',ring:3,operation:'move-prerequisite',hypothesis:'Without demonstrated combined lessons, retain the bounded ordering alternative.'},
   {id:'evidence-handoff-g1',ring:3,operation:'add-evidence-guide',hypothesis:'Retain the evidence-only alternative rather than collapse lineage.'}
 ];
 // Bounded executable behavior controlled by strategy data: actual fault schedules.

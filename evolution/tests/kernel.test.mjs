@@ -25,9 +25,12 @@ test('bounded candidate language rejects paths, subprocess commands and threshol
 test('trial ID traversal is rejected before reading any receipt',()=>assert.throws(()=>approveTrial(temp(),'../../private','0'.repeat(64)),/INVALID_CANDIDATE_ID/));
 test('permission worker reads exact inputs only and produces real differing fault schedules',()=>{
   const dir=temp(),budget=new Budget(dir),worker=resolve(root,'evolution/kernel/candidate-worker.mjs');
-  function run(strategy,label){const input=resolve(dir,label+'.json'),output=resolve(dir,label+'-output.json');writeFileSync(input,JSON.stringify({generation:0,strategy,knowledge:[]}));const result=budget.run(process.execPath,['--permission','--allow-fs-read='+worker,'--allow-fs-read='+input,'--allow-fs-write='+output,worker,input,output],{cwd:dir});return {result,data:existsSync(output)?JSON.parse(readFileSync(output,'utf8')):null};}
+  function run(strategy,label,generation=0,knowledge=[]){const input=resolve(dir,label+'.json'),output=resolve(dir,label+'-output.json');writeFileSync(input,JSON.stringify({generation,strategy,knowledge}));const result=budget.run(process.execPath,['--permission','--allow-fs-read='+worker,'--allow-fs-read='+input,'--allow-fs-write='+output,worker,input,output],{cwd:dir});return {result,data:existsSync(output)?JSON.parse(readFileSync(output,'utf8')):null};}
   const m0=run({version:'M0',operators:['replay','attempt'],casesPerOperator:2},'M0');assert.equal(m0.result.status,0);assert.equal(m0.data.cases.length,4);
   const bad=run({version:'M1',operators:['exec-shell'],casesPerOperator:1},'bad');assert.notEqual(bad.result.status,0);assert.equal(bad.data,null);
+  const strategy={version:'M1',operators:['replay'],casesPerOperator:1};
+  const noLessons=run(strategy,'no-lessons',1);assert.equal(noLessons.data.proposals[0].operation,'move-prerequisite');
+  const learned=run(strategy,'learned',1,[{rule:'Moving the existing prerequisite removes the observed ordering violation'},{rule:'A read-only report command removes the observed evidence handoff gap'}]);assert.equal(learned.data.proposals[0].operation,'combined-docs');
   // A trusted test probe intentionally tries the prohibited read and subprocess.
   const probe=resolve(dir,'probe.mjs');writeFileSync(probe,"import fs from 'node:fs';import cp from 'node:child_process';let denied=0;try{fs.readFileSync(process.argv[2])}catch(e){if(e.code==='ERR_ACCESS_DENIED')denied++}try{cp.spawnSync(process.execPath,['-e','process.exit(0)'])}catch(e){if(e.code==='ERR_ACCESS_DENIED')denied++}console.log(denied)");
   const denied=budget.run(process.execPath,['--permission','--allow-fs-read='+probe,probe,resolve(root,'evolution/constitution/v1.json')]);assert.equal(denied.status,0);assert.equal(denied.stdout.trim(),'2');
