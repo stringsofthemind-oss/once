@@ -12,7 +12,7 @@ This adapter is intentionally narrow:
 - the effective Hermes tool arguments are fully bound into the action fingerprint;
 - model/tool call IDs remain metadata unless the host explicitly promotes them;
 - provider reconciliation is explicit and authoritative-provider specific;
-- UNKNOWN, conflict, store failure, or reconciliation failure short-circuits
+- UNKNOWN, conflict, state failure, or reconciliation failure short-circuits
   without calling ``next_call`` again.
 """
 
@@ -155,6 +155,8 @@ class _HermesCallbackProvider:
                 ProviderTruth.CONFIRMED,
                 _receipt_for_result(observation.result),
             )
+        if observation.truth not in {ProviderTruth.ABSENT, ProviderTruth.UNKNOWN}:
+            raise ValueError("Hermes reconciliation returned unsupported provider truth")
         if observation.result is not None:
             raise ValueError("ABSENT/UNKNOWN reconciliation must not include a result")
         return ProviderObservation(observation.truth)
@@ -202,70 +204,76 @@ def make_hermes_tool_execution_middleware(
     if not callable(blocked_result):
         raise TypeError("blocked_result must be callable")
 
+    def render_blocked(tool_name: str, exc: BaseException) -> Any:
+        try:
+            return blocked_result(tool_name, exc)
+        except Exception:
+            # A custom blocked-result formatter is still inside Hermes'
+            # fail-open boundary. Never let its own failure become permission to
+            # continue to the base tool.
+            return _default_blocked_result(tool_name, exc)
+
     def middleware(**kwargs: Any) -> Any:
-        tool_name = str(kwargs.get("tool_name") or "")
+        raw_tool_name = kwargs.get("tool_name")
+        tool_name = raw_tool_name if isinstance(raw_tool_name, str) else ""
         raw_args = kwargs.get("args")
         next_call = kwargs.get("next_call")
 
         if not tool_name or not isinstance(raw_args, Mapping) or not callable(next_call):
-            # Malformed middleware input is not safe to pass through because
-            # doing so would make a pre-dispatch adapter failure fail open.
-            return blocked_result(
+            return render_blocked(
                 tool_name or "<unknown>",
                 ValueError("invalid Hermes middleware payload"),
             )
 
-        args = dict(raw_args)
-        context = {
-            key: value
-            for key, value in kwargs.items()
-            if key not in {"args", "original_args", "next_call"}
-        }
-
         try:
+            args = dict(raw_args)
+            context = {
+                key: value
+                for key, value in kwargs.items()
+                if key not in {"args", "original_args", "next_call"}
+            }
             logical_id = operation_id(tool_name, args, context)
         except Exception as exc:
-            return blocked_result(tool_name, exc)
+            return render_blocked(tool_name, exc)
 
         if logical_id is None:
             # Explicit bypass: this tool is outside the protected set.
             return next_call(args)
 
-        if not isinstance(logical_id, str) or not logical_id:
-            return blocked_result(
-                tool_name,
-                ValueError("protected Hermes tool requires a non-empty logical operation ID"),
-            )
-
-        action = {
-            "tool_name": tool_name,
-            "args": args,
-        }
-        request = OperationRequest(
-            operation_id=logical_id,
-            action_fingerprint=fingerprint_action("hermes_tool_call", action),
-            action=action,
-        )
-        provider = _HermesCallbackProvider(
-            tool_name=tool_name,
-            args=args,
-            context=context,
-            next_call=next_call,
-            reconcile=reconcile,
-            idempotent_by_operation_id=provider_idempotent_by_operation_id,
-            authoritative_absence=authoritative_absence,
-        )
-
         try:
+            if not isinstance(logical_id, str) or not logical_id:
+                raise ValueError(
+                    "protected Hermes tool requires a non-empty logical operation ID"
+                )
+
+            action = {
+                "tool_name": tool_name,
+                "args": args,
+            }
+            request = OperationRequest(
+                operation_id=logical_id,
+                action_fingerprint=fingerprint_action("hermes_tool_call", action),
+                action=action,
+            )
+            provider = _HermesCallbackProvider(
+                tool_name=tool_name,
+                args=args,
+                context=context,
+                next_call=next_call,
+                reconcile=reconcile,
+                idempotent_by_operation_id=provider_idempotent_by_operation_id,
+                authoritative_absence=authoritative_absence,
+            )
             result = core.execute(request, provider=provider)
             if "hermes_result" not in result.receipt:
                 raise RuntimeError("Once receipt missing Hermes tool result")
             return result.receipt["hermes_result"]
         except Exception as exc:
-            # Critical Hermes-specific boundary: never raise a Once safety
-            # failure before downstream execution. A normal return keeps the
-            # fail-open middleware runner from dispatching the base tool.
-            return blocked_result(tool_name, exc)
+            # Critical Hermes-specific boundary: every protected pre-dispatch,
+            # storage, reconciliation, and ambiguous-outcome failure becomes an
+            # intentional return value. A raised exception here would make
+            # Hermes continue to the next middleware/base tool.
+            return render_blocked(tool_name, exc)
 
     return middleware
 
