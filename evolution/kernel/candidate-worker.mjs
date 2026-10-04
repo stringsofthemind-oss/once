@@ -19,4 +19,8 @@ const proposals=data.generation===0 ? [
 ];
 // Bounded executable behavior controlled by strategy data: actual fault schedules.
 const cases=strategy.operators.flatMap((scenario,index)=>Array.from({length:strategy.casesPerOperator},(_,i)=>({id:`generated-${index}-${i}`,amount:5000+i,currency:i?'USD':'GBP',scenario})));
-writeFileSync(output,JSON.stringify({strategyVersion:strategy.version,knowledgeUsed:data.knowledge.map(x=>x.rule),proposals,cases})+'\n',{flag:'wx'});
+const detailed=proposals.map(p=>({...p,parent:data.generation?'g0-strategy-M1':null,generation:data.generation,
+  filesLikelyAffected:p.ring===4?['evolution/zone/strategy.json']:p.operation==='tamper'?['evolution/kernel/docs-evaluator.mjs']:['docs/first10/index.html','examples/first10/README.md'],
+  expectedAdvantages:p.hypothesis,likelyFailureModes:['misleading safety wording','no measured improvement','protected boundary violation'],
+  validationPlan:['protected diff admission','ordinary regression','property/state/mutation/holdout','independent structural metric','clean checkout']}));
+writeFileSync(output,JSON.stringify({strategyVersion:strategy.version,knowledgeUsed:data.knowledge.map(x=>x.rule),proposals:detailed,cases})+'\n',{flag:'wx'});

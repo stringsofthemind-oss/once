@@ -11,6 +11,7 @@ export function seededCases(seed, scenarios=operators, per=1) {
   }));
 }
 export function safety(budget,dist,dir,cases) {
+  const started=performance.now();
   mkdirSync(dir,{recursive:true});atomic(resolve(dir,'cases.json'),cases);
   // The trusted worker has a single fixed restart helper; account for these descendants too.
   budget.processes+=cases.filter(x=>x.scenario==='restart').length;
@@ -20,7 +21,7 @@ export function safety(budget,dist,dir,cases) {
     report.tests.some((test,index)=>test.id!==cases[index].id||test.scenario!==cases[index].scenario||typeof test.passed!=='boolean'||test.entered!==true) ||
     report.passed!==(report.violations.length===0) || report.passed!==report.tests.every(x=>x.passed) || process.status!==(report.passed?0:1) ||
     report.violations.some(x=>x.kind==='INFRASTRUCTURE'))throw new Error('INCOMPLETE_OR_INFRASTRUCTURE_EVALUATION');
-  return {...report,exitCode:process.status,completed:true,outputHash:digest(report)};
+  return {...report,exitCode:process.status,completed:true,elapsedMs:performance.now()-started,outputHash:digest(report)};
 }
 export function evaluateStrength(budget,out,dist,generatedM0,generatedM1) {
   verifyKernel();const trustedArtifacts=artifactManifest();

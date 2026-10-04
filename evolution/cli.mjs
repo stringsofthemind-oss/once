@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { resolve } from 'node:path';
 import { existsSync } from 'node:fs';
-import { runCampaign, approveTrial, validateReceipt, loadState } from './kernel/campaign.mjs';
+import { runCampaign, approveTrial, validateReceipt, loadState, boundReceipt } from './kernel/campaign.mjs';
 import { json, safeOutput, verifyKernel } from './kernel/common.mjs';
 
 const [command='help',...args]=process.argv.slice(2);
@@ -21,7 +21,7 @@ try {
       else if(['candidates','lineage'].includes(command))console.log(JSON.stringify(state.lineage,null,2));
       else if(['receipt','rollback-info'].includes(command)) {
         if(!/^g[01]-[a-zA-Z0-9-]+$/.test(args[0]??''))throw new Error('INVALID_CANDIDATE_ID');
-        const receipt=validateReceipt(json(resolve(directory,'receipts',args[0]+'.json')));console.log(JSON.stringify(command==='receipt'?receipt:receipt.rollback,null,2));
+        const receipt=boundReceipt(directory,state,args[0]);console.log(JSON.stringify(command==='receipt'?receipt:receipt.rollback,null,2));
       } else throw new Error('UNKNOWN_COMMAND');
     }
   }

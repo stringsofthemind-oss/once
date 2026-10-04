@@ -38,5 +38,7 @@ jobs:
         if: always()
         with:
           name: evolution-evidence-${{ matrix.os }}
-          path: ${{ runner.temp }}/once-evolution
+          path: |
+            ${{ runner.temp }}/once-evolution
+            !${{ runner.temp }}/once-evolution/.kernel-seal-key
           retention-days: 30

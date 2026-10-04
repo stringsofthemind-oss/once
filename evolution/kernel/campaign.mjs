@@ -28,6 +28,12 @@ export function loadState(out) {
   if(typeof state.kernelSeal!=='string'||state.kernelSeal.length!==64||!timingSafeEqual(Buffer.from(expected),Buffer.from(state.kernelSeal)))throw new Error('CAMPAIGN_TAMPERED');
   return state;
 }
+export function boundReceipt(out,state,id) {
+  if(!/^g[01]-[a-zA-Z0-9-]+$/.test(id??''))throw new Error('INVALID_CANDIDATE_ID');
+  const value=validateReceipt(json(resolve(out,'receipts',id+'.json'))),node=state.lineage.find(x=>x.id===id);
+  if(!node||node.receiptHash!==value.receiptHash||node.commit!==value.candidateCommit||value.campaignId!==state.campaignId||value.baselineCommit!==state.baseline||value.candidateId!==id)throw new Error('RECEIPT_PROVENANCE_MISMATCH');
+  return value;
+}
 function recordReceipt(out,value) {
   value.receiptHash=digest(value);validateReceipt(value);atomic(resolve(out,'receipts',value.candidateId+'.json'),value);return value;
 }
@@ -133,7 +139,7 @@ function startCampaign(budget,out,baseline,integrity,environment,versions) {
 export function approveTrial(outValue,id,expectedHash) {
   if(!/^g[01]-[a-zA-Z0-9-]+$/.test(id??''))throw new Error('INVALID_CANDIDATE_ID');
   const out=safeOutput(outValue),state=loadState(out),integrity={...verifyKernel(),artifacts:artifactManifest()};
-  const receipt=validateReceipt(json(resolve(out,'receipts',id+'.json')));
+  const receipt=boundReceipt(out,state,id);
   if(receipt.receiptHash!==expectedHash||receipt.decision!=='ELIGIBLE_FOR_HUMAN_PROMOTION'||receipt.riskRing!==4||receipt.candidateId!=='g0-strategy-M1')throw new Error('TRIAL_APPROVAL_REJECTED');
   if(state.status!=='AWAITING_HUMAN_TRIAL_APPROVAL')throw new Error('INVALID_CAMPAIGN_STATE');
   if(digest(integrity)!==digest(state.integrity))throw new Error('EVALUATOR_CHANGED');
@@ -153,7 +159,7 @@ export function approveTrial(outValue,id,expectedHash) {
   const receipts=[];
   for(const proposal of generated.proposals) {
     const built=buildCandidate(budget,out,state.baseline,proposal,1),check=inspectCandidate(budget,built.path,state.baseline),metrics=coldMetrics(built.path),reproduction=cleanReproduce(budget,out,built,state.baseline);
-    const original=validateReceipt(json(resolve(out,'receipts/g0-prerequisite-first.json')));
+    const original=boundReceipt(out,state,'g0-prerequisite-first');
     const eligible=documentationGates(state.baseMetrics,metrics)&&later.passed;
     const receipt2={...original,candidateId:built.id,parentCandidate:id,generation:1,candidateCommit:built.commit,hypothesis:proposal.hypothesis,filesChanged:check.files,diffStatistics:{bytes:check.bytes,sha256:check.sha256},
       results:{...original.results,adversarial:later,coldUser:metrics,security:{restrictedData:true,arbitrarySourceAllowed:false,protectedDiffRechecked:true,reusedSafetyEvidence:'Identical unchanged SDK/test/kernel bytes; full protected baseline results reused',candidateExecution:'none'}},softMetrics:{baseline:state.baseMetrics,candidate:metrics,generatedFaults:generated.cases.length,strategyVersion:generated.strategyVersion},

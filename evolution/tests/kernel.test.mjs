@@ -57,3 +57,13 @@ test('candidate patch admission rejects test deletion, hash changes, CI, fake ou
   writeFileSync(resolve(dir,'protected-test.mjs'),'assert(false)');budget.git(['add','--all'],dir);budget.git(['commit','-m','bad'],dir);assert.throws(()=>inspectCandidate(budget,dir,baseline),/PROTECTED_PATH/);
   writeFileSync(resolve(dir,'untracked.json'),'fake output');assert.throws(()=>inspectCandidate(budget,dir,baseline),/UNCOMMITTED/);
 });
+test('every evaluator-gaming surface fails protected-path admission',()=>{
+  const dir=temp(),budget=new Budget(dir);assert.equal(budget.run('git',['init',dir]).status,0);writeFileSync(resolve(dir,'baseline.txt'),'trusted');budget.git(['add','--all'],dir);budget.git(['commit','-m','baseline'],dir);const baseline=budget.git(['rev-parse','HEAD'],dir);
+  const attacks=[
+    ['evolution/tests/property.test.mjs','test.skip()'],['evolution/kernel/evaluate.mjs','threshold=0; disableMutation=true'],
+    ['evolution/constitution/v1.json','UNKNOWN permits retry'],['evolution/constitution/protected-hashes.json','rewritten hashes'],
+    ['evolution/kernel/campaign.mjs','promote without approval'],['evolution/holdouts/private.json','remove failing fixture'],
+    ['evolution/receipts/fake.json','PASS without execution'],['.github/workflows/evolution-ci.yml','skip tests'],
+    ['sdk/typescript/src/local.ts','return invented success'],['benchmarks/fake.json','fabricated timings']];
+  for(const [file,content] of attacks){const target=resolve(dir,file);mkdirSync(resolve(target,'..'),{recursive:true});writeFileSync(target,content);budget.git(['add','--all'],dir);budget.git(['commit','-m','controlled attack'],dir);assert.throws(()=>inspectCandidate(budget,dir,baseline),/PROTECTED_PATH/);}
+});

@@ -1,0 +1,2533 @@
+{
+  "schemaVersion": 1,
+  "campaignId": "first10-04bfd3a61ca7-53f556f1",
+  "candidateId": "g1-prerequisite-evidence",
+  "parentCandidate": "g0-strategy-M1",
+  "generation": 1,
+  "baselineCommit": "04bfd3a61ca743c4476945984bb8f9ecd0be99e5",
+  "candidateCommit": "6e51813500fca1936f4203b36495e185ab82fcd3",
+  "riskRing": 3,
+  "constitution": {
+    "version": "once-evolution-constitution/1",
+    "hash": "26f1d7fe1397081cc500ad43657331b9fb8c4e0c9620afda11913e67f6075692"
+  },
+  "evaluator": {
+    "version": "trusted-kernel/1",
+    "hash": "4faa0929b03733f3110b217dbaf756dcc951428b85ac79e758fe6f576acfc1d0"
+  },
+  "roles": {
+    "proposer": "trusted bounded-data interpreter/1",
+    "builder": "trusted fixed edit operators/1",
+    "breaker": "independent protected safety/mutation suite/1",
+    "coldUser": "structural synthetic observer/1",
+    "legitimizer": "kernel admission/1"
+  },
+  "target": "FIRST10 documentation",
+  "hypothesis": "Use the previous generation lesson to address ordering and report handoff together.",
+  "filesChanged": [
+    "docs/first10/index.html",
+    "examples/first10/README.md"
+  ],
+  "diffStatistics": {
+    "bytes": 3473,
+    "sha256": "65bcc15d438ebb783053cb112114c35b8af22f7c35cbbdc54b1ce54769dfb86a"
+  },
+  "results": {
+    "ordinary": {
+      "passed": true,
+      "command": [
+        "node",
+        "--test",
+        "sdk/typescript/test/first10.test.mjs",
+        "sdk/typescript/test/local.test.mjs",
+        "sdk/typescript/test/wrap-tool.test.mjs",
+        "sdk/typescript/test/local-session.test.mjs",
+        "scripts/website-funnel.test.mjs"
+      ],
+      "log": "ordinary.log",
+      "sha256": "c82074a414801be396d1e44a6e38aec74ff368c301a286382c383a34917c4db2"
+    },
+    "property": {
+      "passed": true,
+      "tests": [
+        {
+          "id": "intent-b5b64b23d2527f65",
+          "scenario": "replay",
+          "passed": true,
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-0\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "id": "intent-b3715b79c5c59a54",
+          "scenario": "conflict",
+          "passed": true,
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-1\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "id": "intent-5ca1d238b175bb91",
+          "scenario": "unknown",
+          "passed": true,
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-2\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "intent-2779140df7cd5658",
+          "scenario": "absent",
+          "passed": true,
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-3\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "intent-e588c4012554dd04",
+          "scenario": "unavailable",
+          "passed": true,
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-4\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "intent-3152eb2013d4951c",
+          "scenario": "missing-result",
+          "passed": true,
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-5\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "intent-e8d4e70b92987cad",
+          "scenario": "corrupt-receipt",
+          "passed": true,
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-6\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "id": "intent-dca4ea7d90bb3bf6",
+          "scenario": "concurrency",
+          "passed": true,
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-7\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "id": "intent-8fc33adb28ae8c94",
+          "scenario": "restart",
+          "passed": true,
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-8\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "intent-ec4840731aff63c1",
+          "scenario": "attempt",
+          "passed": true,
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-9\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "id": "intent-17dae2dc6e34eec3",
+          "scenario": "omit-field",
+          "passed": true,
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-10\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        }
+      ],
+      "violations": [],
+      "counts": {
+        "0:intent-b5b64b23d2527f65": {
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-0\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        "1:intent-b3715b79c5c59a54": {
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-1\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        "2:intent-5ca1d238b175bb91": {
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-2\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "3:intent-2779140df7cd5658": {
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-3\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "4:intent-e588c4012554dd04": {
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-4\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "5:intent-3152eb2013d4951c": {
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-5\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "6:intent-e8d4e70b92987cad": {
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-6\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        "7:intent-dca4ea7d90bb3bf6": {
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-7\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            2,
+            2
+          ]
+        },
+        "8:intent-8fc33adb28ae8c94": {
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-8\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "9:intent-ec4840731aff63c1": {
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-9\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        "10:intent-17dae2dc6e34eec3": {
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-10\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        }
+      },
+      "exitCode": 0,
+      "completed": true,
+      "outputHash": "e7bcee80912f22447bb8edddb39a3b2077ed4f1dd57fd334a5258c5ecb95c521"
+    },
+    "stateMachine": {
+      "passed": true,
+      "tests": [
+        {
+          "id": "intent-b5b64b23d2527f65",
+          "scenario": "replay",
+          "passed": true,
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-0\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "id": "intent-b3715b79c5c59a54",
+          "scenario": "conflict",
+          "passed": true,
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-1\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "id": "intent-5ca1d238b175bb91",
+          "scenario": "unknown",
+          "passed": true,
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-2\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "intent-2779140df7cd5658",
+          "scenario": "absent",
+          "passed": true,
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-3\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "intent-e588c4012554dd04",
+          "scenario": "unavailable",
+          "passed": true,
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-4\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "intent-3152eb2013d4951c",
+          "scenario": "missing-result",
+          "passed": true,
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-5\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "intent-e8d4e70b92987cad",
+          "scenario": "corrupt-receipt",
+          "passed": true,
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-6\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "id": "intent-dca4ea7d90bb3bf6",
+          "scenario": "concurrency",
+          "passed": true,
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-7\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "id": "intent-8fc33adb28ae8c94",
+          "scenario": "restart",
+          "passed": true,
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-8\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "intent-ec4840731aff63c1",
+          "scenario": "attempt",
+          "passed": true,
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-9\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "id": "intent-17dae2dc6e34eec3",
+          "scenario": "omit-field",
+          "passed": true,
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-10\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        }
+      ],
+      "violations": [],
+      "counts": {
+        "0:intent-b5b64b23d2527f65": {
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-0\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        "1:intent-b3715b79c5c59a54": {
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-1\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        "2:intent-5ca1d238b175bb91": {
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-2\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "3:intent-2779140df7cd5658": {
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-3\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "4:intent-e588c4012554dd04": {
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-4\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "5:intent-3152eb2013d4951c": {
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-5\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "6:intent-e8d4e70b92987cad": {
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-6\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        "7:intent-dca4ea7d90bb3bf6": {
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-7\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            2,
+            2
+          ]
+        },
+        "8:intent-8fc33adb28ae8c94": {
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-8\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "9:intent-ec4840731aff63c1": {
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-9\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        "10:intent-17dae2dc6e34eec3": {
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\property\\state\\case-10\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        }
+      },
+      "exitCode": 0,
+      "completed": true,
+      "outputHash": "e7bcee80912f22447bb8edddb39a3b2077ed4f1dd57fd334a5258c5ecb95c521"
+    },
+    "mutation": {
+      "total": 10,
+      "killed": 10,
+      "dangerousSurvivors": []
+    },
+    "holdout": {
+      "passed": true,
+      "tests": [
+        {
+          "id": "intent-6ab8ebf7318fb9f2",
+          "scenario": "replay",
+          "passed": true,
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-0\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "id": "intent-7e7f47c3b7f0d186",
+          "scenario": "replay",
+          "passed": true,
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-1\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "id": "intent-81b8c337af7ce346",
+          "scenario": "conflict",
+          "passed": true,
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-2\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "id": "intent-090013774629c58c",
+          "scenario": "conflict",
+          "passed": true,
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-3\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "id": "intent-95f172f0fb2fe486",
+          "scenario": "unknown",
+          "passed": true,
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-4\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "intent-f7002dae9056ccd9",
+          "scenario": "unknown",
+          "passed": true,
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-5\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "intent-871ae9b0fed45ff6",
+          "scenario": "absent",
+          "passed": true,
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-6\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "intent-e4fab3c5fb3fdafe",
+          "scenario": "absent",
+          "passed": true,
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-7\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "intent-37ef13ec9bf15264",
+          "scenario": "unavailable",
+          "passed": true,
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-8\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "intent-c6a529d70ca4d49e",
+          "scenario": "unavailable",
+          "passed": true,
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-9\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "intent-1b8baae3101f3a19",
+          "scenario": "missing-result",
+          "passed": true,
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-10\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "intent-05009894a0d44220",
+          "scenario": "missing-result",
+          "passed": true,
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-11\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "intent-058c5aba6101556d",
+          "scenario": "corrupt-receipt",
+          "passed": true,
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-12\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "id": "intent-0bc6343533ed9f4f",
+          "scenario": "corrupt-receipt",
+          "passed": true,
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-13\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "id": "intent-a924e841abf9ed09",
+          "scenario": "concurrency",
+          "passed": true,
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-14\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "id": "intent-ea8b1f3f38da51b4",
+          "scenario": "concurrency",
+          "passed": true,
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-15\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "id": "intent-04f0b107318c9ff8",
+          "scenario": "restart",
+          "passed": true,
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-16\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "intent-b1c5d0881e6a26e6",
+          "scenario": "restart",
+          "passed": true,
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-17\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "intent-dd2fcc1428516e9a",
+          "scenario": "attempt",
+          "passed": true,
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-18\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "id": "intent-cf73feadb3b193f2",
+          "scenario": "attempt",
+          "passed": true,
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-19\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "id": "intent-062f623c7ed1abbc",
+          "scenario": "omit-field",
+          "passed": true,
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-20\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "id": "intent-458d4a6a2d8fdc85",
+          "scenario": "omit-field",
+          "passed": true,
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-21\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        }
+      ],
+      "violations": [],
+      "counts": {
+        "0:intent-6ab8ebf7318fb9f2": {
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-0\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        "1:intent-7e7f47c3b7f0d186": {
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-1\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        "2:intent-81b8c337af7ce346": {
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-2\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        "3:intent-090013774629c58c": {
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-3\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        "4:intent-95f172f0fb2fe486": {
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-4\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "5:intent-f7002dae9056ccd9": {
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-5\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "6:intent-871ae9b0fed45ff6": {
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-6\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "7:intent-e4fab3c5fb3fdafe": {
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-7\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "8:intent-37ef13ec9bf15264": {
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-8\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "9:intent-c6a529d70ca4d49e": {
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-9\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "10:intent-1b8baae3101f3a19": {
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-10\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "11:intent-05009894a0d44220": {
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-11\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "12:intent-058c5aba6101556d": {
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-12\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        "13:intent-0bc6343533ed9f4f": {
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-13\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        "14:intent-a924e841abf9ed09": {
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-14\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            2,
+            2
+          ]
+        },
+        "15:intent-ea8b1f3f38da51b4": {
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-15\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            2,
+            2
+          ]
+        },
+        "16:intent-04f0b107318c9ff8": {
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-16\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "17:intent-b1c5d0881e6a26e6": {
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-17\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "18:intent-dd2fcc1428516e9a": {
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-18\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        "19:intent-cf73feadb3b193f2": {
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-19\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        "20:intent-062f623c7ed1abbc": {
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-20\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        "21:intent-458d4a6a2d8fdc85": {
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\evaluation\\holdout\\state\\case-21\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        }
+      },
+      "exitCode": 0,
+      "completed": true,
+      "outputHash": "a6ecfd2961b40fc75bc00a7365df3149073ff1123030266f9f6cab84d7148167"
+    },
+    "adversarial": {
+      "passed": true,
+      "tests": [
+        {
+          "id": "generated-0-0",
+          "scenario": "replay",
+          "passed": true,
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-0\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "id": "generated-0-1",
+          "scenario": "replay",
+          "passed": true,
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-1\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "id": "generated-1-0",
+          "scenario": "conflict",
+          "passed": true,
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-2\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "id": "generated-1-1",
+          "scenario": "conflict",
+          "passed": true,
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-3\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "id": "generated-2-0",
+          "scenario": "unknown",
+          "passed": true,
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-4\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "generated-2-1",
+          "scenario": "unknown",
+          "passed": true,
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-5\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "generated-3-0",
+          "scenario": "absent",
+          "passed": true,
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-6\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "generated-3-1",
+          "scenario": "absent",
+          "passed": true,
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-7\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "generated-4-0",
+          "scenario": "unavailable",
+          "passed": true,
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-8\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "generated-4-1",
+          "scenario": "unavailable",
+          "passed": true,
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-9\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "generated-5-0",
+          "scenario": "missing-result",
+          "passed": true,
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-10\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "generated-5-1",
+          "scenario": "missing-result",
+          "passed": true,
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-11\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "generated-6-0",
+          "scenario": "corrupt-receipt",
+          "passed": true,
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-12\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "id": "generated-6-1",
+          "scenario": "corrupt-receipt",
+          "passed": true,
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-13\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "id": "generated-7-0",
+          "scenario": "concurrency",
+          "passed": true,
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-14\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "id": "generated-7-1",
+          "scenario": "concurrency",
+          "passed": true,
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-15\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "id": "generated-8-0",
+          "scenario": "restart",
+          "passed": true,
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-16\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "generated-8-1",
+          "scenario": "restart",
+          "passed": true,
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-17\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "generated-9-0",
+          "scenario": "attempt",
+          "passed": true,
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-18\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "id": "generated-9-1",
+          "scenario": "attempt",
+          "passed": true,
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-19\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "id": "generated-10-0",
+          "scenario": "omit-field",
+          "passed": true,
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-20\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "id": "generated-10-1",
+          "scenario": "omit-field",
+          "passed": true,
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-21\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        }
+      ],
+      "violations": [],
+      "counts": {
+        "0:generated-0-0": {
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-0\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        "1:generated-0-1": {
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-1\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        "2:generated-1-0": {
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-2\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        "3:generated-1-1": {
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-3\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        "4:generated-2-0": {
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-4\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "5:generated-2-1": {
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-5\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "6:generated-3-0": {
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-6\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "7:generated-3-1": {
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-7\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "8:generated-4-0": {
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-8\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "9:generated-4-1": {
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-9\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "10:generated-5-0": {
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-10\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "11:generated-5-1": {
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-11\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "12:generated-6-0": {
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-12\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        "13:generated-6-1": {
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-13\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        "14:generated-7-0": {
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-14\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            2,
+            2
+          ]
+        },
+        "15:generated-7-1": {
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-15\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            2,
+            2
+          ]
+        },
+        "16:generated-8-0": {
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-16\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "17:generated-8-1": {
+          "entered": true,
+          "writes": 1,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-17\\provider.jsonl",
+          "observedStates": [
+            "UNKNOWN",
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "18:generated-9-0": {
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-18\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        "19:generated-9-1": {
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-19\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        "20:generated-10-0": {
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-20\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        "21:generated-10-1": {
+          "entered": true,
+          "writes": 2,
+          "journal": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\generation1-actual\\state\\case-21\\provider.jsonl",
+          "observedStates": [
+            "CONFIRMED"
+          ],
+          "observedCounts": [
+            1,
+            1,
+            1,
+            2,
+            2
+          ]
+        }
+      },
+      "exitCode": 0,
+      "completed": true,
+      "outputHash": "8b6ccace14575042cab67fcfe831b49f462c42e9dca75db8fab278b0c6912e32"
+    },
+    "coldUser": {
+      "evidenceKind": "SYNTHETIC_STRUCTURAL_NOT_HUMAN",
+      "prerequisiteOrderViolations": 0,
+      "reportInspectionInstructions": 1,
+      "minimumProofCommands": 1,
+      "safetyWordingPreserved": true,
+      "bytes": 10799
+    },
+    "performance": {
+      "scope": "machine fixtures only; no human time measurement",
+      "generatedCases": 4
+    },
+    "security": {
+      "restrictedData": true,
+      "arbitrarySourceAllowed": false,
+      "protectedDiffRechecked": true,
+      "reusedSafetyEvidence": "Identical unchanged SDK/test/kernel bytes; full protected baseline results reused",
+      "candidateExecution": "none"
+    },
+    "evaluatorTampering": {
+      "attempted": false,
+      "detected": false
+    }
+  },
+  "hardGates": {
+    "kernelIntegrity": true,
+    "protectedPaths": true,
+    "ordinary": true,
+    "properties": true,
+    "stateMachine": true,
+    "holdout": true,
+    "adversarial": true,
+    "mutation": true,
+    "documentation": true,
+    "noCandidateExecution": true,
+    "noCredentials": true,
+    "noSelfApproval": true,
+    "cleanReproduction": true,
+    "resourceLimits": true
+  },
+  "softMetrics": {
+    "baseline": {
+      "evidenceKind": "SYNTHETIC_STRUCTURAL_NOT_HUMAN",
+      "prerequisiteOrderViolations": 1,
+      "reportInspectionInstructions": 0,
+      "minimumProofCommands": 1,
+      "safetyWordingPreserved": true,
+      "bytes": 10184
+    },
+    "candidate": {
+      "evidenceKind": "SYNTHETIC_STRUCTURAL_NOT_HUMAN",
+      "prerequisiteOrderViolations": 0,
+      "reportInspectionInstructions": 1,
+      "minimumProofCommands": 1,
+      "safetyWordingPreserved": true,
+      "bytes": 10799
+    },
+    "generatedFaults": 22,
+    "strategyVersion": "M1"
+  },
+  "decision": "ELIGIBLE_FOR_HUMAN_PROMOTION",
+  "decisionReason": "Independent protected gates retained; approved trial machinery used; production human gate remains",
+  "promotionEligibility": true,
+  "rollback": {
+    "target": "04bfd3a61ca743c4476945984bb8f9ecd0be99e5",
+    "origin": "6e51813500fca1936f4203b36495e185ab82fcd3",
+    "parent": "04bfd3a61ca743c4476945984bb8f9ecd0be99e5",
+    "restore": "git restore --source=04bfd3a61ca743c4476945984bb8f9ecd0be99e5 -- docs/first10/index.html examples/first10/README.md",
+    "diffFile": "diffs/g1-prerequisite-evidence.patch"
+  },
+  "timestamps": {
+    "startedAt": "2026-10-04T10:36:04.989Z",
+    "completedAt": "2026-10-04T10:37:12.305Z"
+  },
+  "environment": {
+    "os": "win32",
+    "release": "10.0.26200",
+    "arch": "x64",
+    "node": "v24.19.0",
+    "dependencies": "4e7404ba71ce4dc49225c1c4400e7b97674c6c18943d1a9aa1b74785bead41dc",
+    "network": "none in candidate/evaluation",
+    "permissions": "bounded-data + Node permission for generation"
+  },
+  "cleanReproduction": {
+    "passed": true,
+    "commit": "6e51813500fca1936f4203b36495e185ab82fcd3",
+    "diffSha256": "65bcc15d438ebb783053cb112114c35b8af22f7c35cbbdc54b1ce54769dfb86a",
+    "metrics": {
+      "evidenceKind": "SYNTHETIC_STRUCTURAL_NOT_HUMAN",
+      "prerequisiteOrderViolations": 0,
+      "reportInspectionInstructions": 1,
+      "minimumProofCommands": 1,
+      "safetyWordingPreserved": true,
+      "bytes": 10799
+    },
+    "mode": "fresh Git checkout, no candidate execution",
+    "path": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-04\\files-pasted-by-the-user-you\\work\\evolution-campaign-5\\clean-reproduction\\g1-prerequisite-evidence"
+  },
+  "provenance": {
+    "candidateLanguage": "bounded-data-only/1",
+    "sourceGeneration": "M1",
+    "approvedReceipt": "936fff0464ad8e0af50385970a4c0ea89e3cf6f4c39da374b8840b4294070b82",
+    "knowledgeUsed": [
+      "Document metrics are synthetic, not adoption evidence",
+      "Document metrics are synthetic, not adoption evidence",
+      "Judge edits are rejected before candidate execution",
+      "Fault breadth must be measured against seeded defects, not self-report"
+    ],
+    "reusedGatesFrom": "g0-prerequisite-first",
+    "reuseReason": "Candidate only changes interpreted documentation; immutable SDK/kernel and baseline commit match"
+  },
+  "receiptHash": "8b980f5fe377fd301f10804406e5c24cc23a7fb0be7f9f154bb24d95f4cd11d1"
+}
