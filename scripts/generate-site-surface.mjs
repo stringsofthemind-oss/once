@@ -9,6 +9,7 @@ export const versions = { ts: published.ts, python, mcp: published.mcp };
 // Published metadata, not an unreleased source version, is the install authority.
 const files = [
 	'docs/index.html',
+	'docs/first10/index.html',
 	'docs/demo/index.html',
 	'docs/quickstart/index.html',
 	'docs/evidence/index.html',

@@ -1,23 +1,29 @@
 # Prevent a duplicate refund after acknowledgement loss and process restart
 
-The canonical FIRST 10 proof uses published SDK 0.1.24, Node 24.15+, and built-in Node modules. No account, API key, or money movement.
+The canonical FIRST 10 proof uses published SDK 0.1.25, Node 24.15+, and built-in Node modules. No account, API key, or money movement.
+
+One-command fixture proof:
+
+```sh
+npx --yes --package=@once-agent/sdk@0.1.25 once prove
+```
 
 From a checkout:
 
 ```sh
-npm install --no-save --package-lock=false @once-agent/sdk@0.1.24
+npm install --no-save --package-lock=false @once-agent/sdk@0.1.25
 node examples/first10/prove.mjs
 ```
 
-From an empty directory, **after site publication**:
+From an empty directory:
 
 ```sh
-npm install @once-agent/sdk@0.1.24
+npm install @once-agent/sdk@0.1.25
 curl -fsSLo prove.mjs https://onceexec.com/first10/prove.mjs
 node prove.mjs
 ```
 
-PowerShell download: `Invoke-WebRequest https://onceexec.com/first10/prove.mjs -OutFile prove.mjs`. The hosted file is pending deployment; the checkout route works now.
+PowerShell download: `Invoke-WebRequest https://onceexec.com/first10/prove.mjs -OutFile prove.mjs`.
 
 ## What happens
 

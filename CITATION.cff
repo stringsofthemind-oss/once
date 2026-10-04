@@ -5,8 +5,8 @@ type: software
 authors:
   - family-names: Oswald
     given-names: Jamie
-version: 0.1.24
-date-released: 2026-10-03
+version: 0.1.25
+date-released: 2026-10-04
 url: "https://onceexec.com/"
 repository-code: "https://github.com/stringsofthemind-oss/once"
 license: MIT

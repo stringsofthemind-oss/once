@@ -1,8 +1,8 @@
 # Once — Agent-Readable Product Guide
 
-> **Natural Placement (SDK 0.1.24):** `wrapTool(callback, semantics)` protects a host-owned unary callback. Supply stable logical identity, complete effect/account binding and authoritative reconciliation. Requires Node.js 24.15+ and one durable same-machine SQLite authority. `UNKNOWN` blocks redispatch; opaque internal retries and connector-only model access are outside the boundary. See https://github.com/stringsofthemind-oss/once/tree/main/examples/natural-placement.
+> **Natural Placement (introduced in SDK 0.1.24):** `wrapTool(callback, semantics)` protects a host-owned unary callback. Supply stable logical identity, complete effect/account binding and authoritative reconciliation. Requires Node.js 24.15+ and one durable same-machine SQLite authority. `UNKNOWN` blocks redispatch; opaque internal retries and connector-only model access are outside the boundary. See https://github.com/stringsofthemind-oss/once/tree/main/examples/natural-placement.
 
-> **Automatic Connect:** `@once-agent/sdk@0.1.24` publishes the tested
+> **Automatic Connect:** `@once-agent/sdk@0.1.25` publishes the tested
 > `@once-agent/sdk/connect` toolset integration path. It can classify supported
 > agent tools as `BYPASS`, `PROTECT`, or fail-closed `UNKNOWN`, bind trusted
 > logical intent identity and effect payload, and return a connected local tool
@@ -26,7 +26,7 @@ Canonical site: https://onceexec.com/
 
 Repository: https://github.com/stringsofthemind-oss/once
 
-TypeScript SDK: `@once-agent/sdk@0.1.24`
+TypeScript SDK: `@once-agent/sdk@0.1.25`
 
 npm: https://www.npmjs.com/package/@once-agent/sdk
 
@@ -305,4 +305,4 @@ Its fake provider is not external-provider proof. Installing MCP alone is not
 protection; all effects must traverse the protected boundary. Local mode will
 not redispatch an ambiguous operation on an ABSENT observation.
 
-FIRST 10: Controlled refund proof: https://onceexec.com/first10/ . Standalone proof uses published SDK 0.1.24; the new once check/prove commands are branch-only until release. See repository examples/first10/README.md and docs/FIRST10.md. Native idempotency or a unique constraint should be used alone when sufficient. Identity/effect decisions require developer review; never infer them silently.
+FIRST 10: Controlled refund proof: https://onceexec.com/first10/ . SDK 0.1.25 publishes once prove and read-only once check; the standalone proof also works with SDK 0.1.24 or later. See repository examples/first10/README.md and docs/FIRST10.md. Native idempotency or a unique constraint should be used alone when sufficient. Identity/effect decisions require developer review; never infer them silently.
