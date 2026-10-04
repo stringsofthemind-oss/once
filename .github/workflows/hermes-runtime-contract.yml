@@ -1,0 +1,45 @@
+name: Hermes Middleware Runtime Contract
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'sdk/python/**'
+      - 'examples/hermes-agent-hostile-retry/**'
+      - '.github/workflows/hermes-runtime-contract.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  pinned-hermes-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Once
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Use Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Once Python SDK
+        run: python -m pip install -e ./sdk/python
+
+      - name: Checkout pinned Hermes Agent
+        uses: actions/checkout@v4
+        with:
+          repository: NousResearch/hermes-agent
+          ref: ea81748579ee1732d214ccb75f91d22208ed623d
+          path: .compat/hermes-agent
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Run actual Hermes middleware contract proof
+        run: >-
+          python examples/hermes-agent-hostile-retry/hermes_runtime_contract.py
+          .compat/hermes-agent
