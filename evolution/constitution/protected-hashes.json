@@ -5,10 +5,10 @@
     "evolution/THREAT-MODEL.md": "d9e9132a397b76b40395a8b157da80c0736c5ffcb4bc500769f391b455e6c94d",
     "evolution/cli.mjs": "e282f9baec468f7a508d3df3506f2616755703109e6fc601c6f485654974927a",
     "evolution/constitution/v1.json": "16c29cc189ddf3cf3f12746e84584e6d7aa3d2fa6d21787c963d5b63f9c83a47",
-    "evolution/kernel/campaign.mjs": "060353b84fdb873d42ce32c07664147727dc2f3d594c1612c84f5ccacacb7ad9",
+    "evolution/kernel/campaign.mjs": "3224b7efe62c65c92e69dbd02dd3ede052d18cefb7abcc450730660f0c4566fc",
     "evolution/kernel/candidate-worker.mjs": "a08fd61f6f15d210452a2ed4927032739cb7224db6bd014669cff02a611856bc",
-    "evolution/kernel/common.mjs": "656e2ab0f1044e18482367d2e85ac5ef35778ad393ac7463efc674393dec7d4f",
-    "evolution/kernel/docs-evaluator.mjs": "8119fd8ced8d69c28010c6f90ca91c8d77e5dd4c3681a2ec8bb4880dda070470",
+    "evolution/kernel/common.mjs": "7d4e7ec14926acdb5a7132f4d989b18aa976e9f1f6df9a3cd8d819c50ef68775",
+    "evolution/kernel/docs-evaluator.mjs": "82f46351882278862a7c05385445be8fb256e1b52d7a23ad2452710a3f28557b",
     "evolution/kernel/evaluate.mjs": "f3575cd901fd7079f4100c49c12157bbc6aecd83c907e3c07cbcdb2f5924654e",
     "evolution/kernel/hash-manifest.mjs": "babddbdf899a70e533e4bc7c816f6aea83a867ba7c09f263193a5d060845e87c",
     "evolution/kernel/mutations.mjs": "a1e36783831cf29f2f77af6713fa1422f1b139a991b5d7f97e88c8e0bf1eba00",
@@ -18,7 +18,7 @@
     "evolution/schemas/types.d.ts": "43896c3f34255dfcc60a03da497f19f4f39ea61e73f9bba42c13ec4a52620965",
     "evolution/tests/breaker.test.mjs": "84bfb70353cd5dfb86115579c14795118ddf600ef6996d03e4f38dcf4c230a08",
     "evolution/tests/ci-trial.mjs": "1d109c102779ce66a1c7b21bcffca1cdcd19ac469441b22a0bb5fcfefc57beee",
-    "evolution/tests/kernel.test.mjs": "d80d829f033bfd9389ec66504d9e1fdadced34f81d03141e6177e70f44d25654",
+    "evolution/tests/kernel.test.mjs": "ab9fb0aea7500e32649c2a84a447087fe7b393f30874fb05193bcdb29c0d1196",
     ".github/workflows/evolution-ci.yml": "45f754c56f7553111046cca7254e91053acfc5a31b4886f8220c62dbd123e4eb"
   }
 }

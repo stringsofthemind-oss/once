@@ -66,6 +66,13 @@ export function verifyKernel() {
   }
   return {constitutionHash:digest(constitution),evaluatorHash:digest(manifest.files),version:manifest.version};
 }
+export function artifactManifest() {
+  const files={};
+  const visit=dir=>{for(const name of readdirSync(dir).sort()){const file=resolve(dir,name),stat=lstatSync(file);if(stat.isSymbolicLink())throw new Error('ARTIFACT_LINK');if(stat.isDirectory())visit(file);else files[relative(root,file).replaceAll('\\','/')]=hash(readFileSync(file));}};
+  visit(resolve(root,'sdk/typescript/dist'));visit(resolve(root,'sdk/typescript/dist-cjs'));
+  if(!Object.hasOwn(files,'sdk/typescript/dist/local.js'))throw new Error('MISSING_SDK_BUILD');return files;
+}
+export function verifyArtifacts(expected) {if(digest(artifactManifest())!==digest(expected))throw new Error('SDK_ARTIFACT_DRIFT');}
 export const operators=['replay','conflict','unknown','absent','unavailable','missing-result','corrupt-receipt','concurrency','restart','attempt','omit-field'];
 export function validateStrategy(value) {
   if(!value || Object.keys(value).sort().join(',')!=='casesPerOperator,operators,version' || !['M0','M1'].includes(value.version) ||

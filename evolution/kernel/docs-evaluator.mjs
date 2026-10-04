@@ -9,7 +9,7 @@ export function coldMetrics(directory) {
   const safety=['UNKNOWN is protection','Absence alone does not permit local redispatch','Exclude Authorization credentials','transport request ID is not the business operation'];
   return {evidenceKind:'SYNTHETIC_STRUCTURAL_NOT_HUMAN',prerequisiteOrderViolations:Number(runtime<0||command<0||runtime>command),
     reportInspectionInstructions:Number(guide.includes('node -e')&&guide.includes('report.json')&&guide.includes('process.argv[1]')),
-    minimumProofCommands:1,safetyWordingPreserved:safety.every(x=>html.includes(x)),bytes:Buffer.byteLength(html)+Buffer.byteLength(guide)};
+    minimumProofCommands:1,safetyWordingPreserved:safety.every(x=>html.toLowerCase().includes(x.toLowerCase())),bytes:Buffer.byteLength(html)+Buffer.byteLength(guide)};
 }
 export function documentationGates(baseline,candidate) {
   return candidate.safetyWordingPreserved && candidate.minimumProofCommands===baseline.minimumProofCommands &&

@@ -3,13 +3,14 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, existsSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
-import { root, Budget, safeOutput, contained, scrubEnvironment, validateStrategy, verifyKernel, constitution, digest } from '../kernel/common.mjs';
+import { root, Budget, safeOutput, contained, scrubEnvironment, validateStrategy, verifyKernel, constitution, digest, artifactManifest, verifyArtifacts } from '../kernel/common.mjs';
 import { approveTrial, inspectCandidate, validateReceipt } from '../kernel/campaign.mjs';
 import { coldMetrics, applyDocumentation, evidenceGuide } from '../kernel/docs-evaluator.mjs';
 import { seededCases } from '../kernel/evaluate.mjs';
 
 const temp=()=>mkdtempSync(resolve(tmpdir(),'once-evolution-test-'));
 test('protected kernel hashes match installed constitution/evaluator',()=>assert(verifyKernel().evaluatorHash));
+test('compiled artifact hashes bind execution and evidence reuse',()=>{const manifest=artifactManifest();verifyArtifacts(manifest);const bad={...manifest,'sdk/typescript/dist/local.js':'0'.repeat(64)};assert.throws(()=>verifyArtifacts(bad),/SDK_ARTIFACT_DRIFT/);});
 test('path escapes, output within repository and existing links fail closed',()=>{
   assert.throws(()=>contained(root,'../outside'));assert.throws(()=>safeOutput(root));assert.throws(()=>safeOutput(resolve(root,'evolution/outputs')));
   const dir=temp(),target=resolve(dir,'target'),link=resolve(dir,'link');mkdirSync(target);symlinkSync(target,link,process.platform==='win32'?'junction':'dir');assert.throws(()=>safeOutput(link),/OUTPUT_LINK/);
@@ -41,7 +42,7 @@ test('holdout seeded replay changes business identity/payload while preserving f
   assert.deepEqual(seededCases('seed'),seededCases('seed'));assert.notDeepEqual(seededCases('other'),seededCases('seed'));assert.equal(seededCases('seed').length,11);
 });
 test('FIRST10 bounded docs variants improve different observed metrics; report command really works',()=>{
-  const baseline=coldMetrics(root);assert.equal(baseline.prerequisiteOrderViolations,1);assert.equal(baseline.reportInspectionInstructions,0);
+  const baseline=coldMetrics(root);assert.equal(baseline.prerequisiteOrderViolations,1);assert.equal(baseline.reportInspectionInstructions,0);assert.equal(baseline.safetyWordingPreserved,true);
   const html=readFileSync(resolve(root,'docs/first10/index.html'),'utf8'),guide=readFileSync(resolve(root,'examples/first10/README.md'),'utf8');
   const ordered=applyDocumentation('move-prerequisite',html,guide);assert(ordered.html.indexOf('Node.js 24.15+')<ordered.html.indexOf('npx --yes'));assert.equal(ordered.guide,guide);
   const handoff=applyDocumentation('add-evidence-guide',html,guide);assert.equal(handoff.html,html);assert(handoff.guide.includes(evidenceGuide));

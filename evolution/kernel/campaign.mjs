@@ -2,7 +2,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync, lstatSync, readdirS
 import { resolve, join } from 'node:path';
 import { platform, release, arch } from 'node:os';
 import { randomBytes, createHmac, timingSafeEqual } from 'node:crypto';
-import { root, constitution, hash, digest, canonical, json, atomic, Budget, safeOutput, verifyKernel, validateStrategy, operators } from './common.mjs';
+import { root, constitution, hash, digest, canonical, json, atomic, Budget, safeOutput, verifyKernel, validateStrategy, operators, artifactManifest, verifyArtifacts } from './common.mjs';
 import { validateSchema } from './schema.mjs';
 import { coldMetrics, documentationGates, applyDocumentation } from './docs-evaluator.mjs';
 import { evaluateStrength, ordinary, safety } from './evaluate.mjs';
@@ -76,7 +76,7 @@ function cleanReproduce(budget,out,candidate,baseline) {
 }
 export function runCampaign(value) {
   const out=safeOutput(value);if(existsSync(out))throw new Error('OUTPUT_ALREADY_EXISTS');mkdirSync(out,{recursive:true});
-  const budget=new Budget(out), integrity=verifyKernel();
+  const budget=new Budget(out), integrity={...verifyKernel(),artifacts:artifactManifest()};
   const baseline=budget.git(['rev-parse','HEAD']);
   if(budget.git(['status','--porcelain']))throw new Error('BASELINE_MUST_BE_COMMITTED_AND_CLEAN');
   const environment={os:platform(),release:release(),arch:arch(),node:process.version,dependencies:hash(readFileSync(resolve(root,'sdk/typescript/package-lock.json'))),network:'none in candidate/evaluation',permissions:'bounded-data + Node permission for generation'};
@@ -99,6 +99,7 @@ function startCampaign(budget,out,baseline,integrity,environment,versions) {
   const candidates=zero.proposals.map(p=>buildCandidate(budget,out,baseline,p,0));
   const ordinaryResult=ordinary(budget,out);
   const evaluation=evaluateStrength(budget,resolve(out,'evaluation'),resolve(root,'sdk/typescript/dist'),zero.cases,proposed.cases);
+  verifyArtifacts(integrity.artifacts);
   const state={schemaVersion:1,campaignId,baseline,integrity,environment,versions,startedAt,baseMetrics,status:'AWAITING_HUMAN_TRIAL_APPROVAL',generation:0,lineage:[],knowledge:[],evaluation,ordinaryResult,resourceUsage:{}};
   for(const candidate of candidates) {
     let inspected,reason='',metrics,reproduction;
@@ -129,11 +130,12 @@ function startCampaign(budget,out,baseline,integrity,environment,versions) {
 }
 export function approveTrial(outValue,id,expectedHash) {
   if(!/^g[01]-[a-z0-9-]+$/.test(id??''))throw new Error('INVALID_CANDIDATE_ID');
-  const out=safeOutput(outValue),state=loadState(out),integrity=verifyKernel();
+  const out=safeOutput(outValue),state=loadState(out),integrity={...verifyKernel(),artifacts:artifactManifest()};
   const receipt=validateReceipt(json(resolve(out,'receipts',id+'.json')));
   if(receipt.receiptHash!==expectedHash||receipt.decision!=='ELIGIBLE_FOR_HUMAN_PROMOTION'||receipt.riskRing!==4||receipt.candidateId!=='g0-strategy-M1')throw new Error('TRIAL_APPROVAL_REJECTED');
   if(state.status!=='AWAITING_HUMAN_TRIAL_APPROVAL')throw new Error('INVALID_CAMPAIGN_STATE');
   if(digest(integrity)!==digest(state.integrity))throw new Error('EVALUATOR_CHANGED');
+  verifyArtifacts(state.integrity.artifacts);
   const budget=new Budget(out,{...constitution.limits,subprocesses:constitution.limits.subprocesses-state.resourceUsage.subprocesses,wallMs:constitution.limits.wallMs-state.resourceUsage.wallMs});
   const candidate=state.lineage.find(x=>x.id===id);
   if(!candidate||candidate.receiptHash!==expectedHash||candidate.commit!==receipt.candidateCommit||receipt.campaignId!==state.campaignId||receipt.baselineCommit!==state.baseline||budget.git(['rev-parse','HEAD'],candidate.path)!==receipt.candidateCommit||budget.git(['rev-parse','HEAD'])!==state.baseline||budget.git(['status','--porcelain']))throw new Error('APPROVAL_PROVENANCE_MISMATCH');
@@ -162,5 +164,5 @@ export function approveTrial(outValue,id,expectedHash) {
     M0:state.evaluation.strength.M0,M1:state.evaluation.strength.M1,actuallyUsed:{version:generated.strategyVersion,cases:generated.cases.length,operators:new Set(generated.cases.map(x=>x.scenario)).size,passed:later.passed,knowledgeUsed:generated.knowledgeUsed},approvalReceipt:expectedHash,
     scope:'bounded declarative adversarial generator; synthetic metrics, no general self-programming or adoption claim'};
   state.resourceUsage={subprocesses:state.resourceUsage.subprocesses+budget.processes,diskBytes:budget.disk(),wallMs:state.resourceUsage.wallMs+Date.now()-budget.started};
-  atomic(resolve(out,'lineage.json'),state.lineage);sealState(out,state);verifyKernel();return state;
+  atomic(resolve(out,'lineage.json'),state.lineage);sealState(out,state);verifyKernel();verifyArtifacts(state.integrity.artifacts);return state;
 }
