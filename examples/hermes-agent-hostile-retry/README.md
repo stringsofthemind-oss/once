@@ -120,6 +120,36 @@ AUTHORITATIVE ABSENCE / OPAQUE CALLBACK
   -> redispatch blocked
 ```
 
+## Pinned upstream Hermes runtime proof
+
+The compatibility proof is also run through Hermes' actual
+`hermes_cli.middleware.run_tool_execution_middleware`, not only the local model.
+
+CI checks out public Hermes Agent commit:
+
+```text
+ea81748579ee1732d214ccb75f91d22208ed623d
+```
+
+and runs:
+
+```text
+examples/hermes-agent-hostile-retry/hermes_runtime_contract.py
+```
+
+The proof imports the exact pinned upstream middleware implementation while
+stubbing only the plugin-manager lookup surface, so the real Hermes
+`_run_execution_chain` controls fail-open/fallthrough and `next_call` behavior.
+It proves:
+
+```text
+CONTROL fail-open -> base tool executed once
+ONCE pre-dispatch failure -> base tool executed zero times
+REPLAY same logical action -> one effect total
+CONFLICT semantic drift -> no second effect
+LOST_ACK -> UNKNOWN -> restart/reconcile -> one effect total
+```
+
 ## Run
 
 From the repository root:
@@ -129,8 +159,16 @@ python -m pip install -e ./sdk/python
 python -m unittest discover -s sdk/python/tests -p 'test_hermes_middleware.py' -v
 ```
 
-The repository's `Full Regression CI` workflow also runs the Python SDK test
-suite on pull requests to `main`.
+For the pinned upstream runtime proof, provide a checkout of the exact Hermes
+commit above:
+
+```bash
+python examples/hermes-agent-hostile-retry/hermes_runtime_contract.py /path/to/hermes-agent
+```
+
+The repository's `Full Regression CI` workflow runs the Python SDK test suite on
+pull requests to `main`, and `Hermes Middleware Runtime Contract` runs the pinned
+upstream proof whenever this integration surface changes.
 
 ## Minimal Hermes registration shape
 
@@ -179,7 +217,8 @@ This is an Once-side compatibility and adversarial proof against the documented
 Hermes middleware failure policy. It is not an upstream Hermes patch and does
 not assert that Hermes maintainers endorse Once.
 
-Before proposing an upstream integration, the next stronger proof is to run this
-adapter through Hermes' actual `hermes_cli.middleware.run_tool_execution_middleware`
-from a pinned Hermes checkout and repeat the lost-ack/restart cases against one
-disposable real provider mutation.
+The pinned upstream middleware proof now passes. The next stronger evidence is
+one disposable real external provider mutation driven through this exact path,
+with the provider committing, acknowledgement deliberately lost, process state
+recreated, and read-only provider reconciliation recovering the original result
+while the provider shows exactly one external effect.
