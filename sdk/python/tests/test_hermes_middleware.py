@@ -337,6 +337,67 @@ class HermesMiddlewareSafetyTests(unittest.TestCase):
         self.assertEqual(block_code(blocked), "once_safety_blocked")
         self.assertEqual(calls["count"], 0)
 
+    def test_non_json_protected_args_fail_closed_before_next_call(self):
+        class UnusedStore:
+            def acquire_or_observe(self, **kwargs):
+                del kwargs
+                raise AssertionError("store should not be reached after fingerprint failure")
+
+        calls = {"count": 0}
+
+        def resolver(tool_name, args, context):
+            del context
+            if tool_name != "charge":
+                return None
+            return "charge:non-json"
+
+        def terminal(args):
+            calls["count"] += 1
+            return {"unexpected": repr(args)}
+
+        middleware = make_hermes_tool_execution_middleware(
+            core=OnceCore(UnusedStore(), lease_ms=60_000),
+            operation_id=resolver,
+        )
+        blocked = run_hermes_fail_open_frame(
+            middleware,
+            terminal,
+            tool_name="charge",
+            args={"intent_id": "non-json", "amount": {1, 2, 3}},
+        )
+        self.assertEqual(block_code(blocked), "once_safety_blocked")
+        self.assertEqual(calls["count"], 0)
+
+    def test_broken_blocked_result_formatter_cannot_reopen_fail_open_path(self):
+        class FailingStore:
+            def acquire_or_observe(self, **kwargs):
+                del kwargs
+                raise RuntimeError("simulated Once state-store failure")
+
+        calls = {"count": 0}
+
+        def terminal(args):
+            calls["count"] += 1
+            return {"unexpected": dict(args)}
+
+        def broken_blocked_result(tool_name, exc):
+            del tool_name, exc
+            raise RuntimeError("custom formatter failed")
+
+        middleware = make_hermes_tool_execution_middleware(
+            core=OnceCore(FailingStore(), lease_ms=60_000),
+            operation_id=operation_id,
+            blocked_result=broken_blocked_result,
+        )
+        blocked = run_hermes_fail_open_frame(
+            middleware,
+            terminal,
+            tool_name="charge",
+            args={"intent_id": "formatter-failure", "amount": 5},
+        )
+        self.assertEqual(block_code(blocked), "once_safety_blocked")
+        self.assertEqual(calls["count"], 0)
+
     def test_explicit_bypass_preserves_normal_hermes_tool_execution(self):
         class UnusedStore:
             def acquire_or_observe(self, **kwargs):
