@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 const root = fileURLToPath(new URL('../', import.meta.url));
-const read = (file) => readFileSync(resolve(root, file), 'utf8');
+const read = (file) => readFileSync(resolve(root, file), 'utf8').replaceAll('\r\n', '\n');
 const published = JSON.parse(read('docs/published-versions.json'));
 const python = read('sdk/python/pyproject.toml').match(/^version\s*=\s*"([^"]+)"/m)[1];
 export const versions = { ts: published.ts, python, mcp: published.mcp };

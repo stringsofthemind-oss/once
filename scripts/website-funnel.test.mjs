@@ -6,7 +6,7 @@ import test from 'node:test';
 import playground from '../workers/playground/src/index.js';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const docs = resolve(root, 'docs');
-const pages = ['index.html', 'demo/index.html', 'quickstart/index.html', 'evidence/index.html', 'retry-exposure/index.html'];
+const pages = ['index.html', 'first10/index.html', 'demo/index.html', 'quickstart/index.html', 'evidence/index.html', 'retry-exposure/index.html'];
 
 test('new funnel local links and fragment destinations resolve', () => {
 	for (const file of pages) {

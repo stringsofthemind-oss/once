@@ -1,3 +1,65 @@
+# Once: your agent sent the refund. The response disappeared. Should it try again?
+
+A provider can commit an action before the caller receives its response. Blind retry can refund twice. Once remembers one logical operation, replays confirmed results, and blocks another write while the original outcome is unknown.
+
+## See it happen in under five minutes
+
+Node.js **24.15+**. No account, API key, or financial transaction. The proof uses the published SDK and a controlled local HTTP provider with its own effect journal.
+
+From this checkout:
+
+```sh
+npm install --no-save --package-lock=false @once-agent/sdk@0.1.24
+node examples/first10/prove.mjs
+```
+
+```text
+WITHOUT ONCE: acknowledgement lost; fresh-process retry -> 2 provider writes
+CONFIRMED: 1 provider write; restart replay; changed £50 -> £80: CONFLICT, 0 additional writes
+RETRY BLOCKED — ORIGINAL OUTCOME UNKNOWN
+The refund may already have succeeded. Once sent no second request.
+LOST-ACK: 1 provider write; UNKNOWN -> CONFIRMED; recovered refund_1
+PASS
+```
+
+Every stage checks the separate provider's HTTP counter against its effect journal. Evidence is retained in the printed directory. This proves the controlled fixture, not a real payment provider. [Complete instructions, download path and recording recipe](examples/first10/README.md).
+
+## Protect one of your own operations
+
+Natural Placement: `wrapTool` replaces a host-owned async callback. You explicitly own identity and effect fields; no semantic decision is silently inferred.
+
+```js
+import { wrapTool } from "@once-agent/sdk";
+const safeRefund = wrapTool(refundCustomer, {
+  operationId: x => `${x.tenantId}:refund:${x.refundIntentId}`,
+  effect: x => ({ tool: "payments:reviewed-account:refund", args: x }),
+  statePath: "./durable/operations.sqlite",
+  reconcile: lookupAuthoritativeRefund,
+});
+```
+
+The callback and lookup are your reviewed provider functions. Inspect every argument, bind full account/tenant authority and all effect-bearing fields, and exclude Authorization credentials. Route every write through the wrapper. Internal callback retries remain outside the boundary. The lookup returns `{status: "CONFIRMED", result}` only from authoritative provider truth, otherwise `{status: "UNKNOWN"}`. If unsupported, omit reconciliation and UNKNOWN remains blocked.
+
+Local SQLite requires a persistent shared file on **one machine**, Node 24.15+, and distinct IDs for genuine new intents. Multiple legitimate partial refunds need distinct refund-intent IDs. [Complete integration guide](examples/natural-placement/README.md).
+
+## When you need Once — and when you do not
+
+Evaluate Once when a consequential external write may be retried, its outcome can become ambiguous, and another effect would matter. Refunds, bookings, messages and tickets are examples, not automatic provider support.
+
+If a provider idempotency key completely solves your operation, use it. If a Postgres unique constraint completely solves it, use it. If repetition is harmless, you probably do not need Once. Keep native idempotency even with Once. Once does not replace your database, framework, queue, or Temporal and does not promise universal exactly-once execution.
+
+**UNKNOWN is protection:** the original action may have succeeded. Retain its identity and durable state; perform an authoritative read-only lookup. Never mint a new ID or bypass Once to force progress. Even an absence observation does not automatically permit local redispatch.
+
+## Find a candidate
+
+Published CLI: `once doctor` remains the detailed assessment path. This FIRST 10 branch adds read-only `once check [directory]` and `once prove` for the controlled refund fixture. The new commands need a build of this branch until SDK release; they are not in 0.1.24. Scan and installation do not activate protection; the fixture never executes your code.
+
+[Website](https://onceexec.com/) · [Quickstart](https://onceexec.com/quickstart/) · [Evidence](https://onceexec.com/evidence/) · [FIRST 10 plan and ledger](docs/FIRST10.md)
+
+---
+
+## Deeper semantics, integrations, architecture and historical evidence
+
 # @once-agent/sdk
 
 > **Natural Placement (SDK 0.1.24):** `wrapTool(callback, semantics)` protects a

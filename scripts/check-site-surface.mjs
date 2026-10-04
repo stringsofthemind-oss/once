@@ -92,7 +92,7 @@ assert.match(homepage, /Run the retry demo/, "homepage must lead to the ungated 
 assert.doesNotMatch(homepage, /once-network|Open live proof|Test Once at your scale/, "obsolete proof/funnel claims must stay removed");
 const schema = JSON.parse(homepage.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
 assert.equal(schema.softwareVersion, published.ts, "static structured metadata must match published SDK");
-for (const file of ["docs/index.html", "docs/quickstart/index.html"]) {
+for (const file of ["docs/index.html", "docs/quickstart/index.html", "docs/first10/index.html"]) {
   assert.match(read(file), /<!--email_off-->[\s\S]*npm install @once-agent\/sdk@[\s\S]*<!--\/email_off-->/, `${file}: pinned SDK install must opt out of CDN email rewriting`);
   const pins = [...read(file).matchAll(/npm install @once-agent\/sdk@(\d+\.\d+\.\d+)/g)];
   assert.ok(pins.length, `${file}: first-action install must pin a published SDK version`);

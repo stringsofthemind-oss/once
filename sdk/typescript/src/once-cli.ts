@@ -577,7 +577,21 @@ async function runProtectLocal(): Promise<void> {
   );
 }
 
-if (command === "protect-local") {
+if (command === "prove" || command === "check") {
+  try {
+    if (command === "prove") {
+      if (explicitArgs.length !== 1) throw new Error("Usage: once prove. Runs only the controlled local refund fixture; never invokes your code.");
+      const { runFirst10Proof } = await import("./first10-proof.js");
+      await runFirst10Proof();
+    } else {
+      const { runFirst10Check } = await import("./first10-check.js");
+      await runFirst10Check(explicitArgs.slice(1));
+    }
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  }
+} else if (command === "protect-local") {
   try {
     await runProtectLocal();
   } catch (error) {
@@ -615,6 +629,7 @@ if (command === "protect-local") {
       command === "-h";
 
     if (helpRequested) {
+      console.log("\nFIRST 10: once prove (controlled local refund proof); once check [directory] (read-only candidates).");
       printLocalFunctionHelp();
     }
 

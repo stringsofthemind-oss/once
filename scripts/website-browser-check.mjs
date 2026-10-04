@@ -50,11 +50,13 @@ try {
 		await page.goto(base);
 		assert.equal(await page.locator('h1').count(), 1);
 		assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `overflow at ${width}`);
-		const hero = page.locator('.hero').getByRole('link', { name: 'Run the retry demo' });
+		const hero = page.locator('.hero').getByRole('link', { name: 'Run the refund proof' });
 		const bounds = await hero.boundingBox();
 		assert.ok(bounds.y + bounds.height < 1000, `primary CTA too late at ${width}`);
 		await page.screenshot({ path: resolve(artifacts, `home-${width}.png`) });
 		await hero.click();
+		assert.match(await page.locator('h1').innerText(), /Your agent sent the refund/);
+		await page.goto(base + '/#demo');
 		const next = page.locator('[data-demo-next]');
 		await next.click();
 		await next.click();
@@ -71,9 +73,10 @@ try {
 		assert.match(await page.locator('[data-demo-state]').innerText(), /RECONCILED/);
 		assert.ok(await page.locator('[data-demo-result]').isVisible());
 		await page.screenshot({ path: resolve(artifacts, `demo-${width}.png`) });
-		for (const route of ['/quickstart/', '/evidence/', '/demo/', '/retry-exposure/']) {
+		for (const route of ['/first10/', '/duplicate-refund-timeout/', '/ambiguous-timeout/', '/quickstart/', '/evidence/', '/demo/', '/retry-exposure/']) {
 			await page.goto(base + route);
 			assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${route} overflow at ${width}`);
+			if (route === '/first10/') await page.screenshot({ path: resolve(artifacts, `refund-proof-${width}.png`) });
 		}
 	}
 	await page.goto(base + '/quickstart/');
@@ -111,6 +114,12 @@ try {
 	assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), '200% reflow');
 	await page.screenshot({ path: resolve(artifacts, 'zoom-reflow.png') });
 	const noJs = await browser.newPage({ javaScriptEnabled: false });
+	await noJs.goto(base + '/first10/');
+	assert.match(await noJs.locator('main').innerText(), /npm install @once-agent\/sdk@0\.1\.24/);
+	assert.match(await noJs.locator('main').innerText(), /UNKNOWN is protection/);
+	const proofAsset = await noJs.request.get(base + '/first10/prove.mjs');
+	assert.equal(proofAsset.status(), 200);
+	assert.equal(await proofAsset.text(), readFileSync(resolve(docs, 'first10/prove.mjs'), 'utf8'));
 	await noJs.goto(base + '/demo/');
 	assert.ok(await noJs.locator('noscript p').isVisible());
 	assert.equal(await noJs.locator('[data-demo-controls]').isVisible(), false);
