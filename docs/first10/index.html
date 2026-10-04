@@ -24,13 +24,13 @@ PASS</code></pre>
 <p>Fixture PASS proves this controlled provider only. It does not certify your operation, a real financial provider, or power-loss durability. Every caller stage starts a fresh process. <a href="./prove.mjs">Inspect the runnable source</a>.</p></section>
 <section class="section"><h2>Why an idempotency key may be enough</h2><p>If the provider's key covers the complete operation, retry horizon and effect inputs, use it. If a database unique constraint completely solves the operation, use it. If repetition is harmless, you probably do not need Once.</p><p>Once is relevant when the caller cannot safely establish whether another dispatch creates another consequence. Keep native idempotency; Once does not make arbitrary external effects atomic or replace your framework, queue or database.</p></section>
 <section class="section"><h2>Protect your own refund function</h2><p>Choose a durable, tenant-scoped refund-intent ID. Multiple legitimate partial refunds need distinct intent IDs; a transport request ID is not the business operation. Review all effect inputs and provider/account authority explicitly.</p>
-<pre><code>import { wrapTool } from "@once-agent/sdk";
+<!--email_off--><pre><code>import { wrapTool } from "@once-agent/sdk";
 const safeRefund = wrapTool(refundCustomer, {
   operationId: x =&gt; `${x.tenantId}:refund:${x.refundIntentId}`,
   effect: x =&gt; ({ tool: "payments:reviewed-account:refund", args: x }),
   statePath: "./durable/operations.sqlite",
   reconcile: lookupAuthoritativeRefund,
-});</code></pre>
+});</code></pre><!--/email_off-->
 <p>Your callback and lookup need reviewed provider semantics. Bind every effect field; exclude Authorization credentials. Route every write through the wrapper. Internal callback retries remain outside the boundary. Persistent shared SQLite covers one machine only.</p>
 <p><strong>UNKNOWN is protection.</strong> Retain the same identity and state. Reconcile authoritative read-only truth; unavailable truth stays blocked. Do not invent a new ID or bypass protection to force progress. Absence alone does not permit local redispatch.</p>
 <a class="btn primary" href="https://github.com/stringsofthemind-oss/once/tree/main/examples/natural-placement">Apply the complete wrapper pattern</a><p><a href="/quickstart/">Existing installed-SDK quickstart</a> · <a href="/evidence/">Evidence and limits</a></p></section>

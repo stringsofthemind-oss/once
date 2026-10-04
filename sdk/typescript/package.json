@@ -1,6 +1,6 @@
 {
   "name": "@once-agent/sdk",
-  "version": "0.1.24",
+  "version": "0.1.25",
   "description": "Block duplicate consequential writes after lost acknowledgements; replay confirmed results and reconcile uncertain outcomes.",
   "type": "module",
   "main": "./dist/index.js",
