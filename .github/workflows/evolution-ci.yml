@@ -1,0 +1,42 @@
+name: Evolution CI
+on:
+  pull_request:
+    paths: ['evolution/**', 'sdk/typescript/**', '.github/workflows/evolution-ci.yml']
+  push:
+    branches: [main]
+    paths: ['evolution/**', 'sdk/typescript/**', '.github/workflows/evolution-ci.yml']
+permissions:
+  contents: read
+jobs:
+  kernel-and-campaign:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+          cache: npm
+          cache-dependency-path: sdk/typescript/package-lock.json
+      - run: npm ci --ignore-scripts
+        working-directory: sdk/typescript
+      - run: npm run build
+        working-directory: sdk/typescript
+      - name: Protected kernel and adversarial enforcement tests
+        run: node --test evolution/tests/kernel.test.mjs evolution/tests/breaker.test.mjs
+      - name: Complete campaign to human gate
+        run: node evolution/cli.mjs run --out "${{ runner.temp }}/once-evolution"
+      - name: Owner-authorized isolated recursive trial (no production promotion)
+        run: node evolution/tests/ci-trial.mjs "${{ runner.temp }}/once-evolution"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: evolution-evidence-${{ matrix.os }}
+          path: ${{ runner.temp }}/once-evolution
+          retention-days: 30
