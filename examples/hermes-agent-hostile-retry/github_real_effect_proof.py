@@ -8,6 +8,7 @@ successful provider acknowledgement after GitHub returns 201, and then proves:
 
 - Once records UNKNOWN instead of authorizing a blind retry;
 - Hermes' fail-open middleware does not bypass the Once short-circuit;
+- temporary provider read-after-write invisibility remains UNKNOWN, never ABSENT;
 - a fresh OnceCore using the same durable SQLite state reconciles GitHub truth;
 - replay with a different transport/tool-call ID does not create a second issue;
 - semantic drift conflicts before dispatch; and
@@ -20,6 +21,7 @@ import json
 import os
 import sys
 import tempfile
+import time
 import types
 import urllib.parse
 import urllib.request
@@ -33,6 +35,8 @@ from once_agent.storage.sqlite import SQLiteOperationStore
 
 EXPECTED_HERMES_COMMIT = "ea81748579ee1732d214ccb75f91d22208ed623d"
 API_VERSION = "2022-11-28"
+VISIBILITY_TIMEOUT_SECONDS = 30.0
+VISIBILITY_POLL_SECONDS = 1.0
 
 
 class _Manager:
@@ -58,6 +62,7 @@ def _headers(token: str) -> dict[str, str]:
         "Authorization": f"Bearer {token}",
         "X-GitHub-Api-Version": API_VERSION,
         "User-Agent": "once-hermes-real-effect-proof",
+        "Cache-Control": "no-cache",
     }
 
 
@@ -88,6 +93,7 @@ class GitHubIssueEffect:
         self.repository = repository
         self.marker = marker
         self.terminal_calls = 0
+        self.visibility_zero_reads = 0
 
     @property
     def issues_url(self) -> str:
@@ -112,7 +118,7 @@ class GitHubIssueEffect:
         # caller even though GitHub has already accepted the mutation.
         raise RuntimeError("deliberately discarded GitHub 201 acknowledgement after commit")
 
-    def matching_issues(self) -> list[dict[str, Any]]:
+    def matching_issues_once(self) -> list[dict[str, Any]]:
         matches: list[dict[str, Any]] = []
         for page in range(1, 6):
             query = urllib.parse.urlencode(
@@ -138,10 +144,25 @@ class GitHubIssueEffect:
                 break
         return matches
 
+    def wait_for_matching_issues(self, *, timeout_seconds: float = VISIBILITY_TIMEOUT_SECONDS) -> list[dict[str, Any]]:
+        """Wait only for read visibility; never interpret zero matches as ABSENT."""
+
+        deadline = time.monotonic() + max(timeout_seconds, 0.0)
+        while True:
+            matches = self.matching_issues_once()
+            if matches:
+                return matches
+            self.visibility_zero_reads += 1
+            if time.monotonic() >= deadline:
+                return []
+            time.sleep(VISIBILITY_POLL_SECONDS)
+
     def reconcile(self, operation_id, action_fingerprint, args, context):
         del operation_id, action_fingerprint, args, context
-        matches = self.matching_issues()
+        matches = self.wait_for_matching_issues()
         if len(matches) != 1:
+            # Crucially, temporary lack of read evidence is UNKNOWN. It never
+            # becomes ABSENT and therefore never authorizes redispatch.
             return HermesLookupResult(ProviderTruth.UNKNOWN)
         issue = matches[0]
         return HermesLookupResult(
@@ -154,7 +175,7 @@ class GitHubIssueEffect:
         )
 
     def close_matching_issues(self) -> None:
-        for issue in self.matching_issues():
+        for issue in self.wait_for_matching_issues():
             number = int(issue["number"])
             _request_json(
                 self.token,
@@ -234,8 +255,9 @@ def main() -> None:
     logical_id = f"create-github-issue:{marker}"
 
     # This marker is unique to one workflow attempt. Refuse to start if an issue
-    # already exists, so the initial state is unambiguous.
-    before = effect.matching_issues()
+    # already exists, so the initial state is unambiguous. A single snapshot is
+    # enough here because the marker has never previously been used.
+    before = effect.matching_issues_once()
     if before:
         raise AssertionError(f"proof marker already exists before execution: {marker}")
 
@@ -268,9 +290,12 @@ def main() -> None:
             stored = SQLiteOperationStore(state_path).get(logical_id)
             assert stored is not None and stored.state == OperationState.UNKNOWN
 
-            after_commit = effect.matching_issues()
+            # GitHub can briefly return a stale issue-list view immediately
+            # after a successful 201. Wait only for visibility; zero matches at
+            # any instant remains uncertainty and cannot authorize another write.
+            after_commit = effect.wait_for_matching_issues()
             assert len(after_commit) == 1, (
-                "expected exactly one real GitHub issue after lost acknowledgement; "
+                "expected exactly one real GitHub issue after provider visibility window; "
                 f"found {len(after_commit)}"
             )
 
@@ -334,7 +359,7 @@ def main() -> None:
             assert block_code(conflict) == "once_operation_conflict"
             assert effect.terminal_calls == 1
 
-            final_matches = effect.matching_issues()
+            final_matches = effect.wait_for_matching_issues(timeout_seconds=5.0)
             assert len(final_matches) == 1, (
                 "duplicate external effect detected: expected one matching GitHub issue, "
                 f"found {len(final_matches)}"
@@ -349,6 +374,8 @@ def main() -> None:
             print("PROVIDER_COMMIT=GitHub issue creation returned HTTP 201")
             print("ACK=deliberately discarded before returning to Once")
             print("ONCE_AFTER_ACK_LOSS=UNKNOWN")
+            print("TEMPORARY_ZERO_MATCH_READ=UNKNOWN_NOT_ABSENT")
+            print(f"PROVIDER_VISIBILITY_ZERO_READS={effect.visibility_zero_reads}")
             print("RESTART_RECONCILIATION=CONFIRMED")
             print("TERMINAL_DISPATCH_COUNT=1")
             print("EXTERNAL_MATCHING_ISSUE_COUNT=1")
