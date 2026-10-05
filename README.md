@@ -50,6 +50,14 @@ If a provider idempotency key completely solves your operation, use it. If a Pos
 
 **UNKNOWN is protection:** the original action may have succeeded. Retain its identity and durable state; perform an authoritative read-only lookup. Never mint a new ID or bypass Once to force progress. Even an absence observation does not automatically permit local redispatch.
 
+## LangGraph checkpoint replay evidence
+
+Deterministic **local LangGraph JS checkpoint replay** resumed the same checkpoint twice while the first tool call was still running. The unprotected path produced **2 provider effects**; the Once-protected path produced **1**, counted from a separate loopback HTTP provider's append-only log using published SDK 0.1.25.
+
+**Limits:** this is not a LangGraph Cloud reproduction or a test of the reported ~180s sweeper. Protection used one persistent shared **same-machine SQLite authority**; separate ephemeral Cloud ledgers are outside this evidence. No universal exactly-once claim or Cloud bug fix is established.
+
+[Run and inspect the reproduction](examples/langgraph-once-replay/) · [Merged proof PR #295](https://github.com/stringsofthemind-oss/once/pull/295) · [Volunteer for one bounded Cloud test](https://onceexec.com/evidence/#langgraph-cloud-test). Independent Cloud evidence is still sought; a local fixture PASS is not adoption.
+
 ## Find a candidate
 
 SDK 0.1.25 includes read-only `once check [directory]` and `once prove` for the controlled refund fixture. Run `npx --yes --package=@once-agent/sdk@0.1.25 once prove` for the one-command proof. `once doctor` remains the detailed assessment path. Scan and installation do not activate protection; the fixture never executes your code.

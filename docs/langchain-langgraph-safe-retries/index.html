@@ -48,6 +48,8 @@ await once.execute({
   }
 });</code></pre>
 <p>The same logical refund receives the same operation ID on every retry. Another agent-tool invocation is therefore not automatically treated as permission to perform a new external action.</p>
+<h2>LangGraph checkpoint replay evidence</h2>
+<p><a href="../evidence/#langgraph-checkpoint-replay">Inspect the deterministic local LangGraph JS replay proof and its limits</a>: 2 unprotected provider effects, 1 with Once, using a shared same-machine SQLite authority. This does not reproduce LangGraph Cloud or its reported ~180s sweeper and does not establish universal exactly-once execution. <a href="../evidence/#langgraph-cloud-test">One voluntary independent Cloud test is sought</a>.</p>
 <h2>LangChain / LangGraph example</h2>
 <p>The Once repository includes a working JavaScript example using the LangChain tool pattern with <code>@once-agent/sdk</code>. The same execution-safety boundary can be used for consequential tools orchestrated through LangGraph workflows.</p>
 <p><a href="https://github.com/stringsofthemind-oss/once/tree/main/examples/langchain">View the Once + LangChain / LangGraph example on GitHub</a></p>
