@@ -1,0 +1,25 @@
+name: LangGraph public SDK replay proof
+on:
+  pull_request:
+    paths:
+      - 'examples/langgraph-once-replay/**'
+      - '.github/workflows/langgraph-once-replay.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  replay:
+    runs-on: windows-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: examples/langgraph-once-replay
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.19.0'
+          cache: npm
+          cache-dependency-path: examples/langgraph-once-replay/package-lock.json
+      - run: npm ci
+      - run: npm test

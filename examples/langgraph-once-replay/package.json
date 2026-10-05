@@ -1,0 +1,11 @@
+{
+  "name": "once-langgraph-7417-replay-proof",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node proof.mjs" },
+  "engines": { "node": ">=24.15.0" },
+  "dependencies": {
+    "@once-agent/sdk": "0.1.25",
+    "@langchain/langgraph": "1.4.19"
+  }
+}
