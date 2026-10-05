@@ -63,6 +63,17 @@
 					>
 				</article>
 			</div>
+			<section id="langgraph-checkpoint-replay" aria-labelledby="langgraph-replay-title">
+				<h2 id="langgraph-replay-title">LangGraph checkpoint replay evidence</h2>
+				<p>Deterministic <strong>local LangGraph JS checkpoint replay</strong> resumed the same checkpoint twice while the first tool call was still running. The unprotected path produced <strong>2 provider effects</strong>; the Once-protected path produced <strong>1</strong>, using published SDK 0.1.25. Counts come from a separate loopback HTTP provider's append-only log, not returned SDK status.</p>
+				<div class="note"><strong>Limits:</strong> not a LangGraph Cloud reproduction, not a test of the reported ~180s sweeper, and not a Cloud bug fix. Protection used one persistent shared <strong>same-machine SQLite authority</strong>. Separate ephemeral Cloud ledgers, distributed-worker safety and universal exactly-once execution are outside this evidence. The provider is a controlled local fixture, not a commercial service.</div>
+				<p><a href="https://github.com/stringsofthemind-oss/once/tree/main/examples/langgraph-once-replay">Run and inspect the reproduction</a> · <a href="https://github.com/stringsofthemind-oss/once/pull/295">Merged proof PR #295</a> · <a href="https://github.com/stringsofthemind-oss/once/commit/77857e2732967e45b7c5097f43be80706151fad2">Proof commit</a></p>
+				<h3 id="langgraph-cloud-test">Can you reproduce #7417 on LangGraph Cloud?</h3>
+				<p>Once maintainers are seeking one voluntary, independent reproduction. If you already have Cloud access and can reproduce <a href="https://github.com/langchain-ai/langgraph/issues/7417">issue #7417</a>, try one bounded comparison around a non-production tool and report failures or incompatibilities as well as successes. No purchase or production write is requested.</p>
+				<p>First record the exact Cloud deployment, region, runtime and package versions, worker/storage topology, tool duration, and sanitized thread/checkpoint/tool-call/attempt IDs. Count actual provider effects independently for the unprotected and protected paths; include timestamps, the stable logical operation ID, complete effect binding, ledger authority and reconciliation method. Returned status or tool invocation counts alone are insufficient.</p>
+				<p>Do not copy local SQLite into separate ephemeral workers and assume they share authority. If a persistent shared same-machine authority cannot be established for this boundary, report that incompatibility and stop the protected test. Keep UNKNOWN blocked; do not mint a new ID, bypass protection or replay a real consequential write to finish the experiment.</p>
+				<p><a href="https://github.com/stringsofthemind-oss/once/issues/new?title=LangGraph%20Cloud%20%237417%20independent%20reproduction">Offer or report a Cloud test on the Once repository</a>, with redacted provider logs and exact environment. One bounded run is enough; no praise, endorsement or ongoing commitment is requested. No independent Cloud reproduction or adoption is established by the local result.</p>
+			</section>
 			<h2>Framework crash/retry labs</h2>
 			<p>
 				LangGraph and CrewAI examples use controlled simulated provider ledgers and the SQLite reference backend. They test hard process
