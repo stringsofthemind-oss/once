@@ -1,7 +1,7 @@
 interface:
   display_name: "Once — Protect Consequential Writes"
   short_description: "Safe retries after ambiguous external writes"
-  default_prompt: "First inspect normally and select $protect-consequential-writes only after confirming a concrete external state-changing operation that can be retried after an ambiguous outcome; bypass reads/search/retrieval and do not call Once merely to decide whether it applies."
+  default_prompt: "First inspect normally and select $protect-consequential-writes only after confirming a concrete external state-changing operation that can be retried after an ambiguous outcome; bypass reads/search/retrieval and do not call Once merely to decide whether it applies. For qualifying ordinary GitHub issue tasks, use the installed narrow capability when available and preserve the host-provisioned task reference across retries."
 
 policy:
   allow_implicit_invocation: true

@@ -6,6 +6,7 @@ on:
       - "mcp/server.json"
       - "mcp/package.json"
       - ".github/workflows/mcp-registry-publish.yml"
+      - "scripts/mcp-publication-gate*"
   push:
     branches:
       - main
@@ -13,6 +14,7 @@ on:
       - "mcp/server.json"
       - "mcp/package.json"
       - ".github/workflows/mcp-registry-publish.yml"
+      - "scripts/mcp-publication-gate*"
   workflow_dispatch:
 
 concurrency:
@@ -22,11 +24,22 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    outputs:
+      publish_allowed: ${{ steps.publication-gate.outputs.publish_allowed }}
     permissions:
       contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Test publication guard without provider writes
+        run: node --test scripts/mcp-publication-gate.test.mjs
+
+      - name: Gate publication on intentional release
+        id: publication-gate
+        run: node scripts/mcp-publication-gate.mjs
 
       - name: Verify MCP package and registry metadata agree
         shell: bash
@@ -72,7 +85,7 @@ jobs:
         run: ./mcp-publisher validate ./mcp/server.json
 
   publish:
-    if: github.event_name != 'pull_request'
+    if: needs.validate.outputs.publish_allowed == 'true'
     needs: validate
     runs-on: ubuntu-latest
     permissions:
