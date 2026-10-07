@@ -9,15 +9,24 @@
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js", "require": "./dist/index.js" },
+    "./registered-action": { "types": "./dist/registered-action.d.ts", "import": "./dist/registered-action.js" },
+    "./*": "./*",
+    "./package.json": "./package.json"
+  },
   "files": [
     "dist",
     "scripts/stdio-proxy.mjs",
     "README.md",
+    "REGISTERED_ACTION.md",
     "LICENSE"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test:registered-action": "npm run build && node --test test/registered-action.test.mjs",
+    "test:registered-action-package": "npm run build && node test/registered-action-package.mjs",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
     "smoke": "npm run build && node scripts/smoke.mjs && node scripts/proxy-smoke.mjs",
@@ -52,7 +61,7 @@
   "dependencies": {
     "@modelcontextprotocol/client": "2.0.0",
     "@modelcontextprotocol/server": "2.0.0",
-    "@once-agent/sdk": "0.1.14",
+    "@once-agent/sdk": "0.1.25",
     "zod": "4.6.5"
   },
   "devDependencies": {
