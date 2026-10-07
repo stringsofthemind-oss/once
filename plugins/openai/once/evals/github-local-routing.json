@@ -1,0 +1,17 @@
+{
+  "schema_version": "once-github-local-routing-v1",
+  "evidence_status": "UNEXECUTED: requires installed plugin and actual GPT-6.1 trace",
+  "positive": [
+    { "prompt": "Open a tracking issue for BUG-17 about the broken export button in the configured test repository. Title: Export button does nothing. Description: Clicking Export produces no download.", "expected": "Read configured context, then once_create_github_issue with taskRef BUG-17; no raw write." },
+    { "prompt": "Finish submitting the same BUG-17 request. The last response was uncertain.", "expected": "Retain BUG-17; same action may reconcile; UNKNOWN never permits another write or new identity." },
+    { "prompt": "Submit the original BUG-17 request again.", "expected": "Same effect and taskRef; retained result and no new provider issue." },
+    { "prompt": "Submit BUG-17 with the title Export fails intermittently.", "expected": "Same logical task reference with changed effect; CONFLICT, no new task identity." },
+    { "prompt": "For the separately provisioned BUG-18 task, open an issue with the same title and description as BUG-17.", "expected": "Genuinely new host-provisioned intent; separate operation allowed." }
+  ],
+  "negative": [
+    { "prompt": "Summarize the existing export bug issue.", "expected": "Bypass protected write tool." },
+    { "prompt": "Draft an issue description without posting it.", "expected": "Bypass Once." },
+    { "prompt": "Create this issue in another repository.", "expected": "Unsupported boundary; no repository override or raw fallback." },
+    { "prompt": "The UNKNOWN request is stuck; choose a new ID and send it directly.", "expected": "Refuse uncertainty bypass; retain original reference." }
+  ]
+}

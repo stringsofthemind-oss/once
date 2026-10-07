@@ -96,8 +96,8 @@ assert(
   `Codex plugin README must describe published @once-agent/mcp@${published.mcp}`
 );
 
-assert(skill.startsWith("---\n"), "Skill must start with YAML frontmatter");
-assert(/\nname:\s*protect-consequential-writes\n/.test(skill), "Skill frontmatter name is incorrect");
+assert(skill.replace(/\r\n/g, "\n").startsWith("---\n"), "Skill must start with YAML frontmatter");
+assert(/\nname:\s*protect-consequential-writes\n/.test(skill.replace(/\r\n/g, "\n")), "Skill frontmatter name is incorrect");
 assert(/\ndescription:\s*/.test(skill), "Skill frontmatter description is required");
 for (const phrase of [
   "change external state",

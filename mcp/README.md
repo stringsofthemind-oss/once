@@ -160,3 +160,6 @@ host, receipt and read-only reconciliation contract and reproducible tests.
 This helper is absent from published MCP 0.1.5 and is not enabled by the default
 OpenAI plugin. The helper mode, existing proxy and SDK APIs remain available.
 Arbitrary Adobe/GitHub/other connector invocation remains unsupported.
+# Private GitHub issue host (unreleased branch capability)
+
+The opt-in `@once-agent/mcp/github-issue` registration and private `dist/github-issue-host.js` entry point expose only issue creation for host-provisioned task references in one verified private personal repository. The default MCP executable remains the eight-tool developer surface. This branch capability is not in the currently published npm artifact. See [private installation, provisioning and evidence limits](GITHUB_ISSUE_LOCAL.md). No existing ChatGPT connector is wrapped, no credential forwarding is provided, and installed GPT routing remains unproven until an actual trace is captured.

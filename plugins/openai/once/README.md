@@ -57,3 +57,6 @@ This validates the Codex manifest, marketplace wiring, MCP launcher, skill metad
 ## Current distribution stage
 
 This package is for Git-backed Codex/ChatGPT desktop marketplace testing first. A universal public-directory submission is a separate stage and will require the public submission package, legal/support URLs, review test cases, and any remote MCP capabilities required by the submitted experience.
+# Private GitHub issue canary (unreleased)
+
+The branch includes a separate self-contained private bundle builder: from `mcp`, run `npm run build:private-github -- ABSOLUTE_NEW_BUNDLE_DIRECTORY`. Its generated marketplace installs a local protected GitHub issue host rather than the default published builder MCP. It uses published SDK 0.1.25 and the locally packed, unpublished branch artifact. Credentials, host configuration, durable intent mapping, original ledger and operator fault controls stay outside plugin source/cache. See `mcp/GITHUB_ISSUE_LOCAL.md` for exact provisioning, installed Work requirements and evidence boundaries. This does not publish the plugin or establish automatic GPT-6.1 routing.

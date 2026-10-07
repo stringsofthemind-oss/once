@@ -1,0 +1,27 @@
+name: Registered local actions
+on:
+  pull_request:
+    paths:
+      - 'mcp/**'
+      - 'plugins/openai/once/**'
+      - 'scripts/*github*'
+      - 'scripts/validate-openai-plugin.mjs'
+      - '.github/workflows/registered-actions-ci.yml'
+permissions:
+  contents: read
+jobs:
+  local-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+          cache: npm
+          cache-dependency-path: mcp/package-lock.json
+      - run: npm ci
+        working-directory: mcp
+      - run: npm run test:registered-action-package
+        working-directory: mcp
+      - run: node scripts/validate-openai-plugin.mjs
+      - run: node scripts/check-site-surface.mjs

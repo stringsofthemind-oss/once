@@ -10,17 +10,29 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js", "require": "./dist/index.js" },
-    "./registered-action": { "types": "./dist/registered-action.d.ts", "import": "./dist/registered-action.js" },
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    },
+    "./registered-action": {
+      "types": "./dist/registered-action.d.ts",
+      "import": "./dist/registered-action.js"
+    },
     "./*": "./*",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./github-issue": {
+      "import": "./dist/github-issue.js",
+      "types": "./dist/github-issue.d.ts"
+    }
   },
   "files": [
     "dist",
     "scripts/stdio-proxy.mjs",
     "README.md",
     "REGISTERED_ACTION.md",
-    "LICENSE"
+    "LICENSE",
+    "GITHUB_ISSUE_LOCAL.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -30,7 +42,9 @@
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
     "smoke": "npm run build && node scripts/smoke.mjs && node scripts/proxy-smoke.mjs",
-    "inspect": "npx @modelcontextprotocol/inspector node dist/index.js"
+    "inspect": "npx @modelcontextprotocol/inspector node dist/index.js",
+    "test:github-issue": "npm run build && node --test test/github-issue.test.mjs",
+    "build:private-github": "node ../scripts/build-private-github-plugin.mjs"
   },
   "keywords": [
     "mcp",

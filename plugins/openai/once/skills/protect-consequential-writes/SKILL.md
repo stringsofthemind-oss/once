@@ -1,6 +1,6 @@
 ---
 name: protect-consequential-writes
-description: "Select Once only after ordinary repository/task inspection has established a real external state-changing operation and all four conditions: the same logical operation may be retried, the first outcome can be ambiguous, and blind duplicate execution would be harmful or costly. Do not select this skill and do not call any Once MCP tool merely to discover whether Once applies. Bypass reads, GET/search/retrieval, generation-only work, local computation, and repetition that cannot duplicate external state. For confirmed qualifying writes such as refunds, payments, payouts, bookings, orders, provisioning actions, webhooks, consequential messages, or state-changing MCP/tool calls, use Once to preserve stable logical identity, handle UNKNOWN safely, suppress duplicates, and reconcile authoritative provider truth across retries, crashes, redelivery, or agent handoff."
+description: "Select Once only after ordinary repository/task inspection has established a real external state-changing operation and all four conditions: the same logical operation may be retried, the first outcome can be ambiguous, and blind duplicate execution would be harmful or costly. Do not select this skill and do not call any Once MCP tool merely to discover whether Once applies. Bypass reads, GET/search/retrieval, generation-only work, local computation, and repetition that cannot duplicate external state. For an ordinary request to open a GitHub issue for a host-provisioned task reference, use the narrow installed protected issue capability when it is actually available. Do not claim general GitHub connector support. For confirmed qualifying writes such as refunds, payments, payouts, bookings, orders, provisioning actions, webhooks, consequential messages, or state-changing MCP/tool calls, use Once to preserve stable logical identity, handle UNKNOWN safely, suppress duplicates, and reconcile authoritative provider truth across retries, crashes, redelivery, or agent handoff."
 ---
 
 # Protect Consequential Writes with Once
@@ -35,6 +35,16 @@ For example, a refund for `order_123` should keep one stable logical operation i
 - parallel workers in a swarm that independently discover the same outstanding action.
 
 Never make an operation ID unique by adding a timestamp, random retry token, agent ID, session ID, or attempt counter when those attempts represent the same real-world action.
+
+## Installed private GitHub issue capability
+
+When `once_create_github_issue` is actually available, an ordinary request to open a tracking issue for a host-provisioned task is a concrete external write. Duplicate tracker entries are undesirable and lost acknowledgements can make creation ambiguous. The user does not need to name Once. After the applicability gate passes, read `once_github_issue_context` to learn the configured repository and allowed task references, then invoke the protected action with only taskRef, title and body. This installed execution path takes precedence over the developer integration workflow below; do not scan or edit a repository to execute it.
+
+Use the same taskRef for every retry, restart, repeated request and agent handoff. The host owns operation IDs. Do not invent another taskRef to evade UNKNOWN or CONFLICT. Changed title/body for the same intent must conflict; a genuinely new intent requires a separately host-provisioned reference even if the payload is identical. If the task reference is unavailable, ask for the business reference or report that host provisioning is required.
+
+On UNKNOWN, the issue may already exist. Do not use raw GitHub tools, browser or shell writes as a fallback. The same protected action may perform read-only recovery, but UNKNOWN never grants permission to redispatch. Report uncertainty until authoritative recovery succeeds. On CONFLICT, report that this existing intent has different effect-bearing inputs; do not silently turn it into another operation. Unsupported accounts, repositories or provider actions require a separate reviewed capability.
+
+Only claim automatic routing after a real installed GPT-6.1 tool trace demonstrates it. Local fixtures do not establish GitHub provider effects or installed routing. Reads, search and unrelated tasks bypass this skill. Never request or expose provider tokens in tool arguments, prompts or outputs.
 
 ## Preferred workflow
 
