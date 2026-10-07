@@ -1,9 +1,9 @@
-import { statSync } from "node:fs";
+import { openExistingLedger } from "./existing-ledger.js";
 import { isAbsolute } from "node:path";
 import { McpServer } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
 import { canonicalizeConnectPayload, LocalProtectionError, protectToolCall } from "@once-agent/sdk";
-import { createLocalProtectionSession, withLocalProtectionSession } from "@once-agent/sdk/connect";
+import { withLocalProtectionSession } from "@once-agent/sdk/connect";
 
 const identifier = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$/);
 const authoritySchema = z.strictObject({
@@ -91,26 +91,9 @@ export async function registerProtectedOrderAction(server: McpServer, options: R
       throw new LocalProtectionError("UNSUPPORTED_BOUNDARY", "Authenticated provider authority no longer matches the registered action.");
     }
   };
-  let initialIdentity;
-  try {
-    initialIdentity = statSync(statePath, { bigint: true });
-    if (!initialIdentity.isFile() || initialIdentity.size === 0n) throw Error("not an initialized ledger file");
-  } catch {
-    throw new LocalProtectionError("STATE_UNAVAILABLE", "Restore the original host-provisioned ledger before registering this action.");
-  }
-  const session = createLocalProtectionSession(statePath);
-  try {
-    await session.databaseForCall();
-    const currentIdentity = statSync(statePath, { bigint: true });
-    if (currentIdentity.dev !== initialIdentity.dev || currentIdentity.ino !== initialIdentity.ino ||
-        currentIdentity.birthtimeNs !== initialIdentity.birthtimeNs) {
-      throw new LocalProtectionError("STATE_UNAVAILABLE", "The host ledger changed during registration; no provider dispatch is permitted.");
-    }
-    await checkAuthority();
-  } catch (error) {
-    session.close();
-    throw error;
-  }
+  const ledger = await openExistingLedger(statePath);
+  const session = ledger.session;
+  try { await checkAuthority(); } catch (error) { ledger.close(); throw error; }
   const validateReceipt = (raw: unknown, operationId: string, effect: PreparedOrderEffect): OrderReceipt => {
     const receipt = receiptSchema.parse(raw);
     if (receipt.operationId !== operationId || !same(receipt.effect, effect)) {
@@ -125,6 +108,7 @@ export async function registerProtectedOrderAction(server: McpServer, options: R
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
     }, async (input, context) => {
       try {
+        ledger.assertValid();
         await authorize(context);
         await checkAuthority();
         const effect = freeze(effectSchema.parse({
@@ -135,6 +119,7 @@ export async function registerProtectedOrderAction(server: McpServer, options: R
           statePath,
           effect: { tool: name, args: effect },
           execute: async ({ args }) => {
+            ledger.assertValid();
             await checkAuthority();
             // Identity is separate from provider arguments; this reviewed client
             // maps it to the provider's durable lookup reference.
@@ -143,6 +128,7 @@ export async function registerProtectedOrderAction(server: McpServer, options: R
             return validateReceipt(receipt, input.operationId, args);
           },
           reconcile: async ({ operationId, effect: prepared }) => {
+            ledger.assertValid();
             await checkAuthority();
             const observation = confirmationSchema.safeParse(await lookup(operationId));
             await checkAuthority();
@@ -166,8 +152,8 @@ export async function registerProtectedOrderAction(server: McpServer, options: R
       }
     });
   } catch (error) {
-    session.close();
+    ledger.close();
     throw error;
   }
-  return { close: () => session.close() };
+  return { close: () => ledger.close() };
 }

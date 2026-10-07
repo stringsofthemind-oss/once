@@ -21,6 +21,35 @@ const output = response => {
   assert.deepEqual(response.structuredContent, parsed, 'text and structured outcomes agree');
   return parsed;
 };
+
+test('schema loss across actual host process restart retains ONE provider effect', async t => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'once-schema-restart-'));
+  const statePath = path.join(dir, 'ledger.sqlite');
+  const initial = createLocalProtectionSession(statePath); await initial.databaseForCall(); initial.close();
+  const provider = await startOrderProvider(path.join(dir, 'effects.jsonl'));
+  const config = { providerUrl: provider.url, token: provider.token, statePath, accountId: 'account-A', resourceId: 'orders-local' };
+  const clients = [];
+  const connect = async () => {
+    const client = new Client({ name: 'restart-agent', version: '1' }); clients.push(client);
+    await client.connect(new StdioClientTransport({ command: process.execPath, args: [hostPath], env: { ...process.env, ONCE_TEST_HOST: JSON.stringify(config) }, stderr: 'pipe' }));
+    return client;
+  };
+  t.after(async () => { for (const client of clients) await client.close(); await provider.close(); rmSync(dir, { recursive: true, force: true }); });
+  const client = await connect();
+  const call = () => client.callTool({ name: 'once_create_order', arguments: input('restart-intent') });
+  assert.equal(output(await call()).status, 'CONFIRMED');
+  assert.equal(provider.records().length, 1);
+  const db = new DatabaseSync(statePath); db.exec('DROP TABLE local_operations'); db.close();
+  assert.equal(output(await call()).status, 'STATE_UNAVAILABLE');
+  await client.close();
+  await assert.rejects(connect());
+  assert.equal(provider.records().length, 1);
+  assert.equal(provider.counters.posts, 1);
+  const inspect = new DatabaseSync(statePath, { readOnly: true });
+  assert.equal(inspect.prepare("SELECT name FROM sqlite_schema WHERE name='local_operations'").get(), undefined);
+  inspect.close();
+  if (process.env.ONCE_RESTART_PROOF_PATH) writeFileSync(process.env.ONCE_RESTART_PROOF_PATH, JSON.stringify({ runtime: process.version, actualChildProcessRestart: true, liveOutcome: "STATE_UNAVAILABLE", restartedHostRejected: true, missingTableStillAbsent: true, independentlyCountedProviderEffects: provider.records().length, writeRequests: provider.counters.posts, providerRecords: provider.records() }, null, 2));
+});
 async function waitUntil(fn) {
   for (let i = 0; i < 200; i++) { if (fn()) return; await delay(10); }
   throw Error('fixture did not reach expected provider effect');
