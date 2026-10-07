@@ -10,6 +10,7 @@ import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import { McpServer } from '@modelcontextprotocol/server';
 import { createLocalProtectionSession } from '@once-agent/sdk/connect';
+import { openExistingLedger } from '@once-agent/mcp/dist/existing-ledger.js';
 import { registerProtectedOrderAction } from '@once-agent/mcp/registered-action';
 import { startOrderProvider } from './fixtures/order-provider.mjs';
 
@@ -21,6 +22,27 @@ const output = response => {
   assert.deepEqual(response.structuredContent, parsed, 'text and structured outcomes agree');
   return parsed;
 };
+
+test('startup admission transaction blocks schema loss during the SDK opener', async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'once-admission-race-'));
+  const statePath = path.join(dir, 'state.sqlite');
+  const provision = createLocalProtectionSession(statePath); await provision.databaseForCall(); provision.close();
+  const before = new DatabaseSync(statePath);
+  before.prepare("INSERT INTO local_operations(id,fingerprint,state) VALUES(?,?,?)").run('prior-intent','prior-effect','UNKNOWN'); before.close();
+  const prototype = Object.getPrototypeOf(provision);
+  const original = prototype.databaseForCall;
+  let attempted = false, ledger;
+  prototype.databaseForCall = async function () {
+    const writer = new DatabaseSync(statePath, { timeout: 1 });
+    try { assert.throws(() => writer.exec('DROP TABLE local_operations'), /locked/); attempted = true; } finally { writer.close(); }
+    return original.call(this);
+  };
+  try {
+    ledger = await openExistingLedger(statePath); assert.equal(attempted, true); ledger.assertValid();
+    const after = new DatabaseSync(statePath, { readOnly: true });
+    assert.equal(after.prepare('SELECT count(*) AS n FROM local_operations').get().n, 1); after.close();
+  } finally { prototype.databaseForCall = original; ledger?.close(); rmSync(dir,{recursive:true,force:true}); }
+});
 
 test('schema loss across actual host process restart retains ONE provider effect', async t => {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'once-schema-restart-'));

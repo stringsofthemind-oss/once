@@ -15,7 +15,10 @@ export async function openExistingLedger(statePath: string) {
   try {
     const initial = statSync(statePath, { bigint: true });
     if (!initial.isFile() || initial.size === 0n) throw fail();
-    guard = new DatabaseSync(statePath, { readOnly: true });
+    guard = new DatabaseSync(statePath, { timeout: 30_000 });
+    // No schema/data writes: keep SQLite writers from dropping the table
+    // between validation and the SDK's CREATE TABLE IF NOT EXISTS opener.
+    guard.exec("BEGIN IMMEDIATE");
     let schemaVersion: unknown;
     let invalidated = false;
     const assertValid = () => {
@@ -37,7 +40,9 @@ export async function openExistingLedger(statePath: string) {
     };
     assertValid(); // Reject missing schema BEFORE the SDK's initializing open.
     await session.databaseForCall();
-    assertValid(); // Reject startup races/schema repair before tool registration.
+    assertValid();
+    guard.exec("COMMIT");
+    assertValid(); // Recheck after releasing startup admission before registration.
     return {
       session,
       assertValid,
