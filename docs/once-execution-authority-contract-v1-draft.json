@@ -1,0 +1,161 @@
+{
+  "schema_version": "once-execution-authority-v1-draft",
+  "status": "draft_non_runtime",
+  "purpose": "Machine-readable candidate contract for evaluating and enforcing Once as the execution-authority boundary for consequential agent actions.",
+  "claim_boundary": [
+    "This draft does not change the shipped Once runtime or create new provider support.",
+    "This draft does not claim universal exactly-once execution.",
+    "This draft does not claim atomicity between the Once ledger and an external provider.",
+    "This draft does not make model output or a local receipt authoritative provider truth.",
+    "This draft does not make an older valid ledger snapshot current authority."
+  ],
+  "layers": {
+    "identity": {
+      "question": "Who or what is acting?",
+      "required_properties": [
+        "tenant_or_security_domain",
+        "subject_or_workload_identity",
+        "provider_account_binding"
+      ],
+      "rules": [
+        "Identity and provider-account authority must be established by a trusted host or provider boundary, not inferred from model prose.",
+        "Raw credentials, bearer tokens, passwords, private keys and authorization headers must not be used as durable identity material."
+      ]
+    },
+    "authority": {
+      "question": "What permission or delegation authorizes this consequence?",
+      "required_properties": [
+        "policy_or_mandate_reference",
+        "approval_scope_when_required",
+        "credential_or_session_binding_reference"
+      ],
+      "rules": [
+        "Authorization to perform an action is not authorization to repeat it.",
+        "A changed approval scope, provider account or credential authority must fail closed or require reapproval.",
+        "Once consumes authorization; it does not silently enlarge it."
+      ]
+    },
+    "intent": {
+      "question": "Which stable logical real-world operation is this?",
+      "required_properties": [
+        "logical_operation_id",
+        "operation_kind"
+      ],
+      "rules": [
+        "Retries of the same logical operation reuse the same operation identity.",
+        "A new random identity must not be minted merely to escape UNKNOWN, CONFLICT or a prior execution record.",
+        "Distinct legitimate operations require distinct logical identities even when their payloads are identical."
+      ]
+    },
+    "effect": {
+      "question": "Exactly what consequential effect is allowed?",
+      "required_properties": [
+        "effect_contract",
+        "effect_bearing_inputs",
+        "provider_boundary"
+      ],
+      "rules": [
+        "All fields that can change the consequential result must be bound.",
+        "Missing required effect-bearing fields fail closed; absence is not a wildcard.",
+        "Same logical identity with changed effect-bearing inputs is CONFLICT.",
+        "Authorization credentials are excluded from the effect payload."
+      ]
+    }
+  },
+  "runtime_states": [
+    "ABSENT",
+    "UNKNOWN",
+    "CONFIRMED"
+  ],
+  "decisions": {
+    "EXECUTE": {
+      "redispatch_allowed": true,
+      "meaning": "The trusted boundary has established fresh execution authority for this logical operation."
+    },
+    "REPLAY_CONFIRMED": {
+      "redispatch_allowed": false,
+      "meaning": "Return the retained confirmed result; do not execute the external effect again."
+    },
+    "CONFLICT": {
+      "redispatch_allowed": false,
+      "meaning": "The same logical identity was reused with changed consequence-bearing semantics."
+    },
+    "RECONCILE_REQUIRED": {
+      "redispatch_allowed": false,
+      "meaning": "The prior outcome is ambiguous; establish authoritative external truth before any further effect."
+    },
+    "REQUIRE_REAPPROVAL": {
+      "redispatch_allowed": false,
+      "meaning": "The proposed consequence is outside the bound approval or mandate and requires a new authorization decision."
+    },
+    "DENY_AUTHORITY": {
+      "redispatch_allowed": false,
+      "meaning": "Identity, provider-account, credential/session or delegated authority cannot be established."
+    },
+    "DENY_BINDING": {
+      "redispatch_allowed": false,
+      "meaning": "The logical identity or complete effect-bearing input binding cannot be established safely."
+    },
+    "DENY_STATE": {
+      "redispatch_allowed": false,
+      "meaning": "Required durable execution authority is missing, unavailable, incompatible or cannot be trusted as current."
+    }
+  },
+  "core_invariants": [
+    "UNKNOWN is never retry permission.",
+    "Missing acknowledgement is not proof that the external effect failed.",
+    "A workflow retry is not automatically permission to repeat a real-world consequence.",
+    "Authoritative provider truth outranks local process exit status after an ambiguous external attempt.",
+    "Provider-native idempotency should be used when available and does not replace Once logical identity.",
+    "A self-contained signature or hash chain does not by itself prove that a restored ledger is the latest history.",
+    "Every protected external write must traverse the admitted execution boundary."
+  ],
+  "provider_capability_profile": {
+    "required_fields": [
+      "provider_id",
+      "adapter_version",
+      "provider_account_binding",
+      "native_idempotency",
+      "authoritative_lookup",
+      "definitive_absence_semantics",
+      "eventual_consistency_semantics",
+      "partial_execution_possible",
+      "reconciliation_identity",
+      "credential_mode"
+    ],
+    "grades": {
+      "A": "Native duplicate suppression plus authoritative reconciliation of the committed effect.",
+      "B": "Authoritative reconciliation is available but duplicate suppression depends on the Once boundary.",
+      "C": "Native duplicate suppression exists but authoritative post-ambiguity readback is incomplete.",
+      "D": "The provider cannot establish enough post-dispatch truth; an ambiguous attempt may remain UNKNOWN."
+    }
+  },
+  "evidence": {
+    "minimum_receipt_fields": [
+      "logical_operation_id",
+      "effect_digest_or_equivalent_binding",
+      "provider_id",
+      "provider_account_reference",
+      "execution_state",
+      "provider_result_reference_when_available",
+      "reconciliation_method_when_used",
+      "observed_at",
+      "policy_or_approval_reference_when_applicable"
+    ],
+    "rules": [
+      "Locally signed evidence can authenticate what Once recorded; it cannot turn unsigned provider data into provider-signed truth.",
+      "Secrets and raw credentials must not appear in durable receipts.",
+      "Receipts should be exportable to enterprise audit and observability systems without requiring model interpretation."
+    ]
+  },
+  "continuity": {
+    "local_current_boundary": "The released same-machine SQLite path depends on preserving the original current ledger history.",
+    "known_limit": "Deleting, replacing, resetting, rolling back or switching to an older valid ledger may erase execution history and permit a later effect.",
+    "next_generation_requirement": "Multi-host enterprise authority requires transactional shared state, fencing and an independently trusted continuity/anti-rollback mechanism."
+  },
+  "machine_use": {
+    "agent_rule": "Agents receive a decision; trusted runtime components own identity, authority, state and reconciliation.",
+    "host_rule": "A correctly configured host must not let the model bypass the protected boundary for an admitted consequential action.",
+    "conformance_vectors": "../conformance/once-execution-authority-v1-vectors.json"
+  }
+}
