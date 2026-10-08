@@ -8,6 +8,10 @@ Once is relevant when an agent or application can retry a real-world side effect
 
 Examples include payments, refunds, payouts, bookings, orders, account or infrastructure provisioning, database/API mutations, side-effecting webhooks, consequential messages, production deployments, and MCP/tool calls that change external state.
 
+> Default installation exposes eight developer assessment/setup tools. It does **not** automatically protect arbitrary sibling GitHub/Adobe/other connectors. Protection requires routing an action through an admitted Once boundary. The registered action is opt-in; the proxy protects only reviewed/configured upstream boundaries.
+
+[Authoritative compatibility and ledger-continuity matrix](COMPATIBILITY.md).
+
 ## What this MCP server does
 
 The MCP layer is for **AI builders and coding agents**. It helps them discover risky operations, explain the risk, preview setup/protection, apply approved changes, and verify the Once Cloud connection.
@@ -22,7 +26,7 @@ The production application agent does not need to remember to call an MCP tool b
 - `once_setup_project` — install/configure Once after explicit approval (`confirm: "SETUP"`).
 - `once_plan_protection` — review protection candidates without modifying source.
 - `once_apply_protection` — transactionally apply exactly one PATCHABLE candidate after explicit approval (`confirm: "APPLY"`).
-- `once_verify_connection` — run Once Doctor against the configured Once Cloud API key.
+- `once_verify_connection` — preserve local diagnostics and explicitly report whether configured Cloud checks passed. See the output contract below.
 - `once_live_proof` — return the demonstrated live proof and claim boundaries.
 
 ## Safety model
@@ -47,9 +51,9 @@ Safe language:
 
 ## Requirements
 
-- Node.js 20+
+- Node.js 20+ for the default developer helper; see [COMPATIBILITY.md](COMPATIBILITY.md).
 - Node.js 24.15+ for `once-mcp proxy` (durable local SQLite state)
-- `ONCE_API_KEY` only when using `once_verify_connection` or a configured Once integration that requires Cloud access
+- `ONCE_API_KEY` for requested Cloud checks/integrations; without it `once_verify_connection` returns local diagnostics and Cloud unconfigured/unverified
 
 ## Install from npm
 
@@ -93,7 +97,7 @@ npx -y @once-agent/mcp@0.2.0 proxy --config .once/mcp.json
 
 The config must name the upstream command, pin the SHA-256 digest of its reviewed complete `tools/list` catalog, and specify protection decisions and identity/effect fields for consequential tools. It requires `serverId`, `command`, `args`, `statePath`, `expectedCatalogSha256`, and `tools`; each tool policy sets `decision` to `PROTECT` or `BYPASS`. The proxy refuses a changed catalog and preserves an unknown outcome after an ambiguous upstream error. Keep its SQLite state path durable and private. The [source regression](https://github.com/stringsofthemind-oss/once/blob/main/mcp/scripts/phase13b-stdio-e2e.mjs) includes a disposable example config.
 
-Source builds after MCP 0.1.4 also support optional bounded upstream waits:
+Public MCP 0.2.0 and later include optional bounded upstream waits:
 
 ```json
 {
@@ -105,7 +109,7 @@ Source builds after MCP 0.1.4 also support optional bounded upstream waits:
 }
 ```
 
-Each timeout must be an integer from 50 to 300000 milliseconds. The defaults shown above prevent a hung upstream process from holding the agent indefinitely. A catalog/connect timeout occurs before tool dispatch. A protected `tools/call` timeout is treated as an ambiguous post-dispatch outcome: Once invalidates that upstream channel and the existing durable safety state remains `UNKNOWN` until provider truth can reconcile it. These controls are source-only until a later MCP package release is explicitly approved.
+Each timeout must be an integer from 50 to 300000 milliseconds. The defaults shown above prevent a hung upstream process from holding the agent indefinitely. A catalog/connect timeout occurs before tool dispatch. A protected `tools/call` timeout is treated as an ambiguous post-dispatch outcome: Once invalidates that upstream channel and the existing durable safety state remains `UNKNOWN` until provider truth can reconcile it. These controls are included in the public npm artifact; their timeout behavior is bounded to the configured upstream channel.
 
 ## Local development
 
@@ -160,8 +164,30 @@ host, receipt and read-only reconciliation contract and reproducible tests.
 This helper is new in MCP 0.2.0 and is not enabled by the default
 OpenAI plugin. The helper mode, existing proxy and SDK APIs remain available.
 Arbitrary Adobe/GitHub/other connector invocation remains unsupported.
-# Private experimental GitHub issue host (excluded from public npm)
+## Public package isolation
 
-The GitHub adapter, host executable and private installation guide are excluded from the public npm artifact. The source-only private bundle utility stages them in a separate `private: true` package; it never publishes. The private registration creates issues only for host-provisioned task references in one verified private personal repository. The public default MCP executable remains the eight-tool developer surface. See the repository's `mcp/GITHUB_ISSUE_LOCAL.md` for private provisioning and evidence limits. No existing ChatGPT connector is wrapped and no credential forwarding is provided.
+Private experimental adapters, hosts, configuration and evidence are excluded
+from the public npm artifact. They do not add public connector support.
+The default helper requires Node 20+; the SQLite proxy and registered local-test
+action require Node 24.15+. See the compatibility matrix above.
 
-Default helper/proxy mode supports Node 20+. The opt-in registered local-test action requires Node 24.15+ and the original valid host-provisioned same-machine ledger. Missing or incompatible expected state fails closed. UNKNOWN never authorizes blind redispatch. Only complete matching authoritative evidence can recover a prior result; changed effect under the same identity conflicts. These are bounded guarantees, not universal exactly-once execution.
+## Connection verification output (0.2.1 candidate)
+
+The eight tool names and empty input of `once_verify_connection` are unchanged.
+Existing `command`, `cwd`, `exitCode`, `timedOut`, `stdout` and `stderr` fields
+remain local diagnostics. `ok` means local diagnostics succeeded and, when a
+nonempty ONCE_API_KEY is supplied, the requested Cloud check succeeded. It does
+not mean that Cloud is configured or that a provider action is protected.
+
+Additional fields are `localValidated`, `cloudConfigured`, `cloudVerified`, and
+`cloudStatus` (`unconfigured`, `verified`, `failed`). `localValidated` means the
+local diagnostic command succeeded, not production execution readiness. Without
+a key, local success may return ok:true with cloudVerified:false. With a key,
+the tool also invokes the pinned CLI's `doctor --connection`; its diagnostics
+are in `cloudCheck`. A failed Cloud check returns ok:false and isError:true,
+even if local diagnostics succeeded. A local-only scan cannot verify Cloud.
+Cloud verification covers the read-only truth/safety probe, not arbitrary
+providers, actual consequential writes, or universal exactly-once execution.
+
+Retained MCP 0.1.5 plugin launchers do not contain this correction. Updating
+their pin or provisioning a new action requires separate review.

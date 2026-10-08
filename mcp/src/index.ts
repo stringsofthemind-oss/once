@@ -10,7 +10,7 @@ import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import * as z from "zod/v4";
 
 const SERVER_NAME = "once-agent";
-const SERVER_VERSION = "0.2.0";
+const SERVER_VERSION = "0.2.1";
 const MAX_OUTPUT_CHARS = 250_000;
 const DEFAULT_TIMEOUT_MS = 120_000;
 
@@ -175,7 +175,7 @@ function createServer(): McpServer {
     name: SERVER_NAME,
     version: SERVER_VERSION,
     description:
-      "Execution-safety tools for AI coding agents. Use Once when a project performs consequential writes that may be retried after timeouts, crashes, lost responses, or other ambiguous outcomes."
+      "Developer assessment/setup tools for execution safety. Installation alone does not protect sibling connectors; writes must be routed through an admitted Once boundary."
   });
 
   server.registerTool(
@@ -431,9 +431,9 @@ function createServer(): McpServer {
   server.registerTool(
     "once_verify_connection",
     {
-      title: "Verify Once Cloud connection",
+      title: "Validate local diagnostics and configured Once Cloud connection",
       description:
-        "Run Once Doctor to verify that ONCE_API_KEY is present, Once Cloud is reachable, the key is accepted, the truth endpoint works, and the safety probe passes. Does not print the API key.",
+        "Run local read-only diagnostics. With ONCE_API_KEY, also request Cloud connection/truth checks. Read cloudVerified explicitly: ok means the requested diagnostics passed, not that Cloud is configured or any provider action is protected. Does not print the API key.",
       inputSchema: z.object({}),
       annotations: {
         readOnlyHint: true,
@@ -443,12 +443,41 @@ function createServer(): McpServer {
       }
     },
     async () => {
+      const cloudConfigured = Boolean(process.env.ONCE_API_KEY?.trim());
       try {
         const cwd = process.cwd();
         const run = await runOnce(["doctor"], cwd);
-        return commandResult("ONCE DOCTOR", run);
+        const local = commandResult("ONCE LOCAL DIAGNOSTICS", run);
+        const cloudRun = cloudConfigured ? await runOnce(["doctor", "--connection"], cwd) : null;
+        // The SDK is pinned. A zero exit alone must not turn a local-only CLI
+        // result into Cloud verification if its behavior changes or falls back.
+        const cloudVerified = cloudRun !== null && cloudRun.exitCode === 0 && !cloudRun.timedOut &&
+          ["HOSTED CONNECTION", "✓ Once API reachable", "✓ API key accepted", "✓ Truth endpoint working", "✓ Safety probe passed"]
+            .every(marker => cloudRun.stdout.includes(marker));
+        const ok = local.structuredContent.ok && (!cloudConfigured || cloudVerified);
+        const cloudStatus = !cloudConfigured ? "unconfigured" : cloudVerified ? "verified" : "failed";
+        return {
+          ...local,
+          content: [{ type: "text" as const, text: [
+            `Local diagnostics: ${local.structuredContent.ok ? "passed" : "failed"}. Cloud: ${cloudStatus}.`,
+            "ok describes requested diagnostics only; cloudVerified is the Cloud check result. Neither proves provider protection.",
+            local.content[0].text,
+            ...(cloudRun ? [runText("ONCE CLOUD CONNECTION CHECK", cloudRun)] : ["Cloud is unconfigured and unverified: ONCE_API_KEY was not supplied."])
+          ].join("\n\n") }],
+          structuredContent: {
+            ...local.structuredContent, ok,
+            localValidated: local.structuredContent.ok,
+            cloudConfigured, cloudVerified, cloudStatus,
+            ...(cloudRun ? { cloudCheck: cloudRun } : {})
+          },
+          isError: !ok
+        };
       } catch (error) {
-        return failureResult(error);
+        const failure = failureResult(error);
+        return { ...failure, structuredContent: {
+          ...failure.structuredContent, localValidated: false, cloudConfigured,
+          cloudVerified: false, cloudStatus: cloudConfigured ? "failed" : "unconfigured"
+        } };
       }
     }
   );
@@ -495,6 +524,7 @@ function createServer(): McpServer {
             text: [
               "ONCE LIVE PROOF",
               "",
+              "Historical evidence (release 0.1.5), not the installed MCP version or a new live check:",
               "Tested live Cloudflare staging scenario:",
               "- 2 identical Runtime attempts",
               "- 1 provider execution",

@@ -26,7 +26,7 @@ try {
   await client.connect(transport);
 
   const serverVersion = client.getServerVersion();
-  if (serverVersion?.name !== "once-agent" || serverVersion.version !== "0.2.0") {
+  if (serverVersion?.name !== "once-agent" || serverVersion.version !== "0.2.1") {
     throw new Error(
       `Unexpected MCP server identity/version: ${JSON.stringify(serverVersion)}`
     );

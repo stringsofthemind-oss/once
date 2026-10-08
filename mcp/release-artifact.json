@@ -1,7 +1,7 @@
 {
   "name": "@once-agent/mcp",
-  "version": "0.2.0",
-  "integrity": "sha512-W3m4Q/9yCYsEZn5lTAdglFWGdnYyEwshF7pzi5pcBNW7joCO7vlT4pKFxBIB7Ilzh+sVRkUUZJZldnlJMvXimg==",
-  "sha256": "44b4e34e013e2c7a862f59caec7f5edfe22d7a27af16016fc523c59c3d08c3cc",
-  "files": 18
+  "version": "0.2.1",
+  "integrity": "sha512-M4lofyqx/bLlQC1K88ECb7M2ETTL8aoURHZl96yuFZ03DGiufN1mqKb5A2/w6cQozNKNiiV8U5PQX2burWWLRg==",
+  "sha256": "4afa6a507f788ca51253c27d610120322050be0f737b87371e924c9916b99534",
+  "files": 19
 }

@@ -42,6 +42,14 @@ The callback and lookup are your reviewed provider functions. Inspect every argu
 
 Local SQLite requires a persistent shared file on **one machine**, Node 24.15+, and distinct IDs for genuine new intents. Multiple legitimate partial refunds need distinct refund-intent IDs. [Complete integration guide](examples/natural-placement/README.md).
 
+The ledger is part of execution authority. Changing, deleting, replacing,
+resetting, rolling back or switching valid ledgers may permit an effect to
+execute again. The same filesystem path does not prove the same history.
+Fresh provisioning is separate from restart; preserve the original consistent
+SQLite state and do not reinitialize missing expected state. UNKNOWN blocking
+does not repair lost history. See [MCP compatibility and continuity](mcp/COMPATIBILITY.md).
+
+
 ## When you need Once — and when you do not
 
 Evaluate Once when a consequential external write may be retried, its outcome can become ambiguous, and another effect would matter. Refunds, bookings, messages and tickets are examples, not automatic provider support.

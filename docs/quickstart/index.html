@@ -280,12 +280,24 @@ Ambiguous provider effects: 1</pre
 			<a class="btn" href="https://github.com/stringsofthemind-oss/once/blob/main/docs/CONNECT_AUTO.md" data-event="docs_click"
 				>Open the complete Connect guide</a
 			>
-			<h2 id="hosts">Set up Codex, Claude Code or Cursor</h2>
+			<div class="note"><strong>The ledger is execution authority.</strong>
+Changing, deleting, replacing, resetting or rolling back valid state may permit
+an effect to execute again. The same filesystem path does not prove the same
+execution history. Fresh provisioning is separate from continuation; restore
+the original consistent history, never initialize replacement state on restart.
+UNKNOWN blocks redispatch but cannot repair lost history.
+<a href="https://github.com/stringsofthemind-oss/once/blob/main/mcp/COMPATIBILITY.md">Compatibility, backup and detection limits</a>.</div>
+<h2 id="hosts">Set up Codex, Claude Code or Cursor</h2>
 			<p>
 				The plugin/MCP layer assesses and plans supported integration. Local assessment needs no key; hosted setup needs a Once API key. The
 				server’s presence does not automatically protect other tools or replace the execution boundary.
 			</p>
-			<h3>Codex</h3>
+			<p>Default MCP exposes eight assessment/setup tools, not automatic protection
+of sibling GitHub/Adobe connectors. The registered action is opt-in; a proxy
+protects only reviewed/configured upstream boundaries. Default helper: Node 20+;
+SQLite proxy/registered action: Node 24.15+. Retained plugin pins are independent
+of the latest npm release.</p>
+<h3>Codex</h3>
 			<div class="codebox">
 				<button type="button" data-copy-target="codex" data-copy-label="Copy Codex setup" data-copy-event="install_copied">
 					Copy Codex setup

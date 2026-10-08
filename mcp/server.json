@@ -1,23 +1,23 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.stringsofthemind-oss/once",
-  "description": "Execution-safety MCP for AI coding agents protecting consequential writes from unsafe retries.",
+  "description": "Developer assessment/setup MCP; protection requires an admitted execution boundary, not sibling connectors.",
   "repository": {
     "url": "https://github.com/stringsofthemind-oss/once",
     "source": "github"
   },
-  "version": "0.2.0",
+  "version": "0.2.1",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@once-agent/mcp",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "transport": {
         "type": "stdio"
       },
       "environmentVariables": [
         {
-          "description": "Optional Once Cloud API key. Required only for tools or integrations that contact Once Cloud, such as once_verify_connection.",
+          "description": "Optional key for Cloud checks. Without it once_verify_connection reports Cloud unconfigured/unverified and preserves local diagnostics.",
           "isRequired": false,
           "format": "string",
           "isSecret": true,
