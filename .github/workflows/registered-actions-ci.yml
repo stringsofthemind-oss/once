@@ -23,5 +23,9 @@ jobs:
         working-directory: mcp
       - run: npm run test:registered-action-package
         working-directory: mcp
+      - name: Validate separately staged private GitHub package
+        run: |
+          npm --prefix mcp run build:private-github -- "${{ runner.temp }}/once-private-package"
+          node scripts/private-github-package-regression.mjs "${{ runner.temp }}/once-private-package"
       - run: node scripts/validate-openai-plugin.mjs
       - run: node scripts/check-site-surface.mjs

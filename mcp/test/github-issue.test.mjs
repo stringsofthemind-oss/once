@@ -9,7 +9,7 @@ import { Client, InMemoryTransport } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import { McpServer } from '@modelcontextprotocol/server';
 import { createLocalProtectionSession } from '@once-agent/sdk/connect';
-import { GitHubIssueClient, registerProtectedGitHubIssue } from '@once-agent/mcp/github-issue';
+import { GitHubIssueClient, registerProtectedGitHubIssue } from '@once-agent/mcp/dist/github-issue.js';
 import { startGitHubFixture } from './fixtures/github-provider.mjs';
 
 test('GitHub adapter: authenticated LOCAL REST fixture, not real GitHub', async t => {
