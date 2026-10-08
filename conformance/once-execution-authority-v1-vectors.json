@@ -1,0 +1,182 @@
+{
+  "schema_version": "once-execution-authority-conformance-v1-draft",
+  "contract_schema_version": "once-execution-authority-v1-draft",
+  "scope": "Candidate enterprise execution-authority semantics; not a claim that all cases are implemented by the released runtime.",
+  "decisions": [
+    "EXECUTE",
+    "REPLAY_CONFIRMED",
+    "CONFLICT",
+    "RECONCILE_REQUIRED",
+    "REQUIRE_REAPPROVAL",
+    "DENY_AUTHORITY",
+    "DENY_BINDING",
+    "DENY_STATE"
+  ],
+  "cases": [
+    {
+      "id": "payment_first_attempt_authorized",
+      "description": "A fresh authorized payment has trusted identity, authority, stable intent and complete effect binding.",
+      "identity": {"trusted": true, "provider_account_match": true},
+      "authority": {"trusted": true, "approval_scope_match": true, "credential_binding_match": true},
+      "intent": {"trusted": true, "same_logical_operation": true},
+      "effect": {"complete": true, "matches_retained_effect": true},
+      "runtime_state": "ABSENT",
+      "expected": {"decision": "EXECUTE", "redispatch_allowed": true}
+    },
+    {
+      "id": "payment_confirmed_retry_same_effect",
+      "description": "The same logical payment is retried with the same bound amount, currency, payee and provider account after confirmation.",
+      "identity": {"trusted": true, "provider_account_match": true},
+      "authority": {"trusted": true, "approval_scope_match": true, "credential_binding_match": true},
+      "intent": {"trusted": true, "same_logical_operation": true},
+      "effect": {"complete": true, "matches_retained_effect": true},
+      "runtime_state": "CONFIRMED",
+      "expected": {"decision": "REPLAY_CONFIRMED", "redispatch_allowed": false}
+    },
+    {
+      "id": "payment_retry_changed_amount",
+      "description": "The same logical payment identity is reused after the amount changes.",
+      "identity": {"trusted": true, "provider_account_match": true},
+      "authority": {"trusted": true, "approval_scope_match": false, "credential_binding_match": true},
+      "intent": {"trusted": true, "same_logical_operation": true},
+      "effect": {"complete": true, "matches_retained_effect": false, "drift": ["amount"]},
+      "runtime_state": "CONFIRMED",
+      "expected": {"decision": "CONFLICT", "redispatch_allowed": false}
+    },
+    {
+      "id": "booking_lost_ack_truth_unavailable",
+      "description": "A booking provider may have committed, the acknowledgement was lost and authoritative provider truth is unavailable.",
+      "identity": {"trusted": true, "provider_account_match": true},
+      "authority": {"trusted": true, "approval_scope_match": true, "credential_binding_match": true},
+      "intent": {"trusted": true, "same_logical_operation": true},
+      "effect": {"complete": true, "matches_retained_effect": true},
+      "runtime_state": "UNKNOWN",
+      "provider_truth": "UNAVAILABLE",
+      "expected": {"decision": "RECONCILE_REQUIRED", "redispatch_allowed": false}
+    },
+    {
+      "id": "booking_reconciled_confirmed",
+      "description": "Authoritative provider lookup uniquely identifies the booking created by the ambiguous attempt.",
+      "identity": {"trusted": true, "provider_account_match": true},
+      "authority": {"trusted": true, "approval_scope_match": true, "credential_binding_match": true},
+      "intent": {"trusted": true, "same_logical_operation": true},
+      "effect": {"complete": true, "matches_retained_effect": true},
+      "runtime_state": "CONFIRMED",
+      "provider_truth": "CONFIRMED",
+      "expected": {"decision": "REPLAY_CONFIRMED", "redispatch_allowed": false}
+    },
+    {
+      "id": "wrong_provider_account",
+      "description": "The logical action is correct but the credential/session is bound to a different provider account.",
+      "identity": {"trusted": true, "provider_account_match": false},
+      "authority": {"trusted": true, "approval_scope_match": true, "credential_binding_match": false},
+      "intent": {"trusted": true, "same_logical_operation": true},
+      "effect": {"complete": true, "matches_retained_effect": true},
+      "runtime_state": "ABSENT",
+      "expected": {"decision": "DENY_AUTHORITY", "redispatch_allowed": false}
+    },
+    {
+      "id": "credential_rotation_binding_unknown",
+      "description": "Credentials rotated and the trusted host cannot prove the new session belongs to the approved provider-account authority.",
+      "identity": {"trusted": true, "provider_account_match": null},
+      "authority": {"trusted": false, "approval_scope_match": true, "credential_binding_match": false},
+      "intent": {"trusted": true, "same_logical_operation": true},
+      "effect": {"complete": true, "matches_retained_effect": true},
+      "runtime_state": "ABSENT",
+      "expected": {"decision": "DENY_AUTHORITY", "redispatch_allowed": false}
+    },
+    {
+      "id": "approval_scope_changed",
+      "description": "The proposed action exceeds the amount or resource scope of the approval attached to the logical intent.",
+      "identity": {"trusted": true, "provider_account_match": true},
+      "authority": {"trusted": true, "approval_scope_match": false, "credential_binding_match": true},
+      "intent": {"trusted": true, "same_logical_operation": true},
+      "effect": {"complete": true, "matches_retained_effect": false},
+      "runtime_state": "ABSENT",
+      "expected": {"decision": "REQUIRE_REAPPROVAL", "redispatch_allowed": false}
+    },
+    {
+      "id": "missing_effect_currency",
+      "description": "A payment binding omits currency even though currency changes the consequence.",
+      "identity": {"trusted": true, "provider_account_match": true},
+      "authority": {"trusted": true, "approval_scope_match": true, "credential_binding_match": true},
+      "intent": {"trusted": true, "same_logical_operation": true},
+      "effect": {"complete": false, "missing_required_fields": ["currency"]},
+      "runtime_state": "ABSENT",
+      "expected": {"decision": "DENY_BINDING", "redispatch_allowed": false}
+    },
+    {
+      "id": "model_generated_fresh_id_after_unknown",
+      "description": "A model tries to mint a new logical identity after an UNKNOWN result to force progress on the same business intent.",
+      "identity": {"trusted": true, "provider_account_match": true},
+      "authority": {"trusted": true, "approval_scope_match": true, "credential_binding_match": true},
+      "intent": {"trusted": false, "same_logical_operation": true, "fresh_id_attempted": true},
+      "effect": {"complete": true, "matches_retained_effect": true},
+      "runtime_state": "UNKNOWN",
+      "expected": {"decision": "DENY_BINDING", "redispatch_allowed": false}
+    },
+    {
+      "id": "state_authority_unavailable",
+      "description": "The expected durable execution authority cannot be opened or verified.",
+      "identity": {"trusted": true, "provider_account_match": true},
+      "authority": {"trusted": true, "approval_scope_match": true, "credential_binding_match": true},
+      "intent": {"trusted": true, "same_logical_operation": true},
+      "effect": {"complete": true, "matches_retained_effect": true},
+      "runtime_state": "STATE_UNAVAILABLE",
+      "expected": {"decision": "DENY_STATE", "redispatch_allowed": false}
+    },
+    {
+      "id": "older_valid_history_detected",
+      "description": "An independently trusted continuity check proves that a restored otherwise-valid ledger is older than the current authority.",
+      "identity": {"trusted": true, "provider_account_match": true},
+      "authority": {"trusted": true, "approval_scope_match": true, "credential_binding_match": true},
+      "intent": {"trusted": true, "same_logical_operation": true},
+      "effect": {"complete": true, "matches_retained_effect": true},
+      "runtime_state": "STALE_AUTHORITY",
+      "expected": {"decision": "DENY_STATE", "redispatch_allowed": false}
+    },
+    {
+      "id": "nondefinitive_absence_after_ambiguous_attempt",
+      "description": "A readback does not find the effect, but provider semantics do not make that observation authoritative proof of non-execution.",
+      "identity": {"trusted": true, "provider_account_match": true},
+      "authority": {"trusted": true, "approval_scope_match": true, "credential_binding_match": true},
+      "intent": {"trusted": true, "same_logical_operation": true},
+      "effect": {"complete": true, "matches_retained_effect": true},
+      "runtime_state": "UNKNOWN",
+      "provider_truth": "NONDEFINITIVE_ABSENCE",
+      "expected": {"decision": "RECONCILE_REQUIRED", "redispatch_allowed": false}
+    },
+    {
+      "id": "new_intent_same_payload",
+      "description": "A genuinely new approved booking intentionally has the same payload as an earlier booking but a distinct trusted logical intent.",
+      "identity": {"trusted": true, "provider_account_match": true},
+      "authority": {"trusted": true, "approval_scope_match": true, "credential_binding_match": true},
+      "intent": {"trusted": true, "same_logical_operation": false, "new_business_intent": true},
+      "effect": {"complete": true, "matches_retained_effect": true},
+      "runtime_state": "ABSENT",
+      "expected": {"decision": "EXECUTE", "redispatch_allowed": true}
+    },
+    {
+      "id": "paid_tool_call_lost_ack",
+      "description": "Calling the tool itself incurs a charge; the provider accepted the invocation but the response was lost.",
+      "identity": {"trusted": true, "provider_account_match": true},
+      "authority": {"trusted": true, "approval_scope_match": true, "credential_binding_match": true},
+      "intent": {"trusted": true, "same_logical_operation": true},
+      "effect": {"complete": true, "matches_retained_effect": true, "includes_paid_invocation": true},
+      "runtime_state": "UNKNOWN",
+      "provider_truth": "UNAVAILABLE",
+      "expected": {"decision": "RECONCILE_REQUIRED", "redispatch_allowed": false}
+    },
+    {
+      "id": "provider_native_idempotency_still_bound",
+      "description": "The provider offers a native idempotency key, but Once still binds the higher-level logical intent, authority and effect.",
+      "identity": {"trusted": true, "provider_account_match": true},
+      "authority": {"trusted": true, "approval_scope_match": true, "credential_binding_match": true},
+      "intent": {"trusted": true, "same_logical_operation": true},
+      "effect": {"complete": true, "matches_retained_effect": true},
+      "runtime_state": "ABSENT",
+      "provider_native_idempotency": true,
+      "expected": {"decision": "EXECUTE", "redispatch_allowed": true}
+    }
+  ]
+}

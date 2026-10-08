@@ -75,12 +75,12 @@ try {
   assert.equal(count(), 0);
   unlinkSync(driftPath);
 
-  // MCP client v2.0.0 auto-aggregation can silently truncate a catalog when a
-  // server legally repeats an opaque cursor. Once walks raw pages separately,
-  // primes the SDK cache, and refuses to proceed if the two inventories differ.
+  // MCP client v2.2.0 now retains all pages when an opaque cursor repeats.
+  // Once independently walks the raw catalog and rejects this extra tool
+  // against the reviewed catalog before dispatch, even when SDK and raw agree.
   writeFileSync(driftPath, "repeated-cursor");
   await assert.rejects(connectStdioProxy(config),
-    /INVALID_TOOL_CATALOG: SDK aggregate differs from raw catalog/);
+    /TOOL_SCHEMA_CHANGED: upstream catalog differs from reviewed configuration/);
   assert.equal(count(), 0);
   unlinkSync(driftPath);
 

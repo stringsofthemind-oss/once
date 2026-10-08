@@ -24,7 +24,7 @@
     "evolution/kernel/docs-evaluator.mjs": "82f46351882278862a7c05385445be8fb256e1b52d7a23ad2452710a3f28557b",
     "evolution/kernel/evaluate.mjs": "8123001819bba5388d02704371f5bbf165be7fb721fdd2b9a7d6cb1ebf469e37",
     "evolution/kernel/hash-manifest.mjs": "babddbdf899a70e533e4bc7c816f6aea83a867ba7c09f263193a5d060845e87c",
-    "evolution/kernel/mutations.mjs": "a1e36783831cf29f2f77af6713fa1422f1b139a991b5d7f97e88c8e0bf1eba00",
+    "evolution/kernel/mutations.mjs": "31f9128402638402039ada17393233b603b307b9f61350de92d94a658ee6441a",
     "evolution/kernel/safety-worker.mjs": "7e90aac20b36a551e10271d0e842e4dbd54fffb843827bb40c4dbf48306b0036",
     "evolution/kernel/schema.mjs": "ac8a88e8e315729b848783c580b14f05535406edc07528ba7033b422257d2dea",
     "evolution/schemas/receipt.schema.json": "aa2115ad5ef03446be38d2b3dde7fcc3b5f8fe36a96d22e98f20ad696e800bbc",

@@ -45,7 +45,8 @@
   "files": [
     "dist",
     "README.md",
-    "dist-cjs"
+    "dist-cjs",
+    "sql"
   ],
   "scripts": {
     "test:first10": "npm run build && node ../../scripts/generate-first10-proof.mjs --check && node --test ./test/first10.test.mjs",
@@ -80,9 +81,9 @@
     "test:reconciliation-package": "node ./scripts/reconciliation-package-regression.mjs",
     "routing:check": "node ./scripts/agent-routing-conformance.mjs",
     "routing:cases": "node ./scripts/agent-routing-conformance.mjs --emit-cases",
-    "test:routing-conformance": "node ./scripts/agent-routing-conformance-regression.mjs",
+    "test:routing-conformance": "node ./scripts/agent-routing-conformance-regression.mjs && npm run test:execution-authority-contract",
     "test:contract": "npm run build && tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --strict --types node ./scripts/sdk-contract-types.ts && node ./scripts/sdk-contract-runtime.mjs",
-    "test:release": "npm run test:first10 && npm run test:first10-package && npm run test:tool-call && npm run test:wrap-tool && npm run test:wrap-tool-package && npm run benchmark:scan && npm run benchmark:local-function-bridge && npm run test:local-function-transformer && npm run test:local-function-bridge-plan && npm run test:reviewed-local-semantics && npm run test:reviewed-local-caller-inventory && npm run test:reviewed-local-routing-preview && npm run test:reviewed-local-routing-review && npm run test:reviewed-local-routing-apply && npm run test:benchmark && npm run test:trace && npm run test:dataset-seal && npm run test:dataset-progress && npm run test:agent-discovery && npm run test:doctor && npm run test:monitor && npm run test:tool-discovery && npm run test:gateway && npm run test:reconciliation && npm run test:reconciliation-package && npm run test:routing-conformance && npm run test:scanner-declarations && npm run test:contract && npm run test:protect && npm run test:capabilities && npm run test:transformer && npm run test:binding && npm run test:patch-planner && npm run test:transformer-protect && npm run test:apply && npm run test:route-proof && npm run test:id-conformance && npm run test:consumer && npm run test:connect-package && npm run test:discovery-package && npm run test:gateway-package && npm run test:activation && npm run test:package && npm run test:runtime-setup && npm run test:connect",
+    "test:release": "npm run test:first10 && npm run test:first10-package && npm run test:authority-kernel && npm run test:tool-call && npm run test:wrap-tool && npm run test:wrap-tool-package && npm run benchmark:scan && npm run benchmark:local-function-bridge && npm run test:local-function-transformer && npm run test:local-function-bridge-plan && npm run test:reviewed-local-semantics && npm run test:reviewed-local-caller-inventory && npm run test:reviewed-local-routing-preview && npm run test:reviewed-local-routing-review && npm run test:reviewed-local-routing-apply && npm run test:benchmark && npm run test:trace && npm run test:dataset-seal && npm run test:dataset-progress && npm run test:agent-discovery && npm run test:doctor && npm run test:monitor && npm run test:tool-discovery && npm run test:gateway && npm run test:reconciliation && npm run test:reconciliation-package && npm run test:routing-conformance && npm run test:scanner-declarations && npm run test:contract && npm run test:protect && npm run test:capabilities && npm run test:transformer && npm run test:binding && npm run test:patch-planner && npm run test:transformer-protect && npm run test:apply && npm run test:route-proof && npm run test:id-conformance && npm run test:consumer && npm run test:connect-package && npm run test:discovery-package && npm run test:gateway-package && npm run test:activation && npm run test:package && npm run test:runtime-setup && npm run test:connect",
     "test:local": "npm run build && node --test ./test/local.test.mjs ./test/connect/github-issue-recovery.test.mjs ./test/connect/local-agent-tool.test.mjs ./test/connect/mcp-execution-boundary.test.mjs ./test/gateway/local-gateway-toolset.test.mjs ./test/gateway/openai-function-tools-gateway.test.mjs && node ./scripts/synthetic-proof-regression.mjs && node ./scripts/local-function-bridge-apply-regression.mjs && npm run test:reviewed-local-caller-inventory && npm run test:reviewed-local-routing-preview && npm run test:reviewed-local-routing-review && npm run test:reviewed-local-routing-apply && npm run test:reviewed-local-routed-application-proof && npm run test:local-function-bridge-cli && npm run test:reviewed-local-cli",
     "test:connect": "npm run build && node --test ./test/connect/*.test.mjs",
     "test:connect-package": "node ./scripts/connect-package-regression.mjs",
@@ -109,7 +110,10 @@
     "test:setup-persistence": "npm run build && node ./scripts/setup-persistence-regression.mjs",
     "prepack": "npm run build",
     "test:wrap-tool": "npm run build && node --test ./test/wrap-tool.test.mjs ./test/wrap-tool-mcp.test.mjs",
-    "test:wrap-tool-package": "node ./scripts/wrap-tool-package-regression.mjs"
+    "test:wrap-tool-package": "node ./scripts/wrap-tool-package-regression.mjs",
+    "test:execution-authority-contract": "node ./scripts/execution-authority-contract-regression.mjs",
+    "test:shared-authority": "npm run build && node --test ./test/postgres-authority.test.mjs ./test/postgres-continuity-witness.test.mjs ./test/stripe-sandbox-profile.test.mjs ./test/stripe-verified-tls.test.mjs",
+    "test:authority-kernel": "npm run build && node --test ./test/execution-store.test.mjs ./test/authority-canonical-security.test.mjs"
   },
   "keywords": [
     "ai",
@@ -133,8 +137,9 @@
     "node": ">=18"
   },
   "devDependencies": {
-    "@modelcontextprotocol/sdk": "1.27.1",
-    "@types/node": "^26.6.1"
+    "@modelcontextprotocol/sdk": "1.31.0",
+    "@types/node": "^26.6.1",
+    "pg": "8.16.3"
   },
   "bin": {
     "once": "dist/once-cli.js",
