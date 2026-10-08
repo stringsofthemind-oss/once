@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.stringsofthemind-oss/once",
-  "description": "Developer assessment/setup MCP; protection requires an admitted execution boundary, not sibling connectors.",
+  "description": "Developer assessment/setup MCP; admitted Once boundaries protect writes, not sibling connectors.",
   "repository": {
     "url": "https://github.com/stringsofthemind-oss/once",
     "source": "github"

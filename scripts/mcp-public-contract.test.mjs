@@ -6,6 +6,7 @@ const json = file => JSON.parse(read(file));
 test('candidate metadata aligns without advancing published site or reviewed plugin authority',()=>{
   const pkg=json('mcp/package.json'), manifest=json('mcp/server.json'), lock=json('mcp/package-lock.json');
   assert.equal(manifest.version,pkg.version);
+  assert.ok(manifest.description.length <= 100, 'Registry description limit');
   assert.equal(manifest.packages[0].version,pkg.version); assert.equal(lock.version,pkg.version);
   assert.equal(lock.packages[''].version,pkg.version); assert.equal(pkg.dependencies['@once-agent/sdk'],'0.1.25');
   const published=json('docs/published-versions.json');
