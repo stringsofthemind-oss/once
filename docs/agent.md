@@ -34,7 +34,7 @@ Python SDK: `once-agent-sdk==0.1.1`
 
 PyPI: https://pypi.org/project/once-agent-sdk/
 
-MCP package: `@once-agent/mcp@0.2.0`
+MCP package: `@once-agent/mcp@0.2.1`
 Existing plugin launchers retain their separately reviewed MCP 0.1.5 pin; this release does not enable the private GitHub adapter.
 
 Official MCP Registry identity: `io.github.stringsofthemind-oss/once`
