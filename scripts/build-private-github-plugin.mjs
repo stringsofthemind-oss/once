@@ -15,7 +15,17 @@ const run = (args, cwd) => {
 };
 run(['run','build'],path.join(root,'mcp'));
 mkdirSync(output,{recursive:true});
-const packed = JSON.parse(run(['pack','--json','--pack-destination',output],path.join(root,'mcp')))[0];
+// Private capability is staged separately; it is absent from the public pack.
+// private:true prevents this staged package from being published to npm.
+const staging = path.join(output, 'private-package'); mkdirSync(staging);
+const privatePackage = JSON.parse(readFileSync(path.join(root, 'mcp', 'package.json'), 'utf8'));
+privatePackage.private = true;
+privatePackage.files = ['dist', 'scripts/stdio-proxy.mjs', 'README.md', 'REGISTERED_ACTION.md', 'GITHUB_ISSUE_LOCAL.md', 'LICENSE'];
+privatePackage.exports['./github-issue'] = { types: './dist/github-issue.d.ts', import: './dist/github-issue.js' };
+delete privatePackage.scripts;
+writeFileSync(path.join(staging, 'package.json'), JSON.stringify(privatePackage, null, 2));
+for (const file of privatePackage.files) cpSync(path.join(root, 'mcp', file), path.join(staging, file), { recursive: true });
+const packed = JSON.parse(run(['pack','--json','--pack-destination',output],staging))[0];
 const plugin = path.join(output,'plugins','once'); mkdirSync(plugin,{recursive:true});
 const source = path.join(root,'plugins','openai','once');
 const manifest = JSON.parse(readFileSync(path.join(source,'.codex-plugin','plugin.json'),'utf8'));

@@ -7,6 +7,8 @@ on:
       - "mcp/package.json"
       - ".github/workflows/mcp-registry-publish.yml"
       - "scripts/mcp-publication-gate*"
+      - "scripts/verify-mcp-npm-artifact*"
+      - "mcp/release-artifact.json"
   push:
     branches:
       - main
@@ -15,6 +17,8 @@ on:
       - "mcp/package.json"
       - ".github/workflows/mcp-registry-publish.yml"
       - "scripts/mcp-publication-gate*"
+      - "scripts/verify-mcp-npm-artifact*"
+      - "mcp/release-artifact.json"
   workflow_dispatch:
 
 concurrency:
@@ -35,7 +39,7 @@ jobs:
           fetch-depth: 0
 
       - name: Test publication guard without provider writes
-        run: node --test scripts/mcp-publication-gate.test.mjs
+        run: node --test scripts/mcp-publication-gate.test.mjs scripts/verify-mcp-npm-artifact.test.mjs
 
       - name: Gate publication on intentional release
         id: publication-gate
@@ -94,6 +98,19 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+
+      - name: Require exact reviewed npm artifact before Registry authentication
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 30); do
+            if node scripts/verify-mcp-npm-artifact.mjs; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Reviewed npm artifact was not confirmed; Registry publication blocked."
+          exit 1
 
       - name: Install latest MCP publisher
         shell: bash

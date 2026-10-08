@@ -1,6 +1,6 @@
 {
   "name": "@once-agent/mcp",
-  "version": "0.1.5",
+  "version": "0.2.0",
   "mcpName": "io.github.stringsofthemind-oss/once",
   "description": "MCP idempotency and AI agent retry safety for consequential writes and ambiguous timeouts.",
   "type": "module",
@@ -20,19 +20,18 @@
       "import": "./dist/registered-action.js"
     },
     "./*": "./*",
-    "./package.json": "./package.json",
-    "./github-issue": {
-      "import": "./dist/github-issue.js",
-      "types": "./dist/github-issue.d.ts"
-    }
+    "./package.json": "./package.json"
   },
   "files": [
-    "dist",
+    "dist/index.*",
+    "dist/proxy-server.*",
+    "dist/registered-action.*",
+    "dist/existing-ledger.*",
     "scripts/stdio-proxy.mjs",
     "README.md",
     "REGISTERED_ACTION.md",
-    "LICENSE",
-    "GITHUB_ISSUE_LOCAL.md"
+    "CHANGELOG.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

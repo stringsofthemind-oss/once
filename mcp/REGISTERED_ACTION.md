@@ -1,6 +1,6 @@
 # Registered local-test order action
 
-This is an **unreleased, opt-in helper**, not a new default plugin tool. It
+This is an **opt-in helper in MCP 0.2.0**, not a new default plugin tool. It
 supports one reviewed unary action in the `disposable-orders` / `local-test`
 boundary. The test host owns an authenticated loopback HTTP client. A different
 provider or a production action needs a separately reviewed adapter; this helper

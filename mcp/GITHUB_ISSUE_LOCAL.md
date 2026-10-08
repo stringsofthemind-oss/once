@@ -1,10 +1,10 @@
 # Private GitHub issue canary
 
-This is one direct host-owned GitHub REST capability, not a wrapper around a ChatGPT connector or arbitrary GitHub dispatch. Public package/plugin versions have not been released. Node 24.15+ is required. Ordinary startup only admits an existing valid original ledger; explicit provisioning is separate.
+This is one private experimental host-owned GitHub REST capability, not a wrapper around a ChatGPT connector or arbitrary GitHub dispatch. The public MCP 0.2.0 artifact excludes this adapter and host. No public GitHub plugin release is provided. Node 24.15+ is required. Ordinary startup only admits an existing valid original ledger; explicit provisioning is separate.
 
 ## Prepare the private bundle
 
-From `mcp`, run `npm run build:private-github -- ABSOLUTE_NEW_BUNDLE_DIRECTORY`. This builds and packs local MCP code, installs pinned dependencies without lifecycle scripts, and creates a local marketplace and self-contained plugin. It never publishes npm. `bundle-evidence.json` records the unpublished source version, exact SDK version and package hashes. Do not confuse the locally built MCP labeled 0.1.5 with the different already-published package of that version.
+From `mcp`, run `npm run build:private-github -- ABSOLUTE_NEW_BUNDLE_DIRECTORY`. This builds local MCP code and stages a separate `private: true` package containing the experimental GitHub adapter/host, installs pinned dependencies without lifecycle scripts, and creates a local marketplace and self-contained plugin. It never publishes npm. `bundle-evidence.json` records the source version, exact SDK version and package hashes. The private staged artifact differs from the public npm package even when its source version matches. Preserve the original external configuration, host task mapping and ledger across any bundle update; never provision a replacement for expected state.
 
 ## Trusted provisioning
 

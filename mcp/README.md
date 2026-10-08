@@ -32,7 +32,7 @@ The tool descriptions are intentionally explicit about mutation:
 - assessment and planning tools are marked read-only;
 - setup/protection tools are marked destructive and require explicit confirmation tokens;
 - the API key is inherited from `ONCE_API_KEY` and is never intentionally returned by the MCP server;
-- the helper server shells out to the package-pinned `@once-agent/sdk@0.1.14` CLI (the independent MCP 0.1.5 dependency, not the current standalone SDK version) rather than reimplementing Once protection logic.
+- the helper server shells out to the package-pinned `@once-agent/sdk@0.1.25` CLI rather than reimplementing Once protection logic.
 
 ## Current claim boundary
 
@@ -88,7 +88,7 @@ Do not commit API keys to configuration files that will be published.
 The default command starts the Once helper server. To protect calls to a reviewed local MCP stdio server, start the proxy explicitly:
 
 ```bash
-npx -y @once-agent/mcp@0.1.5 proxy --config .once/mcp.json
+npx -y @once-agent/mcp@0.2.0 proxy --config .once/mcp.json
 ```
 
 The config must name the upstream command, pin the SHA-256 digest of its reviewed complete `tools/list` catalog, and specify protection decisions and identity/effect fields for consequential tools. It requires `serverId`, `command`, `args`, `statePath`, `expectedCatalogSha256`, and `tools`; each tool policy sets `decision` to `PROTECT` or `BYPASS`. The proxy refuses a changed catalog and preserves an unknown outcome after an ambiguous upstream error. Keep its SQLite state path durable and private. The [source regression](https://github.com/stringsofthemind-oss/once/blob/main/mcp/scripts/phase13b-stdio-e2e.mjs) includes a disposable example config.
@@ -149,7 +149,7 @@ Pure reads, searches, retrieval, and generation-only operations generally do not
 - Live playground: https://playground.onceexec.com/
 - SDK: https://www.npmjs.com/package/@once-agent/sdk
 - Repository: https://github.com/stringsofthemind-oss/once
-# Opt-in registered local-test action (unreleased source)
+# Opt-in registered local-test action (MCP 0.2.0)
 
 The `@once-agent/mcp/registered-action` subpath adds
 `registerProtectedOrderAction(server, options)` for one explicitly configured,
@@ -157,9 +157,11 @@ host-owned disposable order action. It reuses `protectToolCall` and the existing
 local SQLite authority. See [REGISTERED_ACTION.md](REGISTERED_ACTION.md) for the
 host, receipt and read-only reconciliation contract and reproducible tests.
 
-This helper is absent from published MCP 0.1.5 and is not enabled by the default
+This helper is new in MCP 0.2.0 and is not enabled by the default
 OpenAI plugin. The helper mode, existing proxy and SDK APIs remain available.
 Arbitrary Adobe/GitHub/other connector invocation remains unsupported.
-# Private GitHub issue host (unreleased branch capability)
+# Private experimental GitHub issue host (excluded from public npm)
 
-The opt-in `@once-agent/mcp/github-issue` registration and private `dist/github-issue-host.js` entry point expose only issue creation for host-provisioned task references in one verified private personal repository. The default MCP executable remains the eight-tool developer surface. This branch capability is not in the currently published npm artifact. See [private installation, provisioning and evidence limits](GITHUB_ISSUE_LOCAL.md). No existing ChatGPT connector is wrapped, no credential forwarding is provided, and installed GPT routing remains unproven until an actual trace is captured.
+The GitHub adapter, host executable and private installation guide are excluded from the public npm artifact. The source-only private bundle utility stages them in a separate `private: true` package; it never publishes. The private registration creates issues only for host-provisioned task references in one verified private personal repository. The public default MCP executable remains the eight-tool developer surface. See the repository's `mcp/GITHUB_ISSUE_LOCAL.md` for private provisioning and evidence limits. No existing ChatGPT connector is wrapped and no credential forwarding is provided.
+
+Default helper/proxy mode supports Node 20+. The opt-in registered local-test action requires Node 24.15+ and the original valid host-provisioned same-machine ledger. Missing or incompatible expected state fails closed. UNKNOWN never authorizes blind redispatch. Only complete matching authoritative evidence can recover a prior result; changed effect under the same identity conflicts. These are bounded guarantees, not universal exactly-once execution.
