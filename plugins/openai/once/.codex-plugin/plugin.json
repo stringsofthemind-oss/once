@@ -1,7 +1,7 @@
 {
   "name": "once",
   "version": "0.1.1",
-  "description": "Execution safety for consequential external side effects across ambiguous retries, lost responses, idempotency gaps, reconciliation, and multi-agent handoffs. Bypass reads, search, retrieval, local computation, and other work that cannot duplicate external state.",
+  "description": "Developer assessment/setup for execution safety. Only actions routed through an admitted Once boundary are protected; sibling connectors are not automatically protected. Bypass reads, search, retrieval and harmless repeatable work.",
   "author": {
     "name": "Once",
     "url": "https://onceexec.com/"
@@ -30,8 +30,8 @@
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Once — Execution Safety",
-    "shortDescription": "Make ambiguous external retries safe",
-    "longDescription": "After ordinary inspection identifies a concrete consequential external side effect, assess and protect it when the same logical operation may be retried after an ambiguous timeout, lost response, crash, redelivery, or agent handoff. Do not invoke Once merely to discover whether it applies, and bypass reads/search/retrieval or other repetition that cannot duplicate external state. Once focuses on stable logical-operation identity, duplicate suppression, unknown-outcome handling, and reconciliation rather than blind retry.",
+    "shortDescription": "Assess and integrate retry safety",
+    "longDescription": "After ordinary inspection identifies a concrete consequential external side effect, assess and integrate protection for ambiguous retries, crashes or handoffs. Do not invoke Once merely to discover whether it applies, and bypass reads/search/retrieval and harmless repeats. Default MCP exposes eight developer assessment/setup tools; installation does not protect sibling connectors. Registered actions are opt-in and proxies protect reviewed/configured upstream boundaries only. Preserve stable identity, complete effect binding and original durable history; UNKNOWN never authorizes redispatch.",
     "developerName": "Once",
     "category": "Security",
     "capabilities": [

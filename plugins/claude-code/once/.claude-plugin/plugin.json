@@ -1,7 +1,7 @@
 {
   "name": "once",
   "version": "0.1.0",
-  "description": "Adds Once execution-safety tools for consequential AI-agent writes, ambiguous outcomes and safe retries.",
+  "description": "Adds Once developer assessment/setup tools. Writes require an admitted execution boundary; installation does not protect sibling connectors.",
   "author": {
     "name": "Once"
   },

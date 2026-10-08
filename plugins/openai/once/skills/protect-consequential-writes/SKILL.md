@@ -70,7 +70,7 @@ Only claim automatic routing after a real installed GPT-6.1 tool trace demonstra
 
 7. **Verify** — run `once_verify_connection` when Cloud verification is relevant, or use:
 
-   `npx --yes --package=@once-agent/sdk@0.1.25 once doctor`
+   `npx --yes --package=@once-agent/sdk@0.1.25 once doctor --connection`
 
    Do not expose `ONCE_API_KEY` in output, source code, patches, logs, or committed configuration.
 
@@ -116,3 +116,13 @@ When finished, report:
 - any provider mapping, adapter, or reconciliation work still required.
 
 For representative positive and negative routing examples, read `references/routing-cases.md`.
+
+## Public helper and state boundary
+
+Default MCP installation exposes eight developer tools and does not protect
+sibling connectors. The opt-in registered action and reviewed/configured proxy
+require admitted execution paths. Preserve the original execution history, not
+just its path: ledger replacement/reset/rollback can permit another effect.
+UNKNOWN is never permission to execute again. Read cloudVerified explicitly in
+MCP 0.2.1; retained MCP 0.1.5 plugins lack that correction. CLI Cloud verification
+requires doctor --connection. See the repository mcp/COMPATIBILITY.md matrix.

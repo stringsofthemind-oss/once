@@ -46,3 +46,12 @@ When an outcome cannot be established safely, Once can preserve uncertainty inst
 - MCP package: https://www.npmjs.com/package/@once-agent/mcp
 - MCP Registry: io.github.stringsofthemind-oss/once
 - Source: https://github.com/stringsofthemind-oss/once
+
+## Execution boundary and compatibility
+
+This retained plugin exposes developer assessment/setup tools, not automatic
+protection of sibling GitHub/Adobe/other connectors. It intentionally pins MCP
+0.1.5; a new npm MCP release is not a plugin update. Only actions routed through
+an admitted boundary are protected; registered actions are opt-in and a proxy
+requires reviewed upstream configuration. UNKNOWN never authorizes redispatch.
+See [compatibility and ledger continuity](../../../mcp/COMPATIBILITY.md).

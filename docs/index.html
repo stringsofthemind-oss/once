@@ -76,7 +76,14 @@
 					<p class="small" style="margin: 12px 0 0">Illustrative scenario; supported integration required.</p>
 				</aside>
 			</section>
-			<section class="section" id="when-not-needed"><div class="intro"><h2>When you do not need Once</h2><p>If a provider idempotency key completely solves your operation, use it. If a database unique constraint solves it, use it. Harmless repeated actions do not need Once.</p><p>Use Once when a consequential operation may already have happened, you cannot safely establish its outcome, and repeating it could create another effect. Keep native idempotency wherever available.</p><a href="/first10/">See two unprotected refunds versus one protected refund →</a></div></section>
+			<section class="section" id="when-not-needed"><div class="intro"><div class="note"><strong>The ledger is execution authority.</strong>
+Changing, deleting, replacing, resetting or rolling back valid state may permit
+an effect to execute again. The same filesystem path does not prove the same
+execution history. Fresh provisioning is separate from continuation; restore
+the original consistent history, never initialize replacement state on restart.
+UNKNOWN blocks redispatch but cannot repair lost history.
+<a href="https://github.com/stringsofthemind-oss/once/blob/main/mcp/COMPATIBILITY.md">Compatibility, backup and detection limits</a>.</div>
+<h2>When you do not need Once</h2><p>If a provider idempotency key completely solves your operation, use it. If a database unique constraint solves it, use it. Harmless repeated actions do not need Once.</p><p>Use Once when a consequential operation may already have happened, you cannot safely establish its outcome, and repeating it could create another effect. Keep native idempotency wherever available.</p><a href="/first10/">See two unprotected refunds versus one protected refund →</a></div></section>
 <section class="section" id="mechanism">
 				<div class="intro">
 					<p class="eyebrow">What Once changes</p>

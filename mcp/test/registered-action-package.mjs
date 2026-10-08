@@ -32,7 +32,7 @@ try {
   const privateImport = spawnSync(process.execPath, ['--input-type=module', '-e', "import('@once-agent/mcp/dist/github-issue.js')"], { cwd: consumer, encoding: 'utf8', windowsHide: true });
   assert.notEqual(privateImport.status, 0, 'Private GitHub adapter must be unavailable to a public consumer.');
   cpSync(path.join(root, 'test'), path.join(consumer, 'test'), { recursive: true });
-  const results = run(process.execPath, ['--test', 'test/registered-action.test.mjs'], consumer);
+  const results = run(process.execPath, ['--test', 'test/registered-action.test.mjs', 'test/connection-verification.test.mjs'], consumer);
   cpSync(path.join(root, 'scripts', 'smoke.mjs'), path.join(consumer, 'smoke.mjs'));
   console.log(run(process.execPath, [path.join(consumer, 'smoke.mjs')], path.join(consumer, 'node_modules', '@once-agent', 'mcp')));
   console.log(results);

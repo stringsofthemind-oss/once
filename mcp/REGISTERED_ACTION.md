@@ -167,26 +167,36 @@ not simulate a new execution right. Windows locks open SQLite files, so the
 state test injects schema corruption and verifies missing-state restart. Live
 path replacement is additionally exercised on platforms that permit the rename.
 
-## Package reality (7 October 2026)
+## Public package and retained plugin pins
 
-* Published MCP 0.1.5 pins SDK 0.1.14 and lacks this helper.
-* This branch pins SDK 0.1.25. Its published root and `connect` exports supply all
-  primitives used here; a new SDK release is not needed for this implementation.
-* The branch's package version still says 0.1.5. Its locally packed artifact is
-  different from published 0.1.5 and must receive a new MCP version before any
-  eventual release. Do not overwrite or describe it as the published package.
-* The repository OpenAI plugin is version 0.1.1 and launches MCP 0.1.5 helper
-  mode. It remains unchanged. An eventual plugin update must pin the new MCP
-  version, provision an explicitly approved host capability/ledger/admission
-  boundary, and advertise its protected alias. Updating a package pin alone
-  cannot register an action or invoke a sibling opaque connector.
-* No npm publication, plugin rollout, merge, release, deployment or public
-  infrastructure change is part of this work.
+The helper is published in MCP 0.2.0 and retained in the 0.2.1 candidate,
+using published SDK 0.1.25. The OpenAI/Codex plugin remains manifest 0.1.1
+and the Claude plugin 0.1.0; both intentionally launch MCP 0.1.5 helper mode.
+No plugin pin or private adapter is released by this hardening pass. The
+registered action needs explicit trusted host registration; updating a package
+pin alone cannot register it or invoke sibling connectors.
 
-A future agent could use this action when the trusted fixture host is explicitly
-connected. This test supplies MCP client calls, not a new 6.1 model-run transcript
-or an installed ChatGPT plugin end-to-end reproduction. Arbitrary Adobe/GitHub
-connector execution remains unsupported.
+See [COMPATIBILITY.md](COMPATIBILITY.md) for the authoritative Node/version
+matrix and execution-history continuity boundary. Source-repository test
+commands above require a checkout; those tests are not shipped in npm.
+
+### Deliberate first-install provisioning only
+
+```js
+import { createLocalProtectionSession } from '@once-agent/sdk/connect';
+const initial = createLocalProtectionSession('/absolute/persistent/operations.sqlite');
+await initial.databaseForCall();
+initial.close();
+```
+
+Use this only for an explicitly fresh installation, never as restart recovery.
+Normal startup calls registerProtectedOrderAction against the original expected
+ledger. The ledger is part of execution authority: replacing/resetting/rolling
+back a valid ledger, even at the same path, may authorize another external effect.
+A backup must retain consistent SQLite history; restoring older valid state can
+lose records of effects that already happened. Admission cannot detect all
+valid-looking rollback or deletion. UNKNOWN blocking assumes history is retained.
+
 # Existing-ledger admission repair
 
 Registration now uses a non-mutating admission guard before the SDK session is opened, holding a SQLite startup transaction across that open. It validates the existing operations table, columns, state constraint, basic row validity and SQLite integrity, then verifies file identity and schema version again after opening. Every tool call rechecks admission; a failure permanently invalidates that host session. Missing, empty, corrupt or schema-lost ledgers are not initialized or repaired. The original SDK remains 0.1.25; this guard protects the opt-in MCP boundaries, not every direct SDK caller. Explicit fresh-install provisioning remains separate. Valid-looking row deletion or ledger rollback cannot be detected solely from the remaining SQLite file and is outside this corruption-detection guarantee.

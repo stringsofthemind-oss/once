@@ -143,7 +143,7 @@ Available tools:
 - `once_setup_project` — install/configure Once after explicit user approval.
 - `once_plan_protection` — review candidate call sites without modifying source.
 - `once_apply_protection` — transactionally apply one approved PATCHABLE candidate.
-- `once_verify_connection` — run Once Doctor without exposing the API key.
+- `once_verify_connection` — preserve local diagnostics; in MCP 0.2.1 read cloudVerified explicitly for requested Cloud checks. Retained MCP 0.1.5 plugins lack this correction; use doctor --connection for Cloud verification without exposing the API key.
 - `once_live_proof` — return demonstrated proof and safe claim boundaries.
 
 The MCP server is for agent-assisted discovery, integration, and verification. Production application agents do not need to call MCP before every protected write; Once Runtime or a supported local Connect boundary remains the execution-safety boundary.
@@ -307,3 +307,10 @@ protection; all effects must traverse the protected boundary. Local mode will
 not redispatch an ambiguous operation on an ABSENT observation.
 
 FIRST 10: Controlled refund proof: https://onceexec.com/first10/ . SDK 0.1.25 publishes once prove and read-only once check; the standalone proof also works with SDK 0.1.24 or later. See repository examples/first10/README.md and docs/FIRST10.md. Native idempotency or a unique constraint should be used alone when sufficient. Identity/effect decisions require developer review; never infer them silently.
+
+Execution authority: preserve the original durable ledger and history, not only
+its path. Replacement, reset, deletion or rollback can permit an effect again.
+Default MCP exposes eight developer assessment/setup tools; it does not protect
+sibling connectors. Registered actions are opt-in; proxies require reviewed
+upstream configuration. Node 20+ supports the helper; local SQLite modes need
+24.15+. Compatibility: https://github.com/stringsofthemind-oss/once/blob/main/mcp/COMPATIBILITY.md
