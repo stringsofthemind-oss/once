@@ -36,7 +36,8 @@ NATURAL PLACEMENT: the current SDK provides wrapTool(callback, semantics) for a 
 
 AUTOMATIC CONNECT: published in @once-agent/sdk@0.1.25. It can classify supported agent-tool descriptors as BYPASS, PROTECT, or fail-closed UNKNOWN; plan and connect whole local tool registries; resolve trusted intent/idempotency identity; bind effect payload; and structurally wrap OpenAI Agents FunctionTools. Automatic protected local execution requires Node 24.15+ and shared same-machine SQLite state. It is not a multi-host or universal exactly-once guarantee.
 LOCAL PROTECTION: protectLocal(existingAsyncFunction, {id, payload}) keeps the call shape and receiver, snapshots ordinary data arguments, and uses durable same-machine SQLite on Node 24.15+. It validates a narrow plain-data domain. UNKNOWN and CONFLICT block; do not infer ABSENT from a timeout. See examples/local-function/README.md in the repository. For separate hosts use a supported distributed Once integration.
-MCP package: @once-agent/mcp@0.1.5
+MCP package: @once-agent/mcp@0.2.0
+Existing plugin launchers intentionally remain pinned to MCP 0.1.5; no new public plugin or GitHub integration release is included.
 MCP Registry: io.github.stringsofthemind-oss/once
 
 ROUTING RULE

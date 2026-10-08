@@ -84,16 +84,18 @@ assert(["ON_INSTALL", "ON_USE"].includes(marketEntry.policy?.authentication), "M
 assert(marketEntry.category === "Security", "Marketplace category must be Security");
 
 const onceServer = mcp.mcpServers?.once;
+const pluginMcp = published.pluginMcp;
+assert(/^\d+\.\d+\.\d+$/.test(pluginMcp), "Reviewed plugin MCP pin must be explicit strict semver");
 assert(onceServer, "MCP config must define mcpServers.once");
 assert(onceServer.command === "node", "Once MCP launcher must use node");
 assert(Array.isArray(onceServer.args) && onceServer.args[0] === "./scripts/once-mcp.cjs", "Once MCP launcher path is incorrect");
 assert(
-  launcher.includes(`@once-agent/mcp@${published.mcp}`),
-  `MCP package must be pinned to published @once-agent/mcp@${published.mcp}`
+  launcher.includes(`@once-agent/mcp@${pluginMcp}`),
+  `MCP package must retain reviewed plugin pin @once-agent/mcp@${pluginMcp}`
 );
 assert(
-  readme.includes(`@once-agent/mcp@${published.mcp}`),
-  `Codex plugin README must describe published @once-agent/mcp@${published.mcp}`
+  readme.includes(`@once-agent/mcp@${pluginMcp}`),
+  `Codex plugin README must describe reviewed plugin pin @once-agent/mcp@${pluginMcp}`
 );
 
 assert(skill.replace(/\r\n/g, "\n").startsWith("---\n"), "Skill must start with YAML frontmatter");
@@ -149,5 +151,5 @@ assert(!combined.includes("[TODO:"), "Plugin package contains unresolved TODO pl
 console.log("OPENAI CODEX PLUGIN: PASS");
 console.log(`Plugin: ${manifest.interface.displayName} v${manifest.version}`);
 console.log(`Routing evals: ${evals.positive.length} positive / ${evals.negative.length} negative`);
-console.log(`MCP: @once-agent/mcp@${published.mcp}`);
+console.log(`MCP plugin pin: @once-agent/mcp@${pluginMcp}`);
 console.log(`SDK fallback: @once-agent/sdk@${published.ts}`);

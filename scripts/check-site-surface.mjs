@@ -58,6 +58,9 @@ assert.equal(sitePython, pythonVersion, "homepage Python SDK version must match 
 assert.equal(siteMcp, published.mcp, "homepage MCP version must match the published MCP version");
 assert.ok(sourceAtLeastPublished(mcpPackage.version, published.mcp),
   "MCP source version must not precede its published version");
+// Plugin updates have a separate release gate; latest npm is not an upgrade authorization.
+const pluginMcp = published.pluginMcp;
+assert.ok(sourceAtLeastPublished(published.mcp, pluginMcp), "plugin MCP pin must be explicit and not exceed the published MCP version");
 
 assert.ok(
   rootReadme.includes(`@once-agent/sdk@${published.ts}`),
@@ -68,24 +71,24 @@ assert.ok(
   "root README must name the current published MCP version",
 );
 assert.ok(
-  codexLauncher.includes(`@once-agent/mcp@${published.mcp}`),
-  "Codex launcher must pin the current published MCP version",
+  codexLauncher.includes(`@once-agent/mcp@${pluginMcp}`),
+  "Codex launcher must retain the separately reviewed plugin MCP pin",
 );
 assert.ok(
-  claudeLauncher.includes(`@once-agent/mcp@${published.mcp}`),
-  "Claude Code launcher must pin the current published MCP version",
+  claudeLauncher.includes(`@once-agent/mcp@${pluginMcp}`),
+  "Claude Code launcher must retain the separately reviewed plugin MCP pin",
 );
 assert.ok(
   codexSkill.includes(`@once-agent/sdk@${published.ts}`),
   "Codex CLI fallback must pin the current published TypeScript SDK version",
 );
 assert.ok(
-  codexReadme.includes(`@once-agent/mcp@${published.mcp}`),
-  "Codex plugin README must match the current published MCP version",
+  codexReadme.includes(`@once-agent/mcp@${pluginMcp}`),
+  "Codex plugin README must match the separately reviewed plugin MCP pin",
 );
 assert.ok(
-  claudeReadme.includes(`@once-agent/mcp@${published.mcp}`),
-  "Claude Code plugin README must match the current published MCP version",
+  claudeReadme.includes(`@once-agent/mcp@${pluginMcp}`),
+  "Claude Code plugin README must match the separately reviewed plugin MCP pin",
 );
 
 assert.match(homepage, /Run the retry demo/, "homepage must lead to the ungated demo");
