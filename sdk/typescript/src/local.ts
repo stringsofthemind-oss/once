@@ -60,6 +60,14 @@ export class LocalProtectionError extends Error {
   }
 }
 
+function safeAuthorityFailure(cause: unknown): ErrorOptions | undefined {
+  const allowed = ["STATE_UNAVAILABLE", "STALE_AUTHORITY", "AUTHORITY_MISSING", "CONTINUITY_LOST", "CONTINUITY_UNAVAILABLE"];
+  if (cause instanceof LocalProtectionError && allowed.includes(cause.code)) {
+    return { cause: new LocalProtectionError(cause.code, "Durable execution authority rejected confirmation.") };
+  }
+  return undefined;
+}
+
 type Row = ExecutionRow;
 
 function resolvedStatePath(value?: string): string {
@@ -79,7 +87,7 @@ async function loadDatabaseSync(): Promise<DatabaseSyncConstructor> {
     const sqlite = await import("node:sqlite");
     return sqlite.DatabaseSync as unknown as DatabaseSyncConstructor;
   } catch (cause) {
-    throw new LocalProtectionError("SQLITE_UNAVAILABLE", "Node SQLite is unavailable. Enable node:sqlite or use the hosted Once execution path; the operation was not dispatched.", { cause });
+    throw new LocalProtectionError("SQLITE_UNAVAILABLE", "Node SQLite is unavailable. Enable node:sqlite or use the hosted Once execution path; the operation was not dispatched.");
   }
 }
 
@@ -95,7 +103,7 @@ async function openLocalDatabase(statePath: string): Promise<LocalDatabase> {
     if (db) {
       try { db.close(); } catch { /* Preserve the initialization error. */ }
     }
-    throw new LocalProtectionError("STATE_UNAVAILABLE", `Cannot open durable Once state at ${statePath}. The operation was not dispatched. Restore access to this same file before retrying.`, { cause });
+    throw new LocalProtectionError("STATE_UNAVAILABLE", `Cannot open durable Once state at ${statePath}. The operation was not dispatched. Restore access to this same file before retrying.`);
   }
 }
 
@@ -148,7 +156,7 @@ export class LocalProtectionSession {
           identity = stateFileIdentity(this.statePath);
         } catch (cause) {
           try { db.close(); } catch { /* Preserve state identity failure. */ }
-          throw new LocalProtectionError("STATE_UNAVAILABLE", `Cannot verify durable Once state at ${this.statePath}. No operation was dispatched.`, { cause });
+          throw new LocalProtectionError("STATE_UNAVAILABLE", `Cannot verify durable Once state at ${this.statePath}. No operation was dispatched.`);
         }
         if (this.#closed) {
           try { db.close(); } catch { /* Session close is authoritative. */ }
@@ -176,7 +184,7 @@ export class LocalProtectionSession {
       current = stateFileIdentity(this.statePath);
     } catch (cause) {
       this.invalidate();
-      throw new LocalProtectionError("STATE_UNAVAILABLE", `Durable Once state at ${this.statePath} disappeared while the execution boundary was live. The boundary is invalidated; no operation was dispatched.`, { cause });
+      throw new LocalProtectionError("STATE_UNAVAILABLE", `Durable Once state at ${this.statePath} disappeared while the execution boundary was live. The boundary is invalidated; no operation was dispatched.`);
     }
 
     if (!sameStateFile(this.#identity, current)) {
@@ -308,7 +316,7 @@ function decodeResult<T>(encoded: string): T {
     const validated = copyData(envelope) as { hasValue: boolean; value?: T };
     return (validated.hasValue ? validated.value : undefined) as T;
   } catch (cause) {
-    throw new LocalProtectionError("STATE_UNAVAILABLE", "The stored local receipt is malformed. No operation was dispatched.", { cause });
+    throw new LocalProtectionError("STATE_UNAVAILABLE", "The stored local receipt is malformed. No operation was dispatched.");
   }
 }
 
@@ -331,7 +339,7 @@ async function openLocalStore(statePath: string): Promise<ExecutionStore> {
         try { db.exec("ROLLBACK"); } catch { session.invalidate(); }
       }
       if (cause instanceof LocalProtectionError) throw cause;
-      throw new LocalProtectionError("STATE_UNAVAILABLE", "Durable execution state is unavailable; no fresh dispatch is authorized.", { cause });
+      throw new LocalProtectionError("STATE_UNAVAILABLE", "Durable execution state is unavailable; no fresh dispatch is authorized.");
     }
   };
   return {
@@ -430,7 +438,7 @@ export function protectLocal<A extends unknown[], T>(
         try {
           observation = await options.reconcile({ id, payload: copyData(payload) as JsonObject });
         } catch (cause) {
-          throw new LocalProtectionError("UNKNOWN", `Provider truth for ${id} is unavailable. No second write was dispatched.`, { cause });
+          throw new LocalProtectionError("UNKNOWN", `Provider truth for ${id} is unavailable. No second write was dispatched.`);
         }
         if (observation?.state !== "CONFIRMED") {
           throw new LocalProtectionError("UNKNOWN", `Provider truth for ${id} did not confirm an effect. Local mode will not redispatch after an ambiguous attempt; investigate or use a provider idempotency integration.`);
@@ -442,7 +450,7 @@ export function protectLocal<A extends unknown[], T>(
         try {
           resultJson = encodeResult(observation.result);
         } catch (cause) {
-          throw new LocalProtectionError("INVALID_TRUTH", "CONFIRMED provider truth needs a JSON-safe result. No second write was dispatched.", { cause });
+          throw new LocalProtectionError("INVALID_TRUTH", "CONFIRMED provider truth needs a JSON-safe result. No second write was dispatched.");
         }
         const latest = await store.reconcile(id, fingerprint, resultJson);
         if (latest?.fingerprint === fingerprint && latest.state === "CONFIRMED" && latest.result_json !== null) {
@@ -461,7 +469,7 @@ export function protectLocal<A extends unknown[], T>(
         );
       } catch (cause) {
         await store.markUnknown(id, fingerprint, owner);
-        throw new LocalProtectionError("PAYLOAD_DRIFT", `Payload of ${id} changed before dispatch. No operation was dispatched.`, { cause });
+        throw new LocalProtectionError("PAYLOAD_DRIFT", `Payload of ${id} changed before dispatch. No operation was dispatched.`);
       }
       if (currentFingerprint !== fingerprint) {
         await store.markUnknown(id, fingerprint, owner);
@@ -479,7 +487,7 @@ export function protectLocal<A extends unknown[], T>(
         }
       } catch (cause) {
         await store.markUnknown(id, fingerprint, owner);
-        throw new LocalProtectionError("PAYLOAD_DRIFT", `Binding of ${id} changed during authority admission. No operation was dispatched.`, { cause });
+        throw new LocalProtectionError("PAYLOAD_DRIFT", `Binding of ${id} changed during authority admission. No operation was dispatched.`);
       }
 
       let result: T;
@@ -489,7 +497,7 @@ export function protectLocal<A extends unknown[], T>(
         try {
           await store.markUnknown(id, fingerprint, owner);
         } catch { /* Durable claim remains non-dispatchable. */ }
-        throw new LocalProtectionError("UNKNOWN", `ORIGINAL OUTCOME UNKNOWN. Operation ${id} threw after dispatch; its external outcome may be unknown. It may already have succeeded. Future unsafe redispatch is blocked. Next action: reconcile authoritative provider truth before retrying with the same identity and durable state.`, { cause });
+        throw new LocalProtectionError("UNKNOWN", `ORIGINAL OUTCOME UNKNOWN. Operation ${id} threw after dispatch; its external outcome may be unknown. It may already have succeeded. Future unsafe redispatch is blocked. Next action: reconcile authoritative provider truth before retrying with the same identity and durable state.`);
       }
       let resultJson: string;
       try {
@@ -498,14 +506,14 @@ export function protectLocal<A extends unknown[], T>(
         try {
           await store.markUnknown(id, fingerprint, owner);
         } catch { /* Durable claim remains non-dispatchable. */ }
-        throw new LocalProtectionError("UNREPLAYABLE_RESULT", `Operation ${id} returned a non-JSON-safe result. Outcome is UNKNOWN; return a JSON-safe receipt and reconcile before retrying.`, { cause });
+        throw new LocalProtectionError("UNREPLAYABLE_RESULT", `Operation ${id} returned a non-JSON-safe result. Outcome is UNKNOWN; return a JSON-safe receipt and reconcile before retrying.`);
       }
 
       let confirmed: boolean;
       try {
         confirmed = await store.confirm(id, fingerprint, owner, resultJson);
       } catch (cause) {
-        throw new LocalProtectionError("UNKNOWN", `Operation ${id} completed but durable confirmation failed. Restore authority and reconcile provider truth; never redispatch.`, { cause });
+        throw new LocalProtectionError("UNKNOWN", `Operation ${id} completed but durable confirmation failed. Restore authority and reconcile provider truth; never redispatch.`, safeAuthorityFailure(cause));
       }
       if (!confirmed) {
         throw new LocalProtectionError("EXECUTION_RIGHT_LOST", `Operation ${id} completed after its claim changed. Reconcile provider truth before retrying.`);

@@ -122,7 +122,7 @@ identities and establish authoritative provider truth where ambiguity remains;
 never reset state merely to resume service.
 
 The initial adapter serializes a whole namespace and advances the witness even
-for reads. Throughput, witness service implementation, HA, disaster recovery,
+for reads. Throughput, production witness qualification, HA, disaster recovery,
 retention, actual multiple-host operation and independent security review remain
 release gates. No production readiness or provider certification is claimed.
 
@@ -138,7 +138,7 @@ release gates. No production readiness or provider certification is claimed.
 
 These are documented mappings, not a new runtime decision engine. A callback
 that already ran and cannot durably confirm returns UNKNOWN, preserving the
-underlying authority error as its cause. No returned error authorizes retrying
+allowlisted sanitized authority code as its cause. No returned error authorizes retrying
 the provider directly.
 
 ## Reproducible evidence
@@ -162,3 +162,69 @@ HA or real-provider evidence. See the roadmap for remaining acceptance lanes.
 
 Transaction design reference: PostgreSQL's
 [Read Committed and row-lock semantics](https://www.postgresql.org/docs/18/transaction-iso.html).
+
+## Bundled continuity witness and deadlines
+
+`createPostgresContinuityWitness({pool, expectedWitnessId})` supplies a durable
+linearizable compare-and-advance using a separately provisioned PostgreSQL
+checkpoint. Provision `sql/continuity-witness-v1.sql` and its metadata/checkpoint
+explicitly. It never inserts missing checkpoints, accepts rewinds or changes
+identity. It acknowledges only after synchronous commit, requires fsync and
+full-page writes, and sanitizes driver failures.
+
+The host owns authenticated pools, verified TLS, connection deadlines, database
+permissions and placement in independent failure/restore domains. Supplying the
+same pool object is rejected; distinct objects pointing to the same database
+cannot establish separation. The local two-database fixture is not proof of
+independent infrastructure or production qualification.
+
+Execution authority defaults to a 5000ms witness acknowledgement deadline,
+configurable from 1 through 60000ms. Timeout means uncertainty: no CAS retry,
+no execution. A late witness commit can leave continuity ahead and therefore
+require operator recovery. The deadline does not cancel the host pool request;
+the pool must bound connections and requests. Dispatch admission checks database
+time again after witness acknowledgement and checks elapsed monotonic time after
+SQL commit. Expiry while waiting denies dispatch.
+
+Provider callback and reconciliation exceptions carry no raw cause. Confirmation
+failures preserve only a sanitized allowlisted authority error code, never a
+driver/provider exception. This reduces accidental credential leakage through
+error inspection; it is not arbitrary-data redaction.
+
+## Recovery exercise and operator procedure
+
+1. Stop admissions and fence or terminate all original workers. Preserve both
+   databases, provider journal, expected identities and generation/epoch pins.
+2. Read both checkpoints through authenticated operator connections. Do not
+   rewind continuity or replace missing expected authority. Record the mismatch
+   and retain immutable copies before repair.
+3. Restore the complete original execution history from trusted backups/logs
+   that match the independent checkpoint. Validate every possibly dispatched
+   identity and its effect fingerprint. A revision number alone proves nothing
+   about completeness. Keep uncertain operations UNKNOWN; provider absence does
+   not authorize redispatch.
+4. If a complete matching history cannot be established, remain blocked. A
+   witness-ahead aborted transaction has no generic automatic repair here. Do
+   not invent rows, advance metadata alone, discard uncertainty or clear a claim
+   just to make the service available.
+5. Compare checkpoints and retained rows, then reconcile uncertain outcomes only
+   through authoritative provider truth. Admit fresh workers with the same pins;
+   verify old receipts replay and changed effects conflict before resuming.
+
+The disposable container proof retains a complete matching execution snapshot,
+deliberately restores an older coherent history, observes CONTINUITY_LOST, then
+restores that complete snapshot without changing the witness. A previously
+ambiguous provider write stays represented and replays its reconciled receipt.
+This qualifies that recoverable snapshot case only; missing suffix recovery and
+production disaster recovery remain operator-blocking gates.
+
+## Isolated container-host scope
+
+`node scripts/container-host-authority-proof.mjs` requires Linux Docker and runs
+only disposable fixture containers. Two application hosts have separate network
+namespaces, alongside separate execution SQL, continuity SQL and provider journal
+containers on one CI runner. It tests reservation contention, killed application
+process, authoritative readback, host network partition, witness outage, SQL
+restart and coherent rollback/recovery. Provider journal counts are checked
+independently. It does not establish independent physical-host, regional or
+production failure behavior. No deployment or real-provider operation occurs.

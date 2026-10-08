@@ -1101,3 +1101,5 @@ export type {
 export type { ExecutionAuthority, ExecutionStore, ExecutionRow } from "./execution-store.js";
 export { createPostgresExecutionAuthority } from "./postgres-authority.js";
 export type { PostgresAuthorityOptions, AuthorityCheckpoint, ContinuityWitness, AuthoritySqlPool, AuthoritySqlClient } from "./postgres-authority.js";
+export { createPostgresContinuityWitness } from "./postgres-continuity-witness.js";
+export type { PostgresContinuityWitnessOptions } from "./postgres-continuity-witness.js";

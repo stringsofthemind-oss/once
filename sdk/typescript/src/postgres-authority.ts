@@ -1,5 +1,6 @@
 import { LocalProtectionError } from "./local.js";
 import type { ExecutionAuthority, ExecutionRow, ExecutionStore } from "./execution-store.js";
+import { witnessUsesPool } from "./postgres-continuity-witness.js";
 
 /** Compatible with a host-owned node-postgres Pool; credentials never enter Once. */
 export interface AuthoritySqlClient {
@@ -32,6 +33,8 @@ export interface PostgresAuthorityOptions {
   authorityId: string;
   expectedGeneration: string;
   expectedEpoch: string;
+  /** Bounded acknowledgement deadline; ambiguity blocks, never retries CAS. */
+  witnessTimeoutMs?: number;
 }
 
 const decimal = (value: unknown): value is string => typeof value === "string" && /^(0|[1-9][0-9]*)$/.test(value);
@@ -53,10 +56,15 @@ export function createPostgresExecutionAuthority(options: PostgresAuthorityOptio
     return fail("INVALID_CONFIGURATION", "Shared authority requires a fixed pool, external continuity witness, authority identity, generation and decimal epoch.");
   }
   const { pool, witness, authorityId, expectedGeneration, expectedEpoch } = options;
+  if (witnessUsesPool(witness, pool)) fail("INVALID_CONFIGURATION", "Execution and continuity authorities must not share a pool or restore domain.");
+  const witnessTimeoutMs = options.witnessTimeoutMs ?? 5000;
+  if (!Number.isSafeInteger(witnessTimeoutMs) || witnessTimeoutMs <= 0 || witnessTimeoutMs > 60000) {
+    fail("INVALID_CONFIGURATION", "Witness acknowledgement deadline must be between 1 and 60000 milliseconds.");
+  }
   const compareAndAdvance = witness.compareAndAdvance.bind(witness);
   const connect = pool.connect.bind(pool);
 
-  async function transaction<T>(action: (client: AuthoritySqlClient, now: number) => Promise<T>): Promise<T> {
+  async function transaction<T>(action: (client: AuthoritySqlClient, now: number) => Promise<T>, beforeCommit?: (now: number) => void): Promise<T> {
     let client: AuthoritySqlClient | undefined;
     let committed = false;
     try {
@@ -82,9 +90,22 @@ export function createPostgresExecutionAuthority(options: PostgresAuthorityOptio
       const expected = Object.freeze({ authorityId, generation: expectedGeneration, epoch: expectedEpoch, revision: meta.revision as string });
       const next = Object.freeze({ ...expected, revision: (BigInt(meta.revision) + 1n).toString() });
       let accepted: boolean;
-      try { accepted = await compareAndAdvance(expected, next); }
+      let deadline: ReturnType<typeof setTimeout> | undefined;
+      try {
+        accepted = await Promise.race([
+          compareAndAdvance(expected, next),
+          new Promise<never>((_, reject) => { deadline = setTimeout(() => reject(new Error("Witness deadline")), witnessTimeoutMs); }),
+        ]);
+      }
       catch { return fail("CONTINUITY_UNAVAILABLE", "Continuity acknowledgement is unavailable or ambiguous. No new dispatch is authorized; operator recovery is required."); }
+      finally { if (deadline) clearTimeout(deadline); }
       if (accepted !== true) fail("CONTINUITY_LOST", "Execution history does not match the independent continuity authority. No fresh dispatch is authorized.");
+      if (beforeCommit) {
+        const currentClock = await client.query("SELECT floor(extract(epoch FROM clock_timestamp()) * 1000)::text AS now");
+        const currentNow = Number(currentClock.rows[0]?.now);
+        if (!Number.isSafeInteger(currentNow)) fail("STATE_UNAVAILABLE", "Authority clock is invalid.");
+        beforeCommit(currentNow);
+      }
       await client.query("UPDATE once_execution.authorities SET revision=$2::bigint WHERE authority_id=$1", [authorityId, next.revision]);
       await client.query("COMMIT");
       committed = true;
@@ -131,12 +152,21 @@ export function createPostgresExecutionAuthority(options: PostgresAuthorityOptio
       });
     },
     async assertDispatch(id, fingerprint, owner) {
+      let leaseUntil = 0, remainingMs = 0, checkedAt = 0;
       await transaction(async (client, now) => {
         const row = await read(client, id);
         if (row?.fingerprint !== fingerprint || row.state !== "CLAIMED" || row.owner !== owner || row.lease_until! <= now) {
           fail("EXECUTION_RIGHT_LOST", "Execution fence is stale or expired. No fresh dispatch is authorized.");
         }
+        leaseUntil = row!.lease_until!;
+        remainingMs = leaseUntil - now;
+        checkedAt = performance.now();
+      }, now => {
+        if (leaseUntil <= now) fail("EXECUTION_RIGHT_LOST", "Execution lease expired during witness admission. No dispatch is authorized.");
       });
+      if (performance.now() - checkedAt >= remainingMs) {
+        fail("EXECUTION_RIGHT_LOST", "Execution lease expired before admission returned. No dispatch is authorized.");
+      }
     },
     async markUnknown(id, fingerprint, owner) {
       await transaction(async client => {

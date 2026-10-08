@@ -35,3 +35,28 @@ test('missing witness and invalid admission cannot construct shared authority', 
   }
   assert.throws(() => createPostgresExecutionAuthority({ pool: { connect() {} }, authorityId: 'domain', expectedGeneration: 'generation', expectedEpoch: '1' }), { code: 'INVALID_CONFIGURATION' });
 });
+
+import { inspect } from 'node:util';
+test('callback errors never expose credential-bearing causes', async () => {
+  const token = 'synthetic-secret-do-not-expose';
+  let saved;
+  const authority = { async open() { return {
+    async reserve(id, fingerprint) { return saved ? { dispatch: false, row: saved } : { dispatch: true }; },
+    async assertDispatch() {},
+    async markUnknown(id, fingerprint) { saved = { id, fingerprint, state: 'UNKNOWN' }; },
+    async confirm() { throw new Error('unexpected'); }, close() {},
+  }; } };
+  const failure = new Error(`Bearer ${token}`);
+  failure.request = { headers: { authorization: token } };
+  const run = protectLocal(async () => { throw failure; }, {
+    id: () => 'redaction', payload: () => ({ amount: 1 }), authority,
+    reconcile: async () => { throw failure; },
+  });
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await assert.rejects(run(), error => {
+      assert.equal(inspect(error, { depth: 20 }).includes(token), false);
+      assert.equal(error.cause, undefined);
+      return true;
+    });
+  }
+});

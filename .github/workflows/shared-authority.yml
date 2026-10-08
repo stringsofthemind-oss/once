@@ -43,3 +43,24 @@ jobs:
         env:
           ONCE_TEST_POSTGRES: postgresql://once_test:fixture-only@127.0.0.1:5432/postgres
       - run: node --test test/execution-store.test.mjs test/local.test.mjs test/tool-call.test.mjs test/wrap-tool.test.mjs test/wrap-tool-mcp.test.mjs
+  container-host-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: sdk/typescript
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+          cache: npm
+          cache-dependency-path: sdk/typescript/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: node scripts/container-host-authority-proof.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: isolated-container-host-proof
+          path: sdk/typescript/container-evidence/
