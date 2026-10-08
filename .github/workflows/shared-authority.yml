@@ -1,0 +1,45 @@
+name: Shared execution authority
+on:
+  pull_request:
+    paths:
+      - 'sdk/typescript/**'
+      - '.github/workflows/shared-authority.yml'
+  push:
+    branches: [main, feat/execution-authority-contract-v1]
+    paths:
+      - 'sdk/typescript/**'
+      - '.github/workflows/shared-authority.yml'
+permissions:
+  contents: read
+jobs:
+  postgres-authority:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:18.4
+        env:
+          POSTGRES_USER: once_test
+          POSTGRES_PASSWORD: fixture-only
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U once_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: sdk/typescript
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+          cache: npm
+          cache-dependency-path: sdk/typescript/package-lock.json
+      - run: npm ci
+      - run: npm run test:shared-authority
+        env:
+          ONCE_TEST_POSTGRES: postgresql://once_test:fixture-only@127.0.0.1:5432/postgres
+      - run: node --test test/execution-store.test.mjs test/local.test.mjs test/tool-call.test.mjs test/wrap-tool.test.mjs test/wrap-tool-mcp.test.mjs

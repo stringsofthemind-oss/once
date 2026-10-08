@@ -2,6 +2,13 @@
 
 Status: design/qualification plan. This document does **not** claim that the listed enterprise capabilities ship today.
 
+Draft implementation progress: [shared execution authority](./SHARED_EXECUTION_AUTHORITY_DRAFT.md)
+adds an opt-in PostgreSQL store under the existing SDK kernel, one-owner claims,
+stale-owner checks and a required independent continuity-witness contract.
+Local multi-process adversarial tests are implemented. A production witness,
+separate-host proof, HA/recovery qualification and independent review remain
+open; these capabilities are not released or production-qualified.
+
 ## Goal
 
 Make Once the execution-authority boundary for consequential agent actions.

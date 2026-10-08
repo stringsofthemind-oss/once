@@ -5,6 +5,8 @@ import path from "node:path";
 import { types } from "node:util";
 import { canonicalizeConnectPayload, fingerprintConnectPayload } from "./connect/binding.js";
 
+import type { ExecutionAuthority, ExecutionRow, ExecutionStore } from "./execution-store.js";
+
 type JsonObject = Record<string, unknown>;
 
 type LocalStatement = {
@@ -43,6 +45,8 @@ export interface LocalProtectionOptions<A extends unknown[], T> {
   payload: (...args: A) => JsonObject;
   /** Absolute or project-relative path. Defaults to .once/operations.sqlite. */
   statePath?: string;
+  /** Explicit shared authority. Mutually exclusive with statePath; no fallback. */
+  authority?: ExecutionAuthority;
   /** Authoritative provider lookup. It must never infer ABSENT from a timeout. */
   reconcile?: (context: { id: string; payload: JsonObject }) => Promise<LocalObservation<T>> | LocalObservation<T>;
   /** Time before an abandoned claim can be reconciled. No redispatch follows ABSENT. */
@@ -56,13 +60,7 @@ export class LocalProtectionError extends Error {
   }
 }
 
-type Row = {
-  fingerprint: string;
-  state: "CLAIMED" | "UNKNOWN" | "CONFIRMED";
-  result_json: string | null;
-  owner: string | null;
-  lease_until: number | null;
-};
+type Row = ExecutionRow;
 
 function resolvedStatePath(value?: string): string {
   return path.resolve(value ?? path.join(process.cwd(), ".once", "operations.sqlite"));
@@ -314,11 +312,75 @@ function decodeResult<T>(encoded: string): T {
   }
 }
 
+/** SQLite implementation of the same storage seam used by shared authority. */
+async function openLocalStore(statePath: string): Promise<ExecutionStore> {
+  const contextual = localProtectionSessionContext.getStore();
+  const shared = contextual?.statePath === statePath ? contextual : undefined;
+  const session = shared ?? createLocalProtectionSession(statePath);
+  const db = await session.databaseForCall();
+  const read = (id: string) => db.prepare("SELECT fingerprint,state,result_json,owner,lease_until FROM local_operations WHERE id=?").get(id) as Row | undefined;
+  const transaction = <T>(action: () => T): T => {
+    session.assertStateIdentity();
+    try {
+      db.exec("BEGIN IMMEDIATE");
+      const value = action();
+      db.exec("COMMIT");
+      return value;
+    } catch (cause) {
+      if (db.isTransaction) {
+        try { db.exec("ROLLBACK"); } catch { session.invalidate(); }
+      }
+      if (cause instanceof LocalProtectionError) throw cause;
+      throw new LocalProtectionError("STATE_UNAVAILABLE", "Durable execution state is unavailable; no fresh dispatch is authorized.", { cause });
+    }
+  };
+  return {
+    async reserve(id, fingerprint, owner, leaseMs) {
+      return transaction(() => {
+        let row = read(id);
+        if (!row) {
+          db.prepare("INSERT INTO local_operations(id,fingerprint,state,result_json,owner,lease_until) VALUES(?,?,'CLAIMED',NULL,?,?)")
+            .run(id, fingerprint, owner, Date.now() + leaseMs);
+          return { dispatch: true };
+        }
+        if (row.fingerprint === fingerprint && row.state === "CLAIMED" && row.lease_until! <= Date.now()) {
+          db.prepare("UPDATE local_operations SET state='UNKNOWN',owner=NULL,lease_until=NULL WHERE id=? AND state='CLAIMED'").run(id);
+          row = read(id)!;
+        }
+        return { dispatch: false, row };
+      });
+    },
+    async assertDispatch(id, fingerprint, owner) {
+      transaction(() => {
+        const row = read(id);
+        if (row?.fingerprint !== fingerprint || row.state !== "CLAIMED" || row.owner !== owner) {
+          throw new LocalProtectionError("EXECUTION_RIGHT_LOST", "The execution claim is stale. No fresh dispatch is authorized.");
+        }
+      });
+    },
+    async markUnknown(id, fingerprint, owner) {
+      transaction(() => db.prepare("UPDATE local_operations SET state='UNKNOWN',owner=NULL,lease_until=NULL WHERE id=? AND fingerprint=? AND state='CLAIMED' AND owner=?").run(id, fingerprint, owner));
+    },
+    async confirm(id, fingerprint, owner, result) {
+      return transaction(() => db.prepare("UPDATE local_operations SET state='CONFIRMED',result_json=?,owner=NULL,lease_until=NULL WHERE id=? AND fingerprint=? AND state='CLAIMED' AND owner=?")
+        .run(result, id, fingerprint, owner).changes === 1);
+    },
+    async reconcile(id, fingerprint, result) {
+      return transaction(() => {
+        db.prepare("UPDATE local_operations SET state='CONFIRMED',result_json=? WHERE id=? AND fingerprint=? AND state='UNKNOWN'").run(result, id, fingerprint);
+        return read(id);
+      });
+    },
+    close() { if (!shared) session.close(); },
+  };
+}
+
 /**
- * Protect an existing async operation on one machine while keeping its call
+ * Protect an existing async operation while keeping its call
  * shape and dynamic receiver. Ordinary data arguments are snapshotted and
  * frozen; opaque handles keep their identity. SQLite coordinates processes
- * sharing the same durable local file.
+ * sharing the same durable local file. An explicit authority replaces only the
+ * storage seam; execution and reconciliation decisions remain in this kernel.
  * Uncertain outcomes remain blocked; this wrapper never redispatches after
  * an ambiguous attempt, even if a lookup reports ABSENT.
  */
@@ -329,6 +391,10 @@ export function protectLocal<A extends unknown[], T>(
   if (typeof operation !== "function" || typeof options?.id !== "function" || typeof options.payload !== "function") {
     throw new LocalProtectionError("INVALID_CONFIGURATION", "protectLocal requires an async operation plus id and payload functions. The id must survive retries; payload must include every effect-bearing input.");
   }
+  if (options.authority !== undefined && (options.statePath !== undefined || typeof options.authority?.open !== "function")) {
+    throw new LocalProtectionError("INVALID_CONFIGURATION", "Supply one explicit execution authority or a local statePath, never both.");
+  }
+  const authority = options.authority;
   const statePath = resolvedStatePath(options.statePath);
   const leaseMs = options.leaseMs ?? 30_000;
   if (!Number.isSafeInteger(leaseMs) || leaseMs <= 0) {
@@ -343,42 +409,20 @@ export function protectLocal<A extends unknown[], T>(
     }
     const payload = copyData(options.payload(...callArgs)) as JsonObject;
     const fingerprint = fingerprintConnectPayload(payload);
-    const contextualSession = localProtectionSessionContext.getStore();
-    const sharedSession = contextualSession?.statePath === statePath ? contextualSession : undefined;
-    const db = sharedSession
-      ? await sharedSession.databaseForCall()
-      : await openLocalDatabase(statePath);
-    const closeAfterCall = !sharedSession;
-
+    const store = authority
+      ? await authority.open()
+      : await openLocalStore(statePath);
     try {
       const owner = randomUUID();
-      let shouldDispatch = false;
-      let row: Row;
-      try {
-        db.exec("BEGIN IMMEDIATE");
-        row = db.prepare("SELECT fingerprint,state,result_json,owner,lease_until FROM local_operations WHERE id=?").get(id) as Row;
-        if (!row) {
-          db.prepare("INSERT INTO local_operations(id,fingerprint,state,result_json,owner,lease_until) VALUES(?,?,'CLAIMED',NULL,?,?)")
-            .run(id, fingerprint, owner, Date.now() + leaseMs);
-          shouldDispatch = true;
-        }
-        db.exec("COMMIT");
-      } catch (cause) {
-        if (db.isTransaction) {
-          try { db.exec("ROLLBACK"); } catch { sharedSession?.invalidate(); }
-        }
-        throw new LocalProtectionError("STATE_UNAVAILABLE", "Could not atomically claim durable Once state. The operation was not dispatched; retry with the same id after restoring state access.", { cause });
-      }
-
+      const { dispatch: shouldDispatch, row } = await store.reserve(id, fingerprint, owner, leaseMs);
       if (!shouldDispatch) {
         if (row!.fingerprint !== fingerprint) {
           throw new LocalProtectionError("CONFLICT", `Logical action ${id} has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched.`);
         }
         if (row!.state === "CONFIRMED") return decodeResult<T>(row!.result_json!);
-        if (row!.state === "CLAIMED" && row!.lease_until! > Date.now()) {
+        if (row!.state === "CLAIMED") {
           throw new LocalProtectionError("IN_FLIGHT", `Logical action ${id} is still in flight. Wait and retry with the same id; do not call the underlying operation directly.`);
         }
-        db.prepare("UPDATE local_operations SET state='UNKNOWN',owner=NULL,lease_until=NULL WHERE id=? AND state='CLAIMED'").run(id);
         if (!options.reconcile) {
           throw new LocalProtectionError("UNKNOWN", `RETRY BLOCKED — ORIGINAL OUTCOME UNKNOWN. Operation ${id} may already have succeeded. Repeating it could create another external effect; no second write was dispatched. Next action: supply an authoritative read-only reconcile callback or investigate provider truth; retain the same identity and durable state.`);
         }
@@ -400,15 +444,11 @@ export function protectLocal<A extends unknown[], T>(
         } catch (cause) {
           throw new LocalProtectionError("INVALID_TRUTH", "CONFIRMED provider truth needs a JSON-safe result. No second write was dispatched.", { cause });
         }
-        const confirmation = db.prepare("UPDATE local_operations SET state='CONFIRMED',result_json=? WHERE id=? AND state='UNKNOWN'").run(resultJson, id);
-        if (confirmation.changes !== 1) {
-          const latest = db.prepare("SELECT fingerprint,state,result_json,owner,lease_until FROM local_operations WHERE id=?").get(id) as Row | undefined;
-          if (latest?.fingerprint === fingerprint && latest.state === "CONFIRMED" && latest.result_json !== null) {
-            return decodeResult<T>(latest.result_json);
-          }
-          throw new LocalProtectionError("UNKNOWN", `State changed while reconciling ${id}. Retry with the same id; no second write was dispatched.`);
+        const latest = await store.reconcile(id, fingerprint, resultJson);
+        if (latest?.fingerprint === fingerprint && latest.state === "CONFIRMED" && latest.result_json !== null) {
+          return decodeResult<T>(latest.result_json);
         }
-        return decodeResult<T>(resultJson);
+        throw new LocalProtectionError("UNKNOWN", `State changed while reconciling ${id}. Retry with the same id; no second write was dispatched.`);
       }
 
       let currentFingerprint: string;
@@ -420,23 +460,26 @@ export function protectLocal<A extends unknown[], T>(
           copyData(options.payload(...callArgs)) as JsonObject,
         );
       } catch (cause) {
-        db.prepare("UPDATE local_operations SET state='UNKNOWN',owner=NULL,lease_until=NULL WHERE id=? AND state='CLAIMED' AND owner=?").run(id, owner);
+        await store.markUnknown(id, fingerprint, owner);
         throw new LocalProtectionError("PAYLOAD_DRIFT", `Payload of ${id} changed before dispatch. No operation was dispatched.`, { cause });
       }
       if (currentFingerprint !== fingerprint) {
-        db.prepare("UPDATE local_operations SET state='UNKNOWN',owner=NULL,lease_until=NULL WHERE id=? AND state='CLAIMED' AND owner=?").run(id, owner);
+        await store.markUnknown(id, fingerprint, owner);
         throw new LocalProtectionError("PAYLOAD_DRIFT", `Payload of ${id} changed before dispatch. No operation was dispatched.`);
       }
 
-      if (sharedSession) {
-        try {
-          sharedSession.assertStateIdentity();
-        } catch (cause) {
-          try {
-            db.prepare("UPDATE local_operations SET state='UNKNOWN',owner=NULL,lease_until=NULL WHERE id=? AND state='CLAIMED' AND owner=?").run(id, owner);
-          } catch { /* The session is already fail-closed. */ }
-          throw cause;
+      await store.assertDispatch(id, fingerprint, owner);
+
+      // Shared admission crosses an asynchronous boundary. Recheck selectors
+      // synchronously afterward so that admission-time drift cannot be executed.
+      try {
+        if (options.id(...callArgs) !== id ||
+            fingerprintConnectPayload(copyData(options.payload(...callArgs)) as JsonObject) !== fingerprint) {
+          throw new Error("Binding changed during authority admission.");
         }
+      } catch (cause) {
+        await store.markUnknown(id, fingerprint, owner);
+        throw new LocalProtectionError("PAYLOAD_DRIFT", `Binding of ${id} changed during authority admission. No operation was dispatched.`, { cause });
       }
 
       let result: T;
@@ -444,8 +487,8 @@ export function protectLocal<A extends unknown[], T>(
         result = await operation.apply(this, callArgs);
       } catch (cause) {
         try {
-          db.prepare("UPDATE local_operations SET state='UNKNOWN',owner=NULL,lease_until=NULL WHERE id=? AND state='CLAIMED' AND owner=?").run(id, owner);
-        } catch { sharedSession?.invalidate(); }
+          await store.markUnknown(id, fingerprint, owner);
+        } catch { /* Durable claim remains non-dispatchable. */ }
         throw new LocalProtectionError("UNKNOWN", `ORIGINAL OUTCOME UNKNOWN. Operation ${id} threw after dispatch; its external outcome may be unknown. It may already have succeeded. Future unsafe redispatch is blocked. Next action: reconcile authoritative provider truth before retrying with the same identity and durable state.`, { cause });
       }
       let resultJson: string;
@@ -453,30 +496,23 @@ export function protectLocal<A extends unknown[], T>(
         resultJson = encodeResult(result);
       } catch (cause) {
         try {
-          db.prepare("UPDATE local_operations SET state='UNKNOWN',owner=NULL,lease_until=NULL WHERE id=? AND state='CLAIMED' AND owner=?").run(id, owner);
-        } catch { sharedSession?.invalidate(); }
+          await store.markUnknown(id, fingerprint, owner);
+        } catch { /* Durable claim remains non-dispatchable. */ }
         throw new LocalProtectionError("UNREPLAYABLE_RESULT", `Operation ${id} returned a non-JSON-safe result. Outcome is UNKNOWN; return a JSON-safe receipt and reconcile before retrying.`, { cause });
       }
 
-      if (sharedSession) {
-        try {
-          sharedSession.assertStateIdentity();
-        } catch (cause) {
-          try {
-            db.prepare("UPDATE local_operations SET state='UNKNOWN',owner=NULL,lease_until=NULL WHERE id=? AND state='CLAIMED' AND owner=?").run(id, owner);
-          } catch { /* The session is already fail-closed. */ }
-          throw new LocalProtectionError("UNKNOWN", `Operation ${id} completed but its durable state path changed before confirmation. The external outcome may be unknown; do not retry until state is restored.`, { cause });
-        }
+      let confirmed: boolean;
+      try {
+        confirmed = await store.confirm(id, fingerprint, owner, resultJson);
+      } catch (cause) {
+        throw new LocalProtectionError("UNKNOWN", `Operation ${id} completed but durable confirmation failed. Restore authority and reconcile provider truth; never redispatch.`, { cause });
       }
-
-      const update = db.prepare("UPDATE local_operations SET state='CONFIRMED',result_json=?,owner=NULL,lease_until=NULL WHERE id=? AND state='CLAIMED' AND owner=?")
-        .run(resultJson, id, owner);
-      if (update.changes !== 1) {
+      if (!confirmed) {
         throw new LocalProtectionError("EXECUTION_RIGHT_LOST", `Operation ${id} completed after its claim changed. Reconcile provider truth before retrying.`);
       }
       return decodeResult<T>(resultJson);
     } finally {
-      if (closeAfterCall) db.close();
+      store.close();
     }
   };
 }
