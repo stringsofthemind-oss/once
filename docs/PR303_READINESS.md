@@ -10,6 +10,16 @@ baseline require their own passing CI; baseline checks do not validate later edi
 Real Stripe qualification, independently placed authority/witness infrastructure,
 and operational recovery/performance qualification remain incomplete.
 
+Final local validation: complete SDK `test:release` and `test:local` suites
+passed, including packed consumers, and source/site/publication guards passed.
+An initial concurrent-build package failure was superseded by the serialized
+release pass. Current-head CI also exposed that newly created fixture runtime
+roles had no passwords: local trust authentication hid this fixture defect.
+The regression now creates explicit fixture-only role passwords and sets them
+on the runtime URLs, preserving every privilege-denial assertion. CI must pass
+under its actual password-authenticated PostgreSQL service before closing that
+portable-test gate. This does not establish real deployment credentials or TLS.
+
 ## Classification convention
 
 - **VERIFIED**: current configuration/source/remote state observed directly.

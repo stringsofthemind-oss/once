@@ -52,7 +52,7 @@ export async function qualifyRefund({ profile, changedProfile, operationId, read
     assert.equal(added[0].id, result.refundId);
     assert.ok(before.every(r => after.some(a => a.id === r.id)), 'Provider history became incomplete');
   }
-  stages.push('authoritative terminal refund reconciled; confirmed replay and changed-input conflict passed');
+  stages.push('exact terminal provider truth verified; confirmed replay and changed-input conflict passed');
   evidence.recoveryProcess = profile.diagnostics();
   evidence.result = result;
   evidence.observedEffects = effects.length;

@@ -55,13 +55,15 @@ test('durable independent witness and bounded authority admission', async t => {
     const roles = ['execution', 'witness'].map(kind => `once_${kind}_${randomUUID().replaceAll('-', '')}`);
     const runtimePools = [];
     try {
-      for (const role of roles) await admin.query(`CREATE ROLE ${role} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS`);
+      // Disposable fixture credential only; CI uses password authentication,
+      // while local trust fixtures must not hide missing runtime-role passwords.
+      for (const role of roles) await admin.query(`CREATE ROLE ${role} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD 'fixture-only-runtime'`);
       // These databases are this test's disposable resources only. Explicitly
       // scope CONNECT so the fixture also exercises separate runtime principals.
       for (let i = 0; i < names.length; i++) {
         await admin.query(`REVOKE CONNECT ON DATABASE ${names[i]} FROM PUBLIC`);
         await admin.query(`GRANT CONNECT ON DATABASE ${names[i]} TO ${roles[i]}`);
-        const url = new URL(connectionString); url.pathname = `/${names[i]}`; url.username = roles[i];
+        const url = new URL(connectionString); url.pathname = `/${names[i]}`; url.username = roles[i]; url.password = 'fixture-only-runtime';
         runtimePools.push(new pg.Pool({ connectionString: url.href, connectionTimeoutMillis: 1000 }));
       }
       const [executionRuntime, witnessRuntime] = runtimePools;
