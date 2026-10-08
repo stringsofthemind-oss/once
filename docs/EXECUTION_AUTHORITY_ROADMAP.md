@@ -5,9 +5,15 @@ Status: design/qualification plan. This document does **not** claim that the lis
 Draft implementation progress: [shared execution authority](./SHARED_EXECUTION_AUTHORITY_DRAFT.md)
 adds an opt-in PostgreSQL store under the existing SDK kernel, one-owner claims,
 stale-owner checks and a required independent continuity-witness contract.
-Local multi-process adversarial tests are implemented. A production witness,
-separate-host proof, HA/recovery qualification and independent review remain
-open; these capabilities are not released or production-qualified.
+Local multi-process and isolated two-container-host adversarial proofs are
+implemented, including coherent rollback denial and complete-history recovery.
+A bundled PostgreSQL witness and bounded acknowledgement/lease checks are present.
+Independent agent review findings are fixed; this is not external human security
+certification. A bounded Stripe sandbox profile reuses the shared kernel and
+native provider idempotency. Its credential-free fixture passes; real Stripe
+readback needs an authorized host binding. Production infrastructure, independent
+physical failure domains and incomplete-history/HA recovery remain unqualified;
+these capabilities are not released or production-qualified.
 
 ## Goal
 

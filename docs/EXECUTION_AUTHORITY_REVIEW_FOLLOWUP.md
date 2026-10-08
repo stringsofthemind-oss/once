@@ -11,7 +11,17 @@ client to @modelcontextprotocol/sdk 1.31.0 and the MCP production client to
 @modelcontextprotocol/client 2.2.0. No OAuth provider or persisted OAuth token
 path is present in these source trees; stdio/server flows are retained. Historical
 published-version claims are not rewritten. Run fresh audits and regressions;
-this does not republish either package.
+this does not republish either package. Fresh audits report zero vulnerabilities.
+The patched MCP client now includes the complete repeated-cursor catalog; the
+regression checks rejection against the reviewed catalog before any dispatch,
+rather than expecting the old SDK truncation mismatch.
+
+The sandbox qualification runner's DSN could override its TLS configuration.
+Independent re-review caught this and the runner now parses explicit connection
+fields, rejects URL query/fragment overrides and pins certificate verification.
+A regression inspects the installed driver's effective SSL configuration and
+checks credential redaction. Re-review reports no remaining blocker in this
+bounded fix. No real Stripe proof has run without a host binding.
 
 Review scope remains independent agent review, not external human security
 certification. Separate physical-host and production witness qualification,
