@@ -23,6 +23,7 @@ try {
   for (const alias of ['provider','host-a','host-b']) docker('run','-d','--name',`${prefix}-${alias}`,'--network',net,'--network-alias',alias,'-v',`${root}:/app:ro`,'-w','/app','node:24.15.0',...(alias==='provider'?['node','test/container-provider.mjs']:['node','-e','setInterval(()=>{},1000)']));
   pool = new pg.Pool({connectionString:'postgresql://once:fixture@127.0.0.1:55441/postgres'});
   witnessPool = new pg.Pool({connectionString:'postgresql://once:fixture@127.0.0.1:55442/postgres'});
+  for (const p of [pool,witnessPool]) p.on('error', () => { evidence.push({ name: 'injected-idle-pool-disconnect', status: 'OBSERVED' }); });
   for (const p of [pool,witnessPool]) { for (let i=0;;i++) { try {await p.query('SELECT 1');break;} catch(e) {if(i===30)throw e;await pause(1000);} } }
   await pool.query(readFileSync('sql/execution-authority-v1.sql','utf8'));
   await witnessPool.query(readFileSync('sql/continuity-witness-v1.sql','utf8'));

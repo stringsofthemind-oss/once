@@ -193,7 +193,9 @@ error inspection; it is not arbitrary-data redaction.
 
 ## Recovery exercise and operator procedure
 
-1. Stop admissions and fence or terminate all original workers. Preserve both
+1. Stop admissions and fence or terminate all original workers. Drain or cancel
+   outstanding witness requests and confirm stable checkpoints before comparing
+   or restoring history. A timeout does not cancel CAS. Preserve both
    databases, provider journal, expected identities and generation/epoch pins.
 2. Read both checkpoints through authenticated operator connections. Do not
    rewind continuity or replace missing expected authority. Record the mismatch
