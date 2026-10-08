@@ -61,7 +61,8 @@ try {
   await pool.query("DELETE FROM once_execution.operations; UPDATE once_execution.authorities SET revision=0");
   assert.equal(worker('host-b','normal','after-rollback').status,'CONTINUITY_LOST');
   // Recovery restores the original complete matching history, without touching witness.
-  await pool.query('DELETE FROM once_execution.authorities'); await pool.query(snapshot);
+  await pool.query('DELETE FROM once_execution.authorities');
+  execFileSync('docker',['exec','-i',`${prefix}-execution`,'psql','-U','once','-v','ON_ERROR_STOP=1','postgres'],{input:snapshot,encoding:'utf8',timeout:30000});
   assert.equal(worker('host-a','normal','crash').status,'CONFIRMED');
   record('rollback-denial-and-complete-history-recovery',{status:'PASS'});
   // Read journal as JSON explicitly (console inspection output isn't proof input).

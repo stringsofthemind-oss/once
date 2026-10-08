@@ -55,8 +55,8 @@ const send = wrapTool(hostOwnedSend, {
 ```
 
 This is an integration outline: the host must provide the pool, witness,
-authority bindings, callable and provider lookup. There is deliberately no
-production witness bundled in this draft. `statePath` and `authority` cannot be
+authority bindings, callable and provider lookup. The bundled PostgreSQL witness
+implementation is not production-qualified. `statePath` and `authority` cannot be
 combined. There is no fallback when the shared authority fails.
 
 ## Reservation and fencing
