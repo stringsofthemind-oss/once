@@ -1,18 +1,31 @@
 name: IndexNow notify
 
 on:
-  push:
-    branches:
-      - main
+  pull_request:
     paths:
       - "docs/**"
+      - ".github/workflows/indexnow.yml"
+      - "scripts/indexnow-submission-gate*"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+      - run: node --test scripts/indexnow-submission-gate.test.mjs
+
   submit:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: validate
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -109,6 +122,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
+          node scripts/indexnow-submission-gate.mjs
 
           HTTP_CODE="$(curl -sS -o indexnow-response.txt -w "%{http_code}" \
             -X POST "https://api.indexnow.org/indexnow" \
