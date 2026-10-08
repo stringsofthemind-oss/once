@@ -113,7 +113,7 @@
     "test:wrap-tool-package": "node ./scripts/wrap-tool-package-regression.mjs",
     "test:execution-authority-contract": "node ./scripts/execution-authority-contract-regression.mjs",
     "test:shared-authority": "npm run build && node --test ./test/postgres-authority.test.mjs ./test/postgres-continuity-witness.test.mjs ./test/stripe-sandbox-profile.test.mjs ./test/stripe-verified-tls.test.mjs",
-    "test:authority-kernel": "npm run build && node --test ./test/execution-store.test.mjs"
+    "test:authority-kernel": "npm run build && node --test ./test/execution-store.test.mjs ./test/authority-canonical-security.test.mjs"
   },
   "keywords": [
     "ai",

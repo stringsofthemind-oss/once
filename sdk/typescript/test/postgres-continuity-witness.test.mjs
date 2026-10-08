@@ -51,6 +51,74 @@ test('durable independent witness and bounded authority admission', async t => {
     assert.deepEqual(await run(1), { receipt: 'r1' }); assert.deepEqual(await run(1), { receipt: 'r1' });
     await assert.rejects(run(2), { code: 'CONFLICT' }); assert.equal(effects, 1);
   });
+  await t.test('restricted runtime roles require row-lock privilege and cannot provision or erase authority', async () => {
+    const roles = ['execution', 'witness'].map(kind => `once_${kind}_${randomUUID().replaceAll('-', '')}`);
+    const runtimePools = [];
+    try {
+      for (const role of roles) await admin.query(`CREATE ROLE ${role} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS`);
+      // These databases are this test's disposable resources only. Explicitly
+      // scope CONNECT so the fixture also exercises separate runtime principals.
+      for (let i = 0; i < names.length; i++) {
+        await admin.query(`REVOKE CONNECT ON DATABASE ${names[i]} FROM PUBLIC`);
+        await admin.query(`GRANT CONNECT ON DATABASE ${names[i]} TO ${roles[i]}`);
+        const url = new URL(connectionString); url.pathname = `/${names[i]}`; url.username = roles[i];
+        runtimePools.push(new pg.Pool({ connectionString: url.href, connectionTimeoutMillis: 1000 }));
+      }
+      const [executionRuntime, witnessRuntime] = runtimePools;
+      await pool.query(`GRANT USAGE ON SCHEMA once_execution TO ${roles[0]};
+        GRANT SELECT, UPDATE(revision) ON once_execution.authorities TO ${roles[0]};
+        GRANT SELECT, INSERT, UPDATE(state,result_json,owner,lease_until) ON once_execution.operations TO ${roles[0]}`);
+      await witnessPool.query(`GRANT USAGE ON SCHEMA once_continuity TO ${roles[1]};
+        GRANT SELECT ON once_continuity.metadata TO ${roles[1]};
+        GRANT SELECT, UPDATE(revision) ON once_continuity.checkpoints TO ${roles[1]}`);
+      const flags = await admin.query('SELECT rolsuper,rolcreatedb,rolcreaterole,rolreplication,rolbypassrls FROM pg_roles WHERE rolname=ANY($1)', [roles]);
+      assert.equal(flags.rows.length, 2);
+      assert.ok(flags.rows.every(row => Object.values(row).every(value => value === false)));
+      // PostgreSQL FOR SHARE requires UPDATE on at least one column, even
+      // though this code never updates witness metadata. Prove SELECT alone
+      // fails, then grant only the CHECK-constrained version column.
+      await assert.rejects(witnessRuntime.query('SELECT witness_id,schema_version FROM once_continuity.metadata WHERE singleton=true FOR SHARE'), { code: '42501' });
+      await witnessPool.query(`GRANT UPDATE(schema_version) ON once_continuity.metadata TO ${roles[1]}`);
+      const cfg = await provision();
+      const restrictedWitness = createPostgresContinuityWitness({ pool: witnessRuntime, expectedWitnessId: 'witness-1' });
+      const authority = createPostgresExecutionAuthority({ ...cfg, pool: executionRuntime, witness: restrictedWitness });
+      let effects = 0;
+      const run = amount => protectToolCall({ operationId: 'restricted-refund', effect: { tool: 'fixture.refund', args: { amount } }, authority,
+        execute: async () => { effects++; return { receipt: 'restricted-r1' }; } });
+      assert.deepEqual(await run(1), { receipt: 'restricted-r1' });
+      assert.deepEqual(await run(1), { receipt: 'restricted-r1' });
+      await assert.rejects(run(2), { code: 'CONFLICT' });
+      assert.equal(effects, 1);
+      const denied = async (runtime, statements) => {
+        for (const statement of statements) await assert.rejects(runtime.query(statement), { code: '42501' }, statement);
+      };
+      await denied(executionRuntime, [
+        'CREATE TABLE once_execution.forbidden(id text)',
+        'DELETE FROM once_execution.operations',
+        'TRUNCATE once_execution.operations',
+        "INSERT INTO once_execution.authorities VALUES('forbidden',1,'g1',1,0)",
+        "UPDATE once_execution.authorities SET generation='forbidden'",
+        'CREATE SCHEMA forbidden',
+        `CREATE ROLE ${roles[0]}_forbidden`,
+      ]);
+      await denied(witnessRuntime, [
+        'CREATE TABLE once_continuity.forbidden(id text)',
+        'DELETE FROM once_continuity.checkpoints',
+        'TRUNCATE once_continuity.checkpoints',
+        "INSERT INTO once_continuity.checkpoints VALUES('forbidden','g1',1,0)",
+        "UPDATE once_continuity.metadata SET witness_id='forbidden'",
+      ]);
+      await assert.rejects(witnessRuntime.query('UPDATE once_continuity.metadata SET schema_version=2'), { code: '23514' });
+      assert.equal(effects, 1);
+    } finally {
+      for (const runtime of runtimePools) await runtime.end();
+      for (const role of roles) {
+        await pool.query(`DROP OWNED BY ${role}`);
+        await witnessPool.query(`DROP OWNED BY ${role}`);
+        await admin.query(`DROP ROLE ${role}`);
+      }
+    }
+  });
   await t.test('lease expiring during witness acknowledgement cannot dispatch', async () => {
     const cfg = await provision(); const store = await createPostgresExecutionAuthority(cfg).open();
     await store.reserve('id', 'fingerprint', 'owner', 100);

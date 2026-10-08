@@ -42,7 +42,7 @@ jobs:
       - run: npm run test:shared-authority
         env:
           ONCE_TEST_POSTGRES: postgresql://once_test:fixture-only@127.0.0.1:5432/postgres
-      - run: node --test test/execution-store.test.mjs test/local.test.mjs test/tool-call.test.mjs test/wrap-tool.test.mjs test/wrap-tool-mcp.test.mjs
+      - run: node --test test/authority-canonical-security.test.mjs test/execution-store.test.mjs test/local.test.mjs test/tool-call.test.mjs test/wrap-tool.test.mjs test/wrap-tool-mcp.test.mjs
   container-host-proof:
     runs-on: ubuntu-latest
     timeout-minutes: 15

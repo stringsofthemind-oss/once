@@ -37,6 +37,25 @@ provisioning or administrative capabilities. The pool must enforce connection
 deadlines and TLS/authentication as appropriate. The fixed `once_execution` schema
 avoids search-path substitution of unqualified execution tables.
 
+The restricted-role regression verifies the following runtime grants on separate
+execution and witness databases. Use separately authenticated roles with
+NOSUPERUSER, NOCREATEDB, NOCREATEROLE, NOREPLICATION and NOBYPASSRLS. Grant CONNECT
+only to the appropriate database and USAGE only to its fixed schema:
+
+- Execution authorities: SELECT and UPDATE(revision).
+- Execution operations: SELECT, INSERT and UPDATE(state,result_json,owner,lease_until).
+- Witness metadata: SELECT and UPDATE(schema_version).
+- Witness checkpoints: SELECT and UPDATE(revision).
+
+PostgreSQL `FOR SHARE` requires UPDATE privilege on at least one column even
+when metadata is only read. SELECT-only witness metadata is therefore insufficient.
+The narrowly granted metadata column has a CHECK fixing schema_version=1; the
+runtime cannot change witness identity or provision/delete/truncate rows. These
+grants still place the runtime role inside a trusted boundary: it may update
+permitted state directly if compromised. They do not authenticate every row
+cryptographically or provide per-tenant database isolation. See
+[`PR303_READINESS.md`](PR303_READINESS.md) for exercised denials and remaining gates.
+
 ```ts
 const authority = createPostgresExecutionAuthority({
   pool: hostOwnedPool,
