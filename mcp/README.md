@@ -92,7 +92,7 @@ Do not commit API keys to configuration files that will be published.
 The default command starts the Once helper server. To protect calls to a reviewed local MCP stdio server, start the proxy explicitly:
 
 ```bash
-npx -y @once-agent/mcp@0.2.0 proxy --config .once/mcp.json
+npx -y @once-agent/mcp@0.2.1 proxy --config .once/mcp.json
 ```
 
 The config must name the upstream command, pin the SHA-256 digest of its reviewed complete `tools/list` catalog, and specify protection decisions and identity/effect fields for consequential tools. It requires `serverId`, `command`, `args`, `statePath`, `expectedCatalogSha256`, and `tools`; each tool policy sets `decision` to `PROTECT` or `BYPASS`. The proxy refuses a changed catalog and preserves an unknown outcome after an ambiguous upstream error. Keep its SQLite state path durable and private. The [source regression](https://github.com/stringsofthemind-oss/once/blob/main/mcp/scripts/phase13b-stdio-e2e.mjs) includes a disposable example config.
@@ -171,7 +171,7 @@ from the public npm artifact. They do not add public connector support.
 The default helper requires Node 20+; the SQLite proxy and registered local-test
 action require Node 24.15+. See the compatibility matrix above.
 
-## Connection verification output (0.2.1 candidate)
+## Connection verification output (MCP 0.2.1)
 
 The eight tool names and empty input of `once_verify_connection` are unchanged.
 Existing `command`, `cwd`, `exitCode`, `timedOut`, `stdout` and `stderr` fields

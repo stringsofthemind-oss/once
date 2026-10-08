@@ -1,13 +1,11 @@
 # MCP compatibility and execution authority
 
 This is the authoritative compatibility matrix for the public MCP package.
-The source candidate is MCP **0.2.1**; currently verified npm/Registry MCP is
-**0.2.0** and SDK is **0.1.25**. Published site versions remain in
-`docs/published-versions.json` until publication is independently verified.
+The verified public npm/Registry MCP is **0.2.1** and SDK is **0.1.25**. Published site versions are recorded in `docs/published-versions.json` after independent verification.
 
 | Surface | Version / pin | Node minimum | What installation provides |
 |---|---|---|---|
-| Default MCP helper | Candidate 0.2.1; published 0.2.0 | 20 | Eight assessment/setup tools; no protected provider action |
+| Default MCP helper | Published 0.2.1 | 20 | Eight assessment/setup tools; no protected provider action |
 | Explicit MCP stdio proxy | Same MCP package | 24.15 | Only reviewed/configured upstream tool boundaries |
 | Opt-in registered local-test order action | Introduced in MCP 0.2.0 | 24.15 | Host-owned disposable action; original valid same-machine ledger required |
 | TypeScript SDK hosted client | Published 0.1.25 | 18 | Explicit hosted integration; credentials/provider setup required |

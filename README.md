@@ -115,7 +115,7 @@ Once helps protect supported refunds, bookings, payments and other externally vi
 - AI agent retry safety: https://onceexec.com/ai-agent-retry-safety/
 - TypeScript SDK: [`@once-agent/sdk@0.1.25`](https://www.npmjs.com/package/@once-agent/sdk)
 - Python SDK: [`once-agent-sdk==0.1.1`](https://pypi.org/project/once-agent-sdk/)
-- MCP package: `@once-agent/mcp@0.2.0`
+- MCP package: `@once-agent/mcp@0.2.1`
 
 Existing OpenAI/Claude plugin launchers remain pinned to their previously reviewed MCP 0.1.5. This MCP release does not release a new plugin or enable the private experimental GitHub adapter.
 - MCP Registry: `io.github.stringsofthemind-oss/once`
