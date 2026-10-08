@@ -21,7 +21,7 @@ export function createStripeSandboxRefundProfile({ secretKey, expectedAccountId,
   }
   const adapter = new StripeRefundAdapter({ secretKey, fetchImpl: (url, options) => fetchImpl(url, { ...options, signal: AbortSignal.timeout(5000) }) });
   function receipt(refund, operationId) {
-    if (!refund || refund.livemode !== false || refund.payment_intent !== paymentIntent || refund.amount !== amount || refund.currency !== currency || refund.status !== 'succeeded' || typeof refund.id !== 'string' || !refund.id.startsWith('re_') || refund.metadata?.once_operation_id !== operationId || refund.metadata?.once_effect_hash !== effectHash) throw new Error('Exact terminal sandbox refund truth required');
+    if (!refund || refund.object !== 'refund' || refund.payment_intent !== paymentIntent || refund.amount !== amount || refund.currency !== currency || refund.status !== 'succeeded' || typeof refund.id !== 'string' || !refund.id.startsWith('re_') || refund.metadata?.once_operation_id !== operationId || refund.metadata?.once_effect_hash !== effectHash) throw new Error('Exact terminal sandbox refund truth required');
     return { refundId: refund.id, account: expectedAccountId, paymentIntent, amount, currency, status: 'succeeded' };
   }
   async function list(operationId) {

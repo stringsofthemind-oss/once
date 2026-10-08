@@ -22,7 +22,7 @@ test('sandbox profile preserves native key and independently counts lost-ack eff
   let data;
   if(path.endsWith('/account'))data={id:'acct_fixture'};
   else if(path.includes('/payment_intents/'))data={id:'pi_fixture',livemode:false,status:'succeeded',currency:'usd',amount_received:1000};
-  else if(options.method==='POST') { const body=options.body; keys.push(options.headers['idempotency-key']); data={id:'re_fixture',livemode:false,payment_intent:body.get('payment_intent'),amount:Number(body.get('amount')),currency:'usd',status:'succeeded',metadata:{once_operation_id:body.get('metadata[once_operation_id]'),once_effect_hash:body.get('metadata[once_effect_hash]')}}; journal.push(data); }
+  else if(options.method==='POST') { const body=options.body; keys.push(options.headers['idempotency-key']); data={id:'re_fixture',object:'refund',payment_intent:body.get('payment_intent'),amount:Number(body.get('amount')),currency:'usd',status:'succeeded',metadata:{once_operation_id:body.get('metadata[once_operation_id]'),once_effect_hash:body.get('metadata[once_effect_hash]')}}; journal.push(data); }
   else if(path.endsWith('/refunds'))data={data:duplicate?[...journal,...journal]:journal.map(r=>bad?{...r,status:'pending'}:r),has_more:false};
   else data=journal[0];
   return {ok:true,json:async()=>data};

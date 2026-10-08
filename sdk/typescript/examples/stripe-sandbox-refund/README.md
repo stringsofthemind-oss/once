@@ -16,7 +16,8 @@ SDK directory only with explicitly authorized host-managed sandbox bindings:
 - STRIPE_SANDBOX_ACCOUNT_ID and STRIPE_SANDBOX_PAYMENT_INTENT: operator-pinned test
   account and completed USD test payment with at least USD 1 available to refund
 - ONCE_EXECUTION_DATABASE and ONCE_CONTINUITY_DATABASE: separately authenticated
-  verified-TLS PostgreSQL connections in independent restore domains
+  verified-TLS PostgreSQL connections in independent restore domains (credential-bearing
+  PostgreSQL URLs without query parameters; DSN TLS overrides are rejected)
 - ONCE_AUTHORITY_ID, ONCE_AUTHORITY_GENERATION, ONCE_AUTHORITY_EPOCH, ONCE_WITNESS_ID:
   already-provisioned trusted authority/checkpoint identities
 - ONCE_QUALIFICATION_OPERATION_ID: explicit stable intent, retained on every retry
@@ -31,3 +32,10 @@ The local credential-free profile test is simulation evidence only. Real Stripe
 qualification has not been run without a sandbox account/credential binding.
 Production, pending refund completion, multiple currencies/accounts, real-money
 payments and arbitrary connector interception are outside this profile.
+
+Provider contract references: [Refund object](https://docs.stripe.com/api/refunds/object),
+[paginated listing](https://docs.stripe.com/api/refunds/list), and
+[PaymentIntent object](https://docs.stripe.com/api/payment_intents/object). Refunds
+have no livemode field: sandbox admission relies on the test key and the parent
+PaymentIntent's livemode=false, then checks the refund's object, parent and exact
+terminal binding.

@@ -1,4 +1,5 @@
 import pg from 'pg';
+import { verifiedDatabaseConfig } from './verified-database.mjs';
 import assert from 'node:assert/strict';
 import { writeFileSync } from 'node:fs';
 import { createPostgresContinuityWitness, createPostgresExecutionAuthority } from '../../dist/index.js';
@@ -6,7 +7,7 @@ import { createStripeSandboxRefundProfile } from './profile.mjs';
 const required = ['STRIPE_SANDBOX_SECRET_KEY','STRIPE_SANDBOX_ACCOUNT_ID','STRIPE_SANDBOX_PAYMENT_INTENT','ONCE_EXECUTION_DATABASE','ONCE_CONTINUITY_DATABASE','ONCE_AUTHORITY_ID','ONCE_AUTHORITY_GENERATION','ONCE_AUTHORITY_EPOCH','ONCE_WITNESS_ID','ONCE_QUALIFICATION_OPERATION_ID'];
 if (required.some(name=>!process.env[name])) throw new Error('Host-managed sandbox/authority bindings missing. No provider write attempted. See README.');
 // Verified TLS, host-owned credentials, finite transport timeouts. Never print pools/errors.
-const pools = ['ONCE_EXECUTION_DATABASE','ONCE_CONTINUITY_DATABASE'].map(name=>new pg.Pool({connectionString:process.env[name],ssl:{rejectUnauthorized:true},connectionTimeoutMillis:5000,query_timeout:10000}));
+const pools = ['ONCE_EXECUTION_DATABASE','ONCE_CONTINUITY_DATABASE'].map(name=>new pg.Pool(verifiedDatabaseConfig(process.env[name])));
 for(const p of pools)p.on('error',()=>{});
 try {
  const authority=createPostgresExecutionAuthority({pool:pools[0],witness:createPostgresContinuityWitness({pool:pools[1],expectedWitnessId:process.env.ONCE_WITNESS_ID}),authorityId:process.env.ONCE_AUTHORITY_ID,expectedGeneration:process.env.ONCE_AUTHORITY_GENERATION,expectedEpoch:process.env.ONCE_AUTHORITY_EPOCH});
