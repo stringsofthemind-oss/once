@@ -4,6 +4,7 @@ import asyncio
 import importlib.metadata
 import json
 import logging
+import hashlib
 from contextlib import closing
 from pathlib import Path
 import sqlite3
@@ -12,7 +13,8 @@ import sys
 import tempfile
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.request import Request, urlopen
+from urllib.request import Request, urlopen, url2pathname
+from urllib.parse import urlparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--adk-src', type=Path, help='Optional pinned upstream src directory')
@@ -21,7 +23,13 @@ parser.add_argument('--label', default='google-adk-2.11.0')
 parser.add_argument('--output', type=Path, required=True)
 parser.add_argument('--sdk-url', help='Optional packed/published SDK file URL')
 args = parser.parse_args()
+if not __debug__:
+    raise SystemExit('Assertions are required; do not use python -O')
+# A failed rerun must not leave an old PASS artifact at the requested path.
+args.output.unlink(missing_ok=True)
 if args.adk_src:
+    if not (args.adk_src / 'google/adk/runners.py').is_file():
+        raise SystemExit('ADK source directory not found: ' + str(args.adk_src))
     sys.path.insert(0, str(args.adk_src.resolve()))
 
 import google.adk
@@ -238,6 +246,15 @@ def safety_cases(root):
         case.mkdir()
         provider = Provider(case)
         boundary = Boundary(case, provider)
+        probes = []
+        def probe(effect=EFFECT, **changes):
+            before = len(provider.rows())
+            result = boundary.call(effect, **changes)
+            after = len(provider.rows())
+            assert after == before, (changes, result, before, after)
+            probes.append(dict(request=changes, effect=effect, response=result,
+                               effects_before=before, effects_after=after))
+            return result
         try:
             first = boundary.call(mode=mode)
             assert first['status'] == {'confirmed': 'CONFIRMED', 'lost-ack': 'UNKNOWN', 'crash': 'CRASHED'}[mode]
@@ -250,27 +267,63 @@ def safety_cases(root):
                 {'tool': EFFECT['tool'], 'args': {**EFFECT['args'], 'project': 'other'}},
                 {'tool': 'fixture.tenant-B.create_ticket', 'args': EFFECT['args']},
             ]:
-                assert boundary.call(effect)['status'] == 'CONFLICT'
+                assert probe(effect)['status'] == 'CONFLICT'
             if mode != 'confirmed':
                 for truth in ['UNKNOWN', 'NOT_FOUND']:
-                    assert boundary.call(reconcile=truth)['status'] == 'UNKNOWN'
-                recovered = boundary.call(reconcile='provider')
+                    assert probe(reconcile=truth)['status'] == 'UNKNOWN'
+                recovered = probe(reconcile='provider')
                 assert recovered['status'] == 'CONFIRMED'
-                assert boundary.call() == recovered
+                assert recovered['result'] == {'ticket_id': 1, 'effect': EFFECT}
+                assert probe() == recovered
             assert len(provider.rows()) == 1
-            assert boundary.call(operationId='')['status'] == 'IDENTITY_REQUIRED'
+            assert probe(operationId='')['status'] == 'IDENTITY_REQUIRED'
             before = len(provider.rows())
             # A missing expected authority must never silently become a new DB.
             boundary.state.rename(case / 'saved.sqlite')
-            assert boundary.call()['status'] == 'STATE_UNAVAILABLE'
+            assert probe()['status'] == 'STATE_UNAVAILABLE'
             assert not boundary.state.exists()
             assert len(provider.rows()) == before
             evidence.append(dict(mode=mode, first=first, retry=retry,
                                  conflicts=3, provider_effects=provider.rows(),
                                  boundary_processes=len(boundary.pids), missing_state='STATE_UNAVAILABLE'))
+            evidence[-1]['probes'] = probes
         finally:
             provider.close()
     return evidence
+
+
+def lookup_controls(root):
+    """Falsification controls for complete-effect matching and fresh intents."""
+    root.mkdir()
+    provider = Provider(root)
+    boundary = Boundary(root, provider)
+    def lookup(effect):
+        request = Request(provider.url + '/lookup', data=json.dumps({
+            'operationId': OPERATION, 'effect': effect}).encode(),
+            headers={'Content-Type': 'application/json'})
+        with urlopen(request, timeout=5) as response:
+            return json.load(response)
+    try:
+        first = boundary.call()
+        assert first['status'] == 'CONFIRMED'
+        mismatched = lookup({'tool': EFFECT['tool'], 'args': {**EFFECT['args'], 'title': 'other'}})
+        assert mismatched == {'status': 'UNKNOWN'}
+        fresh = boundary.call(operationId='host-ticket-intent-002')
+        assert fresh['status'] == 'CONFIRMED' and fresh['result']['ticket_id'] == 2
+        # Deliberate out-of-bound write to challenge the lookup's uniqueness gate.
+        request = Request(provider.url + '/tickets', data=json.dumps({
+            'operationId': OPERATION, 'effect': EFFECT}).encode(),
+            headers={'Content-Type': 'application/json'})
+        with urlopen(request, timeout=5) as response:
+            json.load(response)
+        duplicate = lookup(EFFECT)
+        assert duplicate == {'status': 'UNKNOWN'}
+        assert len(provider.rows()) == 3
+        return dict(mismatched_lookup=mismatched, duplicate_lookup=duplicate,
+                    fresh_intent=fresh, provider_effects=provider.rows(),
+                    deliberate_bypass_effects=1)
+    finally:
+        provider.close()
 
 
 async def main():
@@ -287,11 +340,18 @@ async def main():
             case.mkdir()
             scenarios.append(await asyncio.wait_for(
                 run_adk(case, protected, force, mode, changed), timeout=40))
-        evidence = dict(label=args.label, adk_file=google.adk.__file__,
+        sdk_path = Path(url2pathname(urlparse(args.sdk_url).path)) if args.sdk_url else HERE.parent.parent / 'sdk/typescript/dist/index.js'
+        source_revision = subprocess.check_output(['git', '-C', str(args.adk_src), 'rev-parse', 'HEAD'], text=True).strip() if args.adk_src else None
+        evidence = dict(schema_version=1, status='PASS', label=args.label, adk_file=google.adk.__file__,
+                        adk_source_revision=source_revision,
+                        adk_runners_sha256=hashlib.sha256(Path(google.adk.__file__).with_name('runners.py').read_bytes()).hexdigest(),
+                        sdk_entry_sha256=hashlib.sha256(sdk_path.read_bytes()).hexdigest(),
+                        requirements_sha256=hashlib.sha256((HERE / 'requirements.lock.txt').read_bytes()).hexdigest(),
                         installed_adk_version=importlib.metadata.version('google-adk'),
                         python=sys.version, node=subprocess.check_output(['node', '--version'], text=True).strip(),
                         sdk=args.sdk_url or 'repository build', expect_kept=args.expect_kept,
-                        scenarios=scenarios, safety=safety_cases(root))
+                        scenarios=scenarios, safety=safety_cases(root),
+                        lookup_controls=lookup_controls(root / 'lookup-controls'))
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(evidence, indent=2) + '\n', encoding='utf-8')
         print(json.dumps({'label': args.label, 'status': 'PASS', 'adk_scenarios': len(scenarios),

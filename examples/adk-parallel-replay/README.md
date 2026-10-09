@@ -26,13 +26,17 @@ An event handshake orders tool completion before sibling failure; there is no sl
 
 ## Run
 
-Requirements: Node 24.19.0 and Python 3.12. Create an isolated Python environment first. From the repository root:
+Requirements: Node 24.19.0 and Python 3.12.10 (CI pins both). Create an isolated Python environment first. From the repository root:
 
 ```sh
+python -m venv .venv
+# POSIX: source .venv/bin/activate
+# PowerShell: .venv\Scripts\Activate.ps1
 npm ci --prefix sdk/typescript
 npm run build --prefix sdk/typescript
 python -m pip install -r examples/adk-parallel-replay/requirements.lock.txt
 python examples/adk-parallel-replay/verify.py --output release.json
+python examples/adk-parallel-replay/check_evidence.py release.json
 ```
 
 For the source comparison, clone Google ADK separately and create two detached worktrees:
@@ -46,11 +50,17 @@ python examples/adk-parallel-replay/verify.py --adk-src adk-base/src --label pr-
 python examples/adk-parallel-replay/verify.py --adk-src adk-fixed/src --expect-kept --label pr-fixed --output fixed.json
 ```
 
+Git resolves those worktree paths relative to `upstream-adk`, so both worktrees are created in the repository root. If running Git from another directory, use absolute worktree paths. Do not run Python with `-O`: the verifier refuses execution with assertions disabled. All Python dependencies are version-pinned; this is a version lock, not a hash-verified supply-chain lock. Run `python -m pip check` to check the installed dependency graph.
+
+Generated JSON has `schema_version: 1` and `status: PASS` only after all assertions pass. It includes the source revision (when supplied), ADK runner/SDK entry/requirements SHA-256 hashes, receipts, independently read provider rows, and each no-dispatch safety probe with before/after row counts. Reconciliation is a read-only operation despite the fixture lookup using HTTP POST. `NOT_FOUND` and unavailable truth responses are injected adapter responses, not a demonstration of real-provider absence. Evidence records machine-observable fixture assertions; it is not an independently authored audit or a tamper-proof provider attestation.
+
+`check_evidence.py` checks the generated JSON offline. A separate falsification control rejects mismatched effects and non-unique lookup rows, and verifies that a new host intent can create another ticket. That control deliberately bypasses Once once to create a duplicate; its three provider rows are reported separately and are not included in the protected-scenario counts. The fixture has no native idempotency; providers with sufficient native idempotency or constraints should use them. A retry must retain the original intent ID; minting a new one would permit another effect.
+
 `--sdk-url file:///absolute/path/to/node_modules/@once-agent/sdk/dist/index.js` tests a clean packed or published consumer. The checked evidence records both against released ADK, using SDK 0.1.25. Default execution uses the repository SDK build. The separate workflow repeats the release/base/fix matrix and uploads generated evidence. Its remote result must be checked separately from local results.
 
 ## Validation recorded on 9 October 2026
 
-All five local fixture runs passed: release, exact PR base, exact PR head, clean packed Once consumer and clean registry consumer. Each runs seven ADK scenarios plus three boundary cases (35 ADK scenarios and 15 boundary cases total). `evidence.json` contains their model/session observations, receipts and independently counted provider rows. Recorded platform: Windows, Python 3.12.10, Node 24.19.0.
+All five local fixture runs passed again from a clean checkout/environment: release, exact PR base, exact PR head, clean packed Once consumer and clean registry consumer. Each runs seven ADK scenarios, three boundary cases and the separate lookup/fresh-intent falsification control (35 ADK scenarios, 15 boundary cases, five falsification controls total). All five JSON files passed the offline checker. `evidence.json` contains their model/session observations, receipts, probe traces and independently counted provider rows. Recorded platform: Windows, Python 3.12.10, Node 24.19.0. Full `npm run test:release --prefix sdk/typescript` exited 0 (200 Node tests plus package/contract/regression scripts); the focused safety subset passed 58/58 and the additional SDK safety regression 2/2. These are local results; inspect CI separately for the current PR commit.
 
 The focused upstream tests are taken from the proposed head in both comparisons:
 
@@ -64,5 +74,7 @@ The head passed 16 tests; the base failed 14 and passed the two regression guard
 Repository checks passed: SDK build; `node --test test/tool-call.test.mjs test/local.test.mjs test/wrap-tool.test.mjs test/wrap-tool-mcp.test.mjs test/first10.test.mjs` from `sdk/typescript` (58 tests); `npm run test:first10-package`; `npm run test:wrap-tool-package` (14 ESM/CJS checks plus TypeScript contracts); `node scripts/generate-first10-proof.mjs --check`; `node scripts/check-site-surface.mjs`; and `node scripts/generate-site-surface.mjs --check` from the root. No proof asset drift required regeneration. Initial restricted-network fixture execution and direct invocation of package scripts did not pass; the recorded passes use loopback access and the required npm entry points.
 
 ## Limits
+
+See the [adversarial comparison review](adversarial-review.md) and [experimental branch deployment controls](deployment-controls.md). CI repeats all three ADK variants on Windows and Linux with pinned runtimes, checks the installed dependency graph and verifies the generated JSON before uploading it. A failed rerun removes any old output at its requested path so stale PASS evidence cannot be mistaken for a current result.
 
 This is deterministic same-machine integration evidence with independently counted **fixture** effects. ADK session history is in memory; Once state and provider effects are durable SQLite. The Once boundary restarts, but this does not qualify whole-framework crash recovery, distributed authority, live mode, confirmation/control-flow results, cancellation races, opaque provider retries, real-model decisions or production providers. It changes no protection kernel or public API. It demonstrates neither universal exactly-once execution nor independent production qualification, adoption or endorsement by Google.
