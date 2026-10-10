@@ -173,6 +173,8 @@ try {
 import assert from "node:assert/strict";
 import { Buffer } from "node:buffer";
 import { executeHttpWriteResponse } from "@once-agent/sdk/http-response";
+import { executeHttpWriteJsonResponse } from "@once-agent/sdk/http-response-json";
+assert.equal(typeof executeHttpWriteJsonResponse, "function");
 
 const targetBody = JSON.stringify({ created: true, id: "external-1" });
 const targetBytes = Buffer.from(targetBody, "utf8");
@@ -330,6 +332,8 @@ console.log("PACKED NATIVE RESPONSE PASS");
       "-e",
       [
         'const m = require("@once-agent/sdk/http-response");',
+        'const json = require("@once-agent/sdk/http-response-json");',
+        'if (typeof json.executeHttpWriteJsonResponse !== "function") process.exit(3);',
         'if (typeof m.executeHttpWriteResponse !== "function") process.exit(2);',
         'console.log("CJS NATIVE RESPONSE PASS");'
       ].join("\n")
@@ -350,6 +354,7 @@ console.log("PACKED NATIVE RESPONSE PASS");
 
   console.log("PASS - fresh publishable SDK tarball created");
   console.log("PASS - packed SDK exposes @once-agent/sdk/http-response for ESM and CJS");
+  console.log("PASS - packed SDK exposes @once-agent/sdk/http-response-json for ESM and CJS");
   console.log("PASS - packed helper reconstructs a real native Response with replay-v2 metadata");
   console.log("PASS - clone/bodyUsed/text/json/header immutability survive the package boundary");
   console.log("PASS - legacy v1 and malformed v2 receipts fail closed");

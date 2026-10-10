@@ -4,6 +4,8 @@ This is an unpublished release candidate. It incorporates the reviewed adoption-
 
 Diagnostic output distinguishes configured, discoverable and tested behavior. Read-only candidates and successful local fixtures do not establish real-provider qualification, independent adoption or production readiness.
 
+The candidate also repairs an existing packaging defect: the advertised CommonJS `@once-agent/sdk/http-response-json` export lacked its compiled file. The existing helper is now included in the CommonJS build, with packed ESM/CommonJS import regression coverage; its implementation and public signature are unchanged.
+
 No execution kernel, public export, identity/fingerprint algorithm, durable ledger schema, provider authority or redispatch rule changes. UNKNOWN remains blocked until authoritative reconciliation; changed effects conflict and confirmed results replay. Local SQLite still requires Node24.15+ and a retained same-machine authority. No ledger migration is required.
 
 The patched MCP dependency is development-only; shipped SDK runtime dependencies remain unchanged. Compatibility is checked with serial release regressions, packed ESM/CommonJS/TypeScript consumers, and package content/API comparison. Windows results must be complemented by Linux validation of the exact candidate head before publication.

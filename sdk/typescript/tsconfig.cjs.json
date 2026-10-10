@@ -14,7 +14,8 @@
     "src/discovery/index.ts",
     "src/gateway/index.ts",
     "src/reconciliation/index.ts",
-    "src/http-response.ts"
+    "src/http-response.ts",
+    "src/http-response-json.ts"
   ],
   "exclude": [
     "src/**/*.before-*.ts"
