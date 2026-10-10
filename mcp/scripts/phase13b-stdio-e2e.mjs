@@ -75,12 +75,38 @@ try {
   assert.equal(count(), 0);
   unlinkSync(driftPath);
 
-  // MCP client v2.0.0 auto-aggregation can silently truncate a catalog when a
-  // server legally repeats an opaque cursor. Once walks raw pages separately,
-  // primes the SDK cache, and refuses to proceed if the two inventories differ.
+  // The patched client preserves the complete inventory when a server repeats
+  // an opaque cursor. Verify that third page independently, then require Once
+  // to reject its unreviewed tool before any provider dispatch.
   writeFileSync(driftPath, "repeated-cursor");
+  const paginated = new Client({ name: "once-pagination-control", version: "0.0.1" });
+  try {
+    await paginated.connect(new StdioClientTransport({
+      command: config.command, args: config.args,
+    }));
+    assert.deepEqual((await paginated.listTools()).tools.map(tool => tool.name),
+      ["create_order", "read_count", "third_read"]);
+  } finally {
+    await paginated.close();
+  }
   await assert.rejects(connectStdioProxy(config),
-    /INVALID_TOOL_CATALOG: SDK aggregate differs from raw catalog/);
+    /^Error: TOOL_SCHEMA_CHANGED: upstream catalog differs from reviewed configuration$/);
+  assert.equal(count(), 0);
+
+  // Retain a negative control for the older client's truncated aggregation:
+  // even when an SDK inventory omits page three, the raw walk detects the
+  // mismatch. This changes only the test client's convenience API, not truth.
+  const originalListTools = Client.prototype.listTools;
+  Client.prototype.listTools = async function (...args) {
+    const result = await originalListTools.apply(this, args);
+    return { ...result, tools: result.tools.filter(tool => tool.name !== "third_read") };
+  };
+  try {
+    await assert.rejects(connectStdioProxy(config),
+      /^Error: INVALID_TOOL_CATALOG: SDK aggregate differs from raw catalog$/);
+  } finally {
+    Client.prototype.listTools = originalListTools;
+  }
   assert.equal(count(), 0);
   unlinkSync(driftPath);
 
