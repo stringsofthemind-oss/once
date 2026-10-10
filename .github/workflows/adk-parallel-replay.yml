@@ -48,6 +48,9 @@ jobs:
       - run: python -m pip check
       - run: python examples/adk-parallel-replay/verify.py ${{ matrix.options }} --label ${{ matrix.label }} --output evidence/${{ matrix.label }}.json
       - run: python examples/adk-parallel-replay/check_evidence.py evidence/${{ matrix.label }}.json
+      - name: Concurrent boundary and malformed effect controls
+        if: matrix.label == 'release-2.11.0'
+        run: node examples/adk-parallel-replay/concurrent-boundary.mjs --local evidence/concurrent-boundary.json
       - uses: actions/upload-artifact@v4
         with:
           name: adk-parallel-${{ matrix.os }}-${{ matrix.label }}
