@@ -1,4 +1,4 @@
-# Unreleased
+# MCP 0.2.2 candidate
 
 - Update the declared MCP client dependency from 2.0.0 to 2.3.1, removing the
   affected OAuth client version in GHSA-6qxp-vccf-f47h. Once's inspected runtime
