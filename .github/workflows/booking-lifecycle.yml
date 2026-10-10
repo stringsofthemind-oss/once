@@ -1,0 +1,33 @@
+name: Controlled booking lifecycle reference
+on:
+  pull_request:
+    paths:
+      - 'examples/connected-agent-tool/**'
+      - '.github/workflows/booking-lifecycle.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  booking:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.19.0'
+      - run: npm install --prefix booking-consumer --ignore-scripts --no-audit --no-fund @once-agent/sdk@0.1.25
+      - name: Run against clean published SDK consumer
+        shell: bash
+        run: |
+          SDK_URL=$(node -e "console.log(require('node:url').pathToFileURL(require('node:path').resolve('booking-consumer/node_modules/@once-agent/sdk/dist/index.js')).href)")
+          node examples/connected-agent-tool/booking-lifecycle.mjs "$SDK_URL" evidence/booking.json
+      - run: node examples/connected-agent-tool/check-booking-evidence.mjs evidence/booking.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: booking-lifecycle-${{ matrix.os }}
+          path: evidence/booking.json

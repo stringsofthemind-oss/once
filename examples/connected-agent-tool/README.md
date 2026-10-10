@@ -48,3 +48,9 @@ For a real-provider integration example, see
 [GitHub issue recovery](../../sdk/typescript/examples/GITHUB_ISSUE_RECOVERY.md).
 It shows lost-acknowledgement recovery without a retained issue number and a
 caller outcome table for IN_FLIGHT, UNKNOWN, CONFLICT, and receipt errors.
+
+For a richer controlled booking reference using published `wrapTool`, see
+[booking lifecycle](BOOKING_LIFECYCLE.md). It extends this fake provider example
+with create/modify/cancel, independently journalled effects, expiry/version
+refusals, lost-response recovery and concurrent workers. It remains a local mock
+integration rather than a production booking adapter.
