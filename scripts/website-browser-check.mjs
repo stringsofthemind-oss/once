@@ -1,5 +1,5 @@
 // Automated acceptance checks against a disposable local HTTP server.
-// npm install --no-save playwright, then npx playwright install chromium.
+// npm ci --prefix scripts/website-qa, then install Chromium with that pinned CLI.
 // Optional environment paths let an existing browser/runtime be reused.
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
@@ -11,7 +11,7 @@ const docs = resolve(root, 'docs');
 const published = JSON.parse(readFileSync(resolve(docs, 'published-versions.json'), 'utf8'));
 const artifacts = process.env.ONCE_WEBSITE_ARTIFACTS || resolve(root, '.website-check');
 mkdirSync(artifacts, { recursive: true });
-const { chromium } = await import(process.env.ONCE_PLAYWRIGHT_MODULE || 'playwright');
+const { chromium } = await import(process.env.ONCE_PLAYWRIGHT_MODULE || new URL('./website-qa/node_modules/playwright/index.mjs', import.meta.url).href);
 const server = createServer((req, res) => {
 	let file = resolve(docs, '.' + new URL(req.url, 'http://localhost').pathname);
 	if (!file.startsWith(docs + sep) && file !== docs) {

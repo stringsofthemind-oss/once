@@ -2,6 +2,7 @@
 dist/
 dist-cjs/
 coverage/
+.website-check/
 .env
 .env.*
 !.env.example
