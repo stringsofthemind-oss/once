@@ -12,7 +12,7 @@ try {
     operationId: request.operationId,
     effect: request.effect,
     statePath: request.statePath,
-    leaseMs: 1,
+    leaseMs: request.leaseMs ?? 1,
     metadata: request.metadata,
     execute: async effect => {
       const response = await fetch(request.providerUrl + '/tickets', {

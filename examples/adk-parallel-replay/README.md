@@ -75,6 +75,19 @@ Repository checks passed: SDK build; `node --test test/tool-call.test.mjs test/l
 
 ## Limits
 
+### Supplementary same-machine boundary concurrency
+
+`node examples/adk-parallel-replay/concurrent-boundary.mjs SDK_FILE_URL OUTPUT.json`
+starts twelve fresh Node workers against one durable authority and a separate provider
+SQLite journal. It asserts one original effect, exact receipt recovery for blocked
+workers, five malformed effect shapes rejected before dispatch, changed-effect
+conflict and a second effect only for a new intentional host identity. It uses a
+30-second lease; the sequential crash lab's 1 ms lease is unsuitable for this
+overlap test. Cold SQLite initialization can fail closed with `STATE_UNAVAILABLE`;
+the test records that status and requires subsequent same-identity receipt replay.
+This qualifies the local boundary only, not ADK runner concurrency or distributed
+storage. Windows passes do not qualify this supplementary test on Linux.
+
 See the [adversarial comparison review](adversarial-review.md) and [experimental branch deployment controls](deployment-controls.md). CI repeats all three ADK variants on Windows and Linux with pinned runtimes, checks the installed dependency graph and verifies the generated JSON before uploading it. A failed rerun removes any old output at its requested path so stale PASS evidence cannot be mistaken for a current result.
 
 This is deterministic same-machine integration evidence with independently counted **fixture** effects. ADK session history is in memory; Once state and provider effects are durable SQLite. The Once boundary restarts, but this does not qualify whole-framework crash recovery, distributed authority, live mode, confirmation/control-flow results, cancellation races, opaque provider retries, real-model decisions or production providers. It changes no protection kernel or public API. It demonstrates neither universal exactly-once execution nor independent production qualification, adoption or endorsement by Google.
