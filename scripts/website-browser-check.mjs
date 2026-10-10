@@ -73,7 +73,7 @@ try {
 		assert.match(await page.locator('[data-demo-state]').innerText(), /RECONCILED/);
 		assert.ok(await page.locator('[data-demo-result]').isVisible());
 		await page.screenshot({ path: resolve(artifacts, `demo-${width}.png`) });
-		for (const route of ['/first10/', '/duplicate-refund-timeout/', '/ambiguous-timeout/', '/quickstart/', '/evidence/', '/demo/', '/retry-exposure/']) {
+		for (const route of ['/first10/', '/duplicate-refund-timeout/', '/ambiguous-timeout/', '/quickstart/', '/evidence/', '/support/', '/providers/', '/demo/', '/retry-exposure/']) {
 			await page.goto(base + route);
 			assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${route} overflow at ${width}`);
 			if (route === '/first10/') await page.screenshot({ path: resolve(artifacts, `refund-proof-${width}.png`) });
