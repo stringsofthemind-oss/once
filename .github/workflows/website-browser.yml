@@ -1,0 +1,48 @@
+name: Website browser acceptance
+
+on:
+  pull_request:
+    paths: ['docs/**', 'scripts/website-browser-check.mjs', 'scripts/website-qa/**', '.github/workflows/website-browser.yml']
+  push:
+    branches: [main]
+    paths: ['docs/**', 'scripts/website-browser-check.mjs', 'scripts/website-qa/**', '.github/workflows/website-browser.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+          cache: npm
+          cache-dependency-path: scripts/website-qa/package-lock.json
+      - name: Install pinned browser test dependencies
+        run: npm ci --prefix scripts/website-qa
+      - name: Install Chromium and system dependencies
+        run: node scripts/website-qa/node_modules/playwright/cli.js install --with-deps chromium
+      - name: Verify public source and generated assets
+        run: |
+          node scripts/check-site-surface.mjs
+          node scripts/generate-site-surface.mjs --check
+      - name: Exercise mobile, keyboard, clipboard and replay flows
+        run: node scripts/website-browser-check.mjs
+      - name: Retain browser screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: website-browser-${{ matrix.os }}
+          path: .website-check/
+          if-no-files-found: ignore
+          retention-days: 14
