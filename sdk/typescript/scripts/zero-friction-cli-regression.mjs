@@ -55,6 +55,8 @@ try {
   assert.match(bare.stdout, /Verified Protection Rate: \d+(?:\.\d+)?%/);
   assert.match(bare.stdout, /Time-to-Protected: not yet achieved/);
   assert.match(bare.stdout, /no telemetry is sent/i);
+  assert.match(bare.stdout, /Candidates and applicability are heuristic/);
+  assert.match(bare.stdout, /not an observed provider effect/);
   assert.equal(
     await readFile(sourcePath, "utf8"),
     source,
