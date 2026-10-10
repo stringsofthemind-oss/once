@@ -4,6 +4,13 @@ Historical SDK change notes are recorded here. For current published versions an
 changes after the entries below, see the [public release history](https://github.com/stringsofthemind-oss/once/releases).
 Website-only changes do not alter SDK execution semantics.
 
+## 0.1.26 - Unreleased candidate
+
+- Update the development MCP TypeScript SDK dependency to patched 1.32.1 for GHSA-6qxp-vccf-f47h. The development dependency is not shipped as an SDK runtime dependency.
+- Clarify diagnostic evidence wording and current onboarding guidance; diagnosis and scanner findings do not establish protection or independent adoption.
+- Include the already advertised `http-response-json` CommonJS entrypoint in the package and verify both module formats across the packed boundary.
+- No execution kernel, public export, ledger schema, identity/effect binding or reconciliation behavior change. See [candidate release notes](docs/RELEASE_0_1_26.md).
+
 ## 0.1.25 - 2026-10-04
 
 - Add `once prove`: account-free local HTTP refund fixture with separate provider journal, acknowledgement loss, fresh processes, replay, CONFLICT and authoritative recovery. It never invokes arbitrary application code.
