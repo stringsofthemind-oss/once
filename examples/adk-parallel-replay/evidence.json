@@ -1,0 +1,4867 @@
+{
+  "date": "2026-10-09",
+  "validation_parent_commit": "88614fc440fb5e4e006bbd590628d29b9af8dc84",
+  "pr_base": "c220fca16a7e7f7620bde799c50b240f2451ef79",
+  "pr_head": "3e309d5d3eb753343590e28baf5b8efc547645c8",
+  "runs": [
+    {
+      "schema_version": 1,
+      "status": "PASS",
+      "label": "google-adk-2.11.0",
+      "adk_file": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-09\\complete-the-remaining-engineering-and-independent\\work\\clean-env\\Lib\\site-packages\\google\\adk\\__init__.py",
+      "adk_source_revision": null,
+      "adk_runners_sha256": "97f530e72575ad6ef259c4de6f20004a18d384913509a4b7bf1435b7e406e7b2",
+      "sdk_entry_sha256": "cbabedf624cecc55bd8b307f10156f329fe70d60cb803e7f56bb0fb782d303df",
+      "requirements_sha256": "8a5354fc27ad1723eb035411c4eb7b3947c3fd1016e6a5de6ded96614c8218d6",
+      "installed_adk_version": "2.11.0",
+      "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+      "node": "v24.19.0",
+      "sdk": "repository build",
+      "expect_kept": false,
+      "scenarios": [
+        {
+          "protected": false,
+          "forced": false,
+          "mode": "confirmed",
+          "changed": false,
+          "first_responses": [],
+          "next_request_responses": [],
+          "tool_results": [
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "ticket_id": 1,
+                "effect": {
+                  "tool": "fixture.tenant-A.create_ticket",
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  }
+                }
+              }
+            },
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "ticket_id": 2,
+                "effect": {
+                  "tool": "fixture.tenant-A.create_ticket",
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  }
+                }
+              }
+            }
+          ],
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            },
+            {
+              "ticket_id": 2,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 0
+        },
+        {
+          "protected": true,
+          "forced": false,
+          "mode": "confirmed",
+          "changed": false,
+          "first_responses": [],
+          "next_request_responses": [],
+          "tool_results": [
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "effect": {
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  },
+                  "tool": "fixture.tenant-A.create_ticket"
+                },
+                "ticket_id": 1
+              }
+            },
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "effect": {
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  },
+                  "tool": "fixture.tenant-A.create_ticket"
+                },
+                "ticket_id": 1
+              }
+            }
+          ],
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 2
+        },
+        {
+          "protected": false,
+          "forced": true,
+          "mode": "confirmed",
+          "changed": false,
+          "first_responses": [],
+          "next_request_responses": [],
+          "tool_results": [
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "ticket_id": 1,
+                "effect": {
+                  "tool": "fixture.tenant-A.create_ticket",
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  }
+                }
+              }
+            },
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "ticket_id": 2,
+                "effect": {
+                  "tool": "fixture.tenant-A.create_ticket",
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  }
+                }
+              }
+            }
+          ],
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            },
+            {
+              "ticket_id": 2,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 0
+        },
+        {
+          "protected": true,
+          "forced": true,
+          "mode": "confirmed",
+          "changed": false,
+          "first_responses": [],
+          "next_request_responses": [],
+          "tool_results": [
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "effect": {
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  },
+                  "tool": "fixture.tenant-A.create_ticket"
+                },
+                "ticket_id": 1
+              }
+            },
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "effect": {
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  },
+                  "tool": "fixture.tenant-A.create_ticket"
+                },
+                "ticket_id": 1
+              }
+            }
+          ],
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 2
+        },
+        {
+          "protected": true,
+          "forced": true,
+          "mode": "confirmed",
+          "changed": true,
+          "first_responses": [],
+          "next_request_responses": [],
+          "tool_results": [
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "effect": {
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  },
+                  "tool": "fixture.tenant-A.create_ticket"
+                },
+                "ticket_id": 1
+              }
+            },
+            {
+              "status": "CONFLICT",
+              "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+            }
+          ],
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 2
+        },
+        {
+          "protected": true,
+          "forced": true,
+          "mode": "lost-ack",
+          "changed": false,
+          "first_responses": [],
+          "next_request_responses": [],
+          "tool_results": [
+            {
+              "status": "UNKNOWN",
+              "message": "ORIGINAL OUTCOME UNKNOWN. Operation host-ticket-intent-001 threw after dispatch; its external outcome may be unknown. It may already have succeeded. Future unsafe redispatch is blocked. Next action: reconcile authoritative provider truth before retrying with the same identity and durable state."
+            },
+            {
+              "status": "UNKNOWN",
+              "message": "RETRY BLOCKED \u00e2\u20ac\u201d ORIGINAL OUTCOME UNKNOWN. Operation host-ticket-intent-001 may already have succeeded. Repeating it could create another external effect; no second write was dispatched. Next action: supply an authoritative read-only reconcile callback or investigate provider truth; retain the same identity and durable state."
+            }
+          ],
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 2
+        },
+        {
+          "protected": true,
+          "forced": true,
+          "mode": "crash",
+          "changed": false,
+          "first_responses": [],
+          "next_request_responses": [],
+          "tool_results": [
+            {
+              "status": "UNKNOWN"
+            },
+            {
+              "status": "UNKNOWN",
+              "message": "RETRY BLOCKED \u00e2\u20ac\u201d ORIGINAL OUTCOME UNKNOWN. Operation host-ticket-intent-001 may already have succeeded. Repeating it could create another external effect; no second write was dispatched. Next action: supply an authoritative read-only reconcile callback or investigate provider truth; retain the same identity and durable state."
+            }
+          ],
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 2
+        }
+      ],
+      "safety": [
+        {
+          "mode": "confirmed",
+          "first": {
+            "status": "CONFIRMED",
+            "result": {
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              },
+              "ticket_id": 1
+            }
+          },
+          "retry": {
+            "status": "CONFIRMED",
+            "result": {
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              },
+              "ticket_id": 1
+            }
+          },
+          "conflicts": 3,
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 7,
+          "missing_state": "STATE_UNAVAILABLE",
+          "probes": [
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "changed"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "other",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-B.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "operationId": ""
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "IDENTITY_REQUIRED",
+                "message": "protectToolCall requires an explicit stable operationId; no tool was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "STATE_UNAVAILABLE",
+                "message": "Expected ledger missing"
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            }
+          ]
+        },
+        {
+          "mode": "lost-ack",
+          "first": {
+            "status": "UNKNOWN",
+            "message": "ORIGINAL OUTCOME UNKNOWN. Operation host-ticket-intent-001 threw after dispatch; its external outcome may be unknown. It may already have succeeded. Future unsafe redispatch is blocked. Next action: reconcile authoritative provider truth before retrying with the same identity and durable state."
+          },
+          "retry": {
+            "status": "UNKNOWN",
+            "message": "RETRY BLOCKED \u00e2\u20ac\u201d ORIGINAL OUTCOME UNKNOWN. Operation host-ticket-intent-001 may already have succeeded. Repeating it could create another external effect; no second write was dispatched. Next action: supply an authoritative read-only reconcile callback or investigate provider truth; retain the same identity and durable state."
+          },
+          "conflicts": 3,
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 11,
+          "missing_state": "STATE_UNAVAILABLE",
+          "probes": [
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "changed"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "other",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-B.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "reconcile": "UNKNOWN"
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "UNKNOWN",
+                "message": "Provider truth for host-ticket-intent-001 did not confirm an effect. Local mode will not redispatch after an ambiguous attempt; investigate or use a provider idempotency integration."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "reconcile": "NOT_FOUND"
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "UNKNOWN",
+                "message": "Provider truth for host-ticket-intent-001 did not confirm an effect. Local mode will not redispatch after an ambiguous attempt; investigate or use a provider idempotency integration."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "reconcile": "provider"
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFIRMED",
+                "result": {
+                  "effect": {
+                    "args": {
+                      "project": "disposable",
+                      "title": "disk full"
+                    },
+                    "tool": "fixture.tenant-A.create_ticket"
+                  },
+                  "ticket_id": 1
+                }
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFIRMED",
+                "result": {
+                  "effect": {
+                    "args": {
+                      "project": "disposable",
+                      "title": "disk full"
+                    },
+                    "tool": "fixture.tenant-A.create_ticket"
+                  },
+                  "ticket_id": 1
+                }
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "operationId": ""
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "IDENTITY_REQUIRED",
+                "message": "protectToolCall requires an explicit stable operationId; no tool was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "STATE_UNAVAILABLE",
+                "message": "Expected ledger missing"
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            }
+          ]
+        },
+        {
+          "mode": "crash",
+          "first": {
+            "status": "CRASHED"
+          },
+          "retry": {
+            "status": "UNKNOWN",
+            "message": "RETRY BLOCKED \u00e2\u20ac\u201d ORIGINAL OUTCOME UNKNOWN. Operation host-ticket-intent-001 may already have succeeded. Repeating it could create another external effect; no second write was dispatched. Next action: supply an authoritative read-only reconcile callback or investigate provider truth; retain the same identity and durable state."
+          },
+          "conflicts": 3,
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 11,
+          "missing_state": "STATE_UNAVAILABLE",
+          "probes": [
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "changed"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "other",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-B.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "reconcile": "UNKNOWN"
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "UNKNOWN",
+                "message": "Provider truth for host-ticket-intent-001 did not confirm an effect. Local mode will not redispatch after an ambiguous attempt; investigate or use a provider idempotency integration."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "reconcile": "NOT_FOUND"
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "UNKNOWN",
+                "message": "Provider truth for host-ticket-intent-001 did not confirm an effect. Local mode will not redispatch after an ambiguous attempt; investigate or use a provider idempotency integration."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "reconcile": "provider"
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFIRMED",
+                "result": {
+                  "effect": {
+                    "args": {
+                      "project": "disposable",
+                      "title": "disk full"
+                    },
+                    "tool": "fixture.tenant-A.create_ticket"
+                  },
+                  "ticket_id": 1
+                }
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFIRMED",
+                "result": {
+                  "effect": {
+                    "args": {
+                      "project": "disposable",
+                      "title": "disk full"
+                    },
+                    "tool": "fixture.tenant-A.create_ticket"
+                  },
+                  "ticket_id": 1
+                }
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "operationId": ""
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "IDENTITY_REQUIRED",
+                "message": "protectToolCall requires an explicit stable operationId; no tool was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "STATE_UNAVAILABLE",
+                "message": "Expected ledger missing"
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            }
+          ]
+        }
+      ],
+      "lookup_controls": {
+        "mismatched_lookup": {
+          "status": "UNKNOWN"
+        },
+        "duplicate_lookup": {
+          "status": "UNKNOWN"
+        },
+        "fresh_intent": {
+          "status": "CONFIRMED",
+          "result": {
+            "effect": {
+              "args": {
+                "project": "disposable",
+                "title": "disk full"
+              },
+              "tool": "fixture.tenant-A.create_ticket"
+            },
+            "ticket_id": 2
+          }
+        },
+        "provider_effects": [
+          {
+            "ticket_id": 1,
+            "operation": "host-ticket-intent-001",
+            "effect": {
+              "args": {
+                "project": "disposable",
+                "title": "disk full"
+              },
+              "tool": "fixture.tenant-A.create_ticket"
+            }
+          },
+          {
+            "ticket_id": 2,
+            "operation": "host-ticket-intent-002",
+            "effect": {
+              "args": {
+                "project": "disposable",
+                "title": "disk full"
+              },
+              "tool": "fixture.tenant-A.create_ticket"
+            }
+          },
+          {
+            "ticket_id": 3,
+            "operation": "host-ticket-intent-001",
+            "effect": {
+              "args": {
+                "project": "disposable",
+                "title": "disk full"
+              },
+              "tool": "fixture.tenant-A.create_ticket"
+            }
+          }
+        ],
+        "deliberate_bypass_effects": 1
+      }
+    },
+    {
+      "schema_version": 1,
+      "status": "PASS",
+      "label": "pr-base",
+      "adk_file": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-09\\complete-the-remaining-engineering-and-independent\\work\\once\\adk-base\\src\\google\\adk\\__init__.py",
+      "adk_source_revision": "c220fca16a7e7f7620bde799c50b240f2451ef79",
+      "adk_runners_sha256": "e914b54a153dd66eb70c1aeb24f63eb1c6abb5314712262a9159a958039ec8c4",
+      "sdk_entry_sha256": "cbabedf624cecc55bd8b307f10156f329fe70d60cb803e7f56bb0fb782d303df",
+      "requirements_sha256": "8a5354fc27ad1723eb035411c4eb7b3947c3fd1016e6a5de6ded96614c8218d6",
+      "installed_adk_version": "2.11.0",
+      "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+      "node": "v24.19.0",
+      "sdk": "repository build",
+      "expect_kept": false,
+      "scenarios": [
+        {
+          "protected": false,
+          "forced": false,
+          "mode": "confirmed",
+          "changed": false,
+          "first_responses": [],
+          "next_request_responses": [],
+          "tool_results": [
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "ticket_id": 1,
+                "effect": {
+                  "tool": "fixture.tenant-A.create_ticket",
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  }
+                }
+              }
+            },
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "ticket_id": 2,
+                "effect": {
+                  "tool": "fixture.tenant-A.create_ticket",
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  }
+                }
+              }
+            }
+          ],
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            },
+            {
+              "ticket_id": 2,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 0
+        },
+        {
+          "protected": true,
+          "forced": false,
+          "mode": "confirmed",
+          "changed": false,
+          "first_responses": [],
+          "next_request_responses": [],
+          "tool_results": [
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "effect": {
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  },
+                  "tool": "fixture.tenant-A.create_ticket"
+                },
+                "ticket_id": 1
+              }
+            },
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "effect": {
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  },
+                  "tool": "fixture.tenant-A.create_ticket"
+                },
+                "ticket_id": 1
+              }
+            }
+          ],
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 2
+        },
+        {
+          "protected": false,
+          "forced": true,
+          "mode": "confirmed",
+          "changed": false,
+          "first_responses": [],
+          "next_request_responses": [],
+          "tool_results": [
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "ticket_id": 1,
+                "effect": {
+                  "tool": "fixture.tenant-A.create_ticket",
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  }
+                }
+              }
+            },
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "ticket_id": 2,
+                "effect": {
+                  "tool": "fixture.tenant-A.create_ticket",
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  }
+                }
+              }
+            }
+          ],
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            },
+            {
+              "ticket_id": 2,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 0
+        },
+        {
+          "protected": true,
+          "forced": true,
+          "mode": "confirmed",
+          "changed": false,
+          "first_responses": [],
+          "next_request_responses": [],
+          "tool_results": [
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "effect": {
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  },
+                  "tool": "fixture.tenant-A.create_ticket"
+                },
+                "ticket_id": 1
+              }
+            },
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "effect": {
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  },
+                  "tool": "fixture.tenant-A.create_ticket"
+                },
+                "ticket_id": 1
+              }
+            }
+          ],
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 2
+        },
+        {
+          "protected": true,
+          "forced": true,
+          "mode": "confirmed",
+          "changed": true,
+          "first_responses": [],
+          "next_request_responses": [],
+          "tool_results": [
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "effect": {
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  },
+                  "tool": "fixture.tenant-A.create_ticket"
+                },
+                "ticket_id": 1
+              }
+            },
+            {
+              "status": "CONFLICT",
+              "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+            }
+          ],
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 2
+        },
+        {
+          "protected": true,
+          "forced": true,
+          "mode": "lost-ack",
+          "changed": false,
+          "first_responses": [],
+          "next_request_responses": [],
+          "tool_results": [
+            {
+              "status": "UNKNOWN",
+              "message": "ORIGINAL OUTCOME UNKNOWN. Operation host-ticket-intent-001 threw after dispatch; its external outcome may be unknown. It may already have succeeded. Future unsafe redispatch is blocked. Next action: reconcile authoritative provider truth before retrying with the same identity and durable state."
+            },
+            {
+              "status": "UNKNOWN",
+              "message": "RETRY BLOCKED \u00e2\u20ac\u201d ORIGINAL OUTCOME UNKNOWN. Operation host-ticket-intent-001 may already have succeeded. Repeating it could create another external effect; no second write was dispatched. Next action: supply an authoritative read-only reconcile callback or investigate provider truth; retain the same identity and durable state."
+            }
+          ],
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 2
+        },
+        {
+          "protected": true,
+          "forced": true,
+          "mode": "crash",
+          "changed": false,
+          "first_responses": [],
+          "next_request_responses": [],
+          "tool_results": [
+            {
+              "status": "UNKNOWN"
+            },
+            {
+              "status": "UNKNOWN",
+              "message": "RETRY BLOCKED \u00e2\u20ac\u201d ORIGINAL OUTCOME UNKNOWN. Operation host-ticket-intent-001 may already have succeeded. Repeating it could create another external effect; no second write was dispatched. Next action: supply an authoritative read-only reconcile callback or investigate provider truth; retain the same identity and durable state."
+            }
+          ],
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 2
+        }
+      ],
+      "safety": [
+        {
+          "mode": "confirmed",
+          "first": {
+            "status": "CONFIRMED",
+            "result": {
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              },
+              "ticket_id": 1
+            }
+          },
+          "retry": {
+            "status": "CONFIRMED",
+            "result": {
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              },
+              "ticket_id": 1
+            }
+          },
+          "conflicts": 3,
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 7,
+          "missing_state": "STATE_UNAVAILABLE",
+          "probes": [
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "changed"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "other",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-B.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "operationId": ""
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "IDENTITY_REQUIRED",
+                "message": "protectToolCall requires an explicit stable operationId; no tool was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "STATE_UNAVAILABLE",
+                "message": "Expected ledger missing"
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            }
+          ]
+        },
+        {
+          "mode": "lost-ack",
+          "first": {
+            "status": "UNKNOWN",
+            "message": "ORIGINAL OUTCOME UNKNOWN. Operation host-ticket-intent-001 threw after dispatch; its external outcome may be unknown. It may already have succeeded. Future unsafe redispatch is blocked. Next action: reconcile authoritative provider truth before retrying with the same identity and durable state."
+          },
+          "retry": {
+            "status": "UNKNOWN",
+            "message": "RETRY BLOCKED \u00e2\u20ac\u201d ORIGINAL OUTCOME UNKNOWN. Operation host-ticket-intent-001 may already have succeeded. Repeating it could create another external effect; no second write was dispatched. Next action: supply an authoritative read-only reconcile callback or investigate provider truth; retain the same identity and durable state."
+          },
+          "conflicts": 3,
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 11,
+          "missing_state": "STATE_UNAVAILABLE",
+          "probes": [
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "changed"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "other",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-B.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "reconcile": "UNKNOWN"
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "UNKNOWN",
+                "message": "Provider truth for host-ticket-intent-001 did not confirm an effect. Local mode will not redispatch after an ambiguous attempt; investigate or use a provider idempotency integration."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "reconcile": "NOT_FOUND"
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "UNKNOWN",
+                "message": "Provider truth for host-ticket-intent-001 did not confirm an effect. Local mode will not redispatch after an ambiguous attempt; investigate or use a provider idempotency integration."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "reconcile": "provider"
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFIRMED",
+                "result": {
+                  "effect": {
+                    "args": {
+                      "project": "disposable",
+                      "title": "disk full"
+                    },
+                    "tool": "fixture.tenant-A.create_ticket"
+                  },
+                  "ticket_id": 1
+                }
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFIRMED",
+                "result": {
+                  "effect": {
+                    "args": {
+                      "project": "disposable",
+                      "title": "disk full"
+                    },
+                    "tool": "fixture.tenant-A.create_ticket"
+                  },
+                  "ticket_id": 1
+                }
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "operationId": ""
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "IDENTITY_REQUIRED",
+                "message": "protectToolCall requires an explicit stable operationId; no tool was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "STATE_UNAVAILABLE",
+                "message": "Expected ledger missing"
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            }
+          ]
+        },
+        {
+          "mode": "crash",
+          "first": {
+            "status": "CRASHED"
+          },
+          "retry": {
+            "status": "UNKNOWN",
+            "message": "RETRY BLOCKED \u00e2\u20ac\u201d ORIGINAL OUTCOME UNKNOWN. Operation host-ticket-intent-001 may already have succeeded. Repeating it could create another external effect; no second write was dispatched. Next action: supply an authoritative read-only reconcile callback or investigate provider truth; retain the same identity and durable state."
+          },
+          "conflicts": 3,
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 11,
+          "missing_state": "STATE_UNAVAILABLE",
+          "probes": [
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "changed"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "other",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-B.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "reconcile": "UNKNOWN"
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "UNKNOWN",
+                "message": "Provider truth for host-ticket-intent-001 did not confirm an effect. Local mode will not redispatch after an ambiguous attempt; investigate or use a provider idempotency integration."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "reconcile": "NOT_FOUND"
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "UNKNOWN",
+                "message": "Provider truth for host-ticket-intent-001 did not confirm an effect. Local mode will not redispatch after an ambiguous attempt; investigate or use a provider idempotency integration."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "reconcile": "provider"
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFIRMED",
+                "result": {
+                  "effect": {
+                    "args": {
+                      "project": "disposable",
+                      "title": "disk full"
+                    },
+                    "tool": "fixture.tenant-A.create_ticket"
+                  },
+                  "ticket_id": 1
+                }
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFIRMED",
+                "result": {
+                  "effect": {
+                    "args": {
+                      "project": "disposable",
+                      "title": "disk full"
+                    },
+                    "tool": "fixture.tenant-A.create_ticket"
+                  },
+                  "ticket_id": 1
+                }
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "operationId": ""
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "IDENTITY_REQUIRED",
+                "message": "protectToolCall requires an explicit stable operationId; no tool was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "STATE_UNAVAILABLE",
+                "message": "Expected ledger missing"
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            }
+          ]
+        }
+      ],
+      "lookup_controls": {
+        "mismatched_lookup": {
+          "status": "UNKNOWN"
+        },
+        "duplicate_lookup": {
+          "status": "UNKNOWN"
+        },
+        "fresh_intent": {
+          "status": "CONFIRMED",
+          "result": {
+            "effect": {
+              "args": {
+                "project": "disposable",
+                "title": "disk full"
+              },
+              "tool": "fixture.tenant-A.create_ticket"
+            },
+            "ticket_id": 2
+          }
+        },
+        "provider_effects": [
+          {
+            "ticket_id": 1,
+            "operation": "host-ticket-intent-001",
+            "effect": {
+              "args": {
+                "project": "disposable",
+                "title": "disk full"
+              },
+              "tool": "fixture.tenant-A.create_ticket"
+            }
+          },
+          {
+            "ticket_id": 2,
+            "operation": "host-ticket-intent-002",
+            "effect": {
+              "args": {
+                "project": "disposable",
+                "title": "disk full"
+              },
+              "tool": "fixture.tenant-A.create_ticket"
+            }
+          },
+          {
+            "ticket_id": 3,
+            "operation": "host-ticket-intent-001",
+            "effect": {
+              "args": {
+                "project": "disposable",
+                "title": "disk full"
+              },
+              "tool": "fixture.tenant-A.create_ticket"
+            }
+          }
+        ],
+        "deliberate_bypass_effects": 1
+      }
+    },
+    {
+      "schema_version": 1,
+      "status": "PASS",
+      "label": "pr-fixed",
+      "adk_file": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-09\\complete-the-remaining-engineering-and-independent\\work\\once\\adk-fixed\\src\\google\\adk\\__init__.py",
+      "adk_source_revision": "3e309d5d3eb753343590e28baf5b8efc547645c8",
+      "adk_runners_sha256": "e914b54a153dd66eb70c1aeb24f63eb1c6abb5314712262a9159a958039ec8c4",
+      "sdk_entry_sha256": "cbabedf624cecc55bd8b307f10156f329fe70d60cb803e7f56bb0fb782d303df",
+      "requirements_sha256": "8a5354fc27ad1723eb035411c4eb7b3947c3fd1016e6a5de6ded96614c8218d6",
+      "installed_adk_version": "2.11.0",
+      "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+      "node": "v24.19.0",
+      "sdk": "repository build",
+      "expect_kept": true,
+      "scenarios": [
+        {
+          "protected": false,
+          "forced": false,
+          "mode": "confirmed",
+          "changed": false,
+          "first_responses": [
+            {
+              "will_continue": null,
+              "scheduling": null,
+              "parts": null,
+              "id": "attempt-1-0",
+              "name": "create_ticket",
+              "response": {
+                "status": "CONFIRMED",
+                "result": {
+                  "ticket_id": 1,
+                  "effect": {
+                    "tool": "fixture.tenant-A.create_ticket",
+                    "args": {
+                      "project": "disposable",
+                      "title": "disk full"
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "next_request_responses": [
+            {
+              "will_continue": null,
+              "scheduling": null,
+              "parts": null,
+              "id": "attempt-1-0",
+              "name": "create_ticket",
+              "response": {
+                "status": "CONFIRMED",
+                "result": {
+                  "ticket_id": 1,
+                  "effect": {
+                    "tool": "fixture.tenant-A.create_ticket",
+                    "args": {
+                      "project": "disposable",
+                      "title": "disk full"
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "tool_results": [
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "ticket_id": 1,
+                "effect": {
+                  "tool": "fixture.tenant-A.create_ticket",
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  }
+                }
+              }
+            }
+          ],
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 0
+        },
+        {
+          "protected": true,
+          "forced": false,
+          "mode": "confirmed",
+          "changed": false,
+          "first_responses": [
+            {
+              "will_continue": null,
+              "scheduling": null,
+              "parts": null,
+              "id": "attempt-1-0",
+              "name": "create_ticket",
+              "response": {
+                "status": "CONFIRMED",
+                "result": {
+                  "effect": {
+                    "args": {
+                      "project": "disposable",
+                      "title": "disk full"
+                    },
+                    "tool": "fixture.tenant-A.create_ticket"
+                  },
+                  "ticket_id": 1
+                }
+              }
+            }
+          ],
+          "next_request_responses": [
+            {
+              "will_continue": null,
+              "scheduling": null,
+              "parts": null,
+              "id": "attempt-1-0",
+              "name": "create_ticket",
+              "response": {
+                "status": "CONFIRMED",
+                "result": {
+                  "effect": {
+                    "args": {
+                      "project": "disposable",
+                      "title": "disk full"
+                    },
+                    "tool": "fixture.tenant-A.create_ticket"
+                  },
+                  "ticket_id": 1
+                }
+              }
+            }
+          ],
+          "tool_results": [
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "effect": {
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  },
+                  "tool": "fixture.tenant-A.create_ticket"
+                },
+                "ticket_id": 1
+              }
+            }
+          ],
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 1
+        },
+        {
+          "protected": false,
+          "forced": true,
+          "mode": "confirmed",
+          "changed": false,
+          "first_responses": [
+            {
+              "will_continue": null,
+              "scheduling": null,
+              "parts": null,
+              "id": "attempt-1-0",
+              "name": "create_ticket",
+              "response": {
+                "status": "CONFIRMED",
+                "result": {
+                  "ticket_id": 1,
+                  "effect": {
+                    "tool": "fixture.tenant-A.create_ticket",
+                    "args": {
+                      "project": "disposable",
+                      "title": "disk full"
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "next_request_responses": [
+            {
+              "will_continue": null,
+              "scheduling": null,
+              "parts": null,
+              "id": "attempt-1-0",
+              "name": "create_ticket",
+              "response": {
+                "status": "CONFIRMED",
+                "result": {
+                  "ticket_id": 1,
+                  "effect": {
+                    "tool": "fixture.tenant-A.create_ticket",
+                    "args": {
+                      "project": "disposable",
+                      "title": "disk full"
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "tool_results": [
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "ticket_id": 1,
+                "effect": {
+                  "tool": "fixture.tenant-A.create_ticket",
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  }
+                }
+              }
+            },
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "ticket_id": 2,
+                "effect": {
+                  "tool": "fixture.tenant-A.create_ticket",
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  }
+                }
+              }
+            }
+          ],
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            },
+            {
+              "ticket_id": 2,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 0
+        },
+        {
+          "protected": true,
+          "forced": true,
+          "mode": "confirmed",
+          "changed": false,
+          "first_responses": [
+            {
+              "will_continue": null,
+              "scheduling": null,
+              "parts": null,
+              "id": "attempt-1-0",
+              "name": "create_ticket",
+              "response": {
+                "status": "CONFIRMED",
+                "result": {
+                  "effect": {
+                    "args": {
+                      "project": "disposable",
+                      "title": "disk full"
+                    },
+                    "tool": "fixture.tenant-A.create_ticket"
+                  },
+                  "ticket_id": 1
+                }
+              }
+            }
+          ],
+          "next_request_responses": [
+            {
+              "will_continue": null,
+              "scheduling": null,
+              "parts": null,
+              "id": "attempt-1-0",
+              "name": "create_ticket",
+              "response": {
+                "status": "CONFIRMED",
+                "result": {
+                  "effect": {
+                    "args": {
+                      "project": "disposable",
+                      "title": "disk full"
+                    },
+                    "tool": "fixture.tenant-A.create_ticket"
+                  },
+                  "ticket_id": 1
+                }
+              }
+            }
+          ],
+          "tool_results": [
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "effect": {
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  },
+                  "tool": "fixture.tenant-A.create_ticket"
+                },
+                "ticket_id": 1
+              }
+            },
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "effect": {
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  },
+                  "tool": "fixture.tenant-A.create_ticket"
+                },
+                "ticket_id": 1
+              }
+            }
+          ],
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 2
+        },
+        {
+          "protected": true,
+          "forced": true,
+          "mode": "confirmed",
+          "changed": true,
+          "first_responses": [
+            {
+              "will_continue": null,
+              "scheduling": null,
+              "parts": null,
+              "id": "attempt-1-0",
+              "name": "create_ticket",
+              "response": {
+                "status": "CONFIRMED",
+                "result": {
+                  "effect": {
+                    "args": {
+                      "project": "disposable",
+                      "title": "disk full"
+                    },
+                    "tool": "fixture.tenant-A.create_ticket"
+                  },
+                  "ticket_id": 1
+                }
+              }
+            }
+          ],
+          "next_request_responses": [
+            {
+              "will_continue": null,
+              "scheduling": null,
+              "parts": null,
+              "id": "attempt-1-0",
+              "name": "create_ticket",
+              "response": {
+                "status": "CONFIRMED",
+                "result": {
+                  "effect": {
+                    "args": {
+                      "project": "disposable",
+                      "title": "disk full"
+                    },
+                    "tool": "fixture.tenant-A.create_ticket"
+                  },
+                  "ticket_id": 1
+                }
+              }
+            }
+          ],
+          "tool_results": [
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "effect": {
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  },
+                  "tool": "fixture.tenant-A.create_ticket"
+                },
+                "ticket_id": 1
+              }
+            },
+            {
+              "status": "CONFLICT",
+              "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+            }
+          ],
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 2
+        },
+        {
+          "protected": true,
+          "forced": true,
+          "mode": "lost-ack",
+          "changed": false,
+          "first_responses": [
+            {
+              "will_continue": null,
+              "scheduling": null,
+              "parts": null,
+              "id": "attempt-1-0",
+              "name": "create_ticket",
+              "response": {
+                "status": "UNKNOWN",
+                "message": "ORIGINAL OUTCOME UNKNOWN. Operation host-ticket-intent-001 threw after dispatch; its external outcome may be unknown. It may already have succeeded. Future unsafe redispatch is blocked. Next action: reconcile authoritative provider truth before retrying with the same identity and durable state."
+              }
+            }
+          ],
+          "next_request_responses": [
+            {
+              "will_continue": null,
+              "scheduling": null,
+              "parts": null,
+              "id": "attempt-1-0",
+              "name": "create_ticket",
+              "response": {
+                "status": "UNKNOWN",
+                "message": "ORIGINAL OUTCOME UNKNOWN. Operation host-ticket-intent-001 threw after dispatch; its external outcome may be unknown. It may already have succeeded. Future unsafe redispatch is blocked. Next action: reconcile authoritative provider truth before retrying with the same identity and durable state."
+              }
+            }
+          ],
+          "tool_results": [
+            {
+              "status": "UNKNOWN",
+              "message": "ORIGINAL OUTCOME UNKNOWN. Operation host-ticket-intent-001 threw after dispatch; its external outcome may be unknown. It may already have succeeded. Future unsafe redispatch is blocked. Next action: reconcile authoritative provider truth before retrying with the same identity and durable state."
+            },
+            {
+              "status": "UNKNOWN",
+              "message": "RETRY BLOCKED \u00e2\u20ac\u201d ORIGINAL OUTCOME UNKNOWN. Operation host-ticket-intent-001 may already have succeeded. Repeating it could create another external effect; no second write was dispatched. Next action: supply an authoritative read-only reconcile callback or investigate provider truth; retain the same identity and durable state."
+            }
+          ],
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 2
+        },
+        {
+          "protected": true,
+          "forced": true,
+          "mode": "crash",
+          "changed": false,
+          "first_responses": [
+            {
+              "will_continue": null,
+              "scheduling": null,
+              "parts": null,
+              "id": "attempt-1-0",
+              "name": "create_ticket",
+              "response": {
+                "status": "UNKNOWN"
+              }
+            }
+          ],
+          "next_request_responses": [
+            {
+              "will_continue": null,
+              "scheduling": null,
+              "parts": null,
+              "id": "attempt-1-0",
+              "name": "create_ticket",
+              "response": {
+                "status": "UNKNOWN"
+              }
+            }
+          ],
+          "tool_results": [
+            {
+              "status": "UNKNOWN"
+            },
+            {
+              "status": "UNKNOWN",
+              "message": "RETRY BLOCKED \u00e2\u20ac\u201d ORIGINAL OUTCOME UNKNOWN. Operation host-ticket-intent-001 may already have succeeded. Repeating it could create another external effect; no second write was dispatched. Next action: supply an authoritative read-only reconcile callback or investigate provider truth; retain the same identity and durable state."
+            }
+          ],
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 2
+        }
+      ],
+      "safety": [
+        {
+          "mode": "confirmed",
+          "first": {
+            "status": "CONFIRMED",
+            "result": {
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              },
+              "ticket_id": 1
+            }
+          },
+          "retry": {
+            "status": "CONFIRMED",
+            "result": {
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              },
+              "ticket_id": 1
+            }
+          },
+          "conflicts": 3,
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 7,
+          "missing_state": "STATE_UNAVAILABLE",
+          "probes": [
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "changed"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "other",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-B.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "operationId": ""
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "IDENTITY_REQUIRED",
+                "message": "protectToolCall requires an explicit stable operationId; no tool was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "STATE_UNAVAILABLE",
+                "message": "Expected ledger missing"
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            }
+          ]
+        },
+        {
+          "mode": "lost-ack",
+          "first": {
+            "status": "UNKNOWN",
+            "message": "ORIGINAL OUTCOME UNKNOWN. Operation host-ticket-intent-001 threw after dispatch; its external outcome may be unknown. It may already have succeeded. Future unsafe redispatch is blocked. Next action: reconcile authoritative provider truth before retrying with the same identity and durable state."
+          },
+          "retry": {
+            "status": "UNKNOWN",
+            "message": "RETRY BLOCKED \u00e2\u20ac\u201d ORIGINAL OUTCOME UNKNOWN. Operation host-ticket-intent-001 may already have succeeded. Repeating it could create another external effect; no second write was dispatched. Next action: supply an authoritative read-only reconcile callback or investigate provider truth; retain the same identity and durable state."
+          },
+          "conflicts": 3,
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 11,
+          "missing_state": "STATE_UNAVAILABLE",
+          "probes": [
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "changed"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "other",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-B.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "reconcile": "UNKNOWN"
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "UNKNOWN",
+                "message": "Provider truth for host-ticket-intent-001 did not confirm an effect. Local mode will not redispatch after an ambiguous attempt; investigate or use a provider idempotency integration."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "reconcile": "NOT_FOUND"
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "UNKNOWN",
+                "message": "Provider truth for host-ticket-intent-001 did not confirm an effect. Local mode will not redispatch after an ambiguous attempt; investigate or use a provider idempotency integration."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "reconcile": "provider"
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFIRMED",
+                "result": {
+                  "effect": {
+                    "args": {
+                      "project": "disposable",
+                      "title": "disk full"
+                    },
+                    "tool": "fixture.tenant-A.create_ticket"
+                  },
+                  "ticket_id": 1
+                }
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFIRMED",
+                "result": {
+                  "effect": {
+                    "args": {
+                      "project": "disposable",
+                      "title": "disk full"
+                    },
+                    "tool": "fixture.tenant-A.create_ticket"
+                  },
+                  "ticket_id": 1
+                }
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "operationId": ""
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "IDENTITY_REQUIRED",
+                "message": "protectToolCall requires an explicit stable operationId; no tool was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "STATE_UNAVAILABLE",
+                "message": "Expected ledger missing"
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            }
+          ]
+        },
+        {
+          "mode": "crash",
+          "first": {
+            "status": "CRASHED"
+          },
+          "retry": {
+            "status": "UNKNOWN",
+            "message": "RETRY BLOCKED \u00e2\u20ac\u201d ORIGINAL OUTCOME UNKNOWN. Operation host-ticket-intent-001 may already have succeeded. Repeating it could create another external effect; no second write was dispatched. Next action: supply an authoritative read-only reconcile callback or investigate provider truth; retain the same identity and durable state."
+          },
+          "conflicts": 3,
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 11,
+          "missing_state": "STATE_UNAVAILABLE",
+          "probes": [
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "changed"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "other",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-B.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "reconcile": "UNKNOWN"
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "UNKNOWN",
+                "message": "Provider truth for host-ticket-intent-001 did not confirm an effect. Local mode will not redispatch after an ambiguous attempt; investigate or use a provider idempotency integration."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "reconcile": "NOT_FOUND"
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "UNKNOWN",
+                "message": "Provider truth for host-ticket-intent-001 did not confirm an effect. Local mode will not redispatch after an ambiguous attempt; investigate or use a provider idempotency integration."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "reconcile": "provider"
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFIRMED",
+                "result": {
+                  "effect": {
+                    "args": {
+                      "project": "disposable",
+                      "title": "disk full"
+                    },
+                    "tool": "fixture.tenant-A.create_ticket"
+                  },
+                  "ticket_id": 1
+                }
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFIRMED",
+                "result": {
+                  "effect": {
+                    "args": {
+                      "project": "disposable",
+                      "title": "disk full"
+                    },
+                    "tool": "fixture.tenant-A.create_ticket"
+                  },
+                  "ticket_id": 1
+                }
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "operationId": ""
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "IDENTITY_REQUIRED",
+                "message": "protectToolCall requires an explicit stable operationId; no tool was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "STATE_UNAVAILABLE",
+                "message": "Expected ledger missing"
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            }
+          ]
+        }
+      ],
+      "lookup_controls": {
+        "mismatched_lookup": {
+          "status": "UNKNOWN"
+        },
+        "duplicate_lookup": {
+          "status": "UNKNOWN"
+        },
+        "fresh_intent": {
+          "status": "CONFIRMED",
+          "result": {
+            "effect": {
+              "args": {
+                "project": "disposable",
+                "title": "disk full"
+              },
+              "tool": "fixture.tenant-A.create_ticket"
+            },
+            "ticket_id": 2
+          }
+        },
+        "provider_effects": [
+          {
+            "ticket_id": 1,
+            "operation": "host-ticket-intent-001",
+            "effect": {
+              "args": {
+                "project": "disposable",
+                "title": "disk full"
+              },
+              "tool": "fixture.tenant-A.create_ticket"
+            }
+          },
+          {
+            "ticket_id": 2,
+            "operation": "host-ticket-intent-002",
+            "effect": {
+              "args": {
+                "project": "disposable",
+                "title": "disk full"
+              },
+              "tool": "fixture.tenant-A.create_ticket"
+            }
+          },
+          {
+            "ticket_id": 3,
+            "operation": "host-ticket-intent-001",
+            "effect": {
+              "args": {
+                "project": "disposable",
+                "title": "disk full"
+              },
+              "tool": "fixture.tenant-A.create_ticket"
+            }
+          }
+        ],
+        "deliberate_bypass_effects": 1
+      }
+    },
+    {
+      "schema_version": 1,
+      "status": "PASS",
+      "label": "clean-packed",
+      "adk_file": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-09\\complete-the-remaining-engineering-and-independent\\work\\clean-env\\Lib\\site-packages\\google\\adk\\__init__.py",
+      "adk_source_revision": null,
+      "adk_runners_sha256": "97f530e72575ad6ef259c4de6f20004a18d384913509a4b7bf1435b7e406e7b2",
+      "sdk_entry_sha256": "cbabedf624cecc55bd8b307f10156f329fe70d60cb803e7f56bb0fb782d303df",
+      "requirements_sha256": "8a5354fc27ad1723eb035411c4eb7b3947c3fd1016e6a5de6ded96614c8218d6",
+      "installed_adk_version": "2.11.0",
+      "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+      "node": "v24.19.0",
+      "sdk": "file:///C:/Users/jamie/Documents/Codex/2026-10-09/complete-the-remaining-engineering-and-independent/work/packed-consumer/node_modules/@once-agent/sdk/dist/index.js",
+      "expect_kept": false,
+      "scenarios": [
+        {
+          "protected": false,
+          "forced": false,
+          "mode": "confirmed",
+          "changed": false,
+          "first_responses": [],
+          "next_request_responses": [],
+          "tool_results": [
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "ticket_id": 1,
+                "effect": {
+                  "tool": "fixture.tenant-A.create_ticket",
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  }
+                }
+              }
+            },
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "ticket_id": 2,
+                "effect": {
+                  "tool": "fixture.tenant-A.create_ticket",
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  }
+                }
+              }
+            }
+          ],
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            },
+            {
+              "ticket_id": 2,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 0
+        },
+        {
+          "protected": true,
+          "forced": false,
+          "mode": "confirmed",
+          "changed": false,
+          "first_responses": [],
+          "next_request_responses": [],
+          "tool_results": [
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "effect": {
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  },
+                  "tool": "fixture.tenant-A.create_ticket"
+                },
+                "ticket_id": 1
+              }
+            },
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "effect": {
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  },
+                  "tool": "fixture.tenant-A.create_ticket"
+                },
+                "ticket_id": 1
+              }
+            }
+          ],
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 2
+        },
+        {
+          "protected": false,
+          "forced": true,
+          "mode": "confirmed",
+          "changed": false,
+          "first_responses": [],
+          "next_request_responses": [],
+          "tool_results": [
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "ticket_id": 1,
+                "effect": {
+                  "tool": "fixture.tenant-A.create_ticket",
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  }
+                }
+              }
+            },
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "ticket_id": 2,
+                "effect": {
+                  "tool": "fixture.tenant-A.create_ticket",
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  }
+                }
+              }
+            }
+          ],
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            },
+            {
+              "ticket_id": 2,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 0
+        },
+        {
+          "protected": true,
+          "forced": true,
+          "mode": "confirmed",
+          "changed": false,
+          "first_responses": [],
+          "next_request_responses": [],
+          "tool_results": [
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "effect": {
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  },
+                  "tool": "fixture.tenant-A.create_ticket"
+                },
+                "ticket_id": 1
+              }
+            },
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "effect": {
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  },
+                  "tool": "fixture.tenant-A.create_ticket"
+                },
+                "ticket_id": 1
+              }
+            }
+          ],
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 2
+        },
+        {
+          "protected": true,
+          "forced": true,
+          "mode": "confirmed",
+          "changed": true,
+          "first_responses": [],
+          "next_request_responses": [],
+          "tool_results": [
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "effect": {
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  },
+                  "tool": "fixture.tenant-A.create_ticket"
+                },
+                "ticket_id": 1
+              }
+            },
+            {
+              "status": "CONFLICT",
+              "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+            }
+          ],
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 2
+        },
+        {
+          "protected": true,
+          "forced": true,
+          "mode": "lost-ack",
+          "changed": false,
+          "first_responses": [],
+          "next_request_responses": [],
+          "tool_results": [
+            {
+              "status": "UNKNOWN",
+              "message": "ORIGINAL OUTCOME UNKNOWN. Operation host-ticket-intent-001 threw after dispatch; its external outcome may be unknown. It may already have succeeded. Future unsafe redispatch is blocked. Next action: reconcile authoritative provider truth before retrying with the same identity and durable state."
+            },
+            {
+              "status": "UNKNOWN",
+              "message": "RETRY BLOCKED \u00e2\u20ac\u201d ORIGINAL OUTCOME UNKNOWN. Operation host-ticket-intent-001 may already have succeeded. Repeating it could create another external effect; no second write was dispatched. Next action: supply an authoritative read-only reconcile callback or investigate provider truth; retain the same identity and durable state."
+            }
+          ],
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 2
+        },
+        {
+          "protected": true,
+          "forced": true,
+          "mode": "crash",
+          "changed": false,
+          "first_responses": [],
+          "next_request_responses": [],
+          "tool_results": [
+            {
+              "status": "UNKNOWN"
+            },
+            {
+              "status": "UNKNOWN",
+              "message": "RETRY BLOCKED \u00e2\u20ac\u201d ORIGINAL OUTCOME UNKNOWN. Operation host-ticket-intent-001 may already have succeeded. Repeating it could create another external effect; no second write was dispatched. Next action: supply an authoritative read-only reconcile callback or investigate provider truth; retain the same identity and durable state."
+            }
+          ],
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 2
+        }
+      ],
+      "safety": [
+        {
+          "mode": "confirmed",
+          "first": {
+            "status": "CONFIRMED",
+            "result": {
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              },
+              "ticket_id": 1
+            }
+          },
+          "retry": {
+            "status": "CONFIRMED",
+            "result": {
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              },
+              "ticket_id": 1
+            }
+          },
+          "conflicts": 3,
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 7,
+          "missing_state": "STATE_UNAVAILABLE",
+          "probes": [
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "changed"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "other",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-B.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "operationId": ""
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "IDENTITY_REQUIRED",
+                "message": "protectToolCall requires an explicit stable operationId; no tool was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "STATE_UNAVAILABLE",
+                "message": "Expected ledger missing"
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            }
+          ]
+        },
+        {
+          "mode": "lost-ack",
+          "first": {
+            "status": "UNKNOWN",
+            "message": "ORIGINAL OUTCOME UNKNOWN. Operation host-ticket-intent-001 threw after dispatch; its external outcome may be unknown. It may already have succeeded. Future unsafe redispatch is blocked. Next action: reconcile authoritative provider truth before retrying with the same identity and durable state."
+          },
+          "retry": {
+            "status": "UNKNOWN",
+            "message": "RETRY BLOCKED \u00e2\u20ac\u201d ORIGINAL OUTCOME UNKNOWN. Operation host-ticket-intent-001 may already have succeeded. Repeating it could create another external effect; no second write was dispatched. Next action: supply an authoritative read-only reconcile callback or investigate provider truth; retain the same identity and durable state."
+          },
+          "conflicts": 3,
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 11,
+          "missing_state": "STATE_UNAVAILABLE",
+          "probes": [
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "changed"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "other",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-B.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "reconcile": "UNKNOWN"
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "UNKNOWN",
+                "message": "Provider truth for host-ticket-intent-001 did not confirm an effect. Local mode will not redispatch after an ambiguous attempt; investigate or use a provider idempotency integration."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "reconcile": "NOT_FOUND"
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "UNKNOWN",
+                "message": "Provider truth for host-ticket-intent-001 did not confirm an effect. Local mode will not redispatch after an ambiguous attempt; investigate or use a provider idempotency integration."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "reconcile": "provider"
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFIRMED",
+                "result": {
+                  "effect": {
+                    "args": {
+                      "project": "disposable",
+                      "title": "disk full"
+                    },
+                    "tool": "fixture.tenant-A.create_ticket"
+                  },
+                  "ticket_id": 1
+                }
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFIRMED",
+                "result": {
+                  "effect": {
+                    "args": {
+                      "project": "disposable",
+                      "title": "disk full"
+                    },
+                    "tool": "fixture.tenant-A.create_ticket"
+                  },
+                  "ticket_id": 1
+                }
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "operationId": ""
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "IDENTITY_REQUIRED",
+                "message": "protectToolCall requires an explicit stable operationId; no tool was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "STATE_UNAVAILABLE",
+                "message": "Expected ledger missing"
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            }
+          ]
+        },
+        {
+          "mode": "crash",
+          "first": {
+            "status": "CRASHED"
+          },
+          "retry": {
+            "status": "UNKNOWN",
+            "message": "RETRY BLOCKED \u00e2\u20ac\u201d ORIGINAL OUTCOME UNKNOWN. Operation host-ticket-intent-001 may already have succeeded. Repeating it could create another external effect; no second write was dispatched. Next action: supply an authoritative read-only reconcile callback or investigate provider truth; retain the same identity and durable state."
+          },
+          "conflicts": 3,
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 11,
+          "missing_state": "STATE_UNAVAILABLE",
+          "probes": [
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "changed"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "other",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-B.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "reconcile": "UNKNOWN"
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "UNKNOWN",
+                "message": "Provider truth for host-ticket-intent-001 did not confirm an effect. Local mode will not redispatch after an ambiguous attempt; investigate or use a provider idempotency integration."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "reconcile": "NOT_FOUND"
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "UNKNOWN",
+                "message": "Provider truth for host-ticket-intent-001 did not confirm an effect. Local mode will not redispatch after an ambiguous attempt; investigate or use a provider idempotency integration."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "reconcile": "provider"
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFIRMED",
+                "result": {
+                  "effect": {
+                    "args": {
+                      "project": "disposable",
+                      "title": "disk full"
+                    },
+                    "tool": "fixture.tenant-A.create_ticket"
+                  },
+                  "ticket_id": 1
+                }
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFIRMED",
+                "result": {
+                  "effect": {
+                    "args": {
+                      "project": "disposable",
+                      "title": "disk full"
+                    },
+                    "tool": "fixture.tenant-A.create_ticket"
+                  },
+                  "ticket_id": 1
+                }
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "operationId": ""
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "IDENTITY_REQUIRED",
+                "message": "protectToolCall requires an explicit stable operationId; no tool was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "STATE_UNAVAILABLE",
+                "message": "Expected ledger missing"
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            }
+          ]
+        }
+      ],
+      "lookup_controls": {
+        "mismatched_lookup": {
+          "status": "UNKNOWN"
+        },
+        "duplicate_lookup": {
+          "status": "UNKNOWN"
+        },
+        "fresh_intent": {
+          "status": "CONFIRMED",
+          "result": {
+            "effect": {
+              "args": {
+                "project": "disposable",
+                "title": "disk full"
+              },
+              "tool": "fixture.tenant-A.create_ticket"
+            },
+            "ticket_id": 2
+          }
+        },
+        "provider_effects": [
+          {
+            "ticket_id": 1,
+            "operation": "host-ticket-intent-001",
+            "effect": {
+              "args": {
+                "project": "disposable",
+                "title": "disk full"
+              },
+              "tool": "fixture.tenant-A.create_ticket"
+            }
+          },
+          {
+            "ticket_id": 2,
+            "operation": "host-ticket-intent-002",
+            "effect": {
+              "args": {
+                "project": "disposable",
+                "title": "disk full"
+              },
+              "tool": "fixture.tenant-A.create_ticket"
+            }
+          },
+          {
+            "ticket_id": 3,
+            "operation": "host-ticket-intent-001",
+            "effect": {
+              "args": {
+                "project": "disposable",
+                "title": "disk full"
+              },
+              "tool": "fixture.tenant-A.create_ticket"
+            }
+          }
+        ],
+        "deliberate_bypass_effects": 1
+      }
+    },
+    {
+      "schema_version": 1,
+      "status": "PASS",
+      "label": "clean-published",
+      "adk_file": "C:\\Users\\jamie\\Documents\\Codex\\2026-10-09\\complete-the-remaining-engineering-and-independent\\work\\clean-env\\Lib\\site-packages\\google\\adk\\__init__.py",
+      "adk_source_revision": null,
+      "adk_runners_sha256": "97f530e72575ad6ef259c4de6f20004a18d384913509a4b7bf1435b7e406e7b2",
+      "sdk_entry_sha256": "cbabedf624cecc55bd8b307f10156f329fe70d60cb803e7f56bb0fb782d303df",
+      "requirements_sha256": "8a5354fc27ad1723eb035411c4eb7b3947c3fd1016e6a5de6ded96614c8218d6",
+      "installed_adk_version": "2.11.0",
+      "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+      "node": "v24.19.0",
+      "sdk": "file:///C:/Users/jamie/Documents/Codex/2026-10-09/complete-the-remaining-engineering-and-independent/work/published-consumer/node_modules/@once-agent/sdk/dist/index.js",
+      "expect_kept": false,
+      "scenarios": [
+        {
+          "protected": false,
+          "forced": false,
+          "mode": "confirmed",
+          "changed": false,
+          "first_responses": [],
+          "next_request_responses": [],
+          "tool_results": [
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "ticket_id": 1,
+                "effect": {
+                  "tool": "fixture.tenant-A.create_ticket",
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  }
+                }
+              }
+            },
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "ticket_id": 2,
+                "effect": {
+                  "tool": "fixture.tenant-A.create_ticket",
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  }
+                }
+              }
+            }
+          ],
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            },
+            {
+              "ticket_id": 2,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 0
+        },
+        {
+          "protected": true,
+          "forced": false,
+          "mode": "confirmed",
+          "changed": false,
+          "first_responses": [],
+          "next_request_responses": [],
+          "tool_results": [
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "effect": {
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  },
+                  "tool": "fixture.tenant-A.create_ticket"
+                },
+                "ticket_id": 1
+              }
+            },
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "effect": {
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  },
+                  "tool": "fixture.tenant-A.create_ticket"
+                },
+                "ticket_id": 1
+              }
+            }
+          ],
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 2
+        },
+        {
+          "protected": false,
+          "forced": true,
+          "mode": "confirmed",
+          "changed": false,
+          "first_responses": [],
+          "next_request_responses": [],
+          "tool_results": [
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "ticket_id": 1,
+                "effect": {
+                  "tool": "fixture.tenant-A.create_ticket",
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  }
+                }
+              }
+            },
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "ticket_id": 2,
+                "effect": {
+                  "tool": "fixture.tenant-A.create_ticket",
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  }
+                }
+              }
+            }
+          ],
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            },
+            {
+              "ticket_id": 2,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 0
+        },
+        {
+          "protected": true,
+          "forced": true,
+          "mode": "confirmed",
+          "changed": false,
+          "first_responses": [],
+          "next_request_responses": [],
+          "tool_results": [
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "effect": {
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  },
+                  "tool": "fixture.tenant-A.create_ticket"
+                },
+                "ticket_id": 1
+              }
+            },
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "effect": {
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  },
+                  "tool": "fixture.tenant-A.create_ticket"
+                },
+                "ticket_id": 1
+              }
+            }
+          ],
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 2
+        },
+        {
+          "protected": true,
+          "forced": true,
+          "mode": "confirmed",
+          "changed": true,
+          "first_responses": [],
+          "next_request_responses": [],
+          "tool_results": [
+            {
+              "status": "CONFIRMED",
+              "result": {
+                "effect": {
+                  "args": {
+                    "project": "disposable",
+                    "title": "disk full"
+                  },
+                  "tool": "fixture.tenant-A.create_ticket"
+                },
+                "ticket_id": 1
+              }
+            },
+            {
+              "status": "CONFLICT",
+              "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+            }
+          ],
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 2
+        },
+        {
+          "protected": true,
+          "forced": true,
+          "mode": "lost-ack",
+          "changed": false,
+          "first_responses": [],
+          "next_request_responses": [],
+          "tool_results": [
+            {
+              "status": "UNKNOWN",
+              "message": "ORIGINAL OUTCOME UNKNOWN. Operation host-ticket-intent-001 threw after dispatch; its external outcome may be unknown. It may already have succeeded. Future unsafe redispatch is blocked. Next action: reconcile authoritative provider truth before retrying with the same identity and durable state."
+            },
+            {
+              "status": "UNKNOWN",
+              "message": "RETRY BLOCKED \u00e2\u20ac\u201d ORIGINAL OUTCOME UNKNOWN. Operation host-ticket-intent-001 may already have succeeded. Repeating it could create another external effect; no second write was dispatched. Next action: supply an authoritative read-only reconcile callback or investigate provider truth; retain the same identity and durable state."
+            }
+          ],
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 2
+        },
+        {
+          "protected": true,
+          "forced": true,
+          "mode": "crash",
+          "changed": false,
+          "first_responses": [],
+          "next_request_responses": [],
+          "tool_results": [
+            {
+              "status": "UNKNOWN"
+            },
+            {
+              "status": "UNKNOWN",
+              "message": "RETRY BLOCKED \u00e2\u20ac\u201d ORIGINAL OUTCOME UNKNOWN. Operation host-ticket-intent-001 may already have succeeded. Repeating it could create another external effect; no second write was dispatched. Next action: supply an authoritative read-only reconcile callback or investigate provider truth; retain the same identity and durable state."
+            }
+          ],
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 2
+        }
+      ],
+      "safety": [
+        {
+          "mode": "confirmed",
+          "first": {
+            "status": "CONFIRMED",
+            "result": {
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              },
+              "ticket_id": 1
+            }
+          },
+          "retry": {
+            "status": "CONFIRMED",
+            "result": {
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              },
+              "ticket_id": 1
+            }
+          },
+          "conflicts": 3,
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 7,
+          "missing_state": "STATE_UNAVAILABLE",
+          "probes": [
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "changed"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "other",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-B.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "operationId": ""
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "IDENTITY_REQUIRED",
+                "message": "protectToolCall requires an explicit stable operationId; no tool was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "STATE_UNAVAILABLE",
+                "message": "Expected ledger missing"
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            }
+          ]
+        },
+        {
+          "mode": "lost-ack",
+          "first": {
+            "status": "UNKNOWN",
+            "message": "ORIGINAL OUTCOME UNKNOWN. Operation host-ticket-intent-001 threw after dispatch; its external outcome may be unknown. It may already have succeeded. Future unsafe redispatch is blocked. Next action: reconcile authoritative provider truth before retrying with the same identity and durable state."
+          },
+          "retry": {
+            "status": "UNKNOWN",
+            "message": "RETRY BLOCKED \u00e2\u20ac\u201d ORIGINAL OUTCOME UNKNOWN. Operation host-ticket-intent-001 may already have succeeded. Repeating it could create another external effect; no second write was dispatched. Next action: supply an authoritative read-only reconcile callback or investigate provider truth; retain the same identity and durable state."
+          },
+          "conflicts": 3,
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 11,
+          "missing_state": "STATE_UNAVAILABLE",
+          "probes": [
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "changed"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "other",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-B.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "reconcile": "UNKNOWN"
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "UNKNOWN",
+                "message": "Provider truth for host-ticket-intent-001 did not confirm an effect. Local mode will not redispatch after an ambiguous attempt; investigate or use a provider idempotency integration."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "reconcile": "NOT_FOUND"
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "UNKNOWN",
+                "message": "Provider truth for host-ticket-intent-001 did not confirm an effect. Local mode will not redispatch after an ambiguous attempt; investigate or use a provider idempotency integration."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "reconcile": "provider"
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFIRMED",
+                "result": {
+                  "effect": {
+                    "args": {
+                      "project": "disposable",
+                      "title": "disk full"
+                    },
+                    "tool": "fixture.tenant-A.create_ticket"
+                  },
+                  "ticket_id": 1
+                }
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFIRMED",
+                "result": {
+                  "effect": {
+                    "args": {
+                      "project": "disposable",
+                      "title": "disk full"
+                    },
+                    "tool": "fixture.tenant-A.create_ticket"
+                  },
+                  "ticket_id": 1
+                }
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "operationId": ""
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "IDENTITY_REQUIRED",
+                "message": "protectToolCall requires an explicit stable operationId; no tool was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "STATE_UNAVAILABLE",
+                "message": "Expected ledger missing"
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            }
+          ]
+        },
+        {
+          "mode": "crash",
+          "first": {
+            "status": "CRASHED"
+          },
+          "retry": {
+            "status": "UNKNOWN",
+            "message": "RETRY BLOCKED \u00e2\u20ac\u201d ORIGINAL OUTCOME UNKNOWN. Operation host-ticket-intent-001 may already have succeeded. Repeating it could create another external effect; no second write was dispatched. Next action: supply an authoritative read-only reconcile callback or investigate provider truth; retain the same identity and durable state."
+          },
+          "conflicts": 3,
+          "provider_effects": [
+            {
+              "ticket_id": 1,
+              "operation": "host-ticket-intent-001",
+              "effect": {
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                },
+                "tool": "fixture.tenant-A.create_ticket"
+              }
+            }
+          ],
+          "boundary_processes": 11,
+          "missing_state": "STATE_UNAVAILABLE",
+          "probes": [
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "changed"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "other",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-B.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFLICT",
+                "message": "Logical action host-ticket-intent-001 has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "reconcile": "UNKNOWN"
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "UNKNOWN",
+                "message": "Provider truth for host-ticket-intent-001 did not confirm an effect. Local mode will not redispatch after an ambiguous attempt; investigate or use a provider idempotency integration."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "reconcile": "NOT_FOUND"
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "UNKNOWN",
+                "message": "Provider truth for host-ticket-intent-001 did not confirm an effect. Local mode will not redispatch after an ambiguous attempt; investigate or use a provider idempotency integration."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "reconcile": "provider"
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFIRMED",
+                "result": {
+                  "effect": {
+                    "args": {
+                      "project": "disposable",
+                      "title": "disk full"
+                    },
+                    "tool": "fixture.tenant-A.create_ticket"
+                  },
+                  "ticket_id": 1
+                }
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "CONFIRMED",
+                "result": {
+                  "effect": {
+                    "args": {
+                      "project": "disposable",
+                      "title": "disk full"
+                    },
+                    "tool": "fixture.tenant-A.create_ticket"
+                  },
+                  "ticket_id": 1
+                }
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {
+                "operationId": ""
+              },
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "IDENTITY_REQUIRED",
+                "message": "protectToolCall requires an explicit stable operationId; no tool was dispatched."
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            },
+            {
+              "request": {},
+              "effect": {
+                "tool": "fixture.tenant-A.create_ticket",
+                "args": {
+                  "project": "disposable",
+                  "title": "disk full"
+                }
+              },
+              "response": {
+                "status": "STATE_UNAVAILABLE",
+                "message": "Expected ledger missing"
+              },
+              "effects_before": 1,
+              "effects_after": 1
+            }
+          ]
+        }
+      ],
+      "lookup_controls": {
+        "mismatched_lookup": {
+          "status": "UNKNOWN"
+        },
+        "duplicate_lookup": {
+          "status": "UNKNOWN"
+        },
+        "fresh_intent": {
+          "status": "CONFIRMED",
+          "result": {
+            "effect": {
+              "args": {
+                "project": "disposable",
+                "title": "disk full"
+              },
+              "tool": "fixture.tenant-A.create_ticket"
+            },
+            "ticket_id": 2
+          }
+        },
+        "provider_effects": [
+          {
+            "ticket_id": 1,
+            "operation": "host-ticket-intent-001",
+            "effect": {
+              "args": {
+                "project": "disposable",
+                "title": "disk full"
+              },
+              "tool": "fixture.tenant-A.create_ticket"
+            }
+          },
+          {
+            "ticket_id": 2,
+            "operation": "host-ticket-intent-002",
+            "effect": {
+              "args": {
+                "project": "disposable",
+                "title": "disk full"
+              },
+              "tool": "fixture.tenant-A.create_ticket"
+            }
+          },
+          {
+            "ticket_id": 3,
+            "operation": "host-ticket-intent-001",
+            "effect": {
+              "args": {
+                "project": "disposable",
+                "title": "disk full"
+              },
+              "tool": "fixture.tenant-A.create_ticket"
+            }
+          }
+        ],
+        "deliberate_bypass_effects": 1
+      }
+    }
+  ]
+}

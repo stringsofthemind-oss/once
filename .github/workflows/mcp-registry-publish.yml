@@ -78,12 +78,18 @@ jobs:
           console.log(`MCP metadata aligned at ${pkg.mcpName} v${pkg.version}`);
           NODE
 
-      - name: Install latest MCP publisher
+      - name: Install integrity-pinned MCP publisher
         shell: bash
         run: |
           set -euo pipefail
-          curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" \
-            | tar xz mcp-publisher
+          # Reviewed upstream v1.8.1 Linux amd64 asset digest. Verify before extraction.
+          archive="$(mktemp)"
+          trap 'rm -f "$archive"' EXIT
+          curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
+            'https://github.com/modelcontextprotocol/registry/releases/download/v1.8.1/mcp-publisher_linux_amd64.tar.gz' \
+            --output "$archive"
+          printf '%s  %s\n' 'a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc' "$archive" | sha256sum --check --strict
+          tar xzf "$archive" mcp-publisher
 
       - name: Validate MCP Registry manifest
         run: ./mcp-publisher validate ./mcp/server.json
@@ -112,12 +118,18 @@ jobs:
           echo "Reviewed npm artifact was not confirmed; Registry publication blocked."
           exit 1
 
-      - name: Install latest MCP publisher
+      - name: Install integrity-pinned MCP publisher
         shell: bash
         run: |
           set -euo pipefail
-          curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" \
-            | tar xz mcp-publisher
+          # Reviewed upstream v1.8.1 Linux amd64 asset digest. Verify before extraction.
+          archive="$(mktemp)"
+          trap 'rm -f "$archive"' EXIT
+          curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
+            'https://github.com/modelcontextprotocol/registry/releases/download/v1.8.1/mcp-publisher_linux_amd64.tar.gz' \
+            --output "$archive"
+          printf '%s  %s\n' 'a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc' "$archive" | sha256sum --check --strict
+          tar xzf "$archive" mcp-publisher
 
       - name: Authenticate to MCP Registry with GitHub OIDC
         run: ./mcp-publisher login github-oidc
