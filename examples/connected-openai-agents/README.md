@@ -1,20 +1,21 @@
 # OpenAI Agents calls Once automatically at the tool boundary
 
 > [!NOTE]
-> ## Published baseline and next-release candidate
+> ## Historical published baseline
 >
-> This directory is intentionally pinned to the **currently published**
+> This directory is intentionally pinned to the **historically published**
 > `@once-agent/sdk@0.1.11` package so it remains a reproducible baseline.
 >
-> Repository `main` now also contains the higher-level automatic Connect stack,
-> including whole-toolset routing, automatic identity/effect binding, and direct
-> OpenAI Agents FunctionTool wrapping. That release candidate has passed the
-> source, packed-package, ESM/CommonJS, and Node.js 24.15 protected-execution
-> gates, but it is not in npm until the next SDK version is explicitly published.
+> The current published SDK is **0.1.25**. Its Connect stack includes whole-toolset
+> routing and direct OpenAI Agents FunctionTool wrapping. Developers still own
+> stable logical operation identity and complete effect-bearing fields; tool-call
+> IDs and payload hashes do not establish user intent. Installation does not
+> automatically protect sibling tools or direct provider calls.
 >
 > See [`docs/CONNECT_AUTO.md`](../../docs/CONNECT_AUTO.md) for the automatic
-> Connect API and tested release boundary. The release PR will update this
-> example's SDK dependency only after the new npm version exists.
+> Connect API and tested release boundary. To start with the current package,
+> use [`examples/first10`](../first10/README.md), then review your application's
+> execution boundary. This older fixture remains pinned for reproducibility.
 
 This is a runnable example using the **published** `@once-agent/sdk@0.1.11`,
 OpenAI Agents SDK and a fake booking provider. It uses the Agents SDK's

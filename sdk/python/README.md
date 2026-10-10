@@ -16,13 +16,19 @@ Published package: https://pypi.org/project/once-agent-sdk/
 
 ## Quick start
 
+This hosted-client example needs an `ONCE_API_KEY` and a reviewed provider
+registered under `my-provider`; the alias below is a placeholder. Installation
+alone does not register a payment provider or protect other tool calls. Set the
+key before constructing `Once`. Do not run this against real money for a smoke test.
+
 ```python
 from once_agent import Once
 
 once = Once()
 
 order_id = "order_123"
-operation_id = Once.id("refund", order_id)
+refund_intent_id = "refund_request_456"  # Persist once for this intentional refund.
+operation_id = Once.id("merchant_7", "refund", refund_intent_id)
 
 result = once.execute(
     operation_id=operation_id,
@@ -30,6 +36,9 @@ result = once.execute(
     action={
         "type": "refund",
         "order_id": order_id,
+        "amount_cents": 5000,
+        "currency": "GBP",
+        "merchant_id": "merchant_7",
     },
 )
 ```
@@ -47,6 +56,11 @@ Do not commit API keys to source control.
 If an external action succeeds but its response is lost, retrying the action without knowing the prior outcome can duplicate the real-world side effect.
 
 `Once.id(...)` generates a deterministic operation ID, so retries of the same logical operation can retain the same identity.
+
+Use a persisted intent ID and account/tenant authority. Separate intentional
+partial refunds on one order need different intent IDs, even if their amounts
+match. Bind every effect-bearing field in the reviewed action schema. Do not
+mint a new ID to bypass an unresolved original action.
 
 ```python
 a = Once.id("refund", "order_123")

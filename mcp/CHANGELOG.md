@@ -1,4 +1,12 @@
-# MCP 0.2.1 candidate
+# Unreleased
+
+- Update the declared MCP client dependency from 2.0.0 to 2.3.1, removing the
+  affected OAuth client version in GHSA-6qxp-vccf-f47h. Once's inspected runtime
+  is a server/stdio boundary, which the advisory excludes; no HTTP OAuth
+  credential path was identified. Tool schemas and execution behavior are unchanged.
+- This is source preparation for a future MCP patch; npm/Registry remains 0.2.1.
+
+# MCP 0.2.1
 
 - Correct once_verify_connection: retain local diagnostics, explicitly report
   Cloud configuration/verification, request actual read-only Cloud checks when
@@ -6,7 +14,7 @@
 - Add one compatibility/continuity matrix; correct stale release and timeout
   statements and distinguish default helper, opt-in action and reviewed proxy.
 - No execution state-machine, ledger schema, plugin pin or private adapter change.
-- Not published: current npm/Registry remains 0.2.0 until independently verified.
+- npm and the MCP Registry were independently verified at 0.2.1 on 10 October 2026.
 
 # MCP 0.2.0
 

@@ -119,4 +119,7 @@ export function printAdoptionMetrics(
   console.log(
     "Metrics are computed locally from the protection plan and current route-proof receipt; no telemetry is sent."
   );
+  console.log(
+    "Candidates and applicability are heuristic. A route-proof receipt is not an observed provider effect, successful recovery, customer adoption, or end-to-end onboarding time."
+  );
 }
