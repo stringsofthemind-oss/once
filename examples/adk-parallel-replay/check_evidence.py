@@ -9,11 +9,18 @@ for filename in sys.argv[1:]:
         evidence = json.load(file)
     assert evidence['schema_version'] == 1 and evidence['status'] == 'PASS'
     assert len(evidence['scenarios']) == 7 and len(evidence['safety']) == 3
+    assert {(s['protected'], s['forced'], s['mode'], s['changed']) for s in evidence['scenarios']} == {
+        (False, False, 'confirmed', False), (True, False, 'confirmed', False),
+        (False, True, 'confirmed', False), (True, True, 'confirmed', False),
+        (True, True, 'confirmed', True), (True, True, 'lost-ack', False),
+        (True, True, 'crash', False)}
+    assert {s['mode'] for s in evidence['safety']} == {'confirmed', 'lost-ack', 'crash'}
     if 'recorded_at' in evidence:
         assert len(evidence['raw_controls']) == 3
         assert evidence['platform'] and evidence['dependencies'] and evidence['claim_ceiling']
     if 'raw_controls' in evidence:
         assert len(evidence['raw_controls']) == 3
+        assert {s['mode'] for s in evidence['raw_controls']} == {'confirmed', 'lost-ack', 'crash'}
         for item in evidence['raw_controls']:
             count = 3 if item['mode'] == 'confirmed' else 1
             assert len(item['provider_effects']) == len(set(item['processes'])) == count

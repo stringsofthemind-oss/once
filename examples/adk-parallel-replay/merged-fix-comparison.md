@@ -40,7 +40,7 @@ The shared version lock now pins google-genai 2.30.0, satisfying both newer vari
 
 `audit_release.py` fetches PyPI JSON and verifies every wheel from 2.11.0 onward against the two affected source files in its Git tag and merged-commit ancestry. A missing tag or network error fails rather than guessing. `first_verified_fixed_release: null` means none was verified in that snapshot. Future releases require rerunning the audit and behavior suite; absence of an exact ancestry/file match does not disprove a differently implemented backport. No future version is automatically trusted.
 
-## Validation and limits
+## Initial local validation and limits
 
 Local platform: Windows 11 build 26300, Python 3.12.10, Node 24.19.0. Base Once revision: `8381734a9be368138546121ae708ec9c55be8e89`, which contains merged PR #304. Original `evidence.json` is unchanged. New reports are under `evidence-2026-10-16/`.
 
@@ -51,3 +51,11 @@ CI configuration retains historical PR-base/head cells and adds merged-fix and a
 Initial runs exposed the old lock's GenAI 2.29 incompatibility; all final comparison evidence was regenerated after pinning 2.30 and passing dependency checks. Early environment setup and restricted temporary-storage attempts failed; subsequent isolated runs succeeded. Those failures are not counted as passes.
 
 This is a separately rerun deterministic lab using the existing PR #304 harness, not an independently authored third-party audit. The scripted history decision is not live-model behavior. Provider effects and Once state are separate same-machine SQLite journals; provider counts are read independently of receipts but are not external attestations. ADK sessions remain in memory. Fresh boundary processes do not establish whole-framework crash recovery, distributed authority, cancellation correctness, production-provider behavior or universal exactly-once execution. UNKNOWN is never blindly retried.
+
+## Final validation mission
+
+The final mission reran the five local comparisons from clean checkout `687f94b` using Python 3.12.10 and Node 24.19.0. The new reports include exact Once revision, SDK version, logical action ID, regenerated model attempt IDs and CI URL when running under Actions. Historical reports above remain unchanged. The evidence checker now rejects substitution of a required scenario with a duplicate, as well as the earlier five falsifications.
+
+The 58 focused SDK tests, FIRST 10 package consumer, 14 wrapTool package checks and source/site guards were rerun and passed. Current Cloudflare controls were read before publication: `test/*` preview branches excluded, production auto-deployment disabled, canonical production deployment `b99dd0f0-065d-4f6c-81df-f02f4f717e4e`. No configuration changes were made. GitHub Pages uses workflow builds; this change does not modify site files or a deployment workflow.
+
+Current release audit again found no verified published fixed release. Official [2.12.0 release notes](https://github.com/google/adk-python/releases/tag/v2.12.0) and PyPI metadata were checked alongside source ancestry and wheel hashes. Final local reports are in `evidence-final-local/`. Remote CI results will be recorded separately before merge.

@@ -22,9 +22,10 @@ mutations = [
     lambda e: e['raw_controls'][1].update(ambiguous_retry_performed=True),
     lambda e: e['safety'][1]['probes'][0].update(effects_after=2),
     lambda e: e['lookup_controls'].update(duplicate_lookup={'status': 'CONFIRMED'}),
+    lambda e: e['scenarios'].__setitem__(6, copy.deepcopy(e['scenarios'][5])),
 ]
 for mutate in mutations:
     changed = copy.deepcopy(source)
     mutate(changed)
     check(changed, False)
-print('PASS: valid report accepted; five falsified reports rejected')
+print('PASS: valid report accepted; six falsified reports rejected')
