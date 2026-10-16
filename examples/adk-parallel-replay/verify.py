@@ -5,6 +5,9 @@ import importlib.metadata
 import json
 import logging
 import hashlib
+import platform
+import os
+from datetime import datetime, timezone
 from contextlib import closing
 from pathlib import Path
 import sqlite3
@@ -12,6 +15,8 @@ import subprocess
 import sys
 import tempfile
 import threading
+import tomllib
+from packaging.requirements import Requirement
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.request import Request, urlopen, url2pathname
 from urllib.parse import urlparse
@@ -31,6 +36,11 @@ if args.adk_src:
     if not (args.adk_src / 'google/adk/runners.py').is_file():
         raise SystemExit('ADK source directory not found: ' + str(args.adk_src))
     sys.path.insert(0, str(args.adk_src.resolve()))
+    metadata = tomllib.loads((args.adk_src.parent / 'pyproject.toml').read_text(encoding='utf-8'))
+    for value in metadata['project']['dependencies']:
+        requirement = Requirement(value)
+        if requirement.marker is None or requirement.marker.evaluate():
+            assert importlib.metadata.version(requirement.name) in requirement.specifier, value
 
 import google.adk
 from google.adk.agents import LlmAgent
@@ -139,6 +149,7 @@ class ScriptedModel(BaseLlm):
     replay_title: str = 'disk full'
     _calls: int = PrivateAttr(default=0)
     _requests: list = PrivateAttr(default_factory=list)
+    _attempts: list = PrivateAttr(default_factory=list)
 
     async def generate_content_async(self, llm_request, stream=False):
         self._calls += 1
@@ -159,6 +170,7 @@ class ScriptedModel(BaseLlm):
         for i, part in enumerate(parts):
             if part.function_call:
                 part.function_call.id = f'attempt-{self._calls}-{i}'
+                self._attempts.append(part.function_call.model_dump(mode='json'))
         yield LlmResponse(content=types.Content(role='model', parts=parts))
 
 
@@ -231,6 +243,7 @@ async def run_adk(root, protected, force=False, mode='confirmed', changed=False)
         next_has_success = any(r['name'] == 'create_ticket' for r in model._requests[1])
         assert next_has_success == args.expect_kept, model._requests
         return dict(protected=protected, forced=force, mode=mode, changed=changed,
+                    logical_action_id=OPERATION, model_attempts=model._attempts,
                     first_responses=first_responses,
                     next_request_responses=model._requests[1], tool_results=tool_results,
                     provider_effects=provider.rows(), boundary_processes=len(boundary.pids))
@@ -292,6 +305,47 @@ def safety_cases(root):
     return evidence
 
 
+def raw_controls(root):
+    """Separate fresh-process negative controls; ambiguous writes are reconciled, not retried."""
+    cases = []
+    for mode in ['confirmed', 'lost-ack', 'crash']:
+        case = root / ('raw-' + mode)
+        case.mkdir()
+        provider = Provider(case)
+        processes = []
+        def call(effect=EFFECT, mode='confirmed'):
+            child = subprocess.Popen([sys.executable, str(HERE / 'raw_worker.py')],
+                                     stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE, text=True)
+            processes.append(child.pid)
+            out, err = child.communicate(json.dumps(dict(url=provider.url, mode=mode,
+                payload=dict(operationId=OPERATION, effect=effect))), timeout=15)
+            assert child.returncode == (71 if mode == 'crash' else 0), err
+            return {'status': 'UNKNOWN'} if mode == 'crash' else json.loads(out)
+        try:
+            first = call(mode=mode)
+            assert len(provider.rows()) == 1
+            request = Request(provider.url + '/lookup', data=json.dumps(dict(
+                operationId=OPERATION, effect=EFFECT)).encode(),
+                headers={'Content-Type': 'application/json'})
+            with urlopen(request, timeout=5) as response:
+                recovered = json.load(response)
+            assert recovered['status'] == 'CONFIRMED'
+            assert len(provider.rows()) == 1
+            # Only confirmed raw case deliberately repeats: no UNKNOWN retry.
+            if mode == 'confirmed':
+                replay = call()
+                changed = call({'tool': EFFECT['tool'], 'args': {**EFFECT['args'], 'title': 'changed'}})
+                assert replay != first and changed['status'] == 'CONFIRMED'
+                assert len(provider.rows()) == 3
+            cases.append(dict(mode=mode, first=first, reconciled=recovered,
+                              ambiguous_retry_performed=False, processes=processes,
+                              provider_effects=provider.rows()))
+        finally:
+            provider.close()
+    return cases
+
+
 def lookup_controls(root):
     """Falsification controls for complete-effect matching and fresh intents."""
     root.mkdir()
@@ -342,7 +396,17 @@ async def main():
                 run_adk(case, protected, force, mode, changed), timeout=40))
         sdk_path = Path(url2pathname(urlparse(args.sdk_url).path)) if args.sdk_url else HERE.parent.parent / 'sdk/typescript/dist/index.js'
         source_revision = subprocess.check_output(['git', '-C', str(args.adk_src), 'rev-parse', 'HEAD'], text=True).strip() if args.adk_src else None
+        repository = HERE.parent.parent
+        sdk_package = json.loads((sdk_path.parent.parent / 'package.json').read_text(encoding='utf-8'))
         evidence = dict(schema_version=1, status='PASS', label=args.label, adk_file=google.adk.__file__,
+                        once_revision=subprocess.check_output(['git', '-C', str(repository), 'rev-parse', 'HEAD'], text=True).strip(),
+                        once_worktree_dirty=bool(subprocess.check_output(['git', '-C', str(repository), 'status', '--porcelain', '--untracked-files=no'], text=True).strip()),
+                        sdk_version=sdk_package['version'],
+                        ci_run_url=('https://github.com/' + os.environ['GITHUB_REPOSITORY'] + '/actions/runs/' + os.environ['GITHUB_RUN_ID']) if 'GITHUB_RUN_ID' in os.environ else None,
+                        recorded_at=datetime.now(timezone.utc).isoformat(),
+                        platform=platform.platform(), command=[sys.executable, *sys.argv],
+                        dependencies=dict(sorted((d.metadata['Name'], d.version) for d in importlib.metadata.distributions())),
+                        claim_ceiling='Scripted model, loopback provider, same-machine SQLite; not production or universal exactly-once',
                         adk_source_revision=source_revision,
                         adk_runners_sha256=hashlib.sha256(Path(google.adk.__file__).with_name('runners.py').read_bytes()).hexdigest(),
                         sdk_entry_sha256=hashlib.sha256(sdk_path.read_bytes()).hexdigest(),
@@ -350,7 +414,7 @@ async def main():
                         installed_adk_version=importlib.metadata.version('google-adk'),
                         python=sys.version, node=subprocess.check_output(['node', '--version'], text=True).strip(),
                         sdk=args.sdk_url or 'repository build', expect_kept=args.expect_kept,
-                        scenarios=scenarios, safety=safety_cases(root),
+                        scenarios=scenarios, safety=safety_cases(root), raw_controls=raw_controls(root),
                         lookup_controls=lookup_controls(root / 'lookup-controls'))
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(evidence, indent=2) + '\n', encoding='utf-8')

@@ -9,7 +9,30 @@ for filename in sys.argv[1:]:
         evidence = json.load(file)
     assert evidence['schema_version'] == 1 and evidence['status'] == 'PASS'
     assert len(evidence['scenarios']) == 7 and len(evidence['safety']) == 3
+    assert {(s['protected'], s['forced'], s['mode'], s['changed']) for s in evidence['scenarios']} == {
+        (False, False, 'confirmed', False), (True, False, 'confirmed', False),
+        (False, True, 'confirmed', False), (True, True, 'confirmed', False),
+        (True, True, 'confirmed', True), (True, True, 'lost-ack', False),
+        (True, True, 'crash', False)}
+    assert {s['mode'] for s in evidence['safety']} == {'confirmed', 'lost-ack', 'crash'}
+    if 'recorded_at' in evidence:
+        assert len(evidence['raw_controls']) == 3
+        assert evidence['platform'] and evidence['dependencies'] and evidence['claim_ceiling']
+    if 'raw_controls' in evidence:
+        assert len(evidence['raw_controls']) == 3
+        assert {s['mode'] for s in evidence['raw_controls']} == {'confirmed', 'lost-ack', 'crash'}
+        for item in evidence['raw_controls']:
+            count = 3 if item['mode'] == 'confirmed' else 1
+            assert len(item['provider_effects']) == len(set(item['processes'])) == count
+            assert item['ambiguous_retry_performed'] is False
+            assert item['reconciled']['status'] == 'CONFIRMED'
+            assert item['first']['status'] == ('CONFIRMED' if item['mode'] == 'confirmed' else 'UNKNOWN')
     for item in evidence['scenarios']:
+        if 'once_revision' in evidence:
+            assert item['logical_action_id'] == 'host-ticket-intent-001'
+            attempts = item['model_attempts']
+            assert len({a['id'] for a in attempts}) == len(attempts)
+            assert all(a['id'] != item['logical_action_id'] for a in attempts)
         repeated = item['forced'] or not evidence['expect_kept']
         count = 1 if item['protected'] else 1 + int(repeated)
         assert len(item['provider_effects']) == count
@@ -32,7 +55,9 @@ for filename in sys.argv[1:]:
         if item['mode'] != 'confirmed':
             assert [probe['response']['status'] for probe in item['probes'] if probe['request'].get('reconcile') in ['UNKNOWN', 'NOT_FOUND']] == ['UNKNOWN', 'UNKNOWN']
             recovered = next(probe['response'] for probe in item['probes'] if probe['request'].get('reconcile') == 'provider')
+            assert recovered['status'] == 'CONFIRMED'
             assert recovered['result'] == {'ticket_id': 1, 'effect': item['provider_effects'][0]['effect']}
+            assert any(probe['request'] == {} and probe['response'] == recovered for probe in item['probes'])
     controls = evidence['lookup_controls']
     assert controls['mismatched_lookup'] == controls['duplicate_lookup'] == {'status': 'UNKNOWN'}
     assert len(controls['provider_effects']) == 3 and controls['deliberate_bypass_effects'] == 1

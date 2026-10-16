@@ -1,0 +1,48 @@
+{
+  "once_base_revision": "8381734a9be368138546121ae708ec9c55be8e89",
+  "upstream_revision": "7d3658ef1a1f61c4c18cc4781f6892460add960c",
+  "upstream_dirty": false,
+  "files": {
+    "adversarial-review.md": "eaa45c5d814315cf9356d72da0a3f2163f9538101a36fe821eb67ba834c69d41",
+    "audit_release.py": "3632af9450a650579387ec3f508f660bc0d0bb0835f192cf123f72ade9c06102",
+    "boundary.mjs": "b23fd6b3aa1428c46e135d830af0899273e786fc51aebf30f4f42b5dd921e2ca",
+    "check_evidence.py": "bd9e2ecaab2845bc8f55c8717ab38cfeb59dfbea1f16a3cc98ba4dace3443dde",
+    "concurrent-boundary.mjs": "25d8f0b604b48b9b9731baeb813dc6417d3a45f546a8d53a32cf2620ef2fb507",
+    "deployment-controls.md": "613cbb6b7cd30f51564b3215449840a0128b33d5db9f82c791136ae3f7c22761",
+    "evidence.json": "905f0dd4f5bfb2226cf02b2f5ae8c1ffe030b3fee06085c7d6997f4b6dec0501",
+    "merged-fix-comparison.md": "8b16bd17e0ccfb426159a6b16cd5ef56f2039f09e46fc0001aed067b38b0ffbf",
+    "raw_worker.py": "42826d3615ed76c50f590851c3283bf4423437c0c8ddae62c91fef491fc46c09",
+    "README.md": "d8a1b22aa52b1b0985eab6f2f5355ff51b44ec9e1367e7621bc9f12e3f3efe46",
+    "requirements.lock.txt": "9741eed08680e6680437e8170e51d6e67fec78e540a097111bf60a83d62858e5",
+    "test_evidence.py": "eefed825beb1a49a1fff4fa084ae804fe70c8c53460c82742d53b57d1f463f12",
+    "verify.py": "0e752a470c83eaf043c1dad76b73b1533c902a754c919a94fd2005ac1196eefd",
+    "evidence-2026-10-16\\concurrent-boundary.json": "a07d81835e5cf06abc7a7b49a9672d385e6f67be986e912e34161b3e6fea81a2",
+    "evidence-2026-10-16\\merged-fix.json": "f52d786e35234b0bbff20289966bb847caf7023cc17288ad0712c4e0c21b6c32",
+    "evidence-2026-10-16\\packed-sdk.json": "cf7386592f4d3a164049b6690b90e4d28405ca05d6b0d3e4cb6b676a00ab375f",
+    "evidence-2026-10-16\\published-sdk.json": "c74974d28b8a9bf6778d12505028c0e343654f36c6d9c9cf85ee7d819035d0d7",
+    "evidence-2026-10-16\\release-2.11.0.json": "b5e37faae722f6918062837c5992ec800db36fa8099c9ee9086ab8a728c3cd63",
+    "evidence-2026-10-16\\release-2.12.0.json": "2a881245002123a30cbcca68cfd822e7dfdb596fc2d521ac1587441bd142df55",
+    "evidence-2026-10-16\\release-audit.json": "2d3cf405befc7288ba5da88666602d5a7452fdc9b44244f3c3dd84263fbbb99c"
+  },
+  "local_validation": {
+    "adk_scenarios": 35,
+    "protected_safety_cases": 15,
+    "raw_controls": 15,
+    "lookup_controls": 5,
+    "sdk_focused_tests": 58,
+    "wraptool_package_checks": 14,
+    "concurrent_workers": 12,
+    "falsified_reports_rejected": 5,
+    "first10_package": "PASS",
+    "proof_and_site_guards": "PASS",
+    "pip_check": "PASS",
+    "yaml_parse": "PASS"
+  },
+  "not_run": [
+    "remote CI",
+    "Linux on this branch",
+    "full upstream suite",
+    "full SDK release suite"
+  ],
+  "claim_ceiling": "Deterministic same-machine fixture evidence; no universal exactly-once or production qualification."
+}
