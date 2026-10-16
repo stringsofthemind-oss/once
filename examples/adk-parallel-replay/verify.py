@@ -148,6 +148,7 @@ class ScriptedModel(BaseLlm):
     replay_title: str = 'disk full'
     _calls: int = PrivateAttr(default=0)
     _requests: list = PrivateAttr(default_factory=list)
+    _attempts: list = PrivateAttr(default_factory=list)
 
     async def generate_content_async(self, llm_request, stream=False):
         self._calls += 1
@@ -168,6 +169,7 @@ class ScriptedModel(BaseLlm):
         for i, part in enumerate(parts):
             if part.function_call:
                 part.function_call.id = f'attempt-{self._calls}-{i}'
+                self._attempts.append(part.function_call.model_dump(mode='json'))
         yield LlmResponse(content=types.Content(role='model', parts=parts))
 
 
@@ -240,6 +242,7 @@ async def run_adk(root, protected, force=False, mode='confirmed', changed=False)
         next_has_success = any(r['name'] == 'create_ticket' for r in model._requests[1])
         assert next_has_success == args.expect_kept, model._requests
         return dict(protected=protected, forced=force, mode=mode, changed=changed,
+                    logical_action_id=OPERATION, model_attempts=model._attempts,
                     first_responses=first_responses,
                     next_request_responses=model._requests[1], tool_results=tool_results,
                     provider_effects=provider.rows(), boundary_processes=len(boundary.pids))
@@ -392,7 +395,13 @@ async def main():
                 run_adk(case, protected, force, mode, changed), timeout=40))
         sdk_path = Path(url2pathname(urlparse(args.sdk_url).path)) if args.sdk_url else HERE.parent.parent / 'sdk/typescript/dist/index.js'
         source_revision = subprocess.check_output(['git', '-C', str(args.adk_src), 'rev-parse', 'HEAD'], text=True).strip() if args.adk_src else None
+        repository = HERE.parent.parent
+        sdk_package = json.loads((sdk_path.parent.parent / 'package.json').read_text(encoding='utf-8'))
         evidence = dict(schema_version=1, status='PASS', label=args.label, adk_file=google.adk.__file__,
+                        once_revision=subprocess.check_output(['git', '-C', str(repository), 'rev-parse', 'HEAD'], text=True).strip(),
+                        once_worktree_dirty=bool(subprocess.check_output(['git', '-C', str(repository), 'status', '--porcelain', '--untracked-files=no'], text=True).strip()),
+                        sdk_version=sdk_package['version'],
+                        ci_run_url=('https://github.com/' + __import__('os').environ['GITHUB_REPOSITORY'] + '/actions/runs/' + __import__('os').environ['GITHUB_RUN_ID']) if 'GITHUB_RUN_ID' in __import__('os').environ else None,
                         recorded_at=datetime.now(timezone.utc).isoformat(),
                         platform=platform.platform(), command=[sys.executable, *sys.argv],
                         dependencies=dict(sorted((d.metadata['Name'], d.version) for d in importlib.metadata.distributions())),

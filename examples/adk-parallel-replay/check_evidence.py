@@ -21,6 +21,11 @@ for filename in sys.argv[1:]:
             assert item['reconciled']['status'] == 'CONFIRMED'
             assert item['first']['status'] == ('CONFIRMED' if item['mode'] == 'confirmed' else 'UNKNOWN')
     for item in evidence['scenarios']:
+        if 'once_revision' in evidence:
+            assert item['logical_action_id'] == 'host-ticket-intent-001'
+            attempts = item['model_attempts']
+            assert len({a['id'] for a in attempts}) == len(attempts)
+            assert all(a['id'] != item['logical_action_id'] for a in attempts)
         repeated = item['forced'] or not evidence['expect_kept']
         count = 1 if item['protected'] else 1 + int(repeated)
         assert len(item['provider_effects']) == count
@@ -43,7 +48,9 @@ for filename in sys.argv[1:]:
         if item['mode'] != 'confirmed':
             assert [probe['response']['status'] for probe in item['probes'] if probe['request'].get('reconcile') in ['UNKNOWN', 'NOT_FOUND']] == ['UNKNOWN', 'UNKNOWN']
             recovered = next(probe['response'] for probe in item['probes'] if probe['request'].get('reconcile') == 'provider')
+            assert recovered['status'] == 'CONFIRMED'
             assert recovered['result'] == {'ticket_id': 1, 'effect': item['provider_effects'][0]['effect']}
+            assert any(probe['request'] == {} and probe['response'] == recovered for probe in item['probes'])
     controls = evidence['lookup_controls']
     assert controls['mismatched_lookup'] == controls['duplicate_lookup'] == {'status': 'UNKNOWN'}
     assert len(controls['provider_effects']) == 3 and controls['deliberate_bypass_effects'] == 1
