@@ -1,5 +1,7 @@
 # ADK completed-sibling replay regression
 
+**16 October follow-up:** see [merged fix and published-package audit](merged-fix-comparison.md). The original evidence below is preserved; 2.12.0 is verified affected, not a fixed release.
+
 This isolated lab reproduces [Google ADK #7428](https://github.com/google/adk-python/issues/7428) and compares the exact base and proposed head of [PR #7429](https://github.com/google/adk-python/pull/7429). A successful ticket tool finishes before its parallel pager sibling raises. On affected ADK, the completed tool's response disappears from session history and the next model request.
 
 The provider is a disposable loopback HTTP service. Every write commits a new row to its own SQLite journal; it has **no native deduplication**. The verifier counts those rows independently of Once receipts. Runtime uses no real model or remote provider, and needs no credentials.

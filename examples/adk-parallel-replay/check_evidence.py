@@ -9,6 +9,17 @@ for filename in sys.argv[1:]:
         evidence = json.load(file)
     assert evidence['schema_version'] == 1 and evidence['status'] == 'PASS'
     assert len(evidence['scenarios']) == 7 and len(evidence['safety']) == 3
+    if 'recorded_at' in evidence:
+        assert len(evidence['raw_controls']) == 3
+        assert evidence['platform'] and evidence['dependencies'] and evidence['claim_ceiling']
+    if 'raw_controls' in evidence:
+        assert len(evidence['raw_controls']) == 3
+        for item in evidence['raw_controls']:
+            count = 3 if item['mode'] == 'confirmed' else 1
+            assert len(item['provider_effects']) == len(set(item['processes'])) == count
+            assert item['ambiguous_retry_performed'] is False
+            assert item['reconciled']['status'] == 'CONFIRMED'
+            assert item['first']['status'] == ('CONFIRMED' if item['mode'] == 'confirmed' else 'UNKNOWN')
     for item in evidence['scenarios']:
         repeated = item['forced'] or not evidence['expect_kept']
         count = 1 if item['protected'] else 1 + int(repeated)

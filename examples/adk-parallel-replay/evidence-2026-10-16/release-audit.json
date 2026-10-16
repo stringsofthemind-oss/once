@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "checked_at": "2026-10-16T10:48:02.941066+00:00",
+  "fix_commit": "7d3658ef1a1f61c4c18cc4781f6892460add960c",
+  "pypi_latest": "2.12.0",
+  "first_verified_fixed_release": null,
+  "artifacts": [
+    {
+      "version": "2.11.0",
+      "filename": "google_adk-2.11.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/b3/44/b4f54c46f1c6a32318891ff2be25d854f4c5b5b9ed8ac507ed9466f1ccc8/google_adk-2.11.0-py3-none-any.whl",
+      "sha256": "4774e1fc7bb37727e56142e7d41e9035949ebfc876a2b15d5505969b02798bcd",
+      "uploaded": "2026-10-02T00:46:23.264308Z",
+      "yanked": false,
+      "tag_revision": "9f7965e776c6bfd689e3537dba6dd07103864fc4",
+      "fix_ancestor": false,
+      "source_matches_tag": {
+        "flows/llm_flows/tools/_batch_executor.py": true,
+        "flows/llm_flows/core/_function_call_postprocessor.py": true
+      },
+      "completed_response_marker": false,
+      "verified_contains_fix": false
+    },
+    {
+      "version": "2.12.0",
+      "filename": "google_adk-2.12.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/d3/65/3706e52bac2f8ac1328caa7da28dfff8a9086fce5004619960f91c7f7bb4/google_adk-2.12.0-py3-none-any.whl",
+      "sha256": "79f89ea94ccd87e4ac8c893e81c44ed2ce5568d05406a95c1d10bcef0ce0ff5d",
+      "uploaded": "2026-10-13T16:42:55.260619Z",
+      "yanked": false,
+      "tag_revision": "38381f65f2bee0f70a89f938ee64e51b34916fa7",
+      "fix_ancestor": false,
+      "source_matches_tag": {
+        "flows/llm_flows/tools/_batch_executor.py": true,
+        "flows/llm_flows/core/_function_call_postprocessor.py": true
+      },
+      "completed_response_marker": false,
+      "verified_contains_fix": false
+    }
+  ],
+  "claim_ceiling": "Tags must be fetched first. Checks published wheels >=2.11.0, exact affected source files and ancestry; behavioral qualification is separate."
+}

@@ -1,0 +1,306 @@
+{
+  "status": "PASS",
+  "scope": "same-machine boundary; not ADK runner concurrency",
+  "workers": 12,
+  "concurrent": [
+    {
+      "status": "STATE_UNAVAILABLE",
+      "message": "Cannot open durable Once state at C:\\Users\\jamie\\AppData\\Local\\Temp\\once-adk-concurrent-U4Xj5Y\\once.sqlite. The operation was not dispatched. Restore access to this same file before retrying."
+    },
+    {
+      "status": "STATE_UNAVAILABLE",
+      "message": "Cannot open durable Once state at C:\\Users\\jamie\\AppData\\Local\\Temp\\once-adk-concurrent-U4Xj5Y\\once.sqlite. The operation was not dispatched. Restore access to this same file before retrying."
+    },
+    {
+      "status": "CONFIRMED",
+      "result": {
+        "effect": {
+          "args": {
+            "project": "disposable",
+            "title": "disk full"
+          },
+          "tool": "fixture.tenant-A.create_ticket"
+        },
+        "ticket_id": 1
+      }
+    },
+    {
+      "status": "IN_FLIGHT",
+      "message": "Logical action concurrent-intent is still in flight. Wait and retry with the same id; do not call the underlying operation directly."
+    },
+    {
+      "status": "IN_FLIGHT",
+      "message": "Logical action concurrent-intent is still in flight. Wait and retry with the same id; do not call the underlying operation directly."
+    },
+    {
+      "status": "IN_FLIGHT",
+      "message": "Logical action concurrent-intent is still in flight. Wait and retry with the same id; do not call the underlying operation directly."
+    },
+    {
+      "status": "IN_FLIGHT",
+      "message": "Logical action concurrent-intent is still in flight. Wait and retry with the same id; do not call the underlying operation directly."
+    },
+    {
+      "status": "IN_FLIGHT",
+      "message": "Logical action concurrent-intent is still in flight. Wait and retry with the same id; do not call the underlying operation directly."
+    },
+    {
+      "status": "IN_FLIGHT",
+      "message": "Logical action concurrent-intent is still in flight. Wait and retry with the same id; do not call the underlying operation directly."
+    },
+    {
+      "status": "IN_FLIGHT",
+      "message": "Logical action concurrent-intent is still in flight. Wait and retry with the same id; do not call the underlying operation directly."
+    },
+    {
+      "status": "IN_FLIGHT",
+      "message": "Logical action concurrent-intent is still in flight. Wait and retry with the same id; do not call the underlying operation directly."
+    },
+    {
+      "status": "IN_FLIGHT",
+      "message": "Logical action concurrent-intent is still in flight. Wait and retry with the same id; do not call the underlying operation directly."
+    }
+  ],
+  "replay": {
+    "status": "CONFIRMED",
+    "result": {
+      "effect": {
+        "args": {
+          "project": "disposable",
+          "title": "disk full"
+        },
+        "tool": "fixture.tenant-A.create_ticket"
+      },
+      "ticket_id": 1
+    }
+  },
+  "recovered": [
+    {
+      "initial": "STATE_UNAVAILABLE",
+      "retry": {
+        "status": "CONFIRMED",
+        "result": {
+          "effect": {
+            "args": {
+              "project": "disposable",
+              "title": "disk full"
+            },
+            "tool": "fixture.tenant-A.create_ticket"
+          },
+          "ticket_id": 1
+        }
+      }
+    },
+    {
+      "initial": "STATE_UNAVAILABLE",
+      "retry": {
+        "status": "CONFIRMED",
+        "result": {
+          "effect": {
+            "args": {
+              "project": "disposable",
+              "title": "disk full"
+            },
+            "tool": "fixture.tenant-A.create_ticket"
+          },
+          "ticket_id": 1
+        }
+      }
+    },
+    {
+      "initial": "IN_FLIGHT",
+      "retry": {
+        "status": "CONFIRMED",
+        "result": {
+          "effect": {
+            "args": {
+              "project": "disposable",
+              "title": "disk full"
+            },
+            "tool": "fixture.tenant-A.create_ticket"
+          },
+          "ticket_id": 1
+        }
+      }
+    },
+    {
+      "initial": "IN_FLIGHT",
+      "retry": {
+        "status": "CONFIRMED",
+        "result": {
+          "effect": {
+            "args": {
+              "project": "disposable",
+              "title": "disk full"
+            },
+            "tool": "fixture.tenant-A.create_ticket"
+          },
+          "ticket_id": 1
+        }
+      }
+    },
+    {
+      "initial": "IN_FLIGHT",
+      "retry": {
+        "status": "CONFIRMED",
+        "result": {
+          "effect": {
+            "args": {
+              "project": "disposable",
+              "title": "disk full"
+            },
+            "tool": "fixture.tenant-A.create_ticket"
+          },
+          "ticket_id": 1
+        }
+      }
+    },
+    {
+      "initial": "IN_FLIGHT",
+      "retry": {
+        "status": "CONFIRMED",
+        "result": {
+          "effect": {
+            "args": {
+              "project": "disposable",
+              "title": "disk full"
+            },
+            "tool": "fixture.tenant-A.create_ticket"
+          },
+          "ticket_id": 1
+        }
+      }
+    },
+    {
+      "initial": "IN_FLIGHT",
+      "retry": {
+        "status": "CONFIRMED",
+        "result": {
+          "effect": {
+            "args": {
+              "project": "disposable",
+              "title": "disk full"
+            },
+            "tool": "fixture.tenant-A.create_ticket"
+          },
+          "ticket_id": 1
+        }
+      }
+    },
+    {
+      "initial": "IN_FLIGHT",
+      "retry": {
+        "status": "CONFIRMED",
+        "result": {
+          "effect": {
+            "args": {
+              "project": "disposable",
+              "title": "disk full"
+            },
+            "tool": "fixture.tenant-A.create_ticket"
+          },
+          "ticket_id": 1
+        }
+      }
+    },
+    {
+      "initial": "IN_FLIGHT",
+      "retry": {
+        "status": "CONFIRMED",
+        "result": {
+          "effect": {
+            "args": {
+              "project": "disposable",
+              "title": "disk full"
+            },
+            "tool": "fixture.tenant-A.create_ticket"
+          },
+          "ticket_id": 1
+        }
+      }
+    },
+    {
+      "initial": "IN_FLIGHT",
+      "retry": {
+        "status": "CONFIRMED",
+        "result": {
+          "effect": {
+            "args": {
+              "project": "disposable",
+              "title": "disk full"
+            },
+            "tool": "fixture.tenant-A.create_ticket"
+          },
+          "ticket_id": 1
+        }
+      }
+    },
+    {
+      "initial": "IN_FLIGHT",
+      "retry": {
+        "status": "CONFIRMED",
+        "result": {
+          "effect": {
+            "args": {
+              "project": "disposable",
+              "title": "disk full"
+            },
+            "tool": "fixture.tenant-A.create_ticket"
+          },
+          "ticket_id": 1
+        }
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "status": "INVALID_EFFECT",
+      "message": "effect must contain only a nonempty tool identity and plain-data args; no tool was dispatched."
+    },
+    {
+      "status": "INVALID_EFFECT",
+      "message": "effect must contain only a nonempty tool identity and plain-data args; no tool was dispatched."
+    },
+    {
+      "status": "INVALID_EFFECT",
+      "message": "effect must contain only a nonempty tool identity and plain-data args; no tool was dispatched."
+    },
+    {
+      "status": "INVALID_EFFECT",
+      "message": "effect must contain only a nonempty tool identity and plain-data args; no tool was dispatched."
+    },
+    {
+      "status": "INVALID_EFFECT",
+      "message": "effect must contain only a nonempty tool identity and plain-data args; no tool was dispatched."
+    }
+  ],
+  "conflict": {
+    "status": "CONFLICT",
+    "message": "Logical action concurrent-intent has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched."
+  },
+  "freshIntent": {
+    "status": "CONFIRMED",
+    "result": {
+      "effect": {
+        "args": {
+          "project": "disposable",
+          "title": "disk full"
+        },
+        "tool": "fixture.tenant-A.create_ticket"
+      },
+      "ticket_id": 2
+    }
+  },
+  "provider_effects": [
+    {
+      "id": 1,
+      "operation": "concurrent-intent",
+      "effect": "{\"tool\":\"fixture.tenant-A.create_ticket\",\"args\":{\"project\":\"disposable\",\"title\":\"disk full\"}}"
+    },
+    {
+      "id": 2,
+      "operation": "intentional-second",
+      "effect": "{\"tool\":\"fixture.tenant-A.create_ticket\",\"args\":{\"project\":\"disposable\",\"title\":\"disk full\"}}"
+    }
+  ]
+}

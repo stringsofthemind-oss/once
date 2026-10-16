@@ -16,7 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-latest, ubuntu-latest]
-        label: [release-2.11.0, pr-base, pr-fixed]
+        label: [release-2.11.0, release-2.12.0, pr-base, pr-fixed, merged-fixed]
         include:
           - label: release-2.11.0
             ref: ''
@@ -26,6 +26,12 @@ jobs:
             options: '--adk-src upstream-adk/src'
           - label: pr-fixed
             ref: 3e309d5d3eb753343590e28baf5b8efc547645c8
+            options: '--adk-src upstream-adk/src --expect-kept'
+          - label: release-2.12.0
+            ref: ''
+            options: ''
+          - label: merged-fixed
+            ref: 7d3658ef1a1f61c4c18cc4781f6892460add960c
             options: '--adk-src upstream-adk/src --expect-kept'
     steps:
       - uses: actions/checkout@v4
@@ -45,9 +51,12 @@ jobs:
       - run: npm ci --prefix sdk/typescript
       - run: npm run build --prefix sdk/typescript
       - run: python -m pip install -r examples/adk-parallel-replay/requirements.lock.txt
+      - if: matrix.label == 'release-2.12.0'
+        run: python -m pip install --no-deps google-adk==2.12.0
       - run: python -m pip check
       - run: python examples/adk-parallel-replay/verify.py ${{ matrix.options }} --label ${{ matrix.label }} --output evidence/${{ matrix.label }}.json
       - run: python examples/adk-parallel-replay/check_evidence.py evidence/${{ matrix.label }}.json
+      - run: python examples/adk-parallel-replay/test_evidence.py evidence/${{ matrix.label }}.json
       - name: Concurrent boundary and malformed effect controls
         if: matrix.label == 'release-2.11.0'
         run: node examples/adk-parallel-replay/concurrent-boundary.mjs --local evidence/concurrent-boundary.json
