@@ -6,6 +6,7 @@ import json
 import logging
 import hashlib
 import platform
+import os
 from datetime import datetime, timezone
 from contextlib import closing
 from pathlib import Path
@@ -401,7 +402,7 @@ async def main():
                         once_revision=subprocess.check_output(['git', '-C', str(repository), 'rev-parse', 'HEAD'], text=True).strip(),
                         once_worktree_dirty=bool(subprocess.check_output(['git', '-C', str(repository), 'status', '--porcelain', '--untracked-files=no'], text=True).strip()),
                         sdk_version=sdk_package['version'],
-                        ci_run_url=('https://github.com/' + __import__('os').environ['GITHUB_REPOSITORY'] + '/actions/runs/' + __import__('os').environ['GITHUB_RUN_ID']) if 'GITHUB_RUN_ID' in __import__('os').environ else None,
+                        ci_run_url=('https://github.com/' + os.environ['GITHUB_REPOSITORY'] + '/actions/runs/' + os.environ['GITHUB_RUN_ID']) if 'GITHUB_RUN_ID' in os.environ else None,
                         recorded_at=datetime.now(timezone.utc).isoformat(),
                         platform=platform.platform(), command=[sys.executable, *sys.argv],
                         dependencies=dict(sorted((d.metadata['Name'], d.version) for d in importlib.metadata.distributions())),
