@@ -58,7 +58,7 @@ The final mission reran the five local comparisons from clean checkout `687f94b`
 
 The 58 focused SDK tests, FIRST 10 package consumer, 14 wrapTool package checks and source/site guards were rerun and passed. Current Cloudflare controls were read before publication: `test/*` preview branches excluded, production auto-deployment disabled, canonical production deployment `b99dd0f0-065d-4f6c-81df-f02f4f717e4e`. No configuration changes were made. GitHub Pages uses workflow builds; this change does not modify site files or a deployment workflow.
 
-Current release audit again found no verified published fixed release. Official [2.12.0 release notes](https://github.com/google/adk-python/releases/tag/v2.12.0) and PyPI metadata were checked alongside source ancestry and wheel hashes. Final local reports are in `evidence-final-local/`. 
+Current release audit again found no verified published fixed release. Official [2.12.0 release notes](https://github.com/google/adk-python/releases/tag/v2.12.0) and PyPI metadata were checked alongside source ancestry and wheel hashes. Final local reports are in `evidence-final-local/`.
 ### Cross-platform evidence
 
 [ADK CI run 38893418234](https://github.com/stringsofthemind-oss/once/actions/runs/38893418234) passed all **10/10** cells: released 2.11.0, released 2.12.0, historical PR base, historical proposed fix and merged fix, each on Windows and Linux. This is 70 ADK runner scenarios, 30 protected safety cases, 30 raw controls and 10 lookup controls. Each cell also passed the six falsification checks. The concurrent boundary control passed on both operating systems.
@@ -70,4 +70,3 @@ All ten downloaded JSON reports were independently rechecked locally; [permanent
 Classification: the listed local and ADK CI assertions **passed**; no final behavioral failures observed. Live-model, production-provider and distributed-authority qualification, whole-ADK process crash recovery, and the full upstream ADK unit suite are **untested**. Unsupported/malformed effects and unavailable authority **fail closed**. Early environment/dependency failures are described above and are not counted as passes. Delayed evidence is modeled by unavailable/NOT_FOUND probes followed by exact authoritative fixture truth, not a real eventually consistent provider.
 
 No package version increase or package publication is justified: this PR changes tests, evidence and documentation only. No additional comment is posted on Google's closed issue, avoiding duplication of the existing Once report there. Google's history correction is useful and complementary to execution-boundary protection; it does not claim to solve forced redispatch or ambiguous external acknowledgements.
-
