@@ -1,0 +1,85 @@
+name: Admitted intent and continuity
+on:
+  pull_request:
+    paths:
+      - 'sdk/typescript/**'
+      - 'mcp/**'
+      - 'examples/summa42-*/**'
+      - '.github/workflows/silent-chicken.yml'
+permissions:
+  contents: read
+jobs:
+  hostile-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      execution:
+        image: postgres:18.6
+        env:
+          POSTGRES_USER: once_fixture
+          POSTGRES_PASSWORD: fixture-only-ci
+        ports: ['5432:5432']
+        options: --health-cmd "pg_isready -U once_fixture" --health-interval 5s --health-timeout 5s --health-retries 15
+      witness:
+        image: postgres:18.6
+        env:
+          POSTGRES_USER: once_fixture
+          POSTGRES_PASSWORD: fixture-only-ci
+        ports: ['5433:5432']
+        options: --health-cmd "pg_isready -U once_fixture" --health-interval 5s --health-timeout 5s --health-retries 15
+    env:
+      ONCE_TEST_POSTGRES: postgresql://once_fixture:fixture-only-ci@127.0.0.1:5432/postgres
+      ONCE_TEST_WITNESS: postgresql://once_fixture:fixture-only-ci@127.0.0.1:5433/postgres
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.19.0'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.1'
+          cache: false
+      - name: Qualify authority kernel and two-cluster witness
+        run: |
+          npm --prefix sdk/typescript ci --ignore-scripts --no-audit --no-fund
+          npm --prefix sdk/typescript run test:authority-kernel
+          npm --prefix sdk/typescript run test:shared-authority
+          (cd sdk/typescript && npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP" --silent)
+      - name: Preserve published-SDK default compatibility
+        run: |
+          npm --prefix mcp ci --ignore-scripts --no-audit --no-fund
+          npm --prefix mcp run build
+          node --test mcp/test/intent-capability.test.mjs
+          npm --prefix mcp run test:registered-action-package
+      - name: Qualify opt-in intent authority and crash evidence
+        working-directory: mcp
+        run: |
+          npm install --no-save --package-lock=false --ignore-scripts --no-audit --no-fund "$RUNNER_TEMP/once-agent-sdk-0.1.27.tgz"
+          npm run build
+          node scripts/silent-chicken-evidence.mjs "$RUNNER_TEMP/hardening"
+          node scripts/verify-hardening.mjs protected "$(find "$RUNNER_TEMP/hardening" -mindepth 1 -maxdepth 1 -type d | head -1)"
+      - name: Build against actual pinned Summa42 services
+        run: |
+          git clone https://github.com/SofiaFlux/summa42.git "$RUNNER_TEMP/summa42"
+          git -C "$RUNNER_TEMP/summa42" checkout efc6794ea79a4be5b2f60e376833a1d03cba053c
+          mkdir -p "$RUNNER_TEMP/summa42/cmd/once-evidence"
+          cp examples/summa42-host-integration/main.go "$RUNNER_TEMP/summa42/cmd/once-evidence/main.go"
+          cd "$RUNNER_TEMP/summa42"
+          GOCACHE=/tmp/summa42-full-go-cache go test -race ./internal/operations/... ./internal/execution/... -count=1 -timeout 5m
+          GOCACHE=/tmp/summa42-full-go-cache go build -o "$RUNNER_TEMP/summa42-once-fixture" ./cmd/once-evidence
+      - name: Kill and recover actual Summa42 service worker
+        env:
+          ONCE_SUMMA42_BINARY: ${{ runner.temp }}/summa42-once-fixture
+          ONCE_SUMMA42_REVISION: efc6794ea79a4be5b2f60e376833a1d03cba053c
+        run: |
+          node mcp/scripts/summa42-host-proof.mjs "$RUNNER_TEMP/summa42-host"
+          node mcp/scripts/verify-summa42-host.mjs "$(find "$RUNNER_TEMP/summa42-host" -mindepth 1 -maxdepth 1 -type d | head -1)"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: silent-chicken-evidence
+          path: |
+            ${{ runner.temp }}/hardening
+            ${{ runner.temp }}/summa42-host

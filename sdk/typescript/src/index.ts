@@ -1097,3 +1097,12 @@ export type {
   AgentTool,
   LocalAgentToolContract
 } from "./connect/local-agent-tool.js";
+
+export type { ExecutionAuthority, ExecutionStore, ExecutionRow } from "./execution-store.js";
+export { createPostgresExecutionAuthority } from "./postgres-authority.js";
+export type { PostgresAuthorityOptions, AuthorityCheckpoint, ContinuityWitness, AuthoritySqlPool, AuthoritySqlClient } from "./postgres-authority.js";
+export { createPostgresContinuityWitness } from "./postgres-continuity-witness.js";
+export type { PostgresContinuityWitnessOptions } from "./postgres-continuity-witness.js";
+export { createPostgresIntentAuthority, admitPostgresIntent } from "./postgres-authority.js";
+export { HOST_INTENT_AUTHORITY_CONTRACT, EMPTY_HOST_AUTHORITY_DIGEST, hostIntentEffectFingerprint } from "./host-intent.js";
+export type { HostIntentAuthority, HostIntentBinding, HostIntentRequest } from "./host-intent.js";
