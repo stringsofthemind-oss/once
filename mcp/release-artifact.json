@@ -1,7 +1,7 @@
 {
   "name": "@once-agent/mcp",
-  "version": "0.2.1",
-  "integrity": "sha512-M4lofyqx/bLlQC1K88ECb7M2ETTL8aoURHZl96yuFZ03DGiufN1mqKb5A2/w6cQozNKNiiV8U5PQX2burWWLRg==",
-  "sha256": "4afa6a507f788ca51253c27d610120322050be0f737b87371e924c9916b99534",
-  "files": 19
+  "version": "0.2.3",
+  "integrity": "sha512-fDMv+ONu7P/EArz5upCGtayMGzwxU96lWwL471JXfnJQoXcUWUSTfXPNtwDyCyL5Yk0/LOXMfGTgkkREGgHRSw==",
+  "sha256": "287ddb88a5d810c417cfb936ef2281fd0e47cd686f3251791c83769c3b3b5339",
+  "status": "unpublished local qualification candidate; independent npm gate still required"
 }
