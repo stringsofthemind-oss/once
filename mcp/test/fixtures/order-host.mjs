@@ -2,6 +2,7 @@
 import { McpServer } from '@modelcontextprotocol/server';
 import { serveStdio } from '@modelcontextprotocol/server/stdio';
 import { registerProtectedOrderAction } from '@once-agent/mcp/registered-action';
+import { writeFileSync } from 'node:fs';
 
 const config = JSON.parse(process.env.ONCE_TEST_HOST);
 const authority = { provider: 'disposable-orders', accountId: config.accountId, environment: 'local-test' };
@@ -26,7 +27,18 @@ const registration = await registerProtectedOrderAction(server, {
   authorize: async () => { if (config.denyAdmission) throw Error('not admitted'); },
   provider: {
     assertAuthority: () => request('/authority'),
-    create: (effect, operationId) => request('/orders', { effect, operationId }),
+    create: async (effect, operationId) => {
+      try { return await request('/orders', { effect, operationId }); }
+      catch (error) {
+        // Test-only crash barrier: the socket has failed, but Once has not yet
+        // received the exception. The parent kills this process at this marker.
+        if (config.afterAckLossMarker) {
+          writeFileSync(config.afterAckLossMarker, JSON.stringify({ pid: process.pid, operationId }), { flush: true });
+          await new Promise(() => {});
+        }
+        throw error;
+      }
+    },
     lookup: operationId => request(`/orders/${encodeURIComponent(operationId)}`),
   },
 });

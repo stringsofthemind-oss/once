@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto';
  * Every successful create appends a durable provider-owned receipt. There is no
  * native deduplication: a raw duplicate POST really produces a second effect.
  */
-export async function startOrderProvider(logPath) {
+export async function startOrderProvider(logPath, hooks = {}) {
   writeFileSync(logPath, '');
   const token = randomUUID();
   const modes = new Map();
@@ -25,7 +25,11 @@ export async function startOrderProvider(logPath) {
     if (req.url?.startsWith('/orders/') && req.method === 'GET') {
       counters.lookups++;
       const id = decodeURIComponent(req.url.slice(8));
-      if (observations.has(id)) { reply(observations.get(id)); return; }
+      if (observations.has(id)) {
+        const observation = observations.get(id);
+        if (observation instanceof Error) { res.destroy(); return; }
+        reply(observation); return;
+      }
       const found = records().filter(x => x.operationId === id && x.effect.authority.accountId === accountId);
       reply(found.length === 1 ? { status: 'CONFIRMED', authoritative: true, complete: true, observedAt: Date.now(), receipt: found[0] } : { status: found.length ? 'UNKNOWN' : 'ABSENT' }); return;
     }
@@ -41,7 +45,8 @@ export async function startOrderProvider(logPath) {
       const receipt = { providerReference: `order-${records().length + 1}`, status: 'created', operationId, effect };
       appendFileSync(logPath, JSON.stringify(receipt) + '\n');
       const fd = openSync(logPath, 'r+'); fsyncSync(fd); closeSync(fd);
-      if (mode === 'lost-ack') { res.destroy(); return; }
+      hooks.onCommit?.(receipt);
+      if (mode === 'lost-ack') { res.destroy(); hooks.onAckDropped?.(receipt); return; }
       if (mode === 'hold') { await new Promise(resolve => { holdResolve = resolve; }); }
       reply(mode === 'bad-receipt' ? { ...receipt, operationId: 'wrong-intent' } : receipt); return;
     }

@@ -35,6 +35,8 @@
     "COMPATIBILITY.md"
   ],
   "scripts": {
+    "test:summa42": "npm run build && node scripts/summa42-evidence.mjs",
+    "package:summa42": "node scripts/package-summa42.mjs",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test:registered-action": "npm run build && node --test test/registered-action.test.mjs",
