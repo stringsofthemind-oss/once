@@ -46,7 +46,7 @@ jobs:
           npm --prefix sdk/typescript ci --ignore-scripts --no-audit --no-fund
           npm --prefix sdk/typescript run test:authority-kernel
           npm --prefix sdk/typescript run test:shared-authority
-          npm --prefix sdk/typescript pack --ignore-scripts --pack-destination "$RUNNER_TEMP" --silent
+          (cd sdk/typescript && npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP" --silent)
       - name: Preserve published-SDK default compatibility
         run: |
           npm --prefix mcp ci --ignore-scripts --no-audit --no-fund
