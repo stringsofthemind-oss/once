@@ -1,6 +1,6 @@
 {
   "name": "@once-agent/mcp",
-  "version": "0.2.1",
+  "version": "0.2.3",
   "mcpName": "io.github.stringsofthemind-oss/once",
   "description": "MCP idempotency and AI agent retry safety for consequential writes and ambiguous timeouts.",
   "type": "module",
@@ -35,11 +35,14 @@
     "COMPATIBILITY.md"
   ],
   "scripts": {
+    "test:hardening": "npm run build && node scripts/silent-chicken-evidence.mjs",
+    "package:hardening": "node scripts/package-silent-chicken.mjs",
+    "test:summa42-host": "node scripts/summa42-host-proof.mjs",
     "test:summa42": "npm run build && node scripts/summa42-evidence.mjs",
     "package:summa42": "node scripts/package-summa42.mjs",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test:registered-action": "npm run build && node --test test/registered-action.test.mjs",
+    "test:registered-action": "npm run build && node --test test/registered-action.test.mjs test/intent-capability.test.mjs",
     "test:registered-action-package": "npm run build && node test/registered-action-package.mjs",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
@@ -83,6 +86,7 @@
   },
   "devDependencies": {
     "@types/node": "^26.6.1",
+    "pg": "8.16.3",
     "tsx": "^4.20.0",
     "typescript": "^5.9.0"
   },

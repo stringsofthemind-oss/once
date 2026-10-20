@@ -1,3 +1,4 @@
+import type { ExecutionAuthority } from "./execution-store.js";
 import { LocalProtectionError, protectLocal, snapshotLocalData } from "./local.js";
 
 export interface ToolCallEffect<I extends Record<string, unknown> = Record<string, unknown>> {
@@ -23,17 +24,19 @@ export interface ToolCallProtectionOptions<I extends Record<string, unknown>, T>
   /** Ignored by identity and fingerprinting. Must not change the external effect. */
   metadata?: unknown;
   statePath?: string;
+  /** Explicit host-owned shared authority; no local fallback. */
+  authority?: ExecutionAuthority;
   leaseMs?: number;
 }
 
-/** Protect a host-supplied callable using the existing local durable authority. */
+/** Protect a host-supplied callable using the existing kernel and explicit durable authority. */
 export async function protectToolCall<I extends Record<string, unknown>, T>(
   options: ToolCallProtectionOptions<I, T>,
 ): Promise<T> {
   if (typeof options?.operationId !== "string" || !options.operationId.trim()) {
     throw new LocalProtectionError("IDENTITY_REQUIRED", "protectToolCall requires an explicit stable operationId; no tool was dispatched.");
   }
-  const { operationId, execute, reconcile, statePath, leaseMs } = options;
+  const { operationId, execute, reconcile, statePath, leaseMs, authority } = options;
   if (typeof execute !== "function" || (reconcile !== undefined && typeof reconcile !== "function")) {
     throw new LocalProtectionError("INVALID_CONFIGURATION", "execute and optional reconcile must be callable; no tool was dispatched.");
   }
@@ -51,6 +54,7 @@ export async function protectToolCall<I extends Record<string, unknown>, T>(
     // A version tag prevents accidental receipt reuse across protection contracts.
     payload: () => ({ contract: "once-tool-call-v1", tool: effect.tool, args: effect.args }),
     statePath,
+    authority,
     leaseMs,
     reconcile: reconcile ? async () => {
       const observation = snapshotLocalData(await reconcile({ operationId, effect }));

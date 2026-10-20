@@ -1,5 +1,12 @@
 # Unreleased
 
+- Prepare MCP 0.2.3's opt-in trusted host intent admission capability. The
+  existing registered order action may use a separately admitted intent and
+  shared execution authority instead of worker-local SQLite. Missing capability
+  on the pinned legacy SDK fails closed; the evidence profile explicitly selects
+  the qualified SDK 0.1.27 candidate. Default helper and legacy SDK pin remain
+  unchanged. This source candidate is not a publication claim.
+
 - Update the declared MCP client dependency from 2.0.0 to 2.3.1, removing the
   affected OAuth client version in GHSA-6qxp-vccf-f47h. Once's inspected runtime
   is a server/stdio boundary, which the advisory excludes; no HTTP OAuth

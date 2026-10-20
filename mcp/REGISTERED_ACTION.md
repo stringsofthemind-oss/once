@@ -200,3 +200,21 @@ valid-looking rollback or deletion. UNKNOWN blocking assumes history is retained
 # Existing-ledger admission repair
 
 Registration now uses a non-mutating admission guard before the SDK session is opened, holding a SQLite startup transaction across that open. It validates the existing operations table, columns, state constraint, basic row validity and SQLite integrity, then verifies file identity and schema version again after opening. Every tool call rechecks admission; a failure permanently invalidates that host session. Missing, empty, corrupt or schema-lost ledgers are not initialized or repaired. The original SDK remains 0.1.25; this guard protects the opt-in MCP boundaries, not every direct SDK caller. Explicit fresh-install provisioning remains separate. Valid-looking row deletion or ledger rollback cannot be detected solely from the remaining SQLite file and is outside this corruption-detection guarantee.
+# Opt-in host-intent candidate
+
+The Silent Chicken candidate adds `intentAuthority` as an explicit alternative
+to `statePath`. The host supplies a qualified execution authority, pinned scope
+and authenticated-context `resolveKey` callback. No model argument may create
+admissions or select scope. Caller operation IDs must equal the pre-admitted
+canonical identity; complete effect drift conflicts. The matching SDK capability
+is required: requesting this mode on the legacy published SDK is denied, never
+silently downgraded to local SQLite. The default helper catalog remains unchanged.
+
+The required contract is `once-host-intent-v2`: the independent witness binds
+both revision and the canonical content of operation and intent rows. A v1
+revision-only authority is denied in this mode. Deployments must explicitly
+provision schema v2 on both stores; runtime calls never seed or upgrade history.
+
+See [architecture, SQL roles and migration](../docs/SILENT_CHICKEN.md). This is an
+unpublished opt-in candidate with two separately provisioned trusted stores, not
+a new general connector or a claim of stronger legacy state continuity.

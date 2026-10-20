@@ -184,7 +184,7 @@ test("unreplayable result leaves one effect and blocks retry", async t => {
   assert.equal(count(f.effectsPath), 1);
 });
 
-test("concurrent reconciliation returns the durable winner's receipt", async t => {
+test("contradictory concurrent reconciliation conflicts and preserves the durable winner", async t => {
   const f = fixture(t);
   const input = { id: "A", amount: 100 };
   const first = wrapped(f, async () => { effect(f.effectsPath, 100); throw new Error("lost"); });
@@ -202,7 +202,8 @@ test("concurrent reconciliation returns the durable winner's receipt", async t =
   await entered;
   assert.deepEqual(await fast(input), { receipt: "winner" });
   release();
-  assert.deepEqual(await pending, { receipt: "winner" });
+  await assert.rejects(pending, { code: "CONFLICT" });
+  assert.deepEqual(await fast(input), { receipt: "winner" });
   assert.equal(count(f.effectsPath), 1);
 });
 

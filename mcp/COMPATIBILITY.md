@@ -1,6 +1,11 @@
 # MCP compatibility and execution authority
 
 This is the authoritative compatibility matrix for the public MCP package.
+The Silent Chicken source candidate (MCP 0.2.3 / SDK 0.1.27) adds an explicitly
+configured host-intent/independent-continuity profile. It is separately qualified
+and does not upgrade the legacy configurations below. See
+[`SILENT_CHICKEN.md`](../docs/SILENT_CHICKEN.md) for trust, dependency selection,
+migration and release boundaries. No candidate publication is implied.
 The verified public npm/Registry MCP is **0.2.1** and SDK is **0.1.25**. Published site versions are recorded in `docs/published-versions.json` after independent verification.
 
 | Surface | Version / pin | Node minimum | What installation provides |
