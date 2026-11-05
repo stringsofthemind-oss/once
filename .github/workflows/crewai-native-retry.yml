@@ -1,0 +1,51 @@
+name: CrewAI Native Retry Evidence
+
+on:
+  pull_request:
+    paths:
+      - "examples/crewai-retry-lab/**"
+      - "sdk/python/**"
+      - ".github/workflows/crewai-native-retry.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        sdk: [published, checkout-wheel]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    env:
+      PYTHONUTF8: "1"
+      OTEL_SDK_DISABLED: "true"
+      CREWAI_TELEMETRY_DISABLED: "true"
+      CREWAI_TRACING_ENABLED: "false"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install pinned public dependencies
+        run: python -m pip install -r examples/crewai-retry-lab/requirements-native.txt
+      - name: Install checkout as a built wheel
+        if: matrix.sdk == 'checkout-wheel'
+        run: python -m pip install --no-deps --force-reinstall ./sdk/python
+      - name: Run native retry and adversarial regressions
+        run: python examples/crewai-retry-lab/native_retry.py --evidence native-evidence.json
+      - name: Record dependency resolution
+        if: always()
+        run: python -m pip freeze --all > resolved-requirements.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: crewai-${{ matrix.os }}-${{ matrix.sdk }}
+          path: |
+            native-evidence.json
+            resolved-requirements.txt

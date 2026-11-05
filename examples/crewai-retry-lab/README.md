@@ -1,5 +1,9 @@
 # CrewAI hostile-retry portability lab
 
+For the additional **native task-retry** reproduction of CrewAI #5802 using the
+installed Python SDK, see [NATIVE_RETRY.md](NATIVE_RETRY.md). The original lab
+below remains unchanged and deliberately uses harness-owned redispatch.
+
 This lab tests the frozen Once V4 framework-neutral recovery core against
 CrewAI's native tool conversion/invocation boundary.
 
