@@ -1,7 +1,7 @@
-# Unreleased
+# MCP 0.2.2
 
 - Upgrade MCP client/server and shared core to 2.4.0, and Zod to 4.6.7, addressing the dependency versions reported in issue #319. The locked graph uses a single MCP core version. Runtime transport applicability, clean installs, production audit and regressions must be verified before release.
-- This is source preparation for a future MCP patch; npm/Registry remains 0.2.1. Existing plugin pins remain unchanged. No claim of published remediation or provenance is made.
+- Preserve the reviewed helper/proxy boundaries and existing plugin pins.
 
 # MCP 0.2.1
 

@@ -80,6 +80,35 @@ jobs:
       - name: Guard public compatibility and unpublished candidate claims
         run: node --test ../scripts/mcp-public-contract.test.mjs
 
+      - name: Pack exact MCP release candidate (no publication)
+        shell: bash
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/once-mcp-candidate"
+          mkdir -p "$dir"
+          npm pack --json --pack-destination "$dir" > "$dir/pack.json"
+          node --input-type=module - "$dir" <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs';
+          import { createHash } from 'node:crypto';
+          import { join, basename } from 'node:path';
+          const dir = process.argv[2];
+          const [p] = JSON.parse(readFileSync(join(dir,'pack.json'),'utf8'));
+          if (p.name !== '@once-agent/mcp' || basename(p.filename) !== p.filename) throw Error('Unexpected package');
+          const bytes = readFileSync(join(dir,p.filename));
+          const integrity = 'sha512-' + createHash('sha512').update(bytes).digest('base64');
+          if (p.integrity !== integrity) throw Error('Pack integrity mismatch');
+          const record = {name:p.name,version:p.version,integrity,sha256:createHash('sha256').update(bytes).digest('hex'),files:p.files.length};
+          writeFileSync(join(dir,'candidate-artifact.json'),JSON.stringify(record,null,2)+'\n');
+          console.log('CANDIDATE ARTIFACT (not yet approved):', JSON.stringify(record));
+          NODE
+      - name: Retain exact candidate and file inventory
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcp-release-candidate
+          path: ${{ runner.temp }}/once-mcp-candidate/
+          if-no-files-found: error
+          retention-days: 14
+
   mcp-helper-node20:
     runs-on: ubuntu-latest
     timeout-minutes: 10
