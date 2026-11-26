@@ -1,0 +1,101 @@
+name: MCP npm reviewed release
+on:
+  workflow_dispatch:
+    inputs:
+      release_sha:
+        description: Exact reviewed main commit SHA
+        required: true
+        type: string
+      version:
+        description: Exact reviewed MCP version
+        required: true
+        type: string
+      publish:
+        description: Publish exact reviewed artifact to npm (otherwise dry validation)
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: mcp-npm-reviewed-release
+  cancel-in-progress: false
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.15.0'
+      - name: Check requested source and reviewed release metadata
+        env:
+          EXPECTED_SHA: ${{ inputs.release_sha }}
+          EXPECTED_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          test "$EXPECTED_SHA" = "$GITHUB_SHA"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          node scripts/check-mcp-release-candidate.mjs
+      - name: Verify production dependency graph and regressions
+        working-directory: mcp
+        run: |
+          npm ci
+          npm audit --omit=dev
+          npm run typecheck
+          npm run smoke
+          npm run test:registered-action
+          npm run test:connection
+          npm run test:registered-action-package
+          node --test ../scripts/mcp-public-contract.test.mjs ../scripts/mcp-publication-gate.test.mjs ../scripts/verify-mcp-npm-artifact.test.mjs
+      - name: Pack and compare exact reviewed bytes
+        env:
+          EXPECTED_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/mcp-reviewed"
+          (cd mcp && npm pack --json --pack-destination "$RUNNER_TEMP/mcp-reviewed") > "$RUNNER_TEMP/mcp-reviewed/pack.json"
+          node scripts/check-mcp-release-candidate.mjs "$RUNNER_TEMP/mcp-reviewed"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: mcp-reviewed-package
+          path: ${{ runner.temp }}/mcp-reviewed/
+          if-no-files-found: error
+  publish:
+    if: github.ref == 'refs/heads/main' && inputs.publish == true
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: npm-publish
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.15.0'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: mcp-reviewed-package
+          path: ${{ runner.temp }}/mcp-reviewed
+      - name: Recheck artifact and publish through npm trusted publisher
+        env:
+          EXPECTED_SHA: ${{ inputs.release_sha }}
+          EXPECTED_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          test "$EXPECTED_SHA" = "$GITHUB_SHA"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          node scripts/check-mcp-release-candidate.mjs "$RUNNER_TEMP/mcp-reviewed"
+          node scripts/check-mcp-release-candidate.mjs --registry-before
+          npm publish "$RUNNER_TEMP/mcp-reviewed/once-agent-mcp-$EXPECTED_VERSION.tgz" --access public --provenance --registry=https://registry.npmjs.org/
+      - name: Independently verify registry integrity and provenance metadata
+        env:
+          EXPECTED_VERSION: ${{ inputs.version }}
+        run: node scripts/check-mcp-release-candidate.mjs --registry-after
