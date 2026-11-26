@@ -1,10 +1,7 @@
 # Unreleased
 
-- Update the declared MCP client dependency from 2.0.0 to 2.3.1, removing the
-  affected OAuth client version in GHSA-6qxp-vccf-f47h. Once's inspected runtime
-  is a server/stdio boundary, which the advisory excludes; no HTTP OAuth
-  credential path was identified. Tool schemas and execution behavior are unchanged.
-- This is source preparation for a future MCP patch; npm/Registry remains 0.2.1.
+- Upgrade MCP client/server and shared core to 2.4.0, and Zod to 4.6.7, addressing the dependency versions reported in issue #319. The locked graph uses a single MCP core version. Runtime transport applicability, clean installs, production audit and regressions must be verified before release.
+- This is source preparation for a future MCP patch; npm/Registry remains 0.2.1. Existing plugin pins remain unchanged. No claim of published remediation or provenance is made.
 
 # MCP 0.2.1
 
