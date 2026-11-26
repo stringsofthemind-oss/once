@@ -63,6 +63,12 @@ jobs:
           cache: npm
           cache-dependency-path: mcp/package-lock.json
       - run: npm ci
+      - name: Audit MCP production dependencies
+        run: npm audit --omit=dev
+      - name: Verify MCP registered actions and connection regressions
+        run: |
+          npm run test:registered-action
+          npm run test:connection
       - name: Typecheck MCP package
         run: npm run typecheck
       - name: Build MCP package
