@@ -63,6 +63,11 @@
 					>
 				</article>
 			</div>
+			<section id="academic-references" aria-labelledby="academic-references-title">
+				<h2 id="academic-references-title">Academic references</h2>
+				<p>Jiapeng Li, <a href="https://arxiv.org/abs/2611.23307"><cite>Checking Retry Transparency in Agent Tools</cite></a>, arXiv:2611.23307 (2026), discusses Once and EffectFence as existing engineering systems in Section 8 (Related Work). Reference [19] cites <a href="/mcp-retry-safety/">Once’s MCP retry safety documentation</a>.</p>
+				<div class="note"><strong>Limits:</strong> this is a research citation, not a benchmark of Once, independent security certification, endorsement or evidence of adoption. The manuscript reports that it has not undergone independent human peer review.</div>
+			</section>
 			<section id="langgraph-checkpoint-replay" aria-labelledby="langgraph-replay-title">
 				<h2 id="langgraph-replay-title">LangGraph checkpoint replay evidence</h2>
 				<p>Deterministic <strong>local LangGraph JS checkpoint replay</strong> resumed the same checkpoint twice while the first tool call was still running. The unprotected path produced <strong>2 provider effects</strong>; the Once-protected path produced <strong>1</strong>, using published SDK 0.1.25. Counts come from a separate loopback HTTP provider's append-only log, not returned SDK status.</p>
