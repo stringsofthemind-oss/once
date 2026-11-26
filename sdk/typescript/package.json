@@ -45,7 +45,8 @@
   "files": [
     "dist",
     "README.md",
-    "dist-cjs"
+    "dist-cjs",
+    "sql/admission-witness.sql"
   ],
   "scripts": {
     "test:first10": "npm run build && node ../../scripts/generate-first10-proof.mjs --check && node --test ./test/first10.test.mjs",

@@ -8,6 +8,7 @@ export interface WrapToolOptions<Input extends Record<string, unknown>, Args ext
   effect: (input: Input) => ToolCallEffect<Args>;
   reconcile?: ToolCallProtectionOptions<Args, Result>["reconcile"];
   statePath?: string;
+  ledgerMode?: ToolCallProtectionOptions<Args, Result>["ledgerMode"];
   leaseMs?: number;
 }
 
@@ -26,7 +27,7 @@ export function wrapTool<Args extends Record<string, unknown>, Result, Input ext
       (options.reconcile !== undefined && typeof options.reconcile !== "function")) {
     throw new LocalProtectionError("INVALID_CONFIGURATION", "wrapTool requires a callback and explicit operationId/effect selectors; no tool was dispatched.");
   }
-  const { operationId, effect, reconcile, statePath, leaseMs } = options;
+  const { operationId, effect, reconcile, statePath, ledgerMode, leaseMs } = options;
   return async function (this: Receiver, input: Input): Promise<Result> {
     const snapshot = snapshotLocalData(input);
     return protectToolCall({
@@ -35,6 +36,7 @@ export function wrapTool<Args extends Record<string, unknown>, Result, Input ext
       execute: ({ args }) => callback.call(this, args),
       reconcile,
       statePath,
+      ledgerMode,
       leaseMs,
     });
   };

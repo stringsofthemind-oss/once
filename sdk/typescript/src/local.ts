@@ -1,7 +1,8 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { randomUUID } from "node:crypto";
-import { mkdirSync, statSync } from "node:fs";
+import { closeSync, mkdirSync, openSync, statSync } from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { types } from "node:util";
 import { canonicalizeConnectPayload, fingerprintConnectPayload } from "./connect/binding.js";
 
@@ -9,6 +10,7 @@ type JsonObject = Record<string, unknown>;
 
 type LocalStatement = {
   get(...params: unknown[]): unknown;
+  all(...params: unknown[]): unknown[];
   run(...params: unknown[]): { changes: number | bigint };
 };
 
@@ -21,7 +23,7 @@ type LocalDatabase = {
 
 type DatabaseSyncConstructor = new (
   location: string,
-  options?: Readonly<{ timeout?: number }>,
+  options?: Readonly<{ timeout?: number; readOnly?: boolean }>,
 ) => LocalDatabase;
 
 type StateFileIdentity = Readonly<{
@@ -30,7 +32,62 @@ type StateFileIdentity = Readonly<{
   birthtimeNs: bigint;
 }>;
 
+export type LocalLedgerMode = "create-if-missing" | "existing";
+
 const LOCAL_STATE_SCHEMA = "CREATE TABLE IF NOT EXISTS local_operations (id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('CLAIMED','UNKNOWN','CONFIRMED')), result_json TEXT, owner TEXT, lease_until INTEGER);";
+
+const MANAGED_LEDGER_SCHEMA = `
+  CREATE TABLE local_ledger_policy (
+    singleton INTEGER PRIMARY KEY CHECK(singleton = 1),
+    witness_id TEXT
+  );
+  CREATE TABLE local_intent_approvals (
+    id TEXT PRIMARY KEY,
+    fingerprint TEXT NOT NULL,
+    label TEXT,
+    assigned_to TEXT,
+    approved_at INTEGER NOT NULL
+  );
+  CREATE TABLE local_operation_history (
+    id TEXT PRIMARY KEY,
+    claimed_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    evidence TEXT NOT NULL,
+    last_lookup TEXT,
+    last_lookup_at INTEGER
+  );
+  CREATE TRIGGER local_operation_claimed AFTER INSERT ON local_operations
+  BEGIN
+    INSERT INTO local_operation_history VALUES (
+      NEW.id, unixepoch('subsec') * 1000, unixepoch('subsec') * 1000, 'claim', NULL, NULL
+    );
+  END;
+  CREATE TRIGGER local_operation_observed AFTER UPDATE OF state ON local_operations
+  WHEN NEW.state != OLD.state
+  BEGIN
+    UPDATE local_operation_history SET updated_at = unixepoch('subsec') * 1000,
+      evidence = CASE
+        WHEN NEW.state = 'UNKNOWN' THEN 'outcome_unknown'
+        WHEN OLD.state = 'UNKNOWN' THEN 'provider_reconciliation'
+        ELSE 'execution_receipt'
+      END,
+      last_lookup = CASE WHEN OLD.state = 'UNKNOWN' AND NEW.state = 'CONFIRMED'
+        THEN 'CONFIRMED' ELSE last_lookup END,
+      last_lookup_at = CASE WHEN OLD.state = 'UNKNOWN' AND NEW.state = 'CONFIRMED'
+        THEN unixepoch('subsec') * 1000 ELSE last_lookup_at END
+    WHERE id = NEW.id;
+  END;
+`;
+
+export interface LocalAdmissionWitness {
+  readonly id: string;
+  /**
+   * Atomically and durably reserve this operation once in an independent
+   * authority. Return true only for the call that made the first reservation.
+   * Repeated calls, including after an ambiguous reply, must return false.
+   */
+  reserve(operationId: string, fingerprint: string): Promise<boolean>;
+}
 
 export type LocalObservation<T> =
   | { state: "CONFIRMED"; result: T }
@@ -43,6 +100,8 @@ export interface LocalProtectionOptions<A extends unknown[], T> {
   payload: (...args: A) => JsonObject;
   /** Absolute or project-relative path. Defaults to .once/operations.sqlite. */
   statePath?: string;
+  /** Require a pre-provisioned ledger and leave missing state untouched. */
+  ledgerMode?: LocalLedgerMode;
   /** Authoritative provider lookup. It must never infer ABSENT from a timeout. */
   reconcile?: (context: { id: string; payload: JsonObject }) => Promise<LocalObservation<T>> | LocalObservation<T>;
   /** Time before an abandoned claim can be reconciled. No redispatch follows ABSENT. */
@@ -85,13 +144,27 @@ async function loadDatabaseSync(): Promise<DatabaseSyncConstructor> {
   }
 }
 
-async function openLocalDatabase(statePath: string): Promise<LocalDatabase> {
+async function openLocalDatabase(
+  statePath: string,
+  mode: LocalLedgerMode | "read-only" = "create-if-missing",
+): Promise<LocalDatabase> {
   const DatabaseSync = await loadDatabaseSync();
   let db: LocalDatabase | undefined;
   try {
-    mkdirSync(path.dirname(statePath), { recursive: true });
-    db = new DatabaseSync(statePath, { timeout: 30_000 });
-    db.exec(`PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; ${LOCAL_STATE_SCHEMA}`);
+    if (mode === "create-if-missing") {
+      mkdirSync(path.dirname(statePath), { recursive: true });
+      db = new DatabaseSync(statePath, { timeout: 30_000 });
+      db.exec(`PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; ${LOCAL_STATE_SCHEMA}`);
+    } else {
+      if (!statSync(statePath).isFile()) throw new Error("Ledger must be a file.");
+      const url = pathToFileURL(statePath);
+      url.searchParams.set("mode", mode === "read-only" ? "ro" : "rw");
+      db = new DatabaseSync(url.href, { timeout: 30_000, readOnly: mode === "read-only" });
+      const operations = db.prepare("SELECT type FROM sqlite_schema WHERE name='local_operations'").get() as { type?: string } | undefined;
+      if (operations?.type !== "table") throw new Error("Missing operations table.");
+      db.prepare("SELECT id,fingerprint,state,result_json,owner,lease_until FROM local_operations LIMIT 0").get();
+      if (mode === "existing") db.exec("PRAGMA synchronous=FULL");
+    }
     return db;
   } catch (cause) {
     if (db) {
@@ -99,6 +172,170 @@ async function openLocalDatabase(statePath: string): Promise<LocalDatabase> {
     }
     throw new LocalProtectionError("STATE_UNAVAILABLE", `Cannot open durable Once state at ${statePath}. The operation was not dispatched. Restore access to this same file before retrying.`, { cause });
   }
+}
+
+/** Create a new local authority explicitly. Never overwrites existing state. */
+export async function provisionLocalLedger(
+  statePath: string,
+  options?: { witnessId?: string },
+): Promise<void> {
+  if (typeof statePath !== "string" || !statePath.trim()) {
+    throw new LocalProtectionError("INVALID_CONFIGURATION", "An explicit new ledger path is required.");
+  }
+  const witnessId = options?.witnessId;
+  if (witnessId !== undefined && (typeof witnessId !== "string" || !witnessId.trim())) {
+    throw new LocalProtectionError("INVALID_CONFIGURATION", "A nonempty witness ID is required.");
+  }
+  const DatabaseSync = await loadDatabaseSync();
+  const filename = path.resolve(statePath);
+  let db: LocalDatabase | undefined;
+  try {
+    mkdirSync(path.dirname(filename), { recursive: true });
+    closeSync(openSync(filename, "wx", 0o600));
+    const url = pathToFileURL(filename);
+    url.searchParams.set("mode", "rw");
+    db = new DatabaseSync(url.href, { timeout: 30_000 });
+    db.exec(`PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL;
+      BEGIN IMMEDIATE; ${LOCAL_STATE_SCHEMA} ${MANAGED_LEDGER_SCHEMA}`);
+    db.prepare("INSERT INTO local_ledger_policy VALUES(1,?)").run(witnessId ?? null);
+    db.exec("COMMIT");
+  } catch (cause) {
+    throw new LocalProtectionError("STATE_UNAVAILABLE", "Could not provision a new ledger. Preserve any existing ledger and its execution history.", { cause });
+  } finally {
+    db?.close();
+  }
+}
+
+type LocalApproval = { fingerprint: string; label: string | null; assigned_to: string | null; approved_at: number };
+
+function readApproval(db: LocalDatabase, id: string): LocalApproval | undefined {
+  return db.prepare("SELECT fingerprint,label,assigned_to,approved_at FROM local_intent_approvals WHERE id=?")
+    .get(id) as LocalApproval | undefined;
+}
+
+/** Internal host-only record; operation identity and effect must be supplied by trusted code. */
+export async function recordLocalApproval(
+  statePath: string,
+  id: string,
+  fingerprint: string,
+  label: string | undefined,
+  assignedTo: string | undefined,
+): Promise<void> {
+  const db = await openLocalDatabase(path.resolve(statePath), "existing");
+  try {
+    db.exec("BEGIN IMMEDIATE");
+    const prior = readApproval(db, id);
+    if (prior && prior.fingerprint !== fingerprint) {
+      throw new LocalProtectionError("CONFLICT", "This approved intent is already bound to a different effect. A changed effect requires a separately authorised intent.");
+    }
+    if (!prior) {
+      db.prepare("INSERT INTO local_intent_approvals(id,fingerprint,label,assigned_to,approved_at) VALUES (?,?,?,?,?)")
+        .run(id, fingerprint, label ?? null, assignedTo ?? null, Date.now());
+    }
+    db.exec("COMMIT");
+  } finally {
+    db.close();
+  }
+}
+
+export type LocalOperationStatus = Readonly<{
+  operationId: string;
+  state: "NOT_RECORDED" | "APPROVED" | "IN_FLIGHT" | "UNKNOWN" | "CONFIRMED";
+  effectFingerprint: string | null;
+  label: string | null;
+  assignedTo: string | null;
+  approvedAt: number | null;
+  claimedAt: number | null;
+  updatedAt: number | null;
+  leaseUntil: number | null;
+  lastLookup: "UNKNOWN" | "NOT_FOUND" | "UNAVAILABLE" | "INVALID" | "CONFIRMED" | null;
+  lastLookupAt: number | null;
+  evidence: "none" | "host_approval" | "claim" | "outcome_unknown" |
+    "execution_receipt" | "provider_reconciliation" | "stored_receipt";
+}>;
+
+type OperationStatusRow = Pick<Row, "fingerprint" | "state" | "lease_until">;
+type OperationHistory = {
+  claimed_at: number;
+  updated_at: number;
+  evidence: LocalOperationStatus["evidence"];
+  last_lookup: LocalOperationStatus["lastLookup"];
+  last_lookup_at: number | null;
+};
+
+function statusFromLedger(db: LocalDatabase, operationId: string, managed: boolean, now: number): LocalOperationStatus {
+  const approval = managed ? readApproval(db, operationId) : undefined;
+  const row = db.prepare("SELECT fingerprint,state,lease_until FROM local_operations WHERE id=?")
+    .get(operationId) as OperationStatusRow | undefined;
+  const history = managed ? db.prepare("SELECT claimed_at,updated_at,evidence,last_lookup,last_lookup_at FROM local_operation_history WHERE id=?")
+    .get(operationId) as OperationHistory | undefined : undefined;
+  if ((approval && row && approval.fingerprint !== row.fingerprint) ||
+      (row && row.state !== "CLAIMED" && row.state !== "UNKNOWN" && row.state !== "CONFIRMED")) {
+    throw new LocalProtectionError("STATE_UNAVAILABLE", "The ledger contains inconsistent operation state.");
+  }
+
+  const state = !row ? (approval ? "APPROVED" : "NOT_RECORDED")
+    : row.state === "CLAIMED" ? ((row.lease_until ?? 0) > now ? "IN_FLIGHT" : "UNKNOWN")
+    : row.state;
+  const evidence = state === "APPROVED" ? "host_approval"
+    : state === "CONFIRMED" ? (history?.evidence ?? "stored_receipt")
+    : state === "UNKNOWN" ? "outcome_unknown"
+    : state === "IN_FLIGHT" ? "claim"
+    : "none";
+  return {
+    operationId, state, evidence,
+    effectFingerprint: row?.fingerprint ?? approval?.fingerprint ?? null,
+    label: approval?.label ?? null,
+    assignedTo: approval?.assigned_to ?? null,
+    approvedAt: approval?.approved_at ?? null,
+    claimedAt: history?.claimed_at ?? null,
+    updatedAt: history?.updated_at ?? null,
+    leaseUntil: row?.lease_until ?? null,
+    lastLookup: history?.last_lookup ?? null,
+    lastLookupAt: history?.last_lookup_at ?? null,
+  };
+}
+
+async function inspectLedger<T>(
+  statePath: string | undefined,
+  inspect: (db: LocalDatabase, managed: boolean, now: number) => T,
+): Promise<T> {
+  const db = await openLocalDatabase(resolvedStatePath(statePath), "read-only");
+  try {
+    db.exec("BEGIN");
+    const managed = Boolean(db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='local_intent_approvals'").get());
+    const result = inspect(db, managed, Date.now());
+    db.exec("COMMIT");
+    return result;
+  } finally {
+    db.close();
+  }
+}
+
+/** Inspect one local operation. No application code, provider calls or ledger transitions. */
+export async function readLocalOperationStatus(operationId: string, statePath?: string): Promise<LocalOperationStatus> {
+  if (typeof operationId !== "string" || !operationId.trim()) {
+    throw new LocalProtectionError("INVALID_ID", "A nonempty operation ID is required.");
+  }
+  return inspectLedger(statePath, (db, managed, now) => statusFromLedger(db, operationId, managed, now));
+}
+
+/** Inspect up to 100 unresolved operations from a consistent local ledger snapshot. */
+export async function listUnresolvedLocalOperations(
+  options?: { statePath?: string; limit?: number; afterId?: string },
+): Promise<LocalOperationStatus[]> {
+  const { statePath, limit = 25, afterId } = options ?? {};
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100 ||
+      (afterId !== undefined && (typeof afterId !== "string" || !afterId.trim()))) {
+    throw new LocalProtectionError("INVALID_CONFIGURATION", "Use a limit of 1–100 and, if specified, a nonempty operation cursor.");
+  }
+  return inspectLedger(statePath, (db, managed, now) => {
+    const query = "SELECT id FROM local_operations WHERE (state='UNKNOWN' OR (state='CLAIMED' AND lease_until<=?))";
+    const rows = afterId === undefined
+      ? db.prepare(query + " ORDER BY id LIMIT ?").all(now, limit)
+      : db.prepare(query + " AND id>? ORDER BY id LIMIT ?").all(now, afterId, limit);
+    return (rows as { id: string }[]).map(row => statusFromLedger(db, row.id, managed, now));
+  });
 }
 
 function stateFileIdentity(statePath: string): StateFileIdentity {
@@ -326,10 +563,30 @@ export function protectLocal<A extends unknown[], T>(
   operation: (...args: A) => Promise<T>,
   options: LocalProtectionOptions<A, T>,
 ): (...args: A) => Promise<T> {
-  if (typeof operation !== "function" || typeof options?.id !== "function" || typeof options.payload !== "function") {
+  return runLocalOperation(operation, options, "execute");
+}
+
+export function runLocalOperation<A extends unknown[], T>(
+  operation: ((...args: A) => Promise<T>) | undefined,
+  options: LocalProtectionOptions<A, T> & { witness?: LocalAdmissionWitness },
+  mode: "execute" | "approved" | "reconcile" | "reconcile-approved",
+): (...args: A) => Promise<T> {
+  const reconcileOnly = mode === "reconcile" || mode === "reconcile-approved";
+  const requireApproval = mode === "approved" || mode === "reconcile-approved";
+  if ((!reconcileOnly && typeof operation !== "function") || typeof options?.id !== "function" || typeof options.payload !== "function") {
     throw new LocalProtectionError("INVALID_CONFIGURATION", "protectLocal requires an async operation plus id and payload functions. The id must survive retries; payload must include every effect-bearing input.");
   }
   const statePath = resolvedStatePath(options.statePath);
+  const ledgerMode = mode !== "execute" ? "existing" : options.ledgerMode ?? "create-if-missing";
+  if (ledgerMode !== "create-if-missing" && ledgerMode !== "existing") {
+    throw new LocalProtectionError("INVALID_CONFIGURATION", "Invalid local ledger mode.");
+  }
+  const witnessId = options.witness?.id;
+  const witness = typeof options.witness?.reserve === "function"
+    ? options.witness.reserve.bind(options.witness) : undefined;
+  if (options.witness !== undefined && (!witness || typeof witnessId !== "string" || !witnessId.trim() || ledgerMode !== "existing")) {
+    throw new LocalProtectionError("INVALID_CONFIGURATION", "An admission witness requires a reserve function and an existing ledger.");
+  }
   const leaseMs = options.leaseMs ?? 30_000;
   if (!Number.isSafeInteger(leaseMs) || leaseMs <= 0) {
     throw new LocalProtectionError("INVALID_LEASE", "leaseMs must be a positive integer in milliseconds.");
@@ -344,29 +601,70 @@ export function protectLocal<A extends unknown[], T>(
     const payload = copyData(options.payload(...callArgs)) as JsonObject;
     const fingerprint = fingerprintConnectPayload(payload);
     const contextualSession = localProtectionSessionContext.getStore();
-    const sharedSession = contextualSession?.statePath === statePath ? contextualSession : undefined;
+    const sharedSession = ledgerMode === "create-if-missing" && contextualSession?.statePath === statePath
+      ? contextualSession : undefined;
+    let initialIdentity: StateFileIdentity | undefined;
+    if (ledgerMode === "existing") {
+      try {
+        initialIdentity = stateFileIdentity(statePath);
+      } catch (cause) {
+        throw new LocalProtectionError("STATE_UNAVAILABLE", "The existing ledger is unavailable. Restore its original history.", { cause });
+      }
+    }
+    const assertLedgerIdentity = () => {
+      sharedSession?.assertStateIdentity();
+      if (initialIdentity && !sameStateFile(initialIdentity, stateFileIdentity(statePath))) {
+        throw new LocalProtectionError("STATE_UNAVAILABLE", "The original ledger changed during the operation.");
+      }
+    };
     const db = sharedSession
       ? await sharedSession.databaseForCall()
-      : await openLocalDatabase(statePath);
+      : await openLocalDatabase(statePath, ledgerMode);
     const closeAfterCall = !sharedSession;
 
     try {
       const owner = randomUUID();
       let shouldDispatch = false;
+      let managed = false;
       let row: Row;
       try {
         db.exec("BEGIN IMMEDIATE");
+        assertLedgerIdentity();
+        managed = Boolean(db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='local_ledger_policy'").get());
+        if (managed && !requireApproval) {
+          throw new LocalProtectionError("INTENT_REQUIRED", "This managed ledger requires the host-approved intent API.");
+        }
+        if (requireApproval) {
+          const policy = db.prepare("SELECT witness_id FROM local_ledger_policy WHERE singleton=1").get() as
+            { witness_id: string | null } | undefined;
+          if (!policy || (!reconcileOnly && policy.witness_id !== (witnessId ?? null))) {
+            throw new LocalProtectionError("STATE_UNAVAILABLE", "The managed ledger's witness policy differs from the configured authority.");
+          }
+          const approval = readApproval(db, id);
+          if (!approval) throw new LocalProtectionError("INTENT_REQUIRED", "The host has not approved this intent.");
+          if (approval.fingerprint !== fingerprint) {
+            throw new LocalProtectionError("CONFLICT", "The supplied effect differs from the host-approved effect.");
+          }
+        }
         row = db.prepare("SELECT fingerprint,state,result_json,owner,lease_until FROM local_operations WHERE id=?").get(id) as Row;
         if (!row) {
+          if (reconcileOnly) {
+            throw new LocalProtectionError("OPERATION_NOT_RECORDED", "There is no recorded dispatch claim in this ledger. Verify continuity before taking any action.");
+          }
           db.prepare("INSERT INTO local_operations(id,fingerprint,state,result_json,owner,lease_until) VALUES(?,?,'CLAIMED',NULL,?,?)")
             .run(id, fingerprint, owner, Date.now() + leaseMs);
           shouldDispatch = true;
+        } else if (row.fingerprint === fingerprint && row.state === "CLAIMED" &&
+                   (row.lease_until ?? 0) <= Date.now()) {
+          db.prepare("UPDATE local_operations SET state='UNKNOWN',owner=NULL,lease_until=NULL WHERE id=?").run(id);
+          row = { ...row, state: "UNKNOWN", owner: null, lease_until: null };
         }
         db.exec("COMMIT");
       } catch (cause) {
         if (db.isTransaction) {
           try { db.exec("ROLLBACK"); } catch { sharedSession?.invalidate(); }
         }
+        if (cause instanceof LocalProtectionError) throw cause;
         throw new LocalProtectionError("STATE_UNAVAILABLE", "Could not atomically claim durable Once state. The operation was not dispatched; retry with the same id after restoring state access.", { cause });
       }
 
@@ -375,31 +673,42 @@ export function protectLocal<A extends unknown[], T>(
           throw new LocalProtectionError("CONFLICT", `Logical action ${id} has a different effect-bearing payload. Choose a new id only for a genuinely new action; no write was dispatched.`);
         }
         if (row!.state === "CONFIRMED") return decodeResult<T>(row!.result_json!);
-        if (row!.state === "CLAIMED" && row!.lease_until! > Date.now()) {
+        if (row!.state === "CLAIMED") {
           throw new LocalProtectionError("IN_FLIGHT", `Logical action ${id} is still in flight. Wait and retry with the same id; do not call the underlying operation directly.`);
         }
-        db.prepare("UPDATE local_operations SET state='UNKNOWN',owner=NULL,lease_until=NULL WHERE id=? AND state='CLAIMED'").run(id);
         if (!options.reconcile) {
           throw new LocalProtectionError("UNKNOWN", `RETRY BLOCKED — ORIGINAL OUTCOME UNKNOWN. Operation ${id} may already have succeeded. Repeating it could create another external effect; no second write was dispatched. Next action: supply an authoritative read-only reconcile callback or investigate provider truth; retain the same identity and durable state.`);
         }
+        const noteLookup = (outcome: "UNKNOWN" | "NOT_FOUND" | "UNAVAILABLE" | "INVALID") => {
+          if (!managed) return;
+          assertLedgerIdentity();
+          db.prepare(`UPDATE local_operation_history SET last_lookup=?,last_lookup_at=? WHERE id=?
+            AND EXISTS (SELECT 1 FROM local_operations WHERE id=? AND state='UNKNOWN')`)
+            .run(outcome, Date.now(), id, id);
+        };
         let observation: LocalObservation<T>;
         try {
           observation = await options.reconcile({ id, payload: copyData(payload) as JsonObject });
         } catch (cause) {
+          noteLookup("UNAVAILABLE");
           throw new LocalProtectionError("UNKNOWN", `Provider truth for ${id} is unavailable. No second write was dispatched.`, { cause });
         }
         if (observation?.state !== "CONFIRMED") {
+          noteLookup(observation?.state === "ABSENT" ? "NOT_FOUND" : "UNKNOWN");
           throw new LocalProtectionError("UNKNOWN", `Provider truth for ${id} did not confirm an effect. Local mode will not redispatch after an ambiguous attempt; investigate or use a provider idempotency integration.`);
         }
         if (!Object.prototype.hasOwnProperty.call(observation, "result")) {
+          noteLookup("INVALID");
           throw new LocalProtectionError("INVALID_TRUTH", "CONFIRMED provider truth must include a result; the outcome remains UNKNOWN and no second write was dispatched.");
         }
         let resultJson: string;
         try {
           resultJson = encodeResult(observation.result);
         } catch (cause) {
+          noteLookup("INVALID");
           throw new LocalProtectionError("INVALID_TRUTH", "CONFIRMED provider truth needs a JSON-safe result. No second write was dispatched.", { cause });
         }
+        assertLedgerIdentity();
         const confirmation = db.prepare("UPDATE local_operations SET state='CONFIRMED',result_json=? WHERE id=? AND state='UNKNOWN'").run(resultJson, id);
         if (confirmation.changes !== 1) {
           const latest = db.prepare("SELECT fingerprint,state,result_json,owner,lease_until FROM local_operations WHERE id=?").get(id) as Row | undefined;
@@ -428,9 +737,38 @@ export function protectLocal<A extends unknown[], T>(
         throw new LocalProtectionError("PAYLOAD_DRIFT", `Payload of ${id} changed before dispatch. No operation was dispatched.`);
       }
 
-      if (sharedSession) {
+      if (witness) {
+        let reserved: boolean;
         try {
-          sharedSession.assertStateIdentity();
+          let timeout: ReturnType<typeof setTimeout> | undefined;
+          try {
+            reserved = await Promise.race([
+              Promise.resolve().then(() => witness(id, fingerprint)),
+              new Promise<never>((_, reject) => {
+                timeout = setTimeout(() => reject(new Error("Independent admission timed out.")), Math.min(leaseMs, 30_000));
+              }),
+            ]);
+          } finally {
+            clearTimeout(timeout);
+          }
+        } catch (cause) {
+          db.prepare("UPDATE local_operations SET state='UNKNOWN',owner=NULL,lease_until=NULL WHERE id=? AND state='CLAIMED' AND owner=?").run(id, owner);
+          throw new LocalProtectionError("UNKNOWN", "Independent admission could not be established. No write was dispatched by this attempt. Reconcile the original operation.", { cause });
+        }
+        if (reserved !== true) {
+          db.prepare("UPDATE local_operations SET state='UNKNOWN',owner=NULL,lease_until=NULL WHERE id=? AND state='CLAIMED' AND owner=?").run(id, owner);
+          throw new LocalProtectionError("UNKNOWN", "Independent admission refused a fresh dispatch. Reconcile the original operation.");
+        }
+        const claim = db.prepare("SELECT owner,state,lease_until FROM local_operations WHERE id=?").get(id) as
+          Pick<Row, "owner" | "state" | "lease_until"> | undefined;
+        if (claim?.owner !== owner || claim.state !== "CLAIMED" || (claim.lease_until ?? 0) <= Date.now()) {
+          throw new LocalProtectionError("EXECUTION_RIGHT_LOST", "Local claim changed or expired during admission. No write was dispatched by this attempt.");
+        }
+      }
+
+      if (sharedSession || initialIdentity) {
+        try {
+          assertLedgerIdentity();
         } catch (cause) {
           try {
             db.prepare("UPDATE local_operations SET state='UNKNOWN',owner=NULL,lease_until=NULL WHERE id=? AND state='CLAIMED' AND owner=?").run(id, owner);
@@ -441,7 +779,7 @@ export function protectLocal<A extends unknown[], T>(
 
       let result: T;
       try {
-        result = await operation.apply(this, callArgs);
+        result = await operation!.apply(this, callArgs);
       } catch (cause) {
         try {
           db.prepare("UPDATE local_operations SET state='UNKNOWN',owner=NULL,lease_until=NULL WHERE id=? AND state='CLAIMED' AND owner=?").run(id, owner);
@@ -458,9 +796,9 @@ export function protectLocal<A extends unknown[], T>(
         throw new LocalProtectionError("UNREPLAYABLE_RESULT", `Operation ${id} returned a non-JSON-safe result. Outcome is UNKNOWN; return a JSON-safe receipt and reconcile before retrying.`, { cause });
       }
 
-      if (sharedSession) {
+      if (sharedSession || initialIdentity) {
         try {
-          sharedSession.assertStateIdentity();
+          assertLedgerIdentity();
         } catch (cause) {
           try {
             db.prepare("UPDATE local_operations SET state='UNKNOWN',owner=NULL,lease_until=NULL WHERE id=? AND state='CLAIMED' AND owner=?").run(id, owner);

@@ -99,8 +99,8 @@ jobs:
       - name: Run materialized reviewed companion execution proof
         run: node ./scripts/materialized-companion-proof-regression.mjs
 
-      - name: Run persistent local state regressions
-        run: node --test ./test/local-session.test.mjs
+      - name: Run persistent local state and recovery regressions
+        run: node --test ./test/local-session.test.mjs ./test/operation-recovery.test.mjs
 
       - name: Run MCP boundary mutation regressions
         run: node --test ./test/connect/mcp-execution-boundary-mutation.test.mjs
@@ -143,3 +143,38 @@ jobs:
       - name: Run Phase 13C persistent state regression
         working-directory: mcp
         run: node scripts/phase13c-persistent-state-e2e.mjs
+
+
+  independent-admission:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: once_integration
+          POSTGRES_PASSWORD: once_integration
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd "pg_isready -U postgres -d once_integration"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: sdk/typescript
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+      - run: npm ci
+      - run: npm run build
+      - run: npm install --prefix "$RUNNER_TEMP/once-pg" --ignore-scripts --no-save pg@8.16.3
+      - name: Test independent admission with real PostgreSQL and separate workers
+        env:
+          ONCE_TEST_POSTGRES_URL: postgresql://postgres:once_integration@localhost:${{ job.services.postgres.ports[5432] }}/once_integration
+        run: |
+          export ONCE_TEST_PG_MODULE="file://$RUNNER_TEMP/once-pg/node_modules/pg/lib/index.js"
+          node --test ./test/postgres-admission.integration.mjs

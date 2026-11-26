@@ -10,6 +10,18 @@ Local protection requires Node 24.15+, one durable shared same-machine SQLite au
 
 SDK 0.1.25 adds `once prove` (controlled fixture only) and `once check [directory]` (read-only candidates). Existing `once doctor` remains available.
 
+## Inspect and reconcile a local operation
+
+On Node.js 24.15+, `once status <operation-id> --state=/path/to/operations.sqlite`
+reads the operation's state and effect fingerprint. Add `--json` for structured
+output or use `once status --unresolved` for a paginated exception queue. The
+command opens an existing SDK ledger read-only and works with earlier TypeScript
+local ledgers. It does not load your app or contact your provider.
+
+New integrations can explicitly provision a local ledger, persist host-approved
+intent, run a protected operation and reconcile with a lookup-only API. See the
+[operation recovery guide](../../docs/OPERATION_RECOVERY.md) for operating
+instructions, PostgreSQL admission witness setup and limitations.
 
 ## Natural placement (0.1.24)
 

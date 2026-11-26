@@ -1021,12 +1021,12 @@ export {
 
 export default Once;
 
-export { protectLocal, LocalProtectionError } from "./local.js";
-export { protectToolCall } from "./tool-call.js";
+export { protectLocal, LocalProtectionError, provisionLocalLedger, readLocalOperationStatus, listUnresolvedLocalOperations } from "./local.js";
+export { protectToolCall, reconcileToolCall, approveLocalToolIntent, executeApprovedLocalTool, reconcileApprovedLocalTool } from "./tool-call.js";
 export { wrapTool } from "./wrap-tool.js";
 export type { WrapToolOptions } from "./wrap-tool.js";
-export type { ToolCallEffect, ToolCallObservation, ToolCallProtectionOptions } from "./tool-call.js";
-export type { LocalProtectionOptions, LocalObservation } from "./local.js";
+export type { LocalToolIntent, ToolCallEffect, ToolCallObservation, ToolCallProtectionOptions } from "./tool-call.js";
+export type { LocalProtectionOptions, LocalObservation, LocalOperationStatus, LocalLedgerMode, LocalAdmissionWitness } from "./local.js";
 
 /*
  * Once Connect
@@ -1097,3 +1097,6 @@ export type {
   AgentTool,
   LocalAgentToolContract
 } from "./connect/local-agent-tool.js";
+
+export { createPostgresAdmissionWitness } from "./postgres-admission-witness.js";
+export type { PostgresAdmissionClient } from "./postgres-admission-witness.js";

@@ -577,7 +577,66 @@ async function runProtectLocal(): Promise<void> {
   );
 }
 
-if (command === "prove" || command === "check") {
+async function runOperationStatus(args: string[]): Promise<void> {
+  const usage = "Usage: once status <operation-id> [--state=<path>] [--json] or once status --unresolved [--state=<path>] [--after=<operation-id>] [--limit=<1–100>] [--json]";
+  if (args.length === 1 && (args[0] === "--help" || args[0] === "-h")) {
+    console.log(usage);
+    return;
+  }
+  const unresolved = args.includes("--unresolved");
+  const json = args.includes("--json");
+  const positionals = args.filter(arg => !arg.startsWith("-"));
+  const flags = args.filter(arg => arg.startsWith("-"));
+  if (positionals.length !== (unresolved ? 0 : 1) || new Set(flags).size !== flags.length ||
+      flags.some(arg => arg !== "--json" && arg !== "--unresolved" &&
+        !arg.startsWith("--state=") && !(unresolved && (arg.startsWith("--limit=") || arg.startsWith("--after="))))) {
+    throw new Error(usage);
+  }
+  const statePath = optionValue(args, "state");
+  const afterId = optionValue(args, "after");
+  const limit = optionValue(args, "limit");
+  const { listUnresolvedLocalOperations, readLocalOperationStatus } = await import("./local.js");
+  const result = unresolved
+    ? await listUnresolvedLocalOperations({ statePath, afterId, limit: limit === undefined ? undefined : Number(limit) })
+    : await readLocalOperationStatus(positionals[0]!, statePath);
+  if (json) {
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+
+  const operations = Array.isArray(result) ? result : [result];
+  if (operations.length === 0) console.log("No unresolved operations in this ledger snapshot.");
+  for (const operation of operations) {
+    console.log(`${operation.state} ${JSON.stringify(operation.operationId)}`);
+    if (operation.label) console.log(`  Approved action  ${JSON.stringify(operation.label)}`);
+    if (operation.assignedTo) console.log(`  Assigned team  ${JSON.stringify(operation.assignedTo)}`);
+    if (operation.effectFingerprint) console.log(`  Effect fingerprint  ${JSON.stringify(operation.effectFingerprint)}`);
+    if (operation.approvedAt !== null) console.log(`  Approval recorded  ${new Date(operation.approvedAt).toISOString()}`);
+    if (operation.claimedAt !== null) console.log(`  Dispatch claim  ${new Date(operation.claimedAt).toISOString()}`);
+    if (operation.updatedAt !== null) console.log(`  Last state change  ${new Date(operation.updatedAt).toISOString()}`);
+    console.log(`  Evidence  ${operation.evidence}`);
+    if (operation.lastLookupAt !== null) {
+      console.log(`  Last provider lookup  ${operation.lastLookup} at ${new Date(operation.lastLookupAt).toISOString()}`);
+    }
+    const next = {
+      NOT_RECORDED: "Verify the original ledger and operation ID before any action.",
+      APPROVED: "Verify ledger continuity, then let the authorised host decide whether to dispatch.",
+      IN_FLIGHT: "Wait for the recorded attempt and retain the original operation ID.",
+      UNKNOWN: "Retain the original ID and reconcile with authoritative provider evidence. Keep redispatch blocked.",
+      CONFIRMED: "The original receipt is available to the authorised host for replay.",
+    }[operation.state];
+    console.log(`  Next action  ${next}`);
+  }
+}
+
+if (command === "status") {
+  try {
+    await runOperationStatus(explicitArgs.slice(1));
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  }
+} else if (command === "prove" || command === "check") {
   try {
     if (command === "prove") {
       if (explicitArgs.length !== 1) throw new Error("Usage: once prove. Runs only the controlled local refund fixture; never invokes your code.");
@@ -630,6 +689,7 @@ if (command === "prove" || command === "check") {
 
     if (helpRequested) {
       console.log("\nFIRST 10: once prove (controlled local refund proof); once check [directory] (read-only candidates).");
+      console.log("Operation recovery: once status <operation-id> or once status --unresolved.");
       printLocalFunctionHelp();
     }
 
