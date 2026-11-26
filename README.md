@@ -66,6 +66,12 @@ Deterministic **local LangGraph JS checkpoint replay** resumed the same checkpoi
 
 [Run and inspect the reproduction](examples/langgraph-once-replay/) · [Merged proof PR #295](https://github.com/stringsofthemind-oss/once/pull/295) · [Volunteer for one bounded Cloud test](https://onceexec.com/evidence/#langgraph-cloud-test). Independent Cloud evidence is still sought; a local fixture PASS is not adoption.
 
+## Academic references
+
+Jiapeng Li, [*Checking Retry Transparency in Agent Tools*](https://arxiv.org/abs/2611.23307), arXiv:2611.23307 (2026), discusses Once and EffectFence as existing engineering systems in Section 8 (Related Work). Reference [19] cites [Once's MCP retry safety documentation](https://onceexec.com/mcp-retry-safety/).
+
+This is a research citation, not a benchmark of Once, independent security certification, endorsement or evidence of adoption. The manuscript reports that it has not undergone independent human peer review.
+
 ## Find a candidate
 
 SDK 0.1.25 includes read-only `once check [directory]` and `once prove` for the controlled refund fixture. Run `npx --yes --package=@once-agent/sdk@0.1.25 once prove` for the one-command proof. `once doctor` remains the detailed assessment path. Scan and installation do not activate protection; the fixture never executes your code.
